@@ -1,0 +1,25 @@
+Some guidelines for development to keep things nice:
+
+- Focus on readability. Before pushing commits, take a good look at your code and ask yourself if it's something someone else could reasonably understand without too much of a headache. If not, consider adding comments in the code or re-organizing to simplify things.
+
+- Try to follow a coding style consistent with the rest of the code base. This reduces overhead when reading unfamiliar code. Give this a read:
+
+https://docs.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions
+
+- Local consistency is preferable to global consistency. Notice a deviation from the style guide that's made everywhere in the rest of the file? Either conform to the deviation or fix it everywhere.
+
+- Don't be pedantic in code reviews. Style guide fixes are really only useful if it's egregious. Prioritize finding bugs in the code or missed opportunities to optimize an algorithm (or improving the readability/places where a comment could be useful)
+
+- Rebase, don't Merge. I know git takes a while to get used to but please spend the time to make sure you're preserving a linear edit history. Rebase and merge don't play well together, so it's worth sticking to only one:
+
+https://stackoverflow.com/questions/4783599/rebasing-a-git-merge-commit
+
+And if we're only going to use one, I prefer rebase because it means simpler edit histories.
+
+Here's some resources:
+
+https://www.atlassian.com/git/tutorials/merging-vs-rebasing
+
+https://git-scm.com/docs/git-rebase
+
+- Please don't force push unless you're confident in your understanding of why it's required and what is going to happen.

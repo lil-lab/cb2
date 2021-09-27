@@ -1,0 +1,25 @@
+Various resources that were useful in the creation of this project...
+
+- How to setup Unity to work with Git:
+
+https://thoughtbot.com/blog/how-to-git-with-unity
+
+- WebGL + Networking in Unity:
+
+https://docs.unity3d.com/Manual/webgl-networking.html
+
+- A good reference on hexagonal grids and game dev:
+
+https://www.redblobgames.com/grids/hexagons/
+
+- A good wikipedia article on an alternative Hex coordinate system:
+
+https://en.wikipedia.org/wiki/Hexagonal_Efficient_Coordinate_System
+
+- Setting up git hooks:
+
+https://githooks.com
+
+- Unity addressables (load assets asynchronously via the internet):
+
+https://docs.unity3d.com/Packages/com.unity.addressables@0.3/manual/AddressableAssetsDevelopmentCycle.html
