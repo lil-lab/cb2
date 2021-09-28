@@ -23,6 +23,13 @@ public class HexBoundary
             {HecsCoord.ORIGIN.UpLeft(), UP_LEFT},
         };
 
+    public static HexBoundary FromBinary(byte e)
+    {
+        var b = new HexBoundary();
+        b.Deserialize(e);
+        return b;
+    }
+
     public HexBoundary() {}
 
     // Accessor methods.
@@ -41,6 +48,16 @@ public class HexBoundary
         return (_edges | LOC_TO_EDGE[displacement]) != 0;
     }
 
+    /// Returns array representing the hexagon boundary,
+    /// starting from the top right and traveling around the hexagon clockwise.
+    public bool[] Edges()
+    {
+        return new bool[]
+        {
+            UpRight(), Right(), DownRight(), DownLeft(), Left(), UpLeft()
+        };
+    }
+
     // Mutator methods.
     public void UpRight(bool e) { SetBit(e, UP_RIGHT); }
     public void Right(bool e) { SetBit(e, RIGHT); }
@@ -55,6 +72,11 @@ public class HexBoundary
     {
         HecsCoord displacement = HecsCoord.Sub(neighbor, loc);
         SetBit(true, LOC_TO_EDGE[displacement]);
+    }
+
+    public void AllBlocked()
+    {
+        _edges = 0xFF;
     }
 
     public void Clear()
