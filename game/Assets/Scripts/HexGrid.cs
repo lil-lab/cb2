@@ -10,19 +10,6 @@ public class HexGrid : MonoBehaviour
 
     private HexGridManager _manager;
 
-    private FixedMapSource.Tile[,] GetTileMap()
-    {
-        FixedMapSource.Tile[,] mapInfo = new FixedMapSource.Tile[20, 20];
-        for (int i = 0; i < 20; ++i)
-        {
-            for (int j = 0; j < 20; ++j)
-            {
-                mapInfo[i,j] = FixedMapSource.GroundTile();
-            }
-        }
-        return mapInfo;
-    }
-
     void Awake()
     {
         gameObject.tag = TAG;
