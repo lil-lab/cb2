@@ -17,8 +17,7 @@ public class HexGrid : MonoBehaviour
 
     void Start()
     {
-        FixedMapSource.Tile[,] mapInfo = GetTileMap();
-        _manager = new HexGridManager(new FixedMapSource(mapInfo), new UnityAssetSource());
+        _manager = new HexGridManager(new FixedMapSource(), new UnityAssetSource());
         _manager.Start();
     }
 

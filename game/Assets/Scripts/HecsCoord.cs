@@ -125,6 +125,12 @@ public class HecsCoord
         };
     }
 
+    public HecsCoord NeighborAtHeading(float heading)
+    {
+        int neighborIndex = (int)(heading / 60.0f);
+        return Neighbors()[neighborIndex % 6];
+    }
+
     public (float, float) Cartesian()
     {
         // https://en.wikipedia.org/wiki/Hexagonal_Efficient_Coordinate_System#Convert_to_Cartesian
