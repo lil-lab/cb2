@@ -348,6 +348,9 @@ ModelImporter:
   - first:
       137: 13700000
     second: Woman
+  - first:
+      74: -8407302308426460532
+    second: Armature|Jump (1)
   externalObjects: {}
   materials:
     materialImportMode: 1
@@ -377,8 +380,8 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Armature|Jump (1)
-      takeName: Armature|Jump
+      name: Armature|Death
+      takeName: Armature|Death
       internalID: 0
       firstFrame: 0
       lastFrame: 62
@@ -723,13 +726,13 @@ ModelImporter:
     globalScale: 1
     rootMotionBoneName: 
     hasTranslationDoF: 0
-    hasExtraRoot: 0
+    hasExtraRoot: 1
     skeletonHasParents: 1
   lastHumanDescriptionAvatarSource: {instanceID: 0}
   autoGenerateAvatarMappingIfUnspecified: 1
-  animationType: 2
+  animationType: 1
   humanoidOversampling: 1
-  avatarSetup: 1
+  avatarSetup: 0
   addHumanoidExtraRootOnlyWhenUsingAvatar: 0
   additionalBone: 0
   userData: 

@@ -8,9 +8,9 @@ public class Player : MonoBehaviour
     public float MoveSpeed = 0.2f;  // Cells/Second.
     public int StartingRow = 10;
     public int StartingCol = 13;
+    public bool ShowHeading = false;
 
     private HexMovement _actionQueue;
-    private Animator _animator;
 
     private float Scale()
     {
@@ -22,7 +22,6 @@ public class Player : MonoBehaviour
     void Start()
     {
         _actionQueue = new HexMovement();
-        _animator = GetComponent<Animator>();
 
         // Set the starting location by enqueuing a teleport to the target location.
         var startingLocation = new HexMovement.MovementInfo
@@ -38,14 +37,13 @@ public class Player : MonoBehaviour
         _right = GameObject.CreatePrimitive(PrimitiveType.Cube);
     }
 
+    // If public member ShowHeading is true, these 3 debug boxes appear on the grid.
     private GameObject _facing;
     private GameObject _upperRight;
     private GameObject _right;
 
-    void Update()
+    private void DrawHeading()
     {
-        _actionQueue.Update();
-
         // Draw UR and heading debug lines.
         (float urx, float urz) = _actionQueue.TargetLocation().UpRight().Cartesian();
         _upperRight.transform.position = new Vector3(urx, 0.1f, urz) * Scale();
@@ -55,16 +53,42 @@ public class Player : MonoBehaviour
 
         (float hx, float hz) = _actionQueue.TargetLocation().NeighborAtHeading(_actionQueue.ImmediateHeading()).Cartesian();
         _facing.transform.position = new Vector3(hx, 0.1f, hz) * Scale();
+    }
 
-        // Update current location & orientation based on action queue.
-        gameObject.transform.position = Scale() * _actionQueue.ImmediateLocation();
+    void Update()
+    {
+        _actionQueue.Update();
+
+        // Debug mode optionally draw some cubes displaying heading.
+        if (ShowHeading)
+        {
+            _facing.SetActive(true);
+            _upperRight.SetActive(true);
+            _right.SetActive(true);
+            DrawHeading();
+	    } else
+	    {
+            _facing.SetActive(false);
+            _upperRight.SetActive(false);
+            _right.SetActive(false);
+	    }
+
+        // Update current location, orientation, and animation based on action queue.
+        gameObject.transform.position = Scale() * _actionQueue.ImmediateLocation() + new Vector3(0, Scale() * 0.1f, 0);
         gameObject.transform.rotation = Quaternion.AngleAxis(-60 + _actionQueue.ImmediateHeading(), new Vector3(0, 1, 0));
+        Animation animation = GetComponent<Animation>();
+        if (_actionQueue.ImmediateAnimation() == HexMovement.AnimationType.WALKING)
+        {
+            animation.Play("Armature|Walking");
+        } else if (_actionQueue.ImmediateAnimation() == HexMovement.AnimationType.IDLE) {
+            // Fade into idle, to remove artifacts if we're in the middle of another animation.
+            animation.CrossFade("Armature|Idle", 0.3f);
+        }
 
         // If we're in an animation, don't check for user input.
         if (_actionQueue.IsBusy()) return;
 
         if (Input.GetKey(KeyCode.UpArrow)) {
-            Debug.Log("Up");
             var animationInfo = new HexMovement.MovementInfo()
             {
                 Type = HexMovement.AnimationType.WALKING,
@@ -80,7 +104,6 @@ public class Player : MonoBehaviour
 	    }
         if (Input.GetKey(KeyCode.DownArrow))
         { 
-            Debug.Log("Down");
             var animationInfo = new HexMovement.MovementInfo()
             {
                 Type = HexMovement.AnimationType.WALKING,
@@ -96,7 +119,6 @@ public class Player : MonoBehaviour
 	    }
         if (Input.GetKey(KeyCode.LeftArrow))
         {
-            Debug.Log("Left");
             if (_actionQueue.IsBusy()) {
                 Debug.Log("Queue busy");
 	        }
@@ -118,7 +140,6 @@ public class Player : MonoBehaviour
 	    }
         if (Input.GetKey(KeyCode.RightArrow))
         {
-            Debug.Log("Right");
             var animationInfo = new HexMovement.MovementInfo()
             {
                 Type = HexMovement.AnimationType.ROTATE,

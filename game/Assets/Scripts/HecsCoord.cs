@@ -140,8 +140,6 @@ public class HecsCoord
         int neighborIndex = ((int)(heading / 60.0f)) % 6;
         if (neighborIndex < 0)
             neighborIndex += 6;
-        Debug.Log("Heading: " + heading);
-        Debug.Log("Index: " + neighborIndex);
         return Neighbors()[neighborIndex];
     }
 
@@ -151,4 +149,3 @@ public class HecsCoord
         return (Mathf.Sqrt(3) / 2.0f * a + Mathf.Sqrt(3) * r, 0.5f * a + c);
     }
 }
-
