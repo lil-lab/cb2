@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class HexGrid : MonoBehaviour
 {
-    public float Scale = 1;
+    public float Scale = 3.49f;
 
     public static string TAG = "HexGrid";
 

@@ -1,14 +1,15 @@
 ﻿using System;
 using UnityEngine;
 
-public class Translate : HexMovement.IAnimation
+public class Translate : HexMovement.IMovement
 {
-    private HexMovement.AnimationInfo _info;
+    private HexMovement.MovementInfo _info;
     private Vector3 _location;
     private DateTime _start;
 
-    public Translate(HexMovement.AnimationInfo info)
+    public Translate(HexMovement.MovementInfo info)
     {
+        _info = info;
     }
 
     public void Start()
@@ -16,7 +17,7 @@ public class Translate : HexMovement.IAnimation
         _start = DateTime.Now;
     }
 
-    public HexMovement.AnimationInfo Info() { return _info;  }
+    public HexMovement.MovementInfo Info() { return _info;  }
 
     public void Update()
     {
@@ -42,6 +43,7 @@ public class Translate : HexMovement.IAnimation
 
     public bool IsDone()
     {
+        if (_start == null) return false;
         if ((DateTime.Now - _start).TotalSeconds > _info.DurationS) return true;
         if (DateTime.Now > _info.Expiration) return true;
         return false;

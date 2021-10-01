@@ -1,4 +1,5 @@
 ﻿using System;
+using UnityEngine;
 
 // Utility for handling a HECS-based hexagonal grid.
 //
@@ -8,6 +9,14 @@ public class HecsCoord
     public int a, r, c;
 
     public static readonly HecsCoord ORIGIN = new HecsCoord(0, 0, 0);
+
+    // From offset coordinates. This matches the "odd-r" scheme documented
+    // on this page:
+    // https://www.redblobgames.com/grids/hexagons/#coordinates
+    public static HecsCoord FromOffsetCoordinates(int r, int c)
+    {
+        return new HecsCoord(r % 2, r / 2, c);
+    }
 
     // A 1-D range of Hecs coordinates, all on the same row.
     public static HecsCoord[] Range1D(HecsCoord origin, int cols)
@@ -127,15 +136,19 @@ public class HecsCoord
 
     public HecsCoord NeighborAtHeading(float heading)
     {
-        int neighborIndex = (int)(heading / 60.0f);
-        return Neighbors()[neighborIndex % 6];
+
+        int neighborIndex = ((int)(heading / 60.0f)) % 6;
+        if (neighborIndex < 0)
+            neighborIndex += 6;
+        Debug.Log("Heading: " + heading);
+        Debug.Log("Index: " + neighborIndex);
+        return Neighbors()[neighborIndex];
     }
 
     public (float, float) Cartesian()
     {
         // https://en.wikipedia.org/wiki/Hexagonal_Efficient_Coordinate_System#Convert_to_Cartesian
-        return (0.5f * a + c, (float)Math.Sqrt(3) / 2.0f * a
-                              + (float)Math.Sqrt(3) * r);
+        return (Mathf.Sqrt(3) / 2.0f * a + Mathf.Sqrt(3) * r, 0.5f * a + c);
     }
 }
 

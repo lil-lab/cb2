@@ -72,7 +72,6 @@ public class HexBoundary
     public void SetEdgeWith(HecsCoord loc, HecsCoord neighbor)
     {
         HecsCoord displacement = HecsCoord.Sub(neighbor, loc);
-        Debug.Log("Disp: " + displacement.a + ", " + displacement.r + ", " + displacement.c);
         SetBit(true, LOC_TO_EDGE[displacement]);
     }
 

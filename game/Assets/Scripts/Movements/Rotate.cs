@@ -1,22 +1,24 @@
 ﻿using System;
 using UnityEngine;
 
-public class Rotate : HexMovement.IAnimation
+public class Rotate : HexMovement.IMovement
 {
-    private HexMovement.AnimationInfo _info;
+    private HexMovement.MovementInfo _info;
     private float _heading;
     private DateTime _start;
 
-    public Rotate(HexMovement.AnimationInfo info)
+    public Rotate(HexMovement.MovementInfo info)
     {
+        _info = info;
     }
 
     public void Start()
     {
         _start = DateTime.Now;
+        Debug.Log("Dest heading: " + (_info.DestinationHeading).ToString());
     }
 
-    public HexMovement.AnimationInfo Info() { return _info; }
+    public HexMovement.MovementInfo Info() { return _info; }
 
     public void Update()
     {
