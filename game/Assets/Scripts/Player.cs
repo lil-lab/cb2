@@ -88,13 +88,21 @@ public class Player : MonoBehaviour
         // If we're in an animation, don't check for user input.
         if (_actionQueue.IsBusy()) return;
 
-        if (Input.GetKey(KeyCode.UpArrow)) {
+        GameObject obj = GameObject.FindWithTag(HexGrid.TAG);
+        HexGrid grid = obj.GetComponent<HexGrid>();
+
+        HecsCoord currentLocation = _actionQueue.TargetLocation();
+        HecsCoord forwardLocation = _actionQueue.TargetLocation().NeighborAtHeading(_actionQueue.TargetHeading());
+        HecsCoord backLocation = _actionQueue.TargetLocation().NeighborAtHeading(_actionQueue.TargetHeading() + 180);
+        if (Input.GetKey(KeyCode.UpArrow) &&
+	        !grid.EdgeBetween(currentLocation, forwardLocation))
+        { 
             var animationInfo = new HexMovement.MovementInfo()
             {
                 Type = HexMovement.AnimationType.WALKING,
-                Destination = _actionQueue.TargetLocation().NeighborAtHeading(_actionQueue.TargetHeading()),
+                Destination = forwardLocation,
                 DestinationHeading = _actionQueue.TargetHeading(),
-                Start = _actionQueue.TargetLocation(),
+                Start = currentLocation,
                 StartHeading = _actionQueue.TargetHeading(),
                 Expiration = System.DateTime.Now.AddSeconds(10),
                 DurationS = 1 / MoveSpeed,
@@ -102,14 +110,15 @@ public class Player : MonoBehaviour
             _actionQueue.AddMovement(new Translate(animationInfo));
             return;
 	    }
-        if (Input.GetKey(KeyCode.DownArrow))
+        if (Input.GetKey(KeyCode.DownArrow) &&
+	        !grid.EdgeBetween(currentLocation, backLocation))
         { 
             var animationInfo = new HexMovement.MovementInfo()
             {
                 Type = HexMovement.AnimationType.WALKING,
-                Destination = _actionQueue.TargetLocation().NeighborAtHeading(_actionQueue.TargetHeading() + 180.0f),
+                Destination = backLocation,
                 DestinationHeading = _actionQueue.TargetHeading(),
-                Start = _actionQueue.TargetLocation(),
+                Start = currentLocation,
                 StartHeading = _actionQueue.TargetHeading(),
                 Expiration = System.DateTime.Now.AddSeconds(10),
                 DurationS = 1 / MoveSpeed,

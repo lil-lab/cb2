@@ -917,6 +917,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Scale: 3.49
+  DebugEdges: 1
 --- !u!1 &1808381061 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 100000, guid: 415e9bac1b0e4164685b50e8557429c0, type: 3}

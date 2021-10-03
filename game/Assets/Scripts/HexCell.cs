@@ -30,6 +30,8 @@ public class HexCell
         return vertices;
     }
 
+    private List<GameObject> _edges;
+
     public Vector3 Center()
     {
         (float cx, float cz) = coord.Cartesian();

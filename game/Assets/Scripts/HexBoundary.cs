@@ -43,10 +43,14 @@ public class HexBoundary
 
     // Accessor method. Takes in the cell location and a neighbor coordinate.
     // Gets the edge shared with that neighbor.
+    //
+    // TODO(sharf): It's inconvenient that a boundary doesn't know its own 
+    // location, you shouldn't need to pass loc into this function.
     public bool GetEdgeWith(HecsCoord loc, HecsCoord neighbor)
     {
         HecsCoord displacement = HecsCoord.Sub(neighbor, loc);
-        return (_edges | LOC_TO_EDGE[displacement]) != 0;
+        if (!LOC_TO_EDGE.ContainsKey(displacement)) return false;
+        return (_edges & LOC_TO_EDGE[displacement]) != 0;
     }
 
     /// Returns array representing the hexagon boundary,

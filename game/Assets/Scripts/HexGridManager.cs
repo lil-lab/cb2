@@ -70,6 +70,9 @@ public class HexGridManager
     // Used to check if the map needs to be re-loaded.
     private int _lastMapIteration = 0;
 
+    // If true, draws debug lines showing boundaries in the edge map.
+    public bool _debugEdges = false;
+
     public HexGridManager(IMapSource mapSource, IAssetSource assetSource)
     {
         _mapSource = mapSource;
@@ -100,6 +103,47 @@ public class HexGridManager
     public void Update()
     {
         UpdateMap();
+        if (_debugEdges)
+	    { 
+	        foreach (HexCell c in _edgeMap)
+		    {
+                var vertices = c.Vertices();
+                if (c.boundary.UpRight())
+                {
+                    Debug.DrawLine(vertices[0], vertices[1], Color.blue, 2.0f, true);
+		        }
+                if (c.boundary.Right())
+                {
+                    Debug.DrawLine(vertices[1], vertices[2], Color.blue, 2.0f, true);
+		        }
+                if (c.boundary.DownRight())
+                {
+                    Debug.DrawLine(vertices[2], vertices[3], Color.blue, 2.0f, true);
+		        }
+                if (c.boundary.DownLeft())
+                {
+                    Debug.DrawLine(vertices[3], vertices[4], Color.blue, 2.0f, true);
+		        }
+                if (c.boundary.Left())
+                {
+                    Debug.DrawLine(vertices[4], vertices[5], Color.blue, 2.0f, true);
+		        }
+                if (c.boundary.UpLeft())
+                {
+                    Debug.DrawLine(vertices[5], vertices[0], Color.blue, 2.0f, true);
+		        }
+	        }    
+	    }
+    }
+
+    public bool EdgeBetween(HecsCoord a, HecsCoord b)
+    {
+        return _edgeMap[a.a, a.r, a.c].boundary.GetEdgeWith(a, b);
+    }
+
+    public void DebugEdges(bool val)
+    {
+        _debugEdges = val; 
     }
 
     private bool CoordInMap(HecsCoord c)
