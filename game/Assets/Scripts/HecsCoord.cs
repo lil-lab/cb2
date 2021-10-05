@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 // Utility for handling a HECS-based hexagonal grid.
@@ -9,6 +10,23 @@ public class HecsCoord
     public int a, r, c;
 
     public static readonly HecsCoord ORIGIN = new HecsCoord(0, 0, 0);
+
+    private static readonly Dictionary<HecsCoord, string> LOC_TO_DIR = new Dictionary<HecsCoord, string>
+	{
+	    {HecsCoord.ORIGIN.UpRight(), "UP_RIGHT"},
+	    {HecsCoord.ORIGIN.Right(), "RIGHT"},
+	    {HecsCoord.ORIGIN.DownRight(), "DOWN_RIGHT"},
+	    {HecsCoord.ORIGIN.DownLeft(), "DOWN_LEFT"},
+	    {HecsCoord.ORIGIN.Left(), "LEFT"},
+	    {HecsCoord.ORIGIN.UpLeft(), "UP_LEFT"},
+	};
+
+    public string DirectionOf(HecsCoord b)
+    {
+        HecsCoord displacement = HecsCoord.Sub(b, this);
+        if (!LOC_TO_DIR.ContainsKey(displacement)) return "";
+        return LOC_TO_DIR[displacement];
+    }
 
     // From offset coordinates. This matches the "odd-r" scheme documented
     // on this page:
@@ -58,8 +76,8 @@ public class HecsCoord
         // https://en.wikipedia.org/wiki/Hexagonal_Efficient_Coordinate_System#Addition
         return new HecsCoord(
             a.a ^ b.a,
-            a.r + b.r + (a.a & b.a),
-            a.c + b.c + (a.a & b.a));
+			a.r + b.r + (a.a & b.a),
+			a.c + b.c + (a.a & b.a));
     }
 
     public static HecsCoord Sub(HecsCoord a, HecsCoord b)
@@ -147,5 +165,10 @@ public class HecsCoord
     {
         // https://en.wikipedia.org/wiki/Hexagonal_Efficient_Coordinate_System#Convert_to_Cartesian
         return (Mathf.Sqrt(3) / 2.0f * a + Mathf.Sqrt(3) * r, 0.5f * a + c);
+    }
+
+    public override string ToString()
+    {
+        return base.ToString() + ": " + "a: " + a + ", r: " + r + ", c: " + c;
     }
 }

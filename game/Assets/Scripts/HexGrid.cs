@@ -16,8 +16,14 @@ public class HexGrid : MonoBehaviour
         gameObject.tag = TAG;
     }
 
-    public bool EdgeBetween(HecsCoord a, HecsCoord b) {
+    public bool EdgeBetween(HecsCoord a, HecsCoord b)
+    {
         return _manager.EdgeBetween(a, b);
+    }
+
+    public HexCell Cell(HecsCoord a)
+    {
+        return _manager.Cell(a); 
     }
 
     void Start()

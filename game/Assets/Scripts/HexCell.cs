@@ -19,18 +19,17 @@ public class HexCell
     {
         (float cx, float cz) = coord.Cartesian();
         float cy = 0.0f;
+        Vector3 center = new Vector3(cx, cy, cz);
         Vector3[] vertices = new Vector3[6];
         // Vertices starting from the top, clockwise around.
         for (int i = 0; i < 6; ++i)
         {
-            float angle = 60 * i;
-            (float offsetx, float offsety) = RotationOffset(angle);
-            vertices[i] = new Vector3(cx + offsetx, cy, cz + offsety);
+            float angle = 60.0f * i;
+            (float offsetx, float offsetz) = RotationOffset(angle);
+            vertices[i] = Scale() * center + (new Vector3(offsetx, 0, offsetz) * Radius());
         }
         return vertices;
     }
-
-    private List<GameObject> _edges;
 
     public Vector3 Center()
     {
@@ -38,6 +37,7 @@ public class HexCell
         return Scale() * (new Vector3(cx, 0, cz));
     }
 
+    // The distance between the centers of two neighbor cells.
     private float Scale()
     {
         GameObject obj = GameObject.FindWithTag(HexGrid.TAG);
@@ -45,11 +45,21 @@ public class HexCell
         return manager.Scale;
     }
 
+    private float Apothem()
+    {
+        return Scale() / 2.0f;
+    }
+
+    private float Radius()
+    {
+        return 2.0f * Apothem() / Mathf.Sqrt(3);
+    }
+
     // Angle is defined as degrees from direct north, clockwise.
     private (float, float) RotationOffset(float angle)
     {
-        // Adjust s.t. 0 degrees = facing north & clockwise = increasing.
-        float angleAdjusted = 90 - angle;
-        return ((float)(Scale() * Math.Cos(angleAdjusted)), (float)(Scale() * Math.Sin(angleAdjusted)));
+        // Convert to radians, adjust angle to CW (clockwise) instead of CCW.
+        float angleAdjusted = (-angle) * Mathf.PI / 180.0f;
+        return (Mathf.Cos(angleAdjusted), Mathf.Sin(angleAdjusted));
     }
 }

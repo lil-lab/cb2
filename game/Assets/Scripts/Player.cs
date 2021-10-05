@@ -94,6 +94,7 @@ public class Player : MonoBehaviour
         HecsCoord currentLocation = _actionQueue.TargetLocation();
         HecsCoord forwardLocation = _actionQueue.TargetLocation().NeighborAtHeading(_actionQueue.TargetHeading());
         HecsCoord backLocation = _actionQueue.TargetLocation().NeighborAtHeading(_actionQueue.TargetHeading() + 180);
+
         if (Input.GetKey(KeyCode.UpArrow) &&
 	        !grid.EdgeBetween(currentLocation, forwardLocation))
         { 
@@ -128,9 +129,6 @@ public class Player : MonoBehaviour
 	    }
         if (Input.GetKey(KeyCode.LeftArrow))
         {
-            if (_actionQueue.IsBusy()) {
-                Debug.Log("Queue busy");
-	        }
             var animationInfo = new HexMovement.MovementInfo()
             {
                 Type = HexMovement.AnimationType.ROTATE,
@@ -142,9 +140,6 @@ public class Player : MonoBehaviour
                 DurationS = 1 / TurnSpeed,
             };
             _actionQueue.AddMovement(new Rotate(animationInfo));
-            if (_actionQueue.IsBusy()) {
-                Debug.Log("Queue busy");
-	        }
             return;
 	    }
         if (Input.GetKey(KeyCode.RightArrow))

@@ -31,15 +31,22 @@ public class HexBoundary
         return b;
     }
 
-    public HexBoundary() {}
+    public HexBoundary() {
+        _edges = 0;
+    }
+
+    public override string ToString()
+    {
+        return base.ToString() + ": edges: " + _edges;
+    }
 
     // Accessor methods.
-    public bool UpRight() { return (_edges | UP_RIGHT) != 0; }
-    public bool Right() { return (_edges | RIGHT) != 0; }
-    public bool DownRight() { return (_edges | DOWN_RIGHT) != 0; }
-    public bool DownLeft() { return (_edges | DOWN_LEFT) != 0; }
-    public bool Left() { return (_edges | LEFT) != 0; }
-    public bool UpLeft() { return (_edges | UP_LEFT) != 0; }
+    public bool UpRight() { return (_edges & UP_RIGHT) != 0; }
+    public bool Right() { return (_edges & RIGHT) != 0; }
+    public bool DownRight() { return (_edges & DOWN_RIGHT) != 0; }
+    public bool DownLeft() { return (_edges & DOWN_LEFT) != 0; }
+    public bool Left() { return (_edges & LEFT) != 0; }
+    public bool UpLeft() { return (_edges & UP_LEFT) != 0; }
 
     // Accessor method. Takes in the cell location and a neighbor coordinate.
     // Gets the edge shared with that neighbor.
@@ -48,7 +55,7 @@ public class HexBoundary
     // location, you shouldn't need to pass loc into this function.
     public bool GetEdgeWith(HecsCoord loc, HecsCoord neighbor)
     {
-        HecsCoord displacement = HecsCoord.Sub(neighbor, loc);
+        HecsCoord displacement = HecsCoord.Sub(loc, neighbor);
         if (!LOC_TO_EDGE.ContainsKey(displacement)) return false;
         return (_edges & LOC_TO_EDGE[displacement]) != 0;
     }
@@ -75,8 +82,9 @@ public class HexBoundary
     // Sets the edge shared with that neighbor.
     public void SetEdgeWith(HecsCoord loc, HecsCoord neighbor)
     {
-        HecsCoord displacement = HecsCoord.Sub(neighbor, loc);
-        SetBit(true, LOC_TO_EDGE[displacement]);
+        HecsCoord displacement = HecsCoord.Sub(loc, neighbor);
+        if (!LOC_TO_EDGE.ContainsKey(displacement)) return;
+        _edges |= (byte)LOC_TO_EDGE[displacement];
     }
 
     public void AllBlocked()

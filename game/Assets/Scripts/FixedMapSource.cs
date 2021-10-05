@@ -41,7 +41,7 @@ public class FixedMapSource : HexGridManager.IMapSource
         return new Tile() {
             AssetId = UnityAssetSource.Assets.GROUND_TILE_ROCKY,
             RotationDegrees = 0,
-            Edges = 0xff,
+            Edges = 0x3f,
         };
     }
 
@@ -50,7 +50,7 @@ public class FixedMapSource : HexGridManager.IMapSource
         return new Tile() {
             AssetId = UnityAssetSource.Assets.GROUND_TILE_STONES,
             RotationDegrees = 0,
-            Edges = 0xff,
+            Edges = 0x3f,
         };
     }
 
@@ -59,7 +59,7 @@ public class FixedMapSource : HexGridManager.IMapSource
         return new Tile() {
             AssetId = UnityAssetSource.Assets.GROUND_TILE_TREES,
             RotationDegrees = 0,
-            Edges = 0xff,
+            Edges = 0x3f,
         };
     }
     private static Tile GroundTileSingleTree()
@@ -67,7 +67,7 @@ public class FixedMapSource : HexGridManager.IMapSource
         return new Tile() {
             AssetId = UnityAssetSource.Assets.GROUND_TILE_TREES_2,
             RotationDegrees = 0,
-            Edges = 0xff,
+            Edges = 0x3f,
         };
     }
     private static Tile GroundTileForest()
@@ -75,7 +75,7 @@ public class FixedMapSource : HexGridManager.IMapSource
         return new Tile() {
             AssetId = UnityAssetSource.Assets.GROUND_TILE_FOREST,
             RotationDegrees = 0,
-            Edges = 0xff,
+            Edges = 0x3f,
         };
     }
     private static Tile GroundTileHouse()
@@ -84,7 +84,7 @@ public class FixedMapSource : HexGridManager.IMapSource
         {
             AssetId = UnityAssetSource.Assets.GROUND_TILE_HOUSE,
             RotationDegrees = 0,
-            Edges = 0xff,
+            Edges = 0x3f,
         };
     }
     private static Tile GroundTileStreetLight()
@@ -92,7 +92,7 @@ public class FixedMapSource : HexGridManager.IMapSource
         return new Tile() {
             AssetId = UnityAssetSource.Assets.GROUND_TILE_STREETLIGHT,
             RotationDegrees = 0,
-            Edges = 0xff,
+            Edges = 0x3f,
         };
     }
 
@@ -128,7 +128,7 @@ public class FixedMapSource : HexGridManager.IMapSource
                 {
                     Cell = new HexCell(coord, HexBoundary.FromBinary(tileInfo.Edges)),
                     AssetId = (int)tileInfo.AssetId,
-                    RotationDegrees = tileInfo.RotationDegrees
+                    RotationDegrees = tileInfo.RotationDegrees,
                 });
             }
         }

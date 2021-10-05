@@ -107,6 +107,7 @@ public class HexGridManager
 	    { 
 	        foreach (HexCell c in _edgeMap)
 		    {
+                if (c.boundary.Serialize() == 0) continue;
                 var vertices = c.Vertices();
                 if (c.boundary.UpRight())
                 {
@@ -114,23 +115,23 @@ public class HexGridManager
 		        }
                 if (c.boundary.Right())
                 {
-                    Debug.DrawLine(vertices[1], vertices[2], Color.blue, 2.0f, true);
+                    Debug.DrawLine(vertices[1], vertices[2], Color.green, 2.0f, true);
 		        }
                 if (c.boundary.DownRight())
                 {
-                    Debug.DrawLine(vertices[2], vertices[3], Color.blue, 2.0f, true);
+                    Debug.DrawLine(vertices[2], vertices[3], Color.magenta, 2.0f, true);
 		        }
                 if (c.boundary.DownLeft())
                 {
-                    Debug.DrawLine(vertices[3], vertices[4], Color.blue, 2.0f, true);
+                    Debug.DrawLine(vertices[3], vertices[4], Color.black, 2.0f, true);
 		        }
                 if (c.boundary.Left())
                 {
-                    Debug.DrawLine(vertices[4], vertices[5], Color.blue, 2.0f, true);
+                    Debug.DrawLine(vertices[4], vertices[5], Color.red, 2.0f, true);
 		        }
                 if (c.boundary.UpLeft())
                 {
-                    Debug.DrawLine(vertices[5], vertices[0], Color.blue, 2.0f, true);
+                    Debug.DrawLine(vertices[5], vertices[0], Color.white, 2.0f, true);
 		        }
 	        }    
 	    }
@@ -146,6 +147,11 @@ public class HexGridManager
         _debugEdges = val; 
     }
 
+    public HexCell Cell(HecsCoord a)
+    {
+        return _edgeMap[a.a, a.r, a.c];
+    }
+
     private bool CoordInMap(HecsCoord c)
     {
 
@@ -159,25 +165,26 @@ public class HexGridManager
     }
 
     // Updates the edge boundary map for a single cell.
-    private void UpdateCellEdges(HexCell c)
+    private void UpdateCellEdges(HexCell t)
     {
-        _edgeMap[c.coord.a, c.coord.r, c.coord.c].boundary.MergeWith(c.boundary);
+        var cell = _edgeMap[t.coord.a, t.coord.r, t.coord.c];
+	    cell.boundary.MergeWith(t.boundary);
 
         // Edge map symmetry must be retained. That is -- if cell B has an edge
         // boundary with A, then A must also have a matching boundary with B.
         // Update neighbor cell boundaries to match.
-        HecsCoord[] neighbors = c.coord.Neighbors();
+        HecsCoord[] neighbors = t.coord.Neighbors();
         foreach (HecsCoord n in neighbors)
         {
             if (!CoordInMap(n)) continue;
-            _edgeMap[n.a, n.r, n.c].boundary.SetEdgeWith(n, c.coord);
+            if (!cell.boundary.GetEdgeWith(t.coord, n)) continue;
+            _edgeMap[n.a, n.r, n.c].boundary.SetEdgeWith(n, t.coord);
         }
     }
 
     private void UpdateEdgeMap(TileInformation tile)
     {
         UpdateCellEdges(tile.Cell);
-
     }
 
     private void UpdateMap()
