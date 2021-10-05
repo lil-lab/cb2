@@ -1,12 +1,12 @@
 ﻿using System;
 using UnityEngine;
 
-public class Instant : HexMovement.IMovement
+public class Instant : HexAction.IAction
 {
-    private HexMovement.MovementInfo _info;
+    private HexAction.ActionInfo _info;
     private DateTime _start;
 
-    public Instant(HexMovement.MovementInfo info)
+    public Instant(HexAction.ActionInfo info)
     {
         _info = info;
     }
@@ -16,7 +16,7 @@ public class Instant : HexMovement.IMovement
         _start = DateTime.Now;
     }
 
-    public HexMovement.MovementInfo Info() { return _info;  }
+    public HexAction.ActionInfo Info() { return _info;  }
 
     public void Update() { }
 

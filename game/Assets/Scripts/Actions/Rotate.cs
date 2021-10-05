@@ -1,13 +1,13 @@
 ﻿using System;
 using UnityEngine;
 
-public class Rotate : HexMovement.IMovement
+public class Rotate : HexAction.IAction
 {
-    private HexMovement.MovementInfo _info;
+    private HexAction.ActionInfo _info;
     private float _heading;
     private DateTime _start;
 
-    public Rotate(HexMovement.MovementInfo info)
+    public Rotate(HexAction.ActionInfo info)
     {
         _info = info;
     }
@@ -18,7 +18,7 @@ public class Rotate : HexMovement.IMovement
         Debug.Log("Dest heading: " + (_info.DestinationHeading).ToString());
     }
 
-    public HexMovement.MovementInfo Info() { return _info; }
+    public HexAction.ActionInfo Info() { return _info; }
 
     public void Update()
     {

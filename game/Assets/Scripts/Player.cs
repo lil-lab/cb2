@@ -10,7 +10,7 @@ public class Player : MonoBehaviour
     public int StartingCol = 13;
     public bool ShowHeading = false;
 
-    private HexMovement _actionQueue;
+    private HexAction _actionQueue;
 
     private float Scale()
     {
@@ -21,16 +21,16 @@ public class Player : MonoBehaviour
 
     void Start()
     {
-        _actionQueue = new HexMovement();
+        _actionQueue = new HexAction();
 
         // Set the starting location by enqueuing a teleport to the target location.
-        var startingLocation = new HexMovement.MovementInfo
+        var startingLocation = new HexAction.ActionInfo
         {
-            Type = HexMovement.AnimationType.INSTANT,
+            Type = HexAction.AnimationType.INSTANT,
             Destination = HecsCoord.FromOffsetCoordinates(13, 10),
             DestinationHeading = 0
         };
-        _actionQueue.AddMovement(new Instant(startingLocation));
+        _actionQueue.AddAction(new Instant(startingLocation));
 
         _facing = GameObject.CreatePrimitive(PrimitiveType.Cube);
         _upperRight = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -77,10 +77,10 @@ public class Player : MonoBehaviour
         gameObject.transform.position = Scale() * _actionQueue.ImmediateLocation() + new Vector3(0, Scale() * 0.1f, 0);
         gameObject.transform.rotation = Quaternion.AngleAxis(-60 + _actionQueue.ImmediateHeading(), new Vector3(0, 1, 0));
         Animation animation = GetComponent<Animation>();
-        if (_actionQueue.ImmediateAnimation() == HexMovement.AnimationType.WALKING)
+        if (_actionQueue.ImmediateAnimation() == HexAction.AnimationType.WALKING)
         {
             animation.Play("Armature|Walking");
-        } else if (_actionQueue.ImmediateAnimation() == HexMovement.AnimationType.IDLE) {
+        } else if (_actionQueue.ImmediateAnimation() == HexAction.AnimationType.IDLE) {
             // Fade into idle, to remove artifacts if we're in the middle of another animation.
             animation.CrossFade("Armature|Idle", 0.3f);
         }
@@ -98,9 +98,9 @@ public class Player : MonoBehaviour
         if (Input.GetKey(KeyCode.UpArrow) &&
 	        !grid.EdgeBetween(currentLocation, forwardLocation))
         { 
-            var animationInfo = new HexMovement.MovementInfo()
+            var animationInfo = new HexAction.ActionInfo()
             {
-                Type = HexMovement.AnimationType.WALKING,
+                Type = HexAction.AnimationType.WALKING,
                 Destination = forwardLocation,
                 DestinationHeading = _actionQueue.TargetHeading(),
                 Start = currentLocation,
@@ -108,15 +108,15 @@ public class Player : MonoBehaviour
                 Expiration = System.DateTime.Now.AddSeconds(10),
                 DurationS = 1 / MoveSpeed,
             };
-            _actionQueue.AddMovement(new Translate(animationInfo));
+            _actionQueue.AddAction(new Translate(animationInfo));
             return;
 	    }
         if (Input.GetKey(KeyCode.DownArrow) &&
 	        !grid.EdgeBetween(currentLocation, backLocation))
         { 
-            var animationInfo = new HexMovement.MovementInfo()
+            var animationInfo = new HexAction.ActionInfo()
             {
-                Type = HexMovement.AnimationType.WALKING,
+                Type = HexAction.AnimationType.WALKING,
                 Destination = backLocation,
                 DestinationHeading = _actionQueue.TargetHeading(),
                 Start = currentLocation,
@@ -124,14 +124,14 @@ public class Player : MonoBehaviour
                 Expiration = System.DateTime.Now.AddSeconds(10),
                 DurationS = 1 / MoveSpeed,
             };
-            _actionQueue.AddMovement(new Translate(animationInfo));
+            _actionQueue.AddAction(new Translate(animationInfo));
             return;
 	    }
         if (Input.GetKey(KeyCode.LeftArrow))
         {
-            var animationInfo = new HexMovement.MovementInfo()
+            var animationInfo = new HexAction.ActionInfo()
             {
-                Type = HexMovement.AnimationType.ROTATE,
+                Type = HexAction.AnimationType.ROTATE,
                 Destination = _actionQueue.TargetLocation(),
                 DestinationHeading = _actionQueue.TargetHeading() - 60.0f,
                 Start = _actionQueue.TargetLocation(),
@@ -139,14 +139,14 @@ public class Player : MonoBehaviour
                 Expiration = System.DateTime.Now.AddSeconds(10),
                 DurationS = 1 / TurnSpeed,
             };
-            _actionQueue.AddMovement(new Rotate(animationInfo));
+            _actionQueue.AddAction(new Rotate(animationInfo));
             return;
 	    }
         if (Input.GetKey(KeyCode.RightArrow))
         {
-            var animationInfo = new HexMovement.MovementInfo()
+            var animationInfo = new HexAction.ActionInfo()
             {
-                Type = HexMovement.AnimationType.ROTATE,
+                Type = HexAction.AnimationType.ROTATE,
                 Destination = _actionQueue.TargetLocation(),
                 DestinationHeading = _actionQueue.TargetHeading() + 60.0f,
                 Start = _actionQueue.TargetLocation(),
@@ -154,7 +154,7 @@ public class Player : MonoBehaviour
                 Expiration = System.DateTime.Now.AddSeconds(10),
                 DurationS = 1 / TurnSpeed,
             };
-            _actionQueue.AddMovement(new Rotate(animationInfo));
+            _actionQueue.AddAction(new Rotate(animationInfo));
             return;
 	    }
     }

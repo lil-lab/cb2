@@ -1,13 +1,13 @@
 ﻿using System;
 using UnityEngine;
 
-public class Translate : HexMovement.IMovement
+public class Translate : HexAction.IAction
 {
-    private HexMovement.MovementInfo _info;
+    private HexAction.ActionInfo _info;
     private Vector3 _location;
     private DateTime _start;
 
-    public Translate(HexMovement.MovementInfo info)
+    public Translate(HexAction.ActionInfo info)
     {
         _info = info;
     }
@@ -17,7 +17,7 @@ public class Translate : HexMovement.IMovement
         _start = DateTime.Now;
     }
 
-    public HexMovement.MovementInfo Info() { return _info;  }
+    public HexAction.ActionInfo Info() { return _info;  }
 
     public void Update()
     {

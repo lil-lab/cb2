@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class HexMovement
+
+
+public class HexAction
 {
     public enum AnimationType
     { 
@@ -15,7 +17,7 @@ public class HexMovement
         ROTATE,
     }
 
-    public class MovementInfo
+    public class ActionInfo
     {
         public AnimationType Type;
         public HecsCoord Start;  // Where the move starts from.
@@ -23,55 +25,55 @@ public class HexMovement
         public float StartHeading;
         public float DestinationHeading;
         public float DurationS;  // Seconds.
-        public DateTime Expiration;  // Ditch the movement at this point.
+        public DateTime Expiration;  // Ditch the action at this point.
     };
 
-    // A kind of movement (walk, skip, jump). This is distinctly different from 
-    // the model animation (though related).  The movement defines how an object
+    // A kind of action (walk, skip, jump). This is distinctly different from 
+    // the model animation (though related).  The action defines how an object
     // moves through space as a function of time. The animation defines how the
-    // object mesh changes (leg movement motion, etc) as the object moves.
-    public interface IMovement
+    // object mesh changes (leg action motion, etc) as the object moves.
+    public interface IAction
     {
         void Start();
-        MovementInfo Info();
+        ActionInfo Info();
         void Update();
         Vector3 Location();
         float Heading();
         bool IsDone();
     }
 
-    private Queue<IMovement> _movementQueue;
-    private HecsCoord _location;  // Current loc or destination of current movement.
-    private float _heading;  // Current heading (or desination of current movement).
-    private bool _movementInProgress;
+    private Queue<IAction> _actionQueue;
+    private HecsCoord _location;  // Current loc or destination of current action.
+    private float _heading;  // Current heading (or desination of current action).
+    private bool _actionInProgress;
 
-    public HexMovement()
+    public HexAction()
     {
-        _movementQueue = new Queue<IMovement>();
-        _movementInProgress = false;
+        _actionQueue = new Queue<IAction>();
+        _actionInProgress = false;
     }
 
     // Adds a move to the queue.
-    public void AddMovement(IMovement movement)
+    public void AddAction(IAction action)
     {
-        if (movement == null)
+        if (action == null)
 	    {
             return;
 	    }
-        _movementQueue.Enqueue(movement);
+        _actionQueue.Enqueue(action);
     }
 
-    // Is the object in the middle of a movement.
+    // Is the object in the middle of a action.
     public bool IsBusy()
     {
-        return _movementQueue.Count != 0;
+        return _actionQueue.Count != 0;
     }
 
     public float ImmediateHeading()
     { 
         if (IsBusy())
 	    {
-            return _movementQueue.Peek().Heading();
+            return _actionQueue.Peek().Heading();
 	    }
         return _heading;
     } 
@@ -80,10 +82,10 @@ public class HexMovement
     // if the object is moving.
     public Vector3 ImmediateLocation()
     {
-        // If we're moving, return the current movement location.
+        // If we're moving, return the current action location.
         if (IsBusy())
         {
-            return _movementQueue.Peek().Location();
+            return _actionQueue.Peek().Location();
         }
         (float x, float z) = _location.Cartesian();
         // TODO(sharf): For supporting mountains, this will need to peek at the
@@ -94,7 +96,7 @@ public class HexMovement
     // Return the current animation type.
     public AnimationType ImmediateAnimation() { 
         if (IsBusy()) {
-            return _movementQueue.Peek().Info().Type;
+            return _actionQueue.Peek().Info().Type;
 	    }
         return AnimationType.IDLE;
     }
@@ -112,25 +114,25 @@ public class HexMovement
     public void Update()
     { 
         // If there's no animation in progress, begin the next animation in the queue.
-        if (_movementQueue.Count > 0 && !_movementInProgress) {
-            _movementQueue.Peek().Start();
-            _movementInProgress = true;
+        if (_actionQueue.Count > 0 && !_actionInProgress) {
+            _actionQueue.Peek().Start();
+            _actionInProgress = true;
 	    }
 
         // Flush any finished animations.
-        while (_movementQueue.Count > 0 && _movementQueue.Peek().IsDone())
+        while (_actionQueue.Count > 0 && _actionQueue.Peek().IsDone())
 	    {
             // Even if we're fast-forwarding through an expired animation, the
 	        // resulting location/heading should be kept.
-            _location = _movementQueue.Peek().Info().Destination;
-            _heading = _movementQueue.Peek().Info().DestinationHeading;
-            _movementQueue.Dequeue();
-            _movementInProgress = false;
+            _location = _actionQueue.Peek().Info().Destination;
+            _heading = _actionQueue.Peek().Info().DestinationHeading;
+            _actionQueue.Dequeue();
+            _actionInProgress = false;
 	    }
 
-        if (_movementQueue.Count == 0) return;
+        if (_actionQueue.Count == 0) return;
 
-        if (_movementInProgress)
-		    _movementQueue.Peek().Update();
+        if (_actionInProgress)
+		    _actionQueue.Peek().Update();
     }
 }
