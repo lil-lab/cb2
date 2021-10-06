@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -23,6 +24,11 @@ public class FixedMapSource : HexGridManager.IMapSource
         mapInfo[11, 11] = FixedMapSource.GroundTileStones();
         mapInfo[11, 10] = FixedMapSource.GroundTileStreetLight();
         mapInfo[9, 10] = FixedMapSource.GroundTileSingleTree();
+
+        mapInfo[8, 8] = FixedMapSource.MountainTile();
+        mapInfo[9, 8] = FixedMapSource.MountainTile();
+        mapInfo[9, 9] = FixedMapSource.MountainTile();
+        mapInfo[9, 8] = FixedMapSource.RampToMountain();
         
         return mapInfo;
     }
@@ -33,6 +39,8 @@ public class FixedMapSource : HexGridManager.IMapSource
             AssetId = UnityAssetSource.Assets.GROUND_TILE,
             RotationDegrees = 0,
             Edges = 0,
+            Height = 0,
+            Layer = 0,
         };
     }
 
@@ -42,6 +50,8 @@ public class FixedMapSource : HexGridManager.IMapSource
             AssetId = UnityAssetSource.Assets.GROUND_TILE_ROCKY,
             RotationDegrees = 0,
             Edges = 0x3f,
+            Height = 0,
+            Layer = 0,
         };
     }
 
@@ -51,6 +61,8 @@ public class FixedMapSource : HexGridManager.IMapSource
             AssetId = UnityAssetSource.Assets.GROUND_TILE_STONES,
             RotationDegrees = 0,
             Edges = 0x3f,
+            Height = 0,
+            Layer = 0,
         };
     }
 
@@ -60,6 +72,8 @@ public class FixedMapSource : HexGridManager.IMapSource
             AssetId = UnityAssetSource.Assets.GROUND_TILE_TREES,
             RotationDegrees = 0,
             Edges = 0x3f,
+            Height = 0,
+            Layer = 0,
         };
     }
     private static Tile GroundTileSingleTree()
@@ -68,6 +82,7 @@ public class FixedMapSource : HexGridManager.IMapSource
             AssetId = UnityAssetSource.Assets.GROUND_TILE_TREES_2,
             RotationDegrees = 0,
             Edges = 0x3f,
+            Layer = 0,
         };
     }
     private static Tile GroundTileForest()
@@ -76,6 +91,8 @@ public class FixedMapSource : HexGridManager.IMapSource
             AssetId = UnityAssetSource.Assets.GROUND_TILE_FOREST,
             RotationDegrees = 0,
             Edges = 0x3f,
+            Height = 0,
+            Layer = 0,
         };
     }
     private static Tile GroundTileHouse()
@@ -85,6 +102,8 @@ public class FixedMapSource : HexGridManager.IMapSource
             AssetId = UnityAssetSource.Assets.GROUND_TILE_HOUSE,
             RotationDegrees = 0,
             Edges = 0x3f,
+            Height = 0,
+            Layer = 0,
         };
     }
     private static Tile GroundTileStreetLight()
@@ -93,6 +112,28 @@ public class FixedMapSource : HexGridManager.IMapSource
             AssetId = UnityAssetSource.Assets.GROUND_TILE_STREETLIGHT,
             RotationDegrees = 0,
             Edges = 0x3f,
+            Height = 0,
+            Layer = 0,
+        };
+    }
+    private static Tile MountainTile()
+    {
+        return new Tile() {
+            AssetId = UnityAssetSource.Assets.MOUNTAIN_TILE,
+            RotationDegrees = 0,
+            Edges = 0x00,
+            Height = 0.325f,
+            Layer = 2,
+        };
+    }
+    private static Tile RampToMountain()
+    {
+        return new Tile() {
+            AssetId = UnityAssetSource.Assets.RAMP_TO_MOUNTAIN,
+            RotationDegrees = 0,
+            Edges = 0b101101,
+            Height = 0.275f,
+            Layer = 1,
         };
     }
 
@@ -101,6 +142,14 @@ public class FixedMapSource : HexGridManager.IMapSource
         public UnityAssetSource.Assets AssetId;
         public int RotationDegrees;
         public byte Edges;
+
+        // Height is the Y-displacement of the tile (how high to place objects
+		// on the tile).
+        public float Height = 0;
+        // Layer is the index height of the tile. This is an integer 
+	    // categorization of height. For example, 0 = ground, 1 = ramp,
+	    // 2 = mountain.
+        public int Layer = 0;
     }
 
     private List<HexGridManager.TileInformation> _map;
@@ -120,19 +169,44 @@ public class FixedMapSource : HexGridManager.IMapSource
             for (int c = 0; c < mapInfo.GetLength(1); ++c)
             {
                 Tile tileInfo = mapInfo[r, c];
-                int hexA = r % 2;
-                int hexR = r / 2;
-                int hexC = c;
-                HecsCoord coord = new HecsCoord(hexA, hexR, hexC);
+                HecsCoord coord = HecsCoord.FromOffsetCoordinates(r, c);
                 _map.Add(new HexGridManager.TileInformation
                 {
-                    Cell = new HexCell(coord, HexBoundary.FromBinary(tileInfo.Edges)),
+                    Cell = new HexCell(coord, HexBoundary.FromBinary(tileInfo.Edges), tileInfo.Height, tileInfo.Layer),
                     AssetId = (int)tileInfo.AssetId,
                     RotationDegrees = tileInfo.RotationDegrees,
                 });
             }
         }
+
+        // Adds edges between adjacent cells that are on far-apart layers.
+        AddLayerEdges();
+
         ++_mapIteration;
+    }
+
+    // Adds edges between mountains and ground.
+    private void AddLayerEdges()
+    {
+        // For any two adjacent cells A, B, adds an edge between A and B if their layer values differ by more than 1.
+        // Ground has a layer of 0, the ramp has a layer of 1, and mountains have a layer of 2.
+        for (int i = 0; i < _map.Count; ++i)
+        {
+	        for (int j = 0; j < _map.Count; ++j)
+            {
+                if (i == j) continue;
+                if (!_map[i].Cell.coord.IsAdjacentTo(_map[j].Cell.coord)) continue;
+
+                // _map[i] and _map[j] are adjacent and i != j.
+                int layer_diff = Math.Abs(_map[i].Cell.layer - _map[j].Cell.layer);
+                if (layer_diff > 1)
+                {
+                    Debug.Log("Adding edge to node " + i);
+                    // Only need to add the edge to _map[i]. The HexGridManager adds edge symmetry later.
+                    _map[i].Cell.boundary.SetEdgeWith(_map[i].Cell.coord, _map[j].Cell.coord); 
+		        }
+	        } 
+	    }
     }
 
     // Retrieves the dimensions of the hexagon grid.

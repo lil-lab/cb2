@@ -6,16 +6,18 @@ public class Rotate : HexAction.IAction
     private HexAction.ActionInfo _info;
     private float _heading;
     private DateTime _start;
+    private HexGrid _grid;
 
     public Rotate(HexAction.ActionInfo info)
     {
         _info = info;
+        GameObject obj = GameObject.FindWithTag(HexGrid.TAG);
+        _grid = obj.GetComponent<HexGrid>();
     }
 
     public void Start()
     {
         _start = DateTime.Now;
-        Debug.Log("Dest heading: " + (_info.DestinationHeading).ToString());
     }
 
     public HexAction.ActionInfo Info() { return _info; }
@@ -35,9 +37,7 @@ public class Rotate : HexAction.IAction
     public Vector3 Location()
     {
         (float x, float z) = _info.Start.Cartesian();
-        // TODO(sharf): Get ground y-value... refactor HexGridManager to handle
-	    // HECS -> Vector3 conversion?
-        return new Vector3(x, 0, z);
+        return new Vector3(x, _grid.Height(_info.Start), z);
     }
 
     public bool IsDone()

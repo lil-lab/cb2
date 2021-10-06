@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 
-
+// This class is a queue of actions that some object shall take. Custom actions 
+// can be implemented via the IAction interface and each action can be
+// associated with its own animation type.
 public class HexAction
 {
     public enum AnimationType
@@ -46,11 +48,16 @@ public class HexAction
     private HecsCoord _location;  // Current loc or destination of current action.
     private float _heading;  // Current heading (or desination of current action).
     private bool _actionInProgress;
+    private HexGrid _grid;
 
     public HexAction()
     {
         _actionQueue = new Queue<IAction>();
         _actionInProgress = false;
+
+        // Fetch a reference to the grid.
+        GameObject obj = GameObject.FindGameObjectWithTag(HexGrid.TAG);
+        _grid = obj.GetComponent<HexGrid>();
     }
 
     // Adds a move to the queue.
@@ -88,9 +95,7 @@ public class HexAction
             return _actionQueue.Peek().Location();
         }
         (float x, float z) = _location.Cartesian();
-        // TODO(sharf): For supporting mountains, this will need to peek at the
-        // GridManager to get the local Y-coordinate.
-        return new Vector3(x, 0, z);
+        return new Vector3(x, _grid.Height(_location), z);
     }
 
     // Return the current animation type.

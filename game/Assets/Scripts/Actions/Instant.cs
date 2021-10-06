@@ -5,10 +5,13 @@ public class Instant : HexAction.IAction
 {
     private HexAction.ActionInfo _info;
     private DateTime _start;
+    private HexGrid _grid;
 
     public Instant(HexAction.ActionInfo info)
     {
         _info = info;
+        GameObject obj = GameObject.FindWithTag(HexGrid.TAG);
+        _grid = obj.GetComponent<HexGrid>();
     }
 
     public void Start()
@@ -29,7 +32,7 @@ public class Instant : HexAction.IAction
     {
         (float dx, float dz) = _info.Destination.Cartesian();
         // I'm going to need to get the ground location...
-        return new Vector3(dx, 0, dz);
+        return new Vector3(dx, _grid.Height(_info.Destination), dz);
     }
 
     public bool IsDone()

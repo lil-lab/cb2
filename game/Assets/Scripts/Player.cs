@@ -6,8 +6,8 @@ public class Player : MonoBehaviour
 {
     public float TurnSpeed = 2;  // Turns/Second.
     public float MoveSpeed = 0.2f;  // Cells/Second.
-    public int StartingRow = 10;
-    public int StartingCol = 13;
+    public int StartingRow = 9;
+    public int StartingCol = 7;
     public bool ShowHeading = false;
 
     private HexAction _actionQueue;
@@ -27,7 +27,7 @@ public class Player : MonoBehaviour
         var startingLocation = new HexAction.ActionInfo
         {
             Type = HexAction.AnimationType.INSTANT,
-            Destination = HecsCoord.FromOffsetCoordinates(13, 10),
+            Destination = HecsCoord.FromOffsetCoordinates(StartingRow, StartingCol),
             DestinationHeading = 0
         };
         _actionQueue.AddAction(new Instant(startingLocation));

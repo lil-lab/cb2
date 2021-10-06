@@ -26,6 +26,11 @@ public class HexGrid : MonoBehaviour
         return _manager.Cell(a); 
     }
 
+    public float Height(HecsCoord a)
+    {
+        return _manager.Height(a); 
+    }
+
     void Start()
     {
         _manager = new HexGridManager(new FixedMapSource(), new UnityAssetSource());

@@ -14,10 +14,11 @@ public class UnityAssetSource : HexGridManager.IAssetSource
 	     GROUND_TILE_FOREST,
 	     GROUND_TILE_HOUSE,
 	     GROUND_TILE_STREETLIGHT,
+         MOUNTAIN_TILE,
+         RAMP_TO_MOUNTAIN,
     }
 
     private static readonly string[] assetPaths = new string[]{
-        // TODO(sharf): Add prefab resource paths here...
         "Prefab/Tiles/GroundTile_1",
         "Prefab/Tiles/GroundTile_Rocky_1",
         "Prefab/Tiles/GroundTile_Stones_1",
@@ -26,6 +27,8 @@ public class UnityAssetSource : HexGridManager.IAssetSource
         "Prefab/Tiles/GroundTile_Forest",
         "Prefab/Tiles/GroundTile_House",
         "Prefab/Tiles/GroundTile_StreetLight",
+        "Prefab/Mountain/M_Mountain_0Side",
+        "Prefab/Tiles/RampTile"
     };
 
     public GameObject Load(int assetId)

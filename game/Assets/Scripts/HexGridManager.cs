@@ -19,6 +19,7 @@ public class HexGridManager
         public int AssetId;
         public HexCell Cell;
         public int RotationDegrees;  // Multiple of 60 for grid alignment.
+        public float Height;
     }
 
     public class Tile
@@ -27,6 +28,7 @@ public class HexGridManager
         public HexCell Cell;
         public int RotationDegrees;  // Multiple of 60 for grid alignment.
         public GameObject Model;
+        public float Height;
     }
 
     // Interface for loading assets.
@@ -142,6 +144,11 @@ public class HexGridManager
         return _edgeMap[a.a, a.r, a.c].boundary.GetEdgeWith(a, b);
     }
 
+    public float Height(HecsCoord a)
+    {
+        return _grid[a.a, a.r, a.c].Cell.height;
+    }
+
     public void DebugEdges(bool val)
     {
         _debugEdges = val; 
@@ -225,7 +232,8 @@ public class HexGridManager
             {
                 Cell = t.Cell,
                 AssetId = t.AssetId,
-                Model = GameObject.Instantiate(prefab, t.Cell.Center(), Quaternion.identity)
+                Model = GameObject.Instantiate(prefab, t.Cell.Center(), Quaternion.identity),
+                Height = t.Height
 			};
             UpdateEdgeMap(t);
             _grid[t.Cell.coord.a, t.Cell.coord.r, t.Cell.coord.c] = tile;

@@ -28,6 +28,12 @@ public class HecsCoord
         return LOC_TO_DIR[displacement];
     }
 
+    public bool IsAdjacentTo(HecsCoord b)
+    {
+        HecsCoord displacement = HecsCoord.Sub(b, this);
+        return LOC_TO_DIR.ContainsKey(displacement);
+    }
+
     // From offset coordinates. This matches the "odd-r" scheme documented
     // on this page:
     // https://www.redblobgames.com/grids/hexagons/#coordinates

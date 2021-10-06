@@ -8,11 +8,15 @@ public class HexCell
 {
     public HecsCoord coord;
     public HexBoundary boundary;
+    public float height;
+    public int layer;
 
-    public HexCell(HecsCoord c, HexBoundary b)
+    public HexCell(HecsCoord c, HexBoundary b, float h=0, int l=0)
     {
         coord = c;
         boundary = b;
+        height = h;
+        layer = l;
     }
 
     public Vector3[] Vertices()
@@ -41,8 +45,8 @@ public class HexCell
     private float Scale()
     {
         GameObject obj = GameObject.FindWithTag(HexGrid.TAG);
-        HexGrid manager = obj.GetComponent<HexGrid>();
-        return manager.Scale;
+        HexGrid grid = obj.GetComponent<HexGrid>();
+        return grid.Scale;
     }
 
     private float Apothem()

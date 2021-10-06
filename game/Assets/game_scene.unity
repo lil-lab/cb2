@@ -937,8 +937,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   TurnSpeed: 4
   MoveSpeed: 1.5
-  StartingRow: 13
-  StartingCol: 13
+  StartingRow: 9
+  StartingCol: 7
   ShowHeading: 0
 --- !u!111 &1808381063
 Animation:
