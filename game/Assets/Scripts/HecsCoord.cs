@@ -42,6 +42,12 @@ public class HecsCoord
         return new HecsCoord(r % 2, r / 2, c);
     }
 
+    // Returns offset coordinates [row, col].
+    public (int, int) ToOffsetCoordinates()
+    {
+        return (2 * r + a, c);
+    }
+
     // A 1-D range of Hecs coordinates, all on the same row.
     public static HecsCoord[] Range1D(HecsCoord origin, int cols)
     {

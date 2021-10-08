@@ -170,6 +170,7 @@ public class FixedMapSource : HexGridManager.IMapSource
             {
                 Tile tileInfo = mapInfo[r, c];
                 HecsCoord coord = HecsCoord.FromOffsetCoordinates(r, c);
+                HexBoundary boundary = HexBoundary.FromBinary(tileInfo.Edges);
                 _map.Add(new HexGridManager.TileInformation
                 {
                     Cell = new HexCell(coord, HexBoundary.FromBinary(tileInfo.Edges), tileInfo.Height, tileInfo.Layer),
@@ -178,6 +179,22 @@ public class FixedMapSource : HexGridManager.IMapSource
                 });
             }
         }
+
+        // Add boundaries on the edge of the map.
+        for (int i = 0; i < _map.Count; i++)
+        {
+            // For each neighbor which is out of bounds, add a boundary.
+            HecsCoord loc = _map[i].Cell.coord;
+	        foreach (HecsCoord n in loc.Neighbors())
+            {
+                (int nr, int nc) = n.ToOffsetCoordinates();
+                // If the neighbor cell is outside the map.
+		        if ((nr < 0) || (nc < 0) || (nr >= mapInfo.GetLength(0)) || (nc >= mapInfo.GetLength(1)))
+                {
+                    _map[i].Cell.boundary.SetEdgeWith(loc, n);
+		        }
+	        } 
+	    }
 
         // Adds edges between adjacent cells that are on far-apart layers.
         AddLayerEdges();
