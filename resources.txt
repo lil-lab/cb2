@@ -4,6 +4,10 @@ Various resources that were useful in the creation of this project...
 
 https://thoughtbot.com/blog/how-to-git-with-unity
 
+- Websocket library that's compatible with webGL builds (used in this project):
+
+https://github.com/jsharf/NativeWebSocket
+
 - WebGL + Networking in Unity:
 
 https://docs.unity3d.com/Manual/webgl-networking.html
