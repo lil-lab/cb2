@@ -33,7 +33,10 @@ public class HexGrid : MonoBehaviour
 
     void Start()
     {
-        _manager = new HexGridManager(new FixedMapSource(), new UnityAssetSource());
+        GameObject obj = GameObject.FindWithTag(Network.NetworkManager.TAG);
+        Network.NetworkManager net = obj.GetComponent<Network.NetworkManager>();
+        HexGridManager.IMapSource networkMapSource = net.MapSource();
+        _manager = new HexGridManager(networkMapSource, new UnityAssetSource());
         _manager.Start();
     }
 

@@ -1,5 +1,5 @@
 ﻿using System;
-namespace AssemblyCSharp.Assets.Scripts.Util
+namespace Util
 {
     public class Status
     {
@@ -63,4 +63,4 @@ namespace AssemblyCSharp.Assets.Scripts.Util
             _child = child;
 	    }
     }
-}
+}  // namespace Util

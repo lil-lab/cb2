@@ -5,6 +5,7 @@ using UnityEngine;
 // Utility for handling a HECS-based hexagonal grid.
 //
 // The neighbor direction functions only make sense if this is a pointy-top 
+[Serializable]
 public class HecsCoord
 {
     public int a, r, c;

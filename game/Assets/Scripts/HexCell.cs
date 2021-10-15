@@ -4,6 +4,7 @@ using System;
 using UnityEngine;
 
 // This class is a combination of a HecsCoord, size scale, and HexBoundary.
+[Serializable]
 public class HexCell
 {
     public HecsCoord coord;

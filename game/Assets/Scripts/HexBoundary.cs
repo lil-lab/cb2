@@ -1,8 +1,10 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 // Stores boundary information for a hexagon (1 bit per edge)
+[Serializable]
 public class HexBoundary
 {
     private byte _edges;

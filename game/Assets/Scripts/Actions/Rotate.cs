@@ -1,14 +1,14 @@
 ﻿using System;
 using UnityEngine;
 
-public class Rotate : HexAction.IAction
+public class Rotate : ActionQueue.IAction
 {
-    private HexAction.ActionInfo _info;
+    private ActionQueue.ActionInfo _info;
     private float _heading;
     private DateTime _start;
     private HexGrid _grid;
 
-    public Rotate(HexAction.ActionInfo info)
+    public Rotate(ActionQueue.ActionInfo info)
     {
         _info = info;
         GameObject obj = GameObject.FindWithTag(HexGrid.TAG);
@@ -20,7 +20,7 @@ public class Rotate : HexAction.IAction
         _start = DateTime.Now;
     }
 
-    public HexAction.ActionInfo Info() { return _info; }
+    public ActionQueue.ActionInfo Info() { return _info; }
 
     public void Update()
     {

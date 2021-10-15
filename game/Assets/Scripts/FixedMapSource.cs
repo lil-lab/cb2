@@ -155,7 +155,7 @@ public class FixedMapSource : HexGridManager.IMapSource
     private List<HexGridManager.TileInformation> _map;
     private int _width, _height;
 
-    private int _mapIteration = 0;
+    private bool _isMapFresh;
 
     public FixedMapSource()
     {
@@ -164,9 +164,9 @@ public class FixedMapSource : HexGridManager.IMapSource
         _width = mapInfo.GetLength(1);
         _map = new List<HexGridManager.TileInformation>();
 
-        for (int r = 0; r < mapInfo.GetLength(0); ++r)
+        for (int r = 0; r < _height; ++r)
         {
-            for (int c = 0; c < mapInfo.GetLength(1); ++c)
+            for (int c = 0; c < _width; ++c)
             {
                 Tile tileInfo = mapInfo[r, c];
                 HecsCoord coord = HecsCoord.FromOffsetCoordinates(r, c);
@@ -199,7 +199,7 @@ public class FixedMapSource : HexGridManager.IMapSource
         // Adds edges between adjacent cells that are on far-apart layers.
         AddLayerEdges();
 
-        ++_mapIteration;
+        _isMapFresh = true;
     }
 
     // Adds edges between mountains and ground.
@@ -233,19 +233,17 @@ public class FixedMapSource : HexGridManager.IMapSource
     }
 
     // List of tiles. Each tile represents one cell in the grid.
-    public List<HexGridManager.TileInformation> GetTileList()
+    public List<HexGridManager.TileInformation> FetchTileList()
     {
+        _isMapFresh = false;
         return _map;
     }
 
-    // Returns an integer. Increments each time any change is made to the map.
-    // If the iteration remains unchanged, no map updates need to be done.
-    // Technically there's a race condition between this and GetGrid.
-    // TODO(sharf): update this interface to be atomic with GetGrid().
+    // TODO(sharf): update this interface to be atomic with FetchGrid().
     // Worst case with this race, too much rendering is done, or an update
     // comes a bit late.
-    public int GetMapIteration()
+    public bool IsMapReady()
     {
-        return _mapIteration;
+        return _isMapFresh;
     }
 }

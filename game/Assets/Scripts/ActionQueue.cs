@@ -6,8 +6,9 @@ using UnityEngine;
 // This class is a queue of actions that some object shall take. Custom actions 
 // can be implemented via the IAction interface and each action can be
 // associated with its own animation type.
-public class HexAction
+public class ActionQueue
 {
+    [Serializable]
     public enum AnimationType
     { 
         IDLE,
@@ -24,10 +25,10 @@ public class HexAction
         public AnimationType Type;
         public HecsCoord Start;  // Where the move starts from.
         public HecsCoord Destination;  // Where the object should end up.
-        public float StartHeading;
-        public float DestinationHeading;
-        public float DurationS;  // Seconds.
-        public DateTime Expiration;  // Ditch the action at this point.
+        public float StartHeading;  // Heading in degrees, 0 = north, clockwise around.
+        public float DestinationHeading;  // Heading, 0 = north, clockwise.
+        public float DurationS;  // Duration in seconds.
+        public DateTime Expiration;  // If the action delays past this deadline, fastforward to next action.
     };
 
     // A kind of action (walk, skip, jump). This is distinctly different from 
@@ -50,7 +51,7 @@ public class HexAction
     private bool _actionInProgress;
     private HexGrid _grid;
 
-    public HexAction()
+    public ActionQueue()
     {
         _actionQueue = new Queue<IAction>();
         _actionInProgress = false;

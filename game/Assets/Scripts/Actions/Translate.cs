@@ -1,14 +1,14 @@
 ﻿using System;
 using UnityEngine;
 
-public class Translate : HexAction.IAction
+public class Translate : ActionQueue.IAction
 {
-    private HexAction.ActionInfo _info;
+    private ActionQueue.ActionInfo _info;
     private Vector3 _location;
     private DateTime _start;
     private HexGrid _grid;
 
-    public Translate(HexAction.ActionInfo info)
+    public Translate(ActionQueue.ActionInfo info)
     {
         _info = info;
         GameObject obj = GameObject.FindWithTag(HexGrid.TAG);
@@ -20,7 +20,7 @@ public class Translate : HexAction.IAction
         _start = DateTime.Now;
     }
 
-    public HexAction.ActionInfo Info() { return _info;  }
+    public ActionQueue.ActionInfo Info() { return _info;  }
 
     public void Update()
     {
