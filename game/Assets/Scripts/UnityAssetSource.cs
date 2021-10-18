@@ -2,23 +2,11 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class UnityAssetSource : HexGridManager.IAssetSource
+public class UnityAssetSource : IAssetSource
 {
-    public enum Assets
-    {
-	     GROUND_TILE,
-	     GROUND_TILE_ROCKY,
-	     GROUND_TILE_STONES,
-	     GROUND_TILE_TREES,
-	     GROUND_TILE_TREES_2,
-	     GROUND_TILE_FOREST,
-	     GROUND_TILE_HOUSE,
-	     GROUND_TILE_STREETLIGHT,
-         MOUNTAIN_TILE,
-         RAMP_TO_MOUNTAIN,
-    }
-
+    // Maps IAssetSource.AssetId to resource paths in Unity.
     private static readonly string[] assetPaths = new string[]{
+        "Prefab/Actors/Player",
         "Prefab/Tiles/GroundTile_1",
         "Prefab/Tiles/GroundTile_Rocky_1",
         "Prefab/Tiles/GroundTile_Stones_1",
@@ -31,11 +19,12 @@ public class UnityAssetSource : HexGridManager.IAssetSource
         "Prefab/Tiles/RampTile"
     };
 
-    public GameObject Load(int assetId)
+    public GameObject Load(IAssetSource.AssetId assetId)
     {
-        GameObject obj = Resources.Load<GameObject>(assetPaths[assetId]);
+        int assetIndex = (int)assetId;
+        GameObject obj = Resources.Load<GameObject>(assetPaths[assetIndex]);
         if (obj == null) {
-            Debug.Log("Null: " + assetPaths[assetId]);
+            Debug.Log("Null: " + assetPaths[assetIndex]);
 	    }
         return obj;
     }

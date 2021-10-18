@@ -24,7 +24,7 @@ namespace Network
 				_map.Add(new HexGridManager.TileInformation
 				{
 				    Cell = tile.Cell,
-				    AssetId = tile.AssetId,
+				    AssetId = (IAssetSource.AssetId)tile.AssetId,
 				    RotationDegrees = tile.RotationDegrees,
 				});
 	        }

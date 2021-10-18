@@ -13,7 +13,7 @@ namespace Network
         {
             public int ActorId;
             public int AssetId;
-            public HecsCoord Start;
+            public HecsCoord Location;
             public int RotationDegrees;
 	    }
 

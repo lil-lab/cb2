@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -14,6 +15,8 @@ namespace Network
         private NetworkMapSource _networkMapSource;
         private NetworkRouter _router;
         private ActorManager _actorManager;
+        private Player _player;
+        private DateTime _lastReconnect;
 
         public NetworkMapSource MapSource()
         {
@@ -24,9 +27,9 @@ namespace Network
             return _networkMapSource; 
 	    }
 
-        public void SendAction(int actorId, ActionQueue.IAction action)
+        public void TransmitAction(ActionQueue.IAction action)
         {
-            _client.QueueForTransmission(actorId, action);
+            _router.TransmitAction(action);
         }
 
         public void Awake()
@@ -34,23 +37,37 @@ namespace Network
             gameObject.tag = TAG;
             _networkMapSource = new NetworkMapSource();
 
-            GameObject obj = GameObject.FindGameObjectWithTag(Actors.TAG);
-            _actorManager = obj.GetComponent<Actors>().Manager();
+            GameObject obj = GameObject.FindGameObjectWithTag(ActorManager.TAG);
+            _actorManager = obj.GetComponent<ActorManager>();
 
-            _router = new NetworkRouter(_networkMapSource, _actorManager);
+            GameObject playerObj = GameObject.FindGameObjectWithTag(Player.TAG);
+            _player = playerObj.GetComponent<Player>();
 
-            _client = new ClientConnection(URL, _router);
+            _client = new ClientConnection(URL);
+            _router = new NetworkRouter(_client, _networkMapSource, _actorManager, _player);
+
+            _lastReconnect = DateTime.Now;
         }
 
         // Start is called before the first frame update
         private void Start()
         {
+            _client.Start();
         }
+
+        public void Reconnect()
+        {
+            _client.Reconnect();
+	    }
 
         // Update is called once per frame
         void Update()
         {
-
+            if (_client.IsClosed() && ((DateTime.Now - _lastReconnect).Seconds > 3))
+            {
+                Invoke("Reconnect", 3);
+	        }
+            _client.Update();
         }
     }
 }

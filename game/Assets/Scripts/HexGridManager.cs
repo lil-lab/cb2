@@ -16,28 +16,17 @@ public class HexGridManager
 {
     public class TileInformation
     {
-        public int AssetId;
+        public IAssetSource.AssetId AssetId;
         public HexCell Cell;
         public int RotationDegrees;  // Multiple of 60 for grid alignment.
     }
 
     public class Tile
     {
-        public int AssetId;
+        public IAssetSource.AssetId AssetId;
         public HexCell Cell;
         public int RotationDegrees;  // Multiple of 60 for grid alignment.
         public GameObject Model;
-    }
-
-    // Interface for loading assets.
-    public interface IAssetSource
-    {
-        // Returns a prefab of the requested asset.
-        GameObject Load(int assetId);
-
-        // TODO(sharf): If we want to remove unity-specific interfaces entirely,
-        // this interface can be rewritten to add something similar to Unity's
-        // "Instantiate" function. 
     }
 
     // Interface for retrieving map updates.

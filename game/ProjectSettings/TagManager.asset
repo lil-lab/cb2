@@ -6,7 +6,7 @@ TagManager:
   tags:
   - HexGrid
   - NetworkManager
-  - Actors
+  - ActorManager
   layers:
   - Default
   - TransparentFX

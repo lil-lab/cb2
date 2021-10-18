@@ -36,6 +36,7 @@ public class HexGrid : MonoBehaviour
         GameObject obj = GameObject.FindWithTag(Network.NetworkManager.TAG);
         Network.NetworkManager net = obj.GetComponent<Network.NetworkManager>();
         HexGridManager.IMapSource networkMapSource = net.MapSource();
+        FixedMapSource fixedMap = new FixedMapSource();
         _manager = new HexGridManager(networkMapSource, new UnityAssetSource());
         _manager.Start();
     }

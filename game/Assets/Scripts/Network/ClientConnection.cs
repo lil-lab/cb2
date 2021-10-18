@@ -7,7 +7,7 @@ using System.Collections.Concurrent;
 namespace Network
 {
 
-    public class ClientConnection : MonoBehaviour
+    public class ClientConnection 
     {
         private WebSocket _webSocket;
         public string _url;
@@ -20,14 +20,23 @@ namespace Network
             return value;
         }
 
-        public ClientConnection(string url, NetworkRouter router)
+        public ClientConnection(string url)
         {
             _url = url;
-            _router = router;
             _webSocket = new WebSocket(_url);
         }
 
-        public void QueueForTransmission(int actorId, ActionQueue.IAction action)
+        public void RegisterHandler(NetworkRouter router)
+        {
+            _router = router; 
+	    }
+
+        public bool IsClosed()
+        { 
+            return _webSocket.State.HasFlag(WebSocketState.Closed);
+	    }
+
+        public void TransmitAction(int actorId, ActionQueue.IAction action)
         {
             Network.ActionType actionType;
             // TODO(sharf): We shouldn't have an aliasing between animation and action types. Clean this up later...
@@ -64,7 +73,7 @@ namespace Network
             });
 	    }
 
-        async void InitConnection()
+        public async void Reconnect()
         {
 
             _webSocket.OnOpen += () =>
@@ -80,36 +89,37 @@ namespace Network
             _webSocket.OnClose += (e) =>
             {
                 Debug.Log("Connection closed! Reconnecting...");
-                Invoke("InitConnection", 3);
             };
 
             _webSocket.OnMessage += (bytes) =>
             {
+                if (_router == null)
+                {
+                    return; 
+		        }
                  MessageFromServer message = JsonUtility.FromJson<MessageFromServer>(System.Text.Encoding.ASCII.GetString(bytes));
                 _router.HandleMessage(message);
 		    };
-
-            // Keep sending messages at every 0.1s
-            InvokeRepeating("SendWebSocketMessage", 0.0f, 0.1f);
 
             // waiting for messages
             await _webSocket.Connect();
         }
 
         // Start is called before the first frame update
-        void Start()
+        public void Start()
         {
-            InitConnection();
+            Reconnect();
         }
 
-        void Update()
+        public void Update()
         {
+            SendPendingActions();
 #if !UNITY_WEBGL || UNITY_EDITOR
             _webSocket.DispatchMessageQueue();
 #endif
         }
 
-        async void SendWebSocketMessage()
+        private async void SendPendingActions()
         {
             if (_webSocket.State == WebSocketState.Open)
             {
@@ -125,7 +135,7 @@ namespace Network
                     return; 
 		        }
 
-                MessageToServer toServer = new MessageToServer;
+                MessageToServer toServer = new MessageToServer();
 
                 toServer.Type = MessageToServer.MessageType.ACTIONS;
                 toServer.Actions = actionsForServer;

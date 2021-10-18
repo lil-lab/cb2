@@ -36,7 +36,7 @@ public class FixedMapSource : HexGridManager.IMapSource
     private static Tile GroundTile()
     {
         return new Tile() {
-            AssetId = UnityAssetSource.Assets.GROUND_TILE,
+            AssetId = IAssetSource.AssetId.GROUND_TILE,
             RotationDegrees = 0,
             Edges = 0,
             Height = 0,
@@ -47,7 +47,7 @@ public class FixedMapSource : HexGridManager.IMapSource
     private static Tile GroundTileRocky()
     {
         return new Tile() {
-            AssetId = UnityAssetSource.Assets.GROUND_TILE_ROCKY,
+            AssetId = IAssetSource.AssetId.GROUND_TILE_ROCKY,
             RotationDegrees = 0,
             Edges = 0x3f,
             Height = 0,
@@ -58,7 +58,7 @@ public class FixedMapSource : HexGridManager.IMapSource
     private static Tile GroundTileStones()
     {
         return new Tile() {
-            AssetId = UnityAssetSource.Assets.GROUND_TILE_STONES,
+            AssetId = IAssetSource.AssetId.GROUND_TILE_STONES,
             RotationDegrees = 0,
             Edges = 0x3f,
             Height = 0,
@@ -69,7 +69,7 @@ public class FixedMapSource : HexGridManager.IMapSource
     private static Tile GroundTileTrees()
     {
         return new Tile() {
-            AssetId = UnityAssetSource.Assets.GROUND_TILE_TREES,
+            AssetId = IAssetSource.AssetId.GROUND_TILE_TREES,
             RotationDegrees = 0,
             Edges = 0x3f,
             Height = 0,
@@ -79,7 +79,7 @@ public class FixedMapSource : HexGridManager.IMapSource
     private static Tile GroundTileSingleTree()
     {
         return new Tile() {
-            AssetId = UnityAssetSource.Assets.GROUND_TILE_TREES_2,
+            AssetId = IAssetSource.AssetId.GROUND_TILE_TREES_2,
             RotationDegrees = 0,
             Edges = 0x3f,
             Layer = 0,
@@ -88,7 +88,7 @@ public class FixedMapSource : HexGridManager.IMapSource
     private static Tile GroundTileForest()
     {
         return new Tile() {
-            AssetId = UnityAssetSource.Assets.GROUND_TILE_FOREST,
+            AssetId = IAssetSource.AssetId.GROUND_TILE_FOREST,
             RotationDegrees = 0,
             Edges = 0x3f,
             Height = 0,
@@ -99,7 +99,7 @@ public class FixedMapSource : HexGridManager.IMapSource
     {
         return new Tile()
         {
-            AssetId = UnityAssetSource.Assets.GROUND_TILE_HOUSE,
+            AssetId = IAssetSource.AssetId.GROUND_TILE_HOUSE,
             RotationDegrees = 0,
             Edges = 0x3f,
             Height = 0,
@@ -109,7 +109,7 @@ public class FixedMapSource : HexGridManager.IMapSource
     private static Tile GroundTileStreetLight()
     {
         return new Tile() {
-            AssetId = UnityAssetSource.Assets.GROUND_TILE_STREETLIGHT,
+            AssetId = IAssetSource.AssetId.GROUND_TILE_STREETLIGHT,
             RotationDegrees = 0,
             Edges = 0x3f,
             Height = 0,
@@ -119,7 +119,7 @@ public class FixedMapSource : HexGridManager.IMapSource
     private static Tile MountainTile()
     {
         return new Tile() {
-            AssetId = UnityAssetSource.Assets.MOUNTAIN_TILE,
+            AssetId = IAssetSource.AssetId.MOUNTAIN_TILE,
             RotationDegrees = 0,
             Edges = 0x00,
             Height = 0.325f,
@@ -129,7 +129,7 @@ public class FixedMapSource : HexGridManager.IMapSource
     private static Tile RampToMountain()
     {
         return new Tile() {
-            AssetId = UnityAssetSource.Assets.RAMP_TO_MOUNTAIN,
+            AssetId = IAssetSource.AssetId.RAMP_TO_MOUNTAIN,
             RotationDegrees = 0,
             Edges = 0b101101,
             Height = 0.275f,
@@ -139,7 +139,7 @@ public class FixedMapSource : HexGridManager.IMapSource
 
     private class Tile
     {
-        public UnityAssetSource.Assets AssetId;
+        public IAssetSource.AssetId AssetId;
         public int RotationDegrees;
         public byte Edges;
 
@@ -174,7 +174,7 @@ public class FixedMapSource : HexGridManager.IMapSource
                 _map.Add(new HexGridManager.TileInformation
                 {
                     Cell = new HexCell(coord, HexBoundary.FromBinary(tileInfo.Edges), tileInfo.Height, tileInfo.Layer),
-                    AssetId = (int)tileInfo.AssetId,
+                    AssetId = tileInfo.AssetId,
                     RotationDegrees = tileInfo.RotationDegrees,
                 });
             }
@@ -243,6 +243,7 @@ public class FixedMapSource : HexGridManager.IMapSource
     // Worst case with this race, too much rendering is done, or an update
     // comes a bit late.
     public bool IsMapReady()
+
     {
         return _isMapFresh;
     }

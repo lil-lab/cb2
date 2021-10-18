@@ -2,14 +2,21 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class ActorManager
+// TODO(sharf): This can be factored into the same class as "Actors".
+public class ActorManager : MonoBehaviour
 {
-    private Dictionary<int, IActor> _actors;
-    private int _activeActor = -1;
+    public static string TAG = "ActorManager";
+
+    public void Awake()
+    {
+        gameObject.tag = TAG;
+    }
+
+    private Dictionary<int, Actor> _actors;
 
     public ActorManager()
     {
-        _actors = new Dictionary<int, IActor>();
+        _actors = new Dictionary<int, Actor>();
     }
 
     public int NumberOfActors()
@@ -27,7 +34,7 @@ public class ActorManager
         _actors[actorId].AddAction(action);
     }
 
-    public void RegisterActor(int actorId, IActor actor)
+    public void RegisterActor(int actorId, Actor actor)
     {
         if (_actors.ContainsKey(actorId))
         {
@@ -37,28 +44,23 @@ public class ActorManager
         _actors[actorId] = actor;
     }
 
-    public void SetActiveActor(int actorId)
-    {
-        if (!_actors.ContainsKey(_activeActor))
-        {
-            Debug.Log("Warning, retrieved invalid active action queue ID!");
-            return;
-	    }
-        _activeActor = actorId;
-    }
-
-    public ActionQueue ActiveQueue()
+    public void Flush()
     { 
-        if (!_actors.ContainsKey(_activeActor))
+        foreach (var kvPair in _actors)
         {
-            Debug.Log("Warning, retrieved active queue before it was known!");
-            return null;
+            int actorId = kvPair.Key;
+            _actors[actorId].Flush();
 	    }
-        return _activeActor;
+
+        _actors = new Dictionary<int, Actor>(); 
     }
 
-    public void ClearRegistry()
+    public void Update()
     {
-        _actors = new Dictionary<int, IActor>(); 
+	    foreach (var kvPair in _actors)
+        {
+            int actorId = kvPair.Key;
+            _actors[actorId].Update();
+	    } 
     }
 }

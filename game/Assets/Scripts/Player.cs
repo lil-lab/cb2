@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
+    public static string TAG = "Player";
+
     public float TurnSpeed = 2;  // Turns/Second.
     public float MoveSpeed = 0.2f;  // Cells/Second.
 
@@ -14,142 +16,98 @@ public class Player : MonoBehaviour
 
     private Network.NetworkManager _network;
 
-    private ActionQueue _actionQueue;
+    private Actor _actor;
 
     public void Awake()
     {
+        UnityAssetSource assets = new UnityAssetSource(); 
+        _actor = new Actor(assets.Load(IAssetSource.AssetId.PLAYER));
+        _actor.SetTag(TAG);
+
         GameObject obj = GameObject.FindGameObjectWithTag(Network.NetworkManager.TAG);
         _network = obj.GetComponent<Network.NetworkManager>();
     }
 
-    private float Scale()
-    {
-        GameObject obj = GameObject.FindWithTag(HexGrid.TAG);
-        HexGrid manager = obj.GetComponent<HexGrid>();
-        return manager.Scale;
-    }
-
     void Start()
     {
-        _facing = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        _upperRight = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        _right = GameObject.CreatePrimitive(PrimitiveType.Cube);
+	    if (ForceStartingPosition)
+	    {
+	       	 // Set the starting location by enqueuing a teleport to the target location.
+	       	 var startingLocation = new ActionQueue.ActionInfo
+	       	 {
+	       	     Type = ActionQueue.AnimationType.INSTANT,
+	       	     Destination = HecsCoord.FromOffsetCoordinates(StartingRow, StartingCol),
+	       	     DestinationHeading = 0
+	       	 };
+	       	 _actor.AddAction(new Instant(startingLocation));
+	    }
     }
 
-    // If public member ShowHeading is true, these 3 debug boxes appear on the grid.
-    private GameObject _facing;
-    private GameObject _upperRight;
-    private GameObject _right;
-
-    private void DrawHeading()
+    public void FlushActionQueue()
     {
-        if (_actionQueue == null)
-        {
-            return;
-	    }
-        // Draw UR and heading debug lines.
-        (float urx, float urz) = _actionQueue.TargetLocation().UpRight().Cartesian();
-        _upperRight.transform.position = new Vector3(urx, 0.1f, urz) * Scale();
-        (float rx, float rz) = _actionQueue.TargetLocation().Right().Cartesian();
-        _right.transform.position = new Vector3(rx, 0.1f, rz) * Scale();
-        _right.GetComponent<Renderer>().material.color = Color.blue;
+        _actor.Flush();
+    }
 
-        (float hx, float hz) = _actionQueue.TargetLocation().NeighborAtHeading(_actionQueue.ImmediateHeading()).Cartesian();
-        _facing.transform.position = new Vector3(hx, 0.1f, hz) * Scale();
+    public void AddAction(ActionQueue.IAction action)
+    {
+        _actor.AddAction(action); 
     }
 
     void Update()
     {
-        if (_actionQueue == null)
-        {
-            var actionQueue = ActiveActionQueue();
-            if (actionQueue == null)
-            {
-                return;
-            }
-
-             _actionQueue = actionQueue;
-
-             if (ForceStartingPosition)
-             {
-                 // Set the starting location by enqueuing a teleport to the target location.
-                 var startingLocation = new ActionQueue.ActionInfo
-                 {
-                     Type = ActionQueue.AnimationType.INSTANT,
-                     Destination = HecsCoord.FromOffsetCoordinates(StartingRow, StartingCol),
-                     DestinationHeading = 0
-                 };
-                 _actionQueue.AddAction(new Instant(startingLocation));
-             }
-	    }
-        _actionQueue.Update();
-
-        // Debug mode optionally draw some cubes displaying heading.
         if (ShowHeading)
         {
-            _facing.SetActive(true);
-            _upperRight.SetActive(true);
-            _right.SetActive(true);
-            DrawHeading();
+            _actor.EnableDebugging();
 	    } else
 	    {
-            _facing.SetActive(false);
-            _upperRight.SetActive(false);
-            _right.SetActive(false);
+            _actor.DisableDebugging();
 	    }
 
-        // Update current location, orientation, and animation based on action queue.
-        gameObject.transform.position = Scale() * _actionQueue.ImmediateLocation() + new Vector3(0, Scale() * 0.1f, 0);
-        gameObject.transform.rotation = Quaternion.AngleAxis(-60 + _actionQueue.ImmediateHeading(), new Vector3(0, 1, 0));
-        Animation animation = GetComponent<Animation>();
-        if (_actionQueue.ImmediateAnimation() == ActionQueue.AnimationType.WALKING)
-        {
-            animation.Play("Armature|Walking");
-        } else if (_actionQueue.ImmediateAnimation() == ActionQueue.AnimationType.IDLE) {
-            // Fade into idle, to remove artifacts if we're in the middle of another animation.
-            animation.CrossFade("Armature|Idle", 0.3f);
-        }
+        _actor.Update();
 
-        // If we're in an animation, don't check for user input.
-        if (_actionQueue.IsBusy()) return;
+        // If we're doing an action, don't check for user input.
+        if (_actor.IsBusy()) return;
 
         GameObject obj = GameObject.FindWithTag(HexGrid.TAG);
         HexGrid grid = obj.GetComponent<HexGrid>();
 
-        HecsCoord currentLocation = _actionQueue.TargetLocation();
-        HecsCoord forwardLocation = _actionQueue.TargetLocation().NeighborAtHeading(_actionQueue.TargetHeading());
-        HecsCoord backLocation = _actionQueue.TargetLocation().NeighborAtHeading(_actionQueue.TargetHeading() + 180);
+        HecsCoord forwardLocation = _actor.Location().NeighborAtHeading(_actor.HeadingDegrees());
+        HecsCoord backLocation = _actor.Location().NeighborAtHeading(_actor.HeadingDegrees() + 180);
 
         if (Input.GetKey(KeyCode.UpArrow) &&
-	        !grid.EdgeBetween(currentLocation, forwardLocation))
+	        !grid.EdgeBetween(_actor.Location(), forwardLocation))
         { 
             var animationInfo = new ActionQueue.ActionInfo()
             {
                 Type = ActionQueue.AnimationType.WALKING,
                 Destination = forwardLocation,
-                DestinationHeading = _actionQueue.TargetHeading(),
-                Start = currentLocation,
-                StartHeading = _actionQueue.TargetHeading(),
+                DestinationHeading = _actor.HeadingDegrees(),
+                Start = _actor.Location(),
+                StartHeading = _actor.HeadingDegrees(),
                 Expiration = System.DateTime.Now.AddSeconds(10),
                 DurationS = 1 / MoveSpeed,
             };
-            _actionQueue.AddAction(new Translate(animationInfo));
+            Translate action = new Translate(animationInfo);
+            _actor.AddAction(action);
+            _network.TransmitAction(action);
             return;
 	    }
         if (Input.GetKey(KeyCode.DownArrow) &&
-	        !grid.EdgeBetween(currentLocation, backLocation))
+	        !grid.EdgeBetween(_actor.Location(), backLocation))
         { 
             var animationInfo = new ActionQueue.ActionInfo()
             {
                 Type = ActionQueue.AnimationType.WALKING,
                 Destination = backLocation,
-                DestinationHeading = _actionQueue.TargetHeading(),
-                Start = currentLocation,
-                StartHeading = _actionQueue.TargetHeading(),
+                DestinationHeading = _actor.HeadingDegrees(),
+                Start = _actor.Location(),
+                StartHeading = _actor.HeadingDegrees(),
                 Expiration = System.DateTime.Now.AddSeconds(10),
                 DurationS = 1 / MoveSpeed,
             };
-            _actionQueue.AddAction(new Translate(animationInfo));
+            Translate action = new Translate(animationInfo);
+            _actor.AddAction(action);
+            _network.TransmitAction(action);
             return;
 	    }
         if (Input.GetKey(KeyCode.LeftArrow))
@@ -157,14 +115,16 @@ public class Player : MonoBehaviour
             var animationInfo = new ActionQueue.ActionInfo()
             {
                 Type = ActionQueue.AnimationType.ROTATE,
-                Destination = _actionQueue.TargetLocation(),
-                DestinationHeading = _actionQueue.TargetHeading() - 60.0f,
-                Start = _actionQueue.TargetLocation(),
-                StartHeading = _actionQueue.TargetHeading(),
+                Destination = _actor.Location(),
+                DestinationHeading = _actor.HeadingDegrees() - 60.0f,
+                Start = _actor.Location(),
+                StartHeading = _actor.HeadingDegrees(),
                 Expiration = System.DateTime.Now.AddSeconds(10),
                 DurationS = 1 / TurnSpeed,
             };
-            _actionQueue.AddAction(new Rotate(animationInfo));
+            Rotate action = new Rotate(animationInfo);
+            _actor.AddAction(action);
+            _network.TransmitAction(action);
             return;
 	    }
         if (Input.GetKey(KeyCode.RightArrow))
@@ -172,22 +132,24 @@ public class Player : MonoBehaviour
             var animationInfo = new ActionQueue.ActionInfo()
             {
                 Type = ActionQueue.AnimationType.ROTATE,
-                Destination = _actionQueue.TargetLocation(),
-                DestinationHeading = _actionQueue.TargetHeading() + 60.0f,
-                Start = _actionQueue.TargetLocation(),
-                StartHeading = _actionQueue.TargetHeading(),
+                Destination = _actor.Location(),
+                DestinationHeading = _actor.HeadingDegrees() + 60.0f,
+                Start = _actor.Location(),
+                StartHeading = _actor.HeadingDegrees(),
                 Expiration = System.DateTime.Now.AddSeconds(10),
                 DurationS = 1 / TurnSpeed,
             };
-            _actionQueue.AddAction(new Rotate(animationInfo));
+            Rotate action = new Rotate(animationInfo);
+            _actor.AddAction(action);
+            _network.TransmitAction(action);
             return;
 	    }
     }
 
-    private ActionQueue ActiveActionQueue()
+    private float Scale()
     {
-        GameObject obj = GameObject.FindGameObjectWithTag(Actors.TAG);
-        ActorManager manager = obj.GetComponent<Actors>().Manager();
-        return manager.ActiveQueue();
+        GameObject obj = GameObject.FindWithTag(HexGrid.TAG);
+        HexGrid manager = obj.GetComponent<HexGrid>();
+        return manager.Scale;
     }
 }

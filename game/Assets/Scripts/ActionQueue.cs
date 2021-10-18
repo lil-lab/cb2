@@ -55,10 +55,7 @@ public class ActionQueue
     {
         _actionQueue = new Queue<IAction>();
         _actionInProgress = false;
-
-        // Fetch a reference to the grid.
-        GameObject obj = GameObject.FindGameObjectWithTag(HexGrid.TAG);
-        _grid = obj.GetComponent<HexGrid>();
+        _location = new HecsCoord(0, 0, 0);
     }
 
     // Adds a move to the queue.
@@ -96,6 +93,16 @@ public class ActionQueue
             return _actionQueue.Peek().Location();
         }
         (float x, float z) = _location.Cartesian();
+
+        // Fetch a reference to the grid for the height map.
+        GameObject obj = GameObject.FindGameObjectWithTag(HexGrid.TAG);
+        if (obj != null)
+        {
+            Debug.Log("ActionQueue could not find grid tagged with: " + HexGrid.TAG);
+            return new Vector3(x, 0, z);
+        }
+
+        _grid = obj.GetComponent<HexGrid>();
         return new Vector3(x, _grid.Height(_location), z);
     }
 
@@ -115,6 +122,12 @@ public class ActionQueue
     public float TargetHeading()
     {
         return _heading;
+    }
+
+    // Wipe all current actions.
+    public void Flush()
+    {
+        _actionQueue.Clear(); 
     }
 
     public void Update()
