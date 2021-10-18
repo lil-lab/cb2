@@ -96,7 +96,7 @@ public class ActionQueue
 
         // Fetch a reference to the grid for the height map.
         GameObject obj = GameObject.FindGameObjectWithTag(HexGrid.TAG);
-        if (obj != null)
+        if (obj == null)
         {
             Debug.Log("ActionQueue could not find grid tagged with: " + HexGrid.TAG);
             return new Vector3(x, 0, z);

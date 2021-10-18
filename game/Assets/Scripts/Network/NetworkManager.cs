@@ -66,6 +66,7 @@ namespace Network
             if (_client.IsClosed() && ((DateTime.Now - _lastReconnect).Seconds > 3))
             {
                 Invoke("Reconnect", 3);
+                _lastReconnect = DateTime.Now;
 	        }
             _client.Update();
         }
