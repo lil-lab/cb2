@@ -22,7 +22,7 @@ public class Player : MonoBehaviour
     {
         UnityAssetSource assets = new UnityAssetSource(); 
         _actor = new Actor(assets.Load(IAssetSource.AssetId.PLAYER));
-        _actor.SetTag(TAG);
+        _actor.SetParent(gameObject);
 
         GameObject obj = GameObject.FindGameObjectWithTag(Network.NetworkManager.TAG);
         _network = obj.GetComponent<Network.NetworkManager>();

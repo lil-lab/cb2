@@ -31,10 +31,10 @@ public class Actor
         return actor;
     }
 
-    public Actor(GameObject asset)
+    public Actor(GameObject prefab)
     {
         _actionQueue = new ActionQueue();
-        _asset = asset;
+        _asset = GameObject.Instantiate(prefab, new Vector3(0, 0, 0), Quaternion.identity);
         _debuggingEnabled = false;
     }
 
@@ -46,6 +46,11 @@ public class Actor
 
     // Returns the actor's current heading (or destination, if rotating).
     public float HeadingDegrees() { return _actionQueue.TargetHeading();  }
+
+    public void SetParent(GameObject parent)
+    {
+        _asset.transform.SetParent(parent.transform);
+    }
 
     public void EnableDebugging()
     {
@@ -125,7 +130,7 @@ public class Actor
         _right.transform.position = new Vector3(rx, 0.1f, rz) * Scale();
         _right.GetComponent<Renderer>().material.color = Color.blue;
 
-        (float hx, float hz) = _actionQueue.TargetLocation().NeighborAtHeading(_actionQueue.ImmediateHeading()).Cartesian();
+        (float hx, float hz) = _actionQueue.TargetLocation().NeighborAtHeading(_actionQueue.TargetHeading()).Cartesian();
         _facing.transform.position = new Vector3(hx, 0.1f, hz) * Scale();
     }
 }

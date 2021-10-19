@@ -364,11 +364,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 226012975ce854f35b91df0db1ca6986, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  TurnSpeed: 0
-  MoveSpeed: 0
-  ForceStartingPosition: 0
-  StartingRow: 0
-  StartingCol: 0
+  TurnSpeed: 3
+  MoveSpeed: 3
+  ForceStartingPosition: 1
+  StartingRow: 7
+  StartingCol: 7
   ShowHeading: 0
 --- !u!4 &2076507385
 Transform:
