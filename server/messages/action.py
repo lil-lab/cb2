@@ -6,6 +6,8 @@ from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from marshmallow import fields
 
+import dateutil.parser
+
 class ActionType(Enum):
     INSTANT = 0
     ROTATE = 1
@@ -34,6 +36,6 @@ class Action:
     expiration: datetime = field(
         metadata=config(
             encoder=datetime.isoformat,
-            decoder=datetime.fromisoformat,
+            decoder=dateutil.parser.isoparse,
             mm_field=fields.DateTime(format='iso')
         ))

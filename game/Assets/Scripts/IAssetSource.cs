@@ -6,6 +6,7 @@ public interface IAssetSource
 {
     public enum AssetId
     {
+         PLAYER_WITH_CAM,
          PLAYER,
 	     GROUND_TILE,
 	     GROUND_TILE_ROCKY,

@@ -25,10 +25,9 @@ class MessageFromServer:
     transmit_time: datetime = field(
         metadata=config(
             encoder=datetime.isoformat,
-            decoder=datetime.fromisoformat,
+            decoder=dateutil.parser.isoparse,
             mm_field=fields.DateTime(format='iso')
-        )
-    )
+        ))
     type: MessageType
     actions: Optional[List[Action]]
     map_update: Optional[MapUpdate]

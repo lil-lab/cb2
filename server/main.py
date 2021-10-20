@@ -33,9 +33,10 @@ async def Index(request):
 async def stream_game_state(request, ws, agent_id):
   # mupdate = map_update.MapUpdate(20, 20, [map_update.Tile(1, HexCell(HecsCoord(1, 3, 7)))])
   await asyncio.sleep(0.1)
-  sync = state_sync.StateSync([state_sync.Actor(1, 0, HecsCoord(1, 3, 7), 0)], 1)
+  sync = state_sync.StateSync([state_sync.Actor(2, 1, HecsCoord(0, 3, 7), 0)], 1)
   message = message_from_server.MessageFromServer(datetime.now(), message_from_server.MessageType.STATE_SYNC, None, None, sync)
-  await ws.send_json(message.to_json())
+  print("Sending...: " + message.to_json())
+  await ws.send_str(message.to_json())
   return
   global remote_table
   while not ws.closed:
@@ -64,8 +65,7 @@ async def receive_agent_updates(request, ws, agent_id):
       del remote_table[request.remote]
       continue
 
-    update = msg.json()
-    message = message_to_server.MessageToServer.from_json(msg.json())
+    message = message_to_server.MessageToServer.from_json(msg.data)
     if message.type == message_to_server.MessageType.ACTIONS:
       print("Action received. Transmit: {0}, Type: {1}, Actions:")
       for action in message.actions:
@@ -76,8 +76,8 @@ def max_agent_id():
   global remote_table
   max_id = 0
   for remote in remote_table:
-    if remote.id > max_id:
-      max_id = remote.agent_id
+    if remote_table[remote]["id"] > max_id:
+      max_id = remote_table[remote]["id"]
   return max_id
 
 

@@ -39,9 +39,18 @@ namespace Network
 
             GameObject obj = GameObject.FindGameObjectWithTag(ActorManager.TAG);
             _actorManager = obj.GetComponent<ActorManager>();
+            if (_actorManager == null)
+            {
+                Debug.LogError("Could not initialize ActorManager via tag: " + ActorManager.TAG);
+	        }
 
             GameObject playerObj = GameObject.FindGameObjectWithTag(Player.TAG);
             _player = playerObj.GetComponent<Player>();
+
+            if (_player == null)
+            {
+                Debug.LogError("Could not initialize Player via tag: " + Player.TAG);
+	        }
 
             _client = new ClientConnection(URL);
             _router = new NetworkRouter(_client, _networkMapSource, _actorManager, _player);
