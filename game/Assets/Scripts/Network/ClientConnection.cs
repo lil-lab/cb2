@@ -3,6 +3,7 @@ using NativeWebSocket;
 using System.Collections.Generic;
 using System;
 using System.Collections.Concurrent;
+using Newtonsoft.Json;
 
 namespace Network
 {
@@ -24,6 +25,7 @@ namespace Network
         {
             _url = url;
             _webSocket = new WebSocket(_url);
+            _actionQueue = new ConcurrentQueue<Network.Action>();
         }
 
         public void RegisterHandler(NetworkRouter router)
@@ -69,8 +71,8 @@ namespace Network
                 StartHeading = action.Info().StartHeading,
                 DestinationHeading = action.Info().DestinationHeading,
                 DurationS = action.Info().DurationS,
-                Expiration = action.Info().Expiration,
-            });
+                Expiration = action.Info().Expiration.ToString("o")
+            }); ;
 	    }
 
         public async void Reconnect()
@@ -97,7 +99,8 @@ namespace Network
                 {
                     return; 
 		        }
-                 MessageFromServer message = JsonUtility.FromJson<MessageFromServer>(System.Text.Encoding.ASCII.GetString(bytes));
+                Debug.Log(System.Text.Encoding.ASCII.GetString(bytes));
+                MessageFromServer message = JsonConvert.DeserializeObject<MessageFromServer>(System.Text.Encoding.ASCII.GetString(bytes));
                 _router.HandleMessage(message);
 		    };
 
@@ -139,7 +142,7 @@ namespace Network
 
                 toServer.Type = MessageToServer.MessageType.ACTIONS;
                 toServer.Actions = actionsForServer;
-                toServer.TransmitTime = DateTime.Now;
+                toServer.TransmitTime = DateTime.Now.ToString("o");
                 await _webSocket.SendText(JsonUtility.ToJson(toServer));
             }
         }

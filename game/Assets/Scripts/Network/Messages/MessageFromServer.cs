@@ -15,7 +15,7 @@ namespace Network
 	    }
 
         // These fields are always provided with any packet.
-        public DateTime TransmitTime;  // When the server transmitted this message.
+        public string TransmitTime;  // When the server transmitted this message in ISO 8601 format.
 
         // Message Type.
         public MessageType Type;

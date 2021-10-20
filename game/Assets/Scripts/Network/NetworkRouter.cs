@@ -84,6 +84,8 @@ namespace Network
 
 		private ActionQueue.IAction ActionFromNetwork(Network.Action networkAction)
 		{
+			DateTime expiration = DateTime.Parse(networkAction.Expiration, null,
+				System.Globalization.DateTimeStyles.RoundtripKind);
 			ActionQueue.ActionInfo info = new ActionQueue.ActionInfo()
 			{
 				Type = (ActionQueue.AnimationType)networkAction.AnimationType,
@@ -92,7 +94,7 @@ namespace Network
 				StartHeading = networkAction.StartHeading,
 				DestinationHeading = networkAction.DestinationHeading,
 				DurationS = networkAction.DurationS,
-				Expiration = networkAction.Expiration,
+				Expiration = expiration,
 			};
 			ActionQueue.IAction action;
 			switch (networkAction.ActionType)

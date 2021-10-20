@@ -13,7 +13,7 @@ namespace Network
         }
 
         // These fields are populated for every packet.
-        public DateTime TransmitTime;  // Transmission time of this message.
+        public string TransmitTime;  // Transmission time of this message in ISO 8601 format.
 
         // Depending on the type, only one of the following is populated.
         public MessageType Type;

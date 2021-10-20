@@ -31,3 +31,9 @@ https://docs.unity3d.com/Packages/com.unity.addressables@0.3/manual/AddressableA
 - Multiplayer & Networking Code (excellent resource):
 
 https://gafferongames.com
+
+- JSON Parson. I decided to use this version of JSON.NET ported to work with Unity:
+
+https://github.com/jilleJr/Newtonsoft.Json-for-Unity/wiki/Installation-via-UPM
+
+Unity has built-in JSON parsing, but it's limited and doesn't support nested objects.

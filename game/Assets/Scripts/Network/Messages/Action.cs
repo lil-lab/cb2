@@ -33,7 +33,7 @@ namespace Network
         public float StartHeading;  // Degrees. 0 = North. Clockwise increasing.
         public float DestinationHeading;
         public float DurationS;
-        public DateTime Expiration;
+        public string Expiration;  // DateTime in ISO 8601.
     }
 
 }  // namespace Network
