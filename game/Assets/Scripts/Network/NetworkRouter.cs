@@ -36,7 +36,8 @@ namespace Network
 					ActionQueue.IAction action = ActionFromNetwork(networkAction);
 					if (networkAction.ActorId == _activeActorId)
 					{
-						_player.AddAction(action); 
+						_player.ValidateHistory(action);
+						continue;
 					}
 					_actorManager.AddAction(networkAction.ActorId, action);
 				}
@@ -48,12 +49,13 @@ namespace Network
 				_player.FlushActionQueue();
 				foreach (Network.StateSync.Actor actor in message.State.Actors)
 				{
-					_actorManager.RegisterActor(actor.ActorId, Actor.FromStateSync(actor));
+					ActionQueue.IAction action = TeleportToStartState(actor);
 					if (actor.ActorId == _activeActorId)
 					{
-						_player.AddAction(TeleportToStartState(actor));
+						_player.AddAction(action);
 						continue;
 					}
+					_actorManager.RegisterActor(actor.ActorId, Actor.FromStateSync(actor));
 				}
 			}
 		}

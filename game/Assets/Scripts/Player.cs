@@ -53,6 +53,14 @@ public class Player : MonoBehaviour
         _actor.AddAction(action); 
     }
 
+    // Actions are looped back from the server. This method is called to
+    // validate actions. If an unrecognized action is received, then 
+    // the client can request a state sync from the server.
+    public void ValidateHistory(ActionQueue.IAction action)
+    { 
+        // TODO(sharf): Implement this...
+    }
+
     void Update()
     {
         if (ShowHeading)

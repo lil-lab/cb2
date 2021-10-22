@@ -14,6 +14,7 @@ import typing
 
 class MessageType(Enum):
      ACTIONS = 0
+     STATE_SYNC_REQUEST = 1
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)

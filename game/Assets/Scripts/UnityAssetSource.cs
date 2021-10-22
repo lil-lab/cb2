@@ -6,8 +6,8 @@ public class UnityAssetSource : IAssetSource
 {
     // Maps IAssetSource.AssetId to resource paths in Unity.
     private static readonly string[] assetPaths = new string[]{
-        "Prefab/Actors/PlayerWithCam",
         "Prefab/Actors/Player",
+        "Prefab/Actors/PlayerWithCam",
         "Prefab/Tiles/GroundTile_1",
         "Prefab/Tiles/GroundTile_Rocky_1",
         "Prefab/Tiles/GroundTile_Stones_1",

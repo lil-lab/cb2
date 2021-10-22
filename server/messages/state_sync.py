@@ -22,4 +22,4 @@ class Actor:
 @dataclass(frozen=True)
 class StateSync:
     Actors: List[Actor]
-    player_id: int
+    player_id: int = -1

@@ -7,11 +7,12 @@ import os
 import time
 
 from aiohttp import web
+from hex import HecsCoord, HexBoundary, HexCell
 from messages import map_update
 from messages import message_from_server
 from messages import message_to_server
 from messages import state_sync
-from hex import HecsCoord, HexBoundary, HexCell
+from state import State
 
 from datetime import datetime
 
@@ -19,6 +20,8 @@ routes = web.RouteTableDef()
 
 # A table of active websocket connections.
 remote_table = {}
+
+game_state = State()
 
 @routes.get('/')
 async def Index(request):
@@ -32,19 +35,27 @@ async def Index(request):
 
 async def stream_game_state(request, ws, agent_id):
   # mupdate = map_update.MapUpdate(20, 20, [map_update.Tile(1, HexCell(HecsCoord(1, 3, 7)))])
-  await asyncio.sleep(0.1)
-  sync = state_sync.StateSync([state_sync.Actor(2, 1, HecsCoord(0, 3, 7), 0)], 1)
-  message = message_from_server.MessageFromServer(datetime.now(), message_from_server.MessageType.STATE_SYNC, None, None, sync)
-  print("Sending...: " + message.to_json())
-  await ws.send_str(message.to_json())
-  return
   global remote_table
+  global game_state
   while not ws.closed:
     await asyncio.sleep(0.1)
-    remote_table[request.remote]["bytes_down"] += len(json.dumps(state))
+    if not game_state.is_synced(agent_id):
+      state_sync = game_state.sync_message_for_transmission(agent_id)
+      msg = message_from_server.MessageFromServer(datetime.now(), message_from_server.MessageType.STATE_SYNC, None, None, state_sync)
+      await ws.send_str(msg.to_json())
+      remote_table[request.remote]["bytes_down"] += len(msg.to_json())
+      remote_table[request.remote]["last_message_down"] = time.time()
+    actions = game_state.drain_actions(agent_id)
+    if len(actions) > 0:
+      msg = message_from_server.MessageFromServer(datetime.now(), message_from_server.MessageType.ACTIONS, actions, None, None)
+      await ws.send_str(msg.to_json())
+      remote_table[request.remote]["bytes_down"] += len(msg.to_json())
+      remote_table[request.remote]["last_message_down"] = time.time()
+      
 
 async def receive_agent_updates(request, ws, agent_id):
   global remote_table
+  global game_state
   async for msg in ws:
     if msg.type == aiohttp.WSMsgType.ERROR:
       closed = True
@@ -70,26 +81,21 @@ async def receive_agent_updates(request, ws, agent_id):
       print("Action received. Transmit: {0}, Type: {1}, Actions:")
       for action in message.actions:
         print("{0}:{1}".format(action.actor_id, action.destination))
-    remote_table[request.remote]["last_message_down"] = time.time()
-
-def max_agent_id():
-  global remote_table
-  max_id = 0
-  for remote in remote_table:
-    if remote_table[remote]["id"] > max_id:
-      max_id = remote_table[remote]["id"]
-  return max_id
-
+        game_state.handle_action(agent_id, action)
+    if message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
+      game_state.desync(agent_id)
 
 @routes.get('/player_endpoint')
 async def PlayerEndpoint(request):
   global remote_table
+  global game_state
   ws = web.WebSocketResponse()
   await ws.prepare(request)
   remote_table[request.remote] = {"last_message_up": time.time(), "last_message_down": time.time(), "ip": request.remote, "id":0, "bytes_up": 0, "bytes_down": 0}
-  agent_id = max_agent_id() + 1
+  agent_id = game_state.create_actor()
   remote_table[request.remote]["id"] = agent_id
   await asyncio.gather(receive_agent_updates(request, ws, agent_id), stream_game_state(request, ws, agent_id))
+  game_state.free_actor(agent_id)
   del remote_table[request.remote]
   return ws
 
@@ -123,18 +129,26 @@ async def serve():
   # waiting for keyboard interruption
   while True:
     await asyncio.sleep(1)
+  
+async def debug_print():
+  global game_state
+  while True:
+    await asyncio.sleep(5)
+    state = game_state.state()
+    print(state)
 
 def main(assets_directory = "assets/"):
   global assets_map
   global game_state
-  # game_state_task = asyncio.gather(game_state.loop())
+  game_state_task = asyncio.gather(game_state.update(), debug_print())
   assets_map = CollectAssets(assets_directory)
+  tasks = asyncio.gather(game_state_task, serve())
   loop = asyncio.get_event_loop()
-
   try:
-      loop.run_until_complete(serve())
+      loop.run_until_complete(tasks)
   except KeyboardInterrupt:
       pass
+  game_state.end_game()
   loop.close()
 
 if __name__ == "__main__":
