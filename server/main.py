@@ -56,40 +56,47 @@ async def stream_game_state(request, ws, agent_id):
 async def receive_agent_updates(request, ws, agent_id):
   global remote_table
   global game_state
-  async for msg in ws:
-    if msg.type == aiohttp.WSMsgType.ERROR:
-      closed = True
-      await ws.close()
-      del remote_table[request.remote]
-      print('ws connection closed with exception %s' % ws.exception())
-      continue
+  try:
+    async for msg in ws:
+      if msg.type == aiohttp.WSMsgType.ERROR:
+        closed = True
+        await ws.close()
+        game_state.free_actor(agent_id)
+        del remote_table[request.remote]
+        print('ws connection closed with exception %s' % ws.exception())
+        continue
 
-    if msg.type != aiohttp.WSMsgType.TEXT:
-      continue
+      if msg.type != aiohttp.WSMsgType.TEXT:
+        continue
 
-    remote_table[request.remote]["last_message_up"] = time.time()
-    remote_table[request.remote]["bytes_up"] += len(msg.data)
+      remote_table[request.remote]["last_message_up"] = time.time()
+      remote_table[request.remote]["bytes_up"] += len(msg.data)
 
-    if msg.data == 'close':
-      closed = True
-      await ws.close()
-      del remote_table[request.remote]
-      continue
+      if msg.data == 'close':
+        closed = True
+        await ws.close()
+        game_state.free_actor(agent_id)
+        del remote_table[request.remote]
+        continue
 
-    message = message_to_server.MessageToServer.from_json(msg.data)
-    if message.type == message_to_server.MessageType.ACTIONS:
-      print("Action received. Transmit: {0}, Type: {1}, Actions:")
-      for action in message.actions:
-        print("{0}:{1}".format(action.actor_id, action.destination))
-        game_state.handle_action(agent_id, action)
-    if message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
-      game_state.desync(agent_id)
+      message = message_to_server.MessageToServer.from_json(msg.data)
+      if message.type == message_to_server.MessageType.ACTIONS:
+        print("Action received. Transmit: {0}, Type: {1}, Actions:")
+        for action in message.actions:
+          print("{0}:{1}".format(action.actor_id, action.destination))
+          game_state.handle_action(agent_id, action)
+      if message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
+        game_state.desync(agent_id)
+  finally:
+    print("Disconnect detected")
+    game_state.free_actor(agent_id)
+    del remote_table[request.remote]
 
 @routes.get('/player_endpoint')
 async def PlayerEndpoint(request):
   global remote_table
   global game_state
-  ws = web.WebSocketResponse()
+  ws = web.WebSocketResponse(autoclose=True, heartbeat=1.0, autoping = 1.0)
   await ws.prepare(request)
   remote_table[request.remote] = {"last_message_up": time.time(), "last_message_down": time.time(), "ip": request.remote, "id":0, "bytes_up": 0, "bytes_down": 0}
   agent_id = game_state.create_actor()
@@ -99,7 +106,7 @@ async def PlayerEndpoint(request):
   del remote_table[request.remote]
   return ws
 
-def CollectAssets(assets_directory):
+def HashCollectAssets(assets_directory):
   assets_map = {}
   for item in os.listdir(assets_directory):
     assets_map[hashlib.md5(item.encode()).hexdigest()] = os.path.join(assets_directory, item)
@@ -123,7 +130,7 @@ async def serve():
   site = web.TCPSite(runner, 'localhost', 8080)
   await site.start()
 
-  print("======= Serving on http://127.0.0.1:8080/ ======")
+  print("======= Serving on http://localhost:8080/ ======")
 
   # pause here for very long time by serving HTTP requests and
   # waiting for keyboard interruption
@@ -141,7 +148,7 @@ def main(assets_directory = "assets/"):
   global assets_map
   global game_state
   game_state_task = asyncio.gather(game_state.update(), debug_print())
-  assets_map = CollectAssets(assets_directory)
+  assets_map = HashCollectAssets(assets_directory)
   tasks = asyncio.gather(game_state_task, serve())
   loop = asyncio.get_event_loop()
   try:

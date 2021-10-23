@@ -71,7 +71,7 @@ class State(object):
         del self._action_history[actor_id]
         self._id_assigner.free(actor_id)
         # Mark clients as desynced.
-        self.desync()
+        self.desync_all()
     
     def desync(self, actor_id):
         self._synced[actor_id] = False
