@@ -39,11 +39,8 @@ def HardcodedMap():
     map[8][6] = MountainTile(8,6)
     map[8][7] = MountainTile(8,7)
     map[8][8] = MountainTile(8,8)
-    map[8][9] = MountainTile(8,9)
     map[9][5] = MountainTile(9,5)
     map[9][6] = MountainTile(9,6)
-    map[9][7] = MountainTile(9,7)
-    map[9][8] = MountainTile(9,8)
 
     # Add a street light.
     map[5][3] = GroundTileStreetLight(5,3)
@@ -55,14 +52,30 @@ def HardcodedMap():
     # Flatten the 2D map of tiles to a list.
     map_tiles = [tile for row in map for tile in row]
 
+    # Recompute heights.
+    for i in range(len(map_tiles)):
+        map_tiles[i].cell.height = LayerToHeight(map_tiles[i].cell.layer)
+
     return MapUpdate(10, 10, map_tiles)
+
+def LayerToHeight(layer):
+    """ Converts a layer to a height."""
+    layer_to_height = {
+        0: 0.05,
+        1: 0.275,
+        2: 0.325,
+    }
+    if layer not in layer_to_height:
+        return layer_to_height[0]
+    
+    return layer_to_height[layer]
 
 def GroundTile(r, c):
     """ Creates a single tile of ground."""
     return Tile(
         AssetId.GROUND_TILE,
         HexCell(HecsCoord.from_offset(r,c), HexBoundary(0),
-            0, # Height (float)
+            LayerToHeight(0), # Height (float)
             0,  # Z-Layer (int)
         ),
         0 # Rotation, degrees.
@@ -73,7 +86,7 @@ def GroundTileRocky(r, c):
     return Tile(
         AssetId.GROUND_TILE_ROCKY,
         HexCell(HecsCoord.from_offset(r,c), HexBoundary(0x3F),
-            0, # Height (float)
+            LayerToHeight(0), # Height (float)
             0  # Z-Layer (int)
         ),
         0 # Rotation, degrees.
@@ -84,7 +97,7 @@ def GroundTileStones(r, c):
     return Tile(
         AssetId.GROUND_TILE_STONES,
         HexCell(HecsCoord.from_offset(r,c), HexBoundary(0x3F),
-            0, # Height (float)
+            LayerToHeight(0), # Height (float)
             0  # Z-Layer (int)
         ),
         0 # Rotation, degrees.
@@ -95,7 +108,7 @@ def GroundTileTrees(r, c):
     return Tile(
         AssetId.GROUND_TILE_TREES,
         HexCell(HecsCoord.from_offset(r,c), HexBoundary(0x3F),
-            0, # Height (float)
+            LayerToHeight(0), # Height (float)
             0  # Z-Layer (int)
         ),
         0 # Rotation, degrees.
@@ -106,7 +119,7 @@ def GroundTileSingleTree(r, c):
     return Tile(
         AssetId.GROUND_TILE_TREES_2,
         HexCell(HecsCoord.from_offset(r,c), HexBoundary(0x3F),
-            0, # Height (float)
+            LayerToHeight(0), # Height (float)
             0  # Z-Layer (int)
         ),
         0 # Rotation, degrees.
@@ -117,7 +130,7 @@ def GroundTileForest(r, c):
     return Tile(
         AssetId.GROUND_TILE_FOREST,
         HexCell(HecsCoord.from_offset(r,c), HexBoundary(0x3F),
-            0, # Height (float)
+            LayerToHeight(0), # Height (float)
             0  # Z-Layer (int)
         ),
         0 # Rotation, degrees.
@@ -128,7 +141,7 @@ def GroundTileHouse(r, c):
     return Tile(
         AssetId.GROUND_TILE_HOUSE,
         HexCell(HecsCoord.from_offset(r,c), HexBoundary(0x3F),
-            0, # Height (float)
+            LayerToHeight(0), # Height (float)
             0  # Z-Layer (int)
         ),
         0 # Rotation, degrees.
@@ -139,7 +152,7 @@ def GroundTileStreetLight(r, c):
     return Tile(
         AssetId.GROUND_TILE_STREETLIGHT,
         HexCell(HecsCoord.from_offset(r,c), HexBoundary(0x3F),
-            0, # Height (float)
+            LayerToHeight(0), # Height (float)
             0  # Z-Layer (int)
         ),
         0 # Rotation, degrees.
@@ -150,7 +163,7 @@ def MountainTile(r, c):
     return Tile(
         AssetId.MOUNTAIN_TILE,
         HexCell(HecsCoord.from_offset(r,c), HexBoundary(0),
-            0.325, # Height (float)
+            LayerToHeight(2), # Height (float)
             2  # Z-Layer (int)
         ),
         0 # Rotation, degrees.
@@ -161,7 +174,7 @@ def RampToMountain(r, c):
     return Tile(
         AssetId.RAMP_TO_MOUNTAIN,
         HexCell(HecsCoord.from_offset(r,c), HexBoundary(0b101101),
-            0.275, # Height (float)
+            LayerToHeight(1), # Height (float)
             1  # Z-Layer (int)
         ),
         0 # Rotation, degrees.
