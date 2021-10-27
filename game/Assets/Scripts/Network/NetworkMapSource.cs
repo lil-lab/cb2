@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Network
 {
@@ -13,7 +14,7 @@ namespace Network
 
         public NetworkMapSource() {}
 
-        void ReceiveMapUpdate(Network.MapUpdate mapInfo)
+        public void ReceiveMapUpdate(Network.MapUpdate mapInfo)
         {
             _map = new List<HexGridManager.TileInformation>();
 			_rows = mapInfo.Rows;
@@ -28,7 +29,6 @@ namespace Network
 				    RotationDegrees = tile.RotationDegrees,
 				});
 	        }
-
             _networkMapReady = true;
 	    }
 
@@ -44,7 +44,7 @@ namespace Network
         public List<HexGridManager.TileInformation> FetchTileList()
         {
             _networkMapReady = false;
-            return new List<HexGridManager.TileInformation>(); 
+            return _map;
 	    }
 
         // Returns true if a new map iteration is available.

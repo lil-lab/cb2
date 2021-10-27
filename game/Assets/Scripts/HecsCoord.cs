@@ -167,7 +167,6 @@ public class HecsCoord
 
     public HecsCoord NeighborAtHeading(float heading)
     {
-
         int neighborIndex = ((int)(heading / 60.0f)) % 6;
         if (neighborIndex < 0)
             neighborIndex += 6;
@@ -177,7 +176,7 @@ public class HecsCoord
     public (float, float) Cartesian()
     {
         // https://en.wikipedia.org/wiki/Hexagonal_Efficient_Coordinate_System#Convert_to_Cartesian
-        return (Mathf.Sqrt(3) / 2.0f * a + Mathf.Sqrt(3) * r, 0.5f * a + c);
+        return (0.5f * a + c, - Mathf.Sqrt(3) / 2.0f * a - Mathf.Sqrt(3) * r);
     }
 
     public override string ToString()

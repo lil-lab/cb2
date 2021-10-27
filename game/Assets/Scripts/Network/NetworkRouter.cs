@@ -29,6 +29,7 @@ namespace Network
 
 		public void HandleMessage(MessageFromServer message)
 		{
+			Debug.Log("Received message of type: " + message.Type);
 			if (message.Type == MessageFromServer.MessageType.ACTIONS)
 			{
 				foreach (Network.Action networkAction in message.Actions)
@@ -57,6 +58,15 @@ namespace Network
 					}
 					_actorManager.RegisterActor(actor.ActorId, Actor.FromStateSync(actor));
 				}
+			}
+			if (message.Type == MessageFromServer.MessageType.MAP_UPDATE)
+			{
+				if (_mapSource == null)
+				{
+					Debug.Log("Network Router received map update but no map source to forward it to.");
+					return;
+				}
+				_mapSource.ReceiveMapUpdate(message.MapUpdate);
 			}
 		}
 

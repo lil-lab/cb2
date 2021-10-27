@@ -16,7 +16,6 @@ class Tile:
     asset_id: int
     cell: HexCell
     rotation_degrees: int
-    height: float
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)

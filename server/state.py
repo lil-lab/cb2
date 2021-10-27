@@ -48,7 +48,7 @@ class State(object):
                     continue
                 action = actor.peek()
                 if not self.valid_action(actor_id, action):
-                    self.desync()
+                    self.desync_all()
                     print("Found invalid action. Resyncing...")
                     continue
                 self.record_action(action)

@@ -152,7 +152,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 39ef1507b066d4b1684ee6930e44e23f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  URL: ws://192.168.0.69:8080/player_endpoint
+  URL: ws://localhost:8080/player_endpoint
 --- !u!4 &108867010
 Transform:
   m_ObjectHideFlags: 0
@@ -382,7 +382,7 @@ MonoBehaviour:
   ForceStartingPosition: 1
   StartingRow: 7
   StartingCol: 7
-  ShowHeading: 0
+  ShowHeading: 1
 --- !u!4 &2076507385
 Transform:
   m_ObjectHideFlags: 0

@@ -12,7 +12,7 @@ public class Player : MonoBehaviour
     public bool ForceStartingPosition = false;
     public int StartingRow = 9;
     public int StartingCol = 7;
-    public bool ShowHeading = false;
+    public bool ShowHeading = true;
 
     private Network.NetworkManager _network;
 
@@ -130,6 +130,7 @@ public class Player : MonoBehaviour
                 Expiration = System.DateTime.Now.AddSeconds(10),
                 DurationS = 1 / TurnSpeed,
             };
+		    Debug.Log("Heading: " + (_actor.HeadingDegrees() - 60.0f));
             Rotate action = new Rotate(animationInfo);
             _actor.AddAction(action);
             _network.TransmitAction(action);

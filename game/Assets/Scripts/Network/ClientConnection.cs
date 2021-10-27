@@ -99,23 +99,12 @@ namespace Network
                 {
                     return; 
 		        }
-                string msg = "{\"TransmitTime\": \"2021-10-20T14:32:45.778477\", \"Type\": 2, \"Actions\": null, \"MapUpdate\": null, \"State\": {\"Actors\": [{\"ActorId\": 1, \"AssetId\": 0, \"Location\": {\"A\": 1, \"R\": 3, \"C\": 7}, \"RotationDegrees\": 0}], \"PlayerId\": 1}}";
-                string partialTimeMsg = "{ \"TransmitTime\": \"2021-10-20T14:32:45.778477\", \"Type\": 2 }";
-                string stateMsg = "{ \"Actors\": [{ \"ActorId\": 1, \"AssetId\": 0, \"Location\": { \"A\": 1, \"R\": 3, \"C\": 7}, \"RotationDegrees\": 0}], \"PlayerId\": 1}";
-                MessageFromServer partialMessage = JsonConvert.DeserializeObject<MessageFromServer>(partialTimeMsg);
-                StateSync stateMessage = JsonConvert.DeserializeObject<StateSync>(stateMsg);
-                MessageFromServer fullMessage = JsonConvert.DeserializeObject<MessageFromServer>(msg);
-                Debug.Log("Success");
+
+                Debug.Log("Received msg");
 
                 string received = System.Text.Encoding.ASCII.GetString(bytes);
 
-                if (msg != received)
-                {
-                    Debug.Log("Error, received string was not what we expected");
-                    Debug.Log("Expected: " + msg);
-                    Debug.Log("Received: " + received);
-		        }
-                 MessageFromServer message = JsonConvert.DeserializeObject<MessageFromServer>(System.Text.Encoding.ASCII.GetString(bytes));
+                MessageFromServer message = JsonConvert.DeserializeObject<MessageFromServer>(System.Text.Encoding.ASCII.GetString(bytes));
                  _router.HandleMessage(message);
 		    };
 

@@ -218,11 +218,10 @@ public class FixedMapSource : HexGridManager.IMapSource
                 int layer_diff = Math.Abs(_map[i].Cell.layer - _map[j].Cell.layer);
                 if (layer_diff > 1)
                 {
-                    Debug.Log("Adding edge to node " + i);
                     // Only need to add the edge to _map[i]. The HexGridManager adds edge symmetry later.
                     _map[i].Cell.boundary.SetEdgeWith(_map[i].Cell.coord, _map[j].Cell.coord); 
 		        }
-	        } 
+	        }
 	    }
     }
 

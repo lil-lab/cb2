@@ -62,9 +62,10 @@ public class HexGridManager
         _assetSource = assetSource;
     }
 
-    public void Start()
-    {
+    public void InitializeGrid()
+    { 
         (int rows, int cols) = _mapSource.GetMapDimensions();
+        Debug.Log("rows: " + rows + ", cols:" + cols);
         _grid = new Tile[2, rows / 2, cols];
         _edgeMap = new HexCell[2, rows / 2, cols];
 
@@ -83,6 +84,11 @@ public class HexGridManager
         }
     }
 
+    public void Start()
+    {
+        InitializeGrid();
+    }
+
     public void Update()
     {
         UpdateMap();
@@ -91,6 +97,8 @@ public class HexGridManager
 	        foreach (HexCell c in _edgeMap)
 		    {
                 if (c.boundary.Serialize() == 0) continue;
+                if (!c.coord.Equals(HecsCoord.FromOffsetCoordinates(0, 0)))
+                    continue;
                 var vertices = c.Vertices();
                 if (c.boundary.UpRight())
                 {
@@ -125,8 +133,23 @@ public class HexGridManager
         return _edgeMap[a.a, a.r, a.c].boundary.GetEdgeWith(a, b);
     }
 
+    public bool in_grid(HecsCoord a)
+    {
+        if (!(0 <= a.a && a.a < _grid.GetLength(0)))
+            return false;
+        if (!(0 <= a.r && a.r < _grid.GetLength(1)))
+            return false;
+        if (!(0 <= a.c && a.c < _grid.GetLength(2)))
+            return false;
+        return true;
+    }
+
     public float Height(HecsCoord a)
     {
+        if (!in_grid(a))
+        {
+            return 0;
+        }
         return _grid[a.a, a.r, a.c].Cell.height;
     }
 
@@ -197,6 +220,8 @@ public class HexGridManager
             HecsCoord c = tile.Cell.coord;
             _grid[c.a, c.r, c.c] = null;
 	    }
+
+        InitializeGrid();
 
         List<TileInformation> tileList = _mapSource.FetchTileList();
 

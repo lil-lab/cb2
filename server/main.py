@@ -13,6 +13,7 @@ from messages import message_from_server
 from messages import message_to_server
 from messages import state_sync
 from state import State
+from map_provider import HardcodedMapProvider
 
 from datetime import datetime
 
@@ -21,7 +22,19 @@ routes = web.RouteTableDef()
 # A table of active websocket connections.
 remote_table = {}
 
+# Keeps track of game state.
 game_state = State()
+
+# Provides map information.
+map_provider = HardcodedMapProvider()
+
+async def transmit(request, ws, message):
+  global remote_table
+  if request.remote not in remote_table:
+    remote_table[request.remote] = {"bytes_up": 0, "bytes_down": 0, "last_message_up": 0, "last_message_down": 0}
+  remote_table[request.remote]["bytes_down"] += len(message)
+  remote_table[request.remote]["last_message_down"] = time.time()
+  await ws.send_str(message)
 
 @routes.get('/')
 async def Index(request):
@@ -34,23 +47,23 @@ async def Index(request):
   return web.json_response(server_state)
 
 async def stream_game_state(request, ws, agent_id):
-  # mupdate = map_update.MapUpdate(20, 20, [map_update.Tile(1, HexCell(HecsCoord(1, 3, 7)))])
   global remote_table
   global game_state
+  global map_provider
+  mupdate = map_provider.get_map()
+  msg = message_from_server.MessageFromServer(datetime.now(), message_from_server.MessageType.MAP_UPDATE, None, mupdate, None)
+  await transmit(request, ws, msg.to_json())
   while not ws.closed:
     await asyncio.sleep(0.1)
     if not game_state.is_synced(agent_id):
       state_sync = game_state.sync_message_for_transmission(agent_id)
       msg = message_from_server.MessageFromServer(datetime.now(), message_from_server.MessageType.STATE_SYNC, None, None, state_sync)
-      await ws.send_str(msg.to_json())
-      remote_table[request.remote]["bytes_down"] += len(msg.to_json())
-      remote_table[request.remote]["last_message_down"] = time.time()
+      print(msg)
+      await transmit(request, ws, msg.to_json())
     actions = game_state.drain_actions(agent_id)
     if len(actions) > 0:
       msg = message_from_server.MessageFromServer(datetime.now(), message_from_server.MessageType.ACTIONS, actions, None, None)
-      await ws.send_str(msg.to_json())
-      remote_table[request.remote]["bytes_down"] += len(msg.to_json())
-      remote_table[request.remote]["last_message_down"] = time.time()
+      await transmit(request, ws, msg.to_json())
       
 
 async def receive_agent_updates(request, ws, agent_id):
@@ -136,7 +149,7 @@ async def serve():
   # waiting for keyboard interruption
   while True:
     await asyncio.sleep(1)
-  
+
 async def debug_print():
   global game_state
   while True:
@@ -147,9 +160,8 @@ async def debug_print():
 def main(assets_directory = "assets/"):
   global assets_map
   global game_state
-  game_state_task = asyncio.gather(game_state.update(), debug_print())
   assets_map = HashCollectAssets(assets_directory)
-  tasks = asyncio.gather(game_state_task, serve())
+  tasks = asyncio.gather(game_state.update(), debug_print(), serve())
   loop = asyncio.get_event_loop()
   try:
       loop.run_until_complete(tasks)
