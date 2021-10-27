@@ -1,1 +1,1 @@
-Assets placed in this directory will be served at path /assets/<md5sum of filename>
+Files placed here will be served at /assets/<md5sum of filename>

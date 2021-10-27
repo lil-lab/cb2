@@ -36,13 +36,15 @@ async def transmit(request, ws, message):
   remote_table[request.remote]["last_message_down"] = time.time()
   await ws.send_str(message)
 
-@routes.get('/')
+@routes.get('/status')
 async def Index(request):
   global assets_map
   global remote_table
+  global game_state
   server_state = {
     "assets": assets_map,
     "endpoints": remote_table,
+    "game_state": game_state.state(),
   }
   return web.json_response(server_state)
 
@@ -128,6 +130,8 @@ def HashCollectAssets(assets_directory):
 # A dictionary from md5sum to asset filename.
 assets_map = {}
 
+# Serves assets obfuscated by md5suming the filename.
+# This is used to prevent asset discovery.
 @routes.get('/assets/{asset_id}')
 async def asset(request):
   asset_id = request.match_info.get('asset_id', "")
@@ -137,10 +141,14 @@ async def asset(request):
 
 async def serve():
   app = web.Application()
+
+  # Add a route for serving web frontend files on /.
+  routes.static('/', './www/')
+
   app.add_routes(routes)
   runner = runner = aiohttp.web.AppRunner(app)
   await runner.setup()
-  site = web.TCPSite(runner, 'localhost', 8080)
+  site = web.TCPSite(runner, '', 8080)
   await site.start()
 
   print("======= Serving on http://localhost:8080/ ======")
