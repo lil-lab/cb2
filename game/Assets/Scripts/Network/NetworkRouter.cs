@@ -46,13 +46,13 @@ namespace Network
 			if (message.Type == MessageFromServer.MessageType.STATE_SYNC)
 			{
 				_activeActorId = message.State.PlayerId;
-				_actorManager.Flush();
+				_actorManager.DestroyActors();
 				_player.FlushActionQueue();
 				foreach (Network.StateSync.Actor actor in message.State.Actors)
 				{
-					ActionQueue.IAction action = TeleportToStartState(actor);
 					if (actor.ActorId == _activeActorId)
 					{
+						ActionQueue.IAction action = TeleportToStartState(actor);
 						_player.AddAction(action);
 						continue;
 					}

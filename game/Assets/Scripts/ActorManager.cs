@@ -51,6 +51,16 @@ public class ActorManager : MonoBehaviour
             int actorId = kvPair.Key;
             _actors[actorId].Flush();
 	    }
+    }
+
+    public void DestroyActors()
+    {
+        Flush();
+        foreach (var kvPair in _actors)
+        {
+            int actorId = kvPair.Key;
+            _actors[actorId].Destroy();
+	    }
 
         _actors = new Dictionary<int, Actor>(); 
     }

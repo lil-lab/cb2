@@ -55,11 +55,15 @@ namespace Network
             string url = URL;
             if (Application.absoluteURL != "")
             {
-                Debug.Log("Using application URL: " + Application.absoluteURL);
-                url = Application.absoluteURL;
-            } else {
-                Debug.Log("Using default url: " + URL);
+                // We can figure out the server's address based on Unity's API.
+                Uri servedUrl = new Uri(Application.absoluteURL);
+                UriBuilder endpointUrlBuilder =
+		            new UriBuilder("ws", servedUrl.Host, servedUrl.Port,
+		                           "/player_endpoint");
+                url = endpointUrlBuilder.Uri.AbsoluteUri;
+                Debug.Log("")
 	        }
+            Debug.Log("Using url: " + url);
             _client = new ClientConnection(url);
             _router = new NetworkRouter(_client, _networkMapSource, _actorManager, _player);
 
