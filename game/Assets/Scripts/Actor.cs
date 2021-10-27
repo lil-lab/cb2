@@ -49,7 +49,7 @@ public class Actor
 
     public void SetParent(GameObject parent)
     {
-        _asset.transform.SetParent(parent.transform);
+        _asset.transform.SetParent(parent.transform, false);
     }
 
     public void EnableDebugging()
@@ -87,7 +87,7 @@ public class Actor
         // Update current location, orientation, and animation based on action queue.
         _asset.transform.position = Scale() * _actionQueue.ImmediateLocation() + new Vector3(0, Scale() * 0.1f, 0);
         _asset.transform.rotation = Quaternion.AngleAxis(_actionQueue.ImmediateHeading(), new Vector3(0, 1, 0));
-        Animation animation = _asset.GetComponent<Animation>();
+        Animation animation = _asset.GetComponentInChildren<Animation>();
         if (_actionQueue.ImmediateAnimation() == ActionQueue.AnimationType.WALKING)
         {
             animation.Play("Armature|Walking");

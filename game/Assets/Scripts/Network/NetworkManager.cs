@@ -61,7 +61,6 @@ namespace Network
 		            new UriBuilder("ws", servedUrl.Host, servedUrl.Port,
 		                           "/player_endpoint");
                 url = endpointUrlBuilder.Uri.AbsoluteUri;
-                Debug.Log("")
 	        }
             Debug.Log("Using url: " + url);
             _client = new ClientConnection(url);
