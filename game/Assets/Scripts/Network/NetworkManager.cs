@@ -52,7 +52,15 @@ namespace Network
                 Debug.LogError("Could not initialize Player via tag: " + Player.TAG);
 	        }
 
-            _client = new ClientConnection(URL);
+            string url = URL;
+            if (Application.absoluteURL != "")
+            {
+                Debug.Log("Using application URL: " + Application.absoluteURL);
+                url = Application.absoluteURL;
+            } else {
+                Debug.Log("Using default url: " + URL);
+	        }
+            _client = new ClientConnection(url);
             _router = new NetworkRouter(_client, _networkMapSource, _actorManager, _player);
 
             _lastReconnect = DateTime.Now;
