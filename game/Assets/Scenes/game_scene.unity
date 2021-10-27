@@ -379,10 +379,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   TurnSpeed: 3
   MoveSpeed: 3
-  ForceStartingPosition: 1
+  ForceStartingPosition: 0
   StartingRow: 7
   StartingCol: 7
-  ShowHeading: 1
+  ShowHeading: 0
 --- !u!4 &2076507385
 Transform:
   m_ObjectHideFlags: 0
