@@ -44,7 +44,7 @@ async def Index(request):
   server_state = {
     "assets": assets_map,
     "endpoints": remote_table,
-    "game_state": game_state.state(),
+    "game_state": game_state.state().to_json(),
   }
   return web.json_response(server_state)
 
