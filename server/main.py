@@ -148,10 +148,10 @@ async def serve():
   app.add_routes(routes)
   runner = runner = aiohttp.web.AppRunner(app)
   await runner.setup()
-  site = web.TCPSite(runner, '', 8080)
+  site = web.TCPSite(runner, None, 8080)
   await site.start()
 
-  print("======= Serving on http://localhost:8080/ ======")
+  print("======= Serving on {site.name} ======".format(site=site))
 
   # pause here for very long time by serving HTTP requests and
   # waiting for keyboard interruption
