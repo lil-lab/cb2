@@ -58,7 +58,7 @@ namespace Network
                 // We can figure out the server's address based on Unity's API.
                 Uri servedUrl = new Uri(Application.absoluteURL);
                 UriBuilder endpointUrlBuilder =
-		            new UriBuilder("ws", servedUrl.Host, servedUrl.Port,
+		            new UriBuilder("wss", servedUrl.Host, servedUrl.Port,
 		                           "/player_endpoint");
                 url = endpointUrlBuilder.Uri.AbsoluteUri;
 	        }
