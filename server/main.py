@@ -19,7 +19,7 @@ from datetime import datetime
 
 routes = web.RouteTableDef()
 
-# A table of active websocket connections.
+# A table of active websocket connections. Maps from ID to info.
 remote_table = {}
 
 # Keeps track of game state.
@@ -28,12 +28,15 @@ game_state = State()
 # Provides map information.
 map_provider = HardcodedMapProvider()
 
-async def transmit(request, ws, message):
+async def transmit(ws, message, agent_id):
   global remote_table
-  if request.remote not in remote_table:
-    remote_table[request.remote] = {"bytes_up": 0, "bytes_down": 0, "last_message_up": 0, "last_message_down": 0}
-  remote_table[request.remote]["bytes_down"] += len(message)
-  remote_table[request.remote]["last_message_down"] = time.time()
+  if agent_id not in remote_table and agent_id != None:
+    return ValueError("Agent ID not found in remote table")
+
+  if agent_id is not None:
+    remote_table[agent_id]["bytes_down"] += len(message)
+    remote_table[agent_id]["last_message_down"] = time.time()
+  
   await ws.send_str(message)
 
 @routes.get('/status')
@@ -54,58 +57,49 @@ async def stream_game_state(request, ws, agent_id):
   global map_provider
   mupdate = map_provider.get_map()
   msg = message_from_server.MessageFromServer(datetime.now(), message_from_server.MessageType.MAP_UPDATE, None, mupdate, None)
-  await transmit(request, ws, msg.to_json())
+  await transmit(ws, msg.to_json(), agent_id)
   while not ws.closed:
     await asyncio.sleep(0.1)
     if not game_state.is_synced(agent_id):
       state_sync = game_state.sync_message_for_transmission(agent_id)
       msg = message_from_server.MessageFromServer(datetime.now(), message_from_server.MessageType.STATE_SYNC, None, None, state_sync)
       print(msg)
-      await transmit(request, ws, msg.to_json())
+      await transmit(ws, msg.to_json(), agent_id)
     actions = game_state.drain_actions(agent_id)
     if len(actions) > 0:
       msg = message_from_server.MessageFromServer(datetime.now(), message_from_server.MessageType.ACTIONS, actions, None, None)
-      await transmit(request, ws, msg.to_json())
+      await transmit(ws, msg.to_json(), agent_id)
       
 
 async def receive_agent_updates(request, ws, agent_id):
   global remote_table
   global game_state
-  try:
-    async for msg in ws:
-      if msg.type == aiohttp.WSMsgType.ERROR:
-        closed = True
-        await ws.close()
-        game_state.free_actor(agent_id)
-        del remote_table[request.remote]
-        print('ws connection closed with exception %s' % ws.exception())
-        continue
+  async for msg in ws:
+    if msg.type == aiohttp.WSMsgType.ERROR:
+      closed = True
+      await ws.close()
+      print('ws connection closed with exception %s' % ws.exception())
+      continue
 
-      if msg.type != aiohttp.WSMsgType.TEXT:
-        continue
+    if msg.type != aiohttp.WSMsgType.TEXT:
+      continue
 
-      remote_table[request.remote]["last_message_up"] = time.time()
-      remote_table[request.remote]["bytes_up"] += len(msg.data)
+    remote_table[agent_id]["last_message_up"] = time.time()
+    remote_table[agent_id]["bytes_up"] += len(msg.data)
 
-      if msg.data == 'close':
-        closed = True
-        await ws.close()
-        game_state.free_actor(agent_id)
-        del remote_table[request.remote]
-        continue
+    if msg.data == 'close':
+      closed = True
+      await ws.close()
+      continue
 
-      message = message_to_server.MessageToServer.from_json(msg.data)
-      if message.type == message_to_server.MessageType.ACTIONS:
-        print("Action received. Transmit: {0}, Type: {1}, Actions:")
-        for action in message.actions:
-          print("{0}:{1}".format(action.actor_id, action.destination))
-          game_state.handle_action(agent_id, action)
-      if message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
-        game_state.desync(agent_id)
-  finally:
-    print("Disconnect detected")
-    game_state.free_actor(agent_id)
-    del remote_table[request.remote]
+    message = message_to_server.MessageToServer.from_json(msg.data)
+    if message.type == message_to_server.MessageType.ACTIONS:
+      print("Action received. Transmit: {0}, Type: {1}, Actions:")
+      for action in message.actions:
+        print("{0}:{1}".format(action.actor_id, action.destination))
+        game_state.handle_action(agent_id, action)
+    if message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
+      game_state.desync(agent_id)
 
 @routes.get('/player_endpoint')
 async def PlayerEndpoint(request):
@@ -113,12 +107,15 @@ async def PlayerEndpoint(request):
   global game_state
   ws = web.WebSocketResponse(autoclose=True, heartbeat=1.0, autoping = 1.0)
   await ws.prepare(request)
-  remote_table[request.remote] = {"last_message_up": time.time(), "last_message_down": time.time(), "ip": request.remote, "id":0, "bytes_up": 0, "bytes_down": 0}
+  print("player connected from : " + request.remote)
   agent_id = game_state.create_actor()
-  remote_table[request.remote]["id"] = agent_id
-  await asyncio.gather(receive_agent_updates(request, ws, agent_id), stream_game_state(request, ws, agent_id))
-  game_state.free_actor(agent_id)
-  del remote_table[request.remote]
+  remote_table[agent_id] = {"last_message_up": time.time(), "last_message_down": time.time(), "ip": request.remote, "id":agent_id, "bytes_up": 0, "bytes_down": 0}
+  try:
+    await asyncio.gather(receive_agent_updates(request, ws, agent_id), stream_game_state(request, ws, agent_id))
+  finally:
+    print("Cleanup")
+    game_state.free_actor(agent_id)
+    del remote_table[agent_id]
   return ws
 
 def HashCollectAssets(assets_directory):

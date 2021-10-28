@@ -103,7 +103,7 @@ class State(object):
         for a in self._actors:
             actor = self._actors[a]
             actor_states.append(actor.state())
-        return state_sync.StateSync(actor_states, actor_id)
+        return state_sync.StateSync(len(self._actors), actor_states, actor_id)
         
     # Returns the current state of the game.
     # Calling this message comes with the assumption that the response will be transmitted to the clients.
