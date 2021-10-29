@@ -237,7 +237,7 @@ public class HexGridManager
             {
                 Cell = t.Cell,
                 AssetId = t.AssetId,
-                Model = GameObject.Instantiate(prefab, t.Cell.Center(), Quaternion.identity),
+                Model = GameObject.Instantiate(prefab, t.Cell.Center(), Quaternion.AngleAxis(t.RotationDegrees, new Vector3(0, 1, 0))),
 			};
             UpdateEdgeMap(t);
             _grid[t.Cell.coord.a, t.Cell.coord.r, t.Cell.coord.c] = tile;

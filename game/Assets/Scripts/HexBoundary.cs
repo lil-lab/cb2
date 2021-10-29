@@ -89,6 +89,15 @@ public class HexBoundary
         Edges = 0;
     }
 
+    public void RotateCw(int turns)
+    { 
+        for (int i = 0; i < turns; ++i)
+        {
+            // Perform one binary rotation.
+            Edges = (byte)((Edges >> 5) | (Edges << 1));
+	    }
+    }
+
     // Save the current edge boundary info to a single byte.
     public byte Serialize() { return Edges; }
 

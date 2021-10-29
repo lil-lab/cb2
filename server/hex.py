@@ -112,6 +112,15 @@ class HexBoundary:
         HecsCoord.origin().up_left(): Edges.UPPER_LEFT,
     }
 
+    def rotate_cw(bound, rotation_degrees=0):
+        # We can only rotate by even numbers of 60 degrees.
+        turns = rotation_degrees // 60
+
+        rotated = HexBoundary(bound.edges)
+        rotated.rotate_clockwise(turns)
+        return rotated
+
+
     def set_edge(self, edge):
         self.edges |= 1 << int(edge)
 
@@ -120,6 +129,10 @@ class HexBoundary:
     
     def opposite_edge(self, edge):
         return (edge + 3) % 6
+
+    def rotate_clockwise(self, turns):
+        for i in range(turns):
+                        self.edges = ((self.edges << 1) | (self.edges >> 5)) & 0x3F
 
     def set_edge_between(self, a, b):
         """ Sets the edge between two HECS coordinates, if this cell is at location a and the neighbor is at location b. """

@@ -15,20 +15,23 @@ def HardcodedMap():
 
     # Single ramp at start
     map[2][2] = RampToMountain(2,2)
+    map[2][3] = MountainTile(2,3)
+    map[2][4] = MountainTile(2,4)
+    map[2][5] = MountainTile(2,5)
+    map[2][6] = RampToMountain(2,6, 180)
+    map[3][5] = RampToMountain(3,5, 240)
 
     # Add trees
     map[5][5] = GroundTileTrees(5,5)
-    map[5][7] = GroundTileTrees(5,7)
-    map[6][5] = GroundTileTrees(6,5)
-    map[6][7] = GroundTileTrees(6,7)
+    map[5][7] = GroundTileTrees(5,7, 60)
+    map[6][5] = GroundTileTrees(6,5, 120)
+    map[6][7] = GroundTileTrees(6,7, 180)
 
     # Add rocks
-    map[4][4] = GroundTileRocky(4,4)
-    map[2][5] = GroundTileRocky(2,5)
-    map[2][7] = GroundTileRocky(2,7)
-    map[4][8] = GroundTileRocky(4,8)
-    map[2][9] = GroundTileRocky(2,9)
-    map[5][8] = GroundTileRocky(5,8)
+    map[4][4] = GroundTileRocky(4,4, 60)
+    map[4][8] = GroundTileRocky(4,8, 180)
+    map[2][9] = GroundTileRocky(2,9, 240)
+    map[5][8] = GroundTileRocky(5,8, 300)
     map[6][4] = GroundTileRocky(6,4)
 
     # Add a house.
@@ -70,7 +73,7 @@ def LayerToHeight(layer):
     
     return layer_to_height[layer]
 
-def GroundTile(r, c):
+def GroundTile(r, c, rotation_degrees=0):
     """ Creates a single tile of ground."""
     return Tile(
         AssetId.GROUND_TILE,
@@ -78,10 +81,10 @@ def GroundTile(r, c):
             LayerToHeight(0), # Height (float)
             0,  # Z-Layer (int)
         ),
-        0 # Rotation, degrees.
+        rotation_degrees
     )
 
-def GroundTileRocky(r, c):
+def GroundTileRocky(r, c, rotation_degrees=0):
     """ Creates a single tile of rocky ground."""
     return Tile(
         AssetId.GROUND_TILE_ROCKY,
@@ -89,10 +92,10 @@ def GroundTileRocky(r, c):
             LayerToHeight(0), # Height (float)
             0  # Z-Layer (int)
         ),
-        0 # Rotation, degrees.
+        rotation_degrees
     )
 
-def GroundTileStones(r, c):
+def GroundTileStones(r, c, rotation_degrees=0):
     """ Creates a single tile of ground with stones."""
     return Tile(
         AssetId.GROUND_TILE_STONES,
@@ -100,10 +103,10 @@ def GroundTileStones(r, c):
             LayerToHeight(0), # Height (float)
             0  # Z-Layer (int)
         ),
-        0 # Rotation, degrees.
+        rotation_degrees
     )
 
-def GroundTileTrees(r, c):
+def GroundTileTrees(r, c, rotation_degrees=0):
     """ Creates a single tile of ground with several trees. """
     return Tile(
         AssetId.GROUND_TILE_TREES,
@@ -111,10 +114,10 @@ def GroundTileTrees(r, c):
             LayerToHeight(0), # Height (float)
             0  # Z-Layer (int)
         ),
-        0 # Rotation, degrees.
+        rotation_degrees
     )
 
-def GroundTileSingleTree(r, c):
+def GroundTileSingleTree(r, c, rotation_degrees=0):
     """ Creates a single tile of ground with a tree."""
     return Tile(
         AssetId.GROUND_TILE_TREES_2,
@@ -122,10 +125,10 @@ def GroundTileSingleTree(r, c):
             LayerToHeight(0), # Height (float)
             0  # Z-Layer (int)
         ),
-        0 # Rotation, degrees.
+        rotation_degrees
     )
     
-def GroundTileForest(r, c):
+def GroundTileForest(r, c, rotation_degrees=0):
     """ Creates a single tile of ground with a forest."""
     return Tile(
         AssetId.GROUND_TILE_FOREST,
@@ -133,10 +136,10 @@ def GroundTileForest(r, c):
             LayerToHeight(0), # Height (float)
             0  # Z-Layer (int)
         ),
-        0 # Rotation, degrees.
+        rotation_degrees
     ) 
 
-def GroundTileHouse(r, c):
+def GroundTileHouse(r, c, rotation_degrees=0):
     """ Creates a single tile of ground with a house."""
     return Tile(
         AssetId.GROUND_TILE_HOUSE,
@@ -144,10 +147,10 @@ def GroundTileHouse(r, c):
             LayerToHeight(0), # Height (float)
             0  # Z-Layer (int)
         ),
-        0 # Rotation, degrees.
+        rotation_degrees
     )
     
-def GroundTileStreetLight(r, c):
+def GroundTileStreetLight(r, c, rotation_degrees=0):
     """ Creates a single tile of ground with a street light."""
     return Tile(
         AssetId.GROUND_TILE_STREETLIGHT,
@@ -155,10 +158,10 @@ def GroundTileStreetLight(r, c):
             LayerToHeight(0), # Height (float)
             0  # Z-Layer (int)
         ),
-        0 # Rotation, degrees.
+        rotation_degrees
     )
 
-def MountainTile(r, c):
+def MountainTile(r, c, rotation_degrees=0):
     """ Creates a single tile of mountain."""
     return Tile(
         AssetId.MOUNTAIN_TILE,
@@ -166,18 +169,18 @@ def MountainTile(r, c):
             LayerToHeight(2), # Height (float)
             2  # Z-Layer (int)
         ),
-        0 # Rotation, degrees.
+        rotation_degrees
     )
 
-def RampToMountain(r, c):
+def RampToMountain(r, c, rotation_degrees=0):
     """ Creates a single tile of ramp."""
     return Tile(
         AssetId.RAMP_TO_MOUNTAIN,
-        HexCell(HecsCoord.from_offset(r,c), HexBoundary(0b101101),
+        HexCell(HecsCoord.from_offset(r,c), HexBoundary.rotate_cw(HexBoundary(0b101101), rotation_degrees),
             LayerToHeight(1), # Height (float)
             1  # Z-Layer (int)
         ),
-        0 # Rotation, degrees.
+        rotation_degrees
     )
 
 class HardcodedMapProvider(object):
