@@ -47,10 +47,7 @@ public class HexGridManager
     private IMapSource _mapSource;
     private IAssetSource _assetSource;
 
-    // Used to determine if player can walk through an edge.
-    private HexCell[,,] _edgeMap;
-
-    // A list of all the tiles currently placed in the map.
+    // Map information.
     private Tile[,,] _grid;
 
     // If true, draws debug lines showing boundaries in the edge map.
@@ -67,7 +64,6 @@ public class HexGridManager
         (int rows, int cols) = _mapSource.GetMapDimensions();
         Debug.Log("rows: " + rows + ", cols:" + cols);
         _grid = new Tile[2, rows / 2, cols];
-        _edgeMap = new HexCell[2, rows / 2, cols];
 
         // Pre-initialize the edge map to be all-empty.
         for (int r = 0; r < rows; r++)
@@ -78,7 +74,8 @@ public class HexGridManager
                 int hecsR = r / 2;
                 int hecsC = c;
 
-                _edgeMap[hecsA, hecsR, hecsC] = new HexCell(
+                _grid[hecsA, hecsR, hecsC] = new Tile();
+                _grid[hecsA, hecsR, hecsC].Cell = new HexCell(
                     new HecsCoord(hecsA, hecsR, hecsC), new HexBoundary());
             }
         }
@@ -94,8 +91,9 @@ public class HexGridManager
         UpdateMap();
         if (_debugEdges)
 	    { 
-	        foreach (HexCell c in _edgeMap)
+	        foreach (Tile t in _grid)
 		    {
+                HexCell c = t.Cell;
                 if (c.boundary.Serialize() == 0) continue;
                 if (!c.coord.Equals(HecsCoord.FromOffsetCoordinates(0, 0)))
                     continue;
@@ -130,7 +128,7 @@ public class HexGridManager
 
     public bool EdgeBetween(HecsCoord a, HecsCoord b)
     {
-        return _edgeMap[a.a, a.r, a.c].boundary.GetEdgeWith(a, b);
+        return _grid[a.a, a.r, a.c].Cell.boundary.GetEdgeWith(a, b);
     }
 
     public bool in_grid(HecsCoord a)
@@ -160,7 +158,7 @@ public class HexGridManager
 
     public HexCell Cell(HecsCoord a)
     {
-        return _edgeMap[a.a, a.r, a.c];
+        return _grid[a.a, a.r, a.c].Cell;
     }
 
     private bool CoordInMap(HecsCoord c)
@@ -178,18 +176,25 @@ public class HexGridManager
     // Updates the edge boundary map for a single cell.
     private void UpdateCellEdges(HexCell t)
     {
-        var cell = _edgeMap[t.coord.a, t.coord.r, t.coord.c];
-	    cell.boundary.MergeWith(t.boundary);
+        var cell = _grid[t.coord.a, t.coord.r, t.coord.c].Cell;
+        cell.boundary = t.boundary;
 
         // Edge map symmetry must be retained. That is -- if cell B has an edge
         // boundary with A, then A must also have a matching boundary with B.
-        // Update neighbor cell boundaries to match.
+        // Update neighbor cell boundaries to match. Remove neighboring boundaries if
+        // the edge is unblocked in the new cell.
         HecsCoord[] neighbors = t.coord.Neighbors();
         foreach (HecsCoord n in neighbors)
         {
             if (!CoordInMap(n)) continue;
-            if (!cell.boundary.GetEdgeWith(t.coord, n)) continue;
-            _edgeMap[n.a, n.r, n.c].boundary.SetEdgeWith(n, t.coord);
+            if (cell.boundary.GetEdgeWith(t.coord, n))
+            {
+		        _grid[n.a, n.r, n.c].Cell.boundary.SetEdgeWith(n, t.coord);
+	        }
+            else 
+	        { 
+                _grid[n.a, n.r, n.c].Cell.boundary.ClearEdgeWith(n, t.coord);
+	        }
         }
     }
 

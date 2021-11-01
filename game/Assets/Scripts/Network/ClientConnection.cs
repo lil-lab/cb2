@@ -38,41 +38,9 @@ namespace Network
             return _webSocket.State.HasFlag(WebSocketState.Closed);
 	    }
 
-        public void TransmitAction(int actorId, ActionQueue.IAction action)
+        public void TransmitAction(int id, ActionQueue.IAction action)
         {
-            Network.ActionType actionType;
-            // TODO(sharf): We shouldn't have an aliasing between animation and action types. Clean this up later...
-            switch(action.Info().Type)
-            {
-                case ActionQueue.AnimationType.INSTANT:
-                    actionType = Network.ActionType.INSTANT;
-                    break;
-                case ActionQueue.AnimationType.TRANSLATE:
-                    actionType = Network.ActionType.TRANSLATE;
-                    break;
-                case ActionQueue.AnimationType.WALKING:
-                    actionType = Network.ActionType.TRANSLATE;
-                    break;
-                case ActionQueue.AnimationType.ROTATE:
-                    actionType = Network.ActionType.ROTATE;
-                    break;
-                default:
-                    Debug.Log("Unknown action type encountered. Defaulting to instant.");
-                    actionType = Network.ActionType.INSTANT;
-                    break;
-	        }
-            _actionQueue.Enqueue(new Network.Action()
-            {
-                ActorId = actorId,
-                ActionType = actionType,
-                AnimationType = (Network.AnimationType)action.Info().Type,
-                Start = action.Info().Start,
-                Destination = action.Info().Destination,
-                StartHeading = action.Info().StartHeading,
-                DestinationHeading = action.Info().DestinationHeading,
-                DurationS = action.Info().DurationS,
-                Expiration = action.Info().Expiration.ToString("o")
-            }); ;
+            _actionQueue.Enqueue(action.Packet(id));
 	    }
 
         public async void Reconnect()
@@ -147,6 +115,7 @@ namespace Network
                 toServer.Type = MessageToServer.MessageType.ACTIONS;
                 toServer.Actions = actionsForServer;
                 toServer.TransmitTime = DateTime.Now.ToString("o");
+                Debug.Log(JsonUtility.ToJson(toServer));
                 await _webSocket.SendText(JsonUtility.ToJson(toServer));
             }
         }

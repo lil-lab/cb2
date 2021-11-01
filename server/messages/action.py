@@ -9,9 +9,10 @@ from marshmallow import fields
 import dateutil.parser
 
 class ActionType(Enum):
-    INSTANT = 0
-    ROTATE = 1
-    TRANSLATE = 2
+    INIT = 0
+    INSTANT = 1
+    ROTATE = 2
+    TRANSLATE = 3
 
 class AnimationType(Enum):
     IDLE = 0
@@ -25,13 +26,11 @@ class AnimationType(Enum):
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
 class Action:
-    actor_id: int
+    id: int
     action_type: ActionType
     animation_type: AnimationType
-    start: HecsCoord
-    destination: HecsCoord
-    start_heading: float
-    destination_heading: float
+    displacement: HecsCoord
+    rotation: float
     duration_s: float
     expiration: datetime = field(
         metadata=config(

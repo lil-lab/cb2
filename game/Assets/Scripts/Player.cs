@@ -32,14 +32,10 @@ public class Player : MonoBehaviour
     {
 	    if (ForceStartingPosition)
 	    {
-	       	 // Set the starting location by enqueuing a teleport to the target location.
-	       	 var startingLocation = new ActionQueue.ActionInfo
-	       	 {
-	       	     Type = ActionQueue.AnimationType.INSTANT,
-	       	     Destination = HecsCoord.FromOffsetCoordinates(StartingRow, StartingCol),
-	       	     DestinationHeading = 0
-	       	 };
-	       	 _actor.AddAction(new Instant(startingLocation));
+            _actor.AddAction(
+		        Init.InitAt(
+		            HecsCoord.FromOffsetCoordinates(StartingRow,
+		                                            StartingCol), 0));
 	    }
     }
 
@@ -85,70 +81,34 @@ public class Player : MonoBehaviour
         if (UpKey() && 
 	        !grid.EdgeBetween(_actor.Location(), forwardLocation))
         { 
-            var animationInfo = new ActionQueue.ActionInfo()
-            {
-                Type = ActionQueue.AnimationType.WALKING,
-                Destination = forwardLocation,
-                DestinationHeading = _actor.HeadingDegrees(),
-                Start = _actor.Location(),
-                StartHeading = _actor.HeadingDegrees(),
-                Expiration = System.DateTime.Now.AddSeconds(10),
-                DurationS = 1 / MoveSpeed,
-            };
-            Translate action = new Translate(animationInfo);
+            Translate action = Translate.Walk(
+		        HecsCoord.ORIGIN.NeighborAtHeading(_actor.HeadingDegrees()),
+		                                           1 / MoveSpeed);
             _actor.AddAction(action);
             _network.TransmitAction(action);
             return;
 	    }
         if (DownKey() &&
 	        !grid.EdgeBetween(_actor.Location(), backLocation))
-        { 
-            var animationInfo = new ActionQueue.ActionInfo()
-            {
-                Type = ActionQueue.AnimationType.WALKING,
-                Destination = backLocation,
-                DestinationHeading = _actor.HeadingDegrees(),
-                Start = _actor.Location(),
-                StartHeading = _actor.HeadingDegrees(),
-                Expiration = System.DateTime.Now.AddSeconds(10),
-                DurationS = 1 / MoveSpeed,
-            };
-            Translate action = new Translate(animationInfo);
+        {
+            Translate action = Translate.Walk(
+		        HecsCoord.ORIGIN.NeighborAtHeading(
+		            _actor.HeadingDegrees() + 180), 1 / MoveSpeed);
             _actor.AddAction(action);
             _network.TransmitAction(action);
             return;
 	    }
         if (LeftKey())
         {
-            var animationInfo = new ActionQueue.ActionInfo()
-            {
-                Type = ActionQueue.AnimationType.ROTATE,
-                Destination = _actor.Location(),
-                DestinationHeading = _actor.HeadingDegrees() - 60.0f,
-                Start = _actor.Location(),
-                StartHeading = _actor.HeadingDegrees(),
-                Expiration = System.DateTime.Now.AddSeconds(10),
-                DurationS = 1 / TurnSpeed,
-            };
 		    Debug.Log("Heading: " + (_actor.HeadingDegrees() - 60.0f));
-            Rotate action = new Rotate(animationInfo);
+            Rotate action = Rotate.Turn(-60.0f, 1 / TurnSpeed);
             _actor.AddAction(action);
             _network.TransmitAction(action);
             return;
 	    }
         if (RightKey())
         {
-            var animationInfo = new ActionQueue.ActionInfo()
-            {
-                Type = ActionQueue.AnimationType.ROTATE,
-                Destination = _actor.Location(),
-                DestinationHeading = _actor.HeadingDegrees() + 60.0f,
-                Start = _actor.Location(),
-                StartHeading = _actor.HeadingDegrees(),
-                Expiration = System.DateTime.Now.AddSeconds(10),
-                DurationS = 1 / TurnSpeed,
-            };
-            Rotate action = new Rotate(animationInfo);
+            Rotate action = Rotate.Turn(60.0f, 1 / TurnSpeed);
             _actor.AddAction(action);
             _network.TransmitAction(action);
             return;
@@ -158,33 +118,33 @@ public class Player : MonoBehaviour
     private bool UpKey()
     {
 	    bool keyboard = Input.GetKey(KeyCode.UpArrow);
-	    bool gamepad = Input.GetAxis("Axis 6") < -0.2;
-	    bool gamepad_dpad = Input.GetAxis("Axis 10") < -0.2;
-		return keyboard || gamepad || gamepad_dpad;
+	    // bool gamepad = Input.GetAxis("Axis 6") < -0.2;
+	    // bool gamepad_dpad = Input.GetAxis("Axis 10") < -0.2;
+        return keyboard;  // || gamepad || gamepad_dpad;
 	}
 
     private bool DownKey()
 	{
 	    bool keyboard = Input.GetKey(KeyCode.DownArrow);
-	    bool gamepad = Input.GetAxis("Axis 6") > 0.2;
-	    bool gamepad_dpad = Input.GetAxis("Axis 10") > 0.2;
-		return keyboard || gamepad || gamepad_dpad;
+        // bool gamepad = Input.GetAxis("Axis 6") > 0.2;
+        // bool gamepad_dpad = Input.GetAxis("Axis 10") > 0.2;
+        return keyboard;  // || gamepad || gamepad_dpad;
 	}
 
     private bool LeftKey()
 	{
 	    bool keyboard = Input.GetKey(KeyCode.LeftArrow);
-	    bool gamepad = Input.GetAxis("Axis 5") < -0.2;
-	    bool gamepad_dpad = Input.GetAxis("Axis 9") < -0.2;
-		return keyboard || gamepad || gamepad_dpad;
+	    // bool gamepad = Input.GetAxis("Axis 5") < -0.2;
+	    // bool gamepad_dpad = Input.GetAxis("Axis 9") < -0.2;
+        return keyboard; // || gamepad || gamepad_dpad;
 	}
 
     private bool RightKey()
 	{
 	    bool keyboard = Input.GetKey(KeyCode.RightArrow);
-	    bool gamepad = Input.GetAxis("Axis 5") > 0.2;
-	    bool gamepad_dpad = Input.GetAxis("Axis 9") > 0.2;
-		return keyboard || gamepad || gamepad_dpad;
+        // bool gamepad = Input.GetAxis("Axis 5") > 0.2;
+        // bool gamepad_dpad = Input.GetAxis("Axis 9") > 0.2;
+        return keyboard;  // || gamepad || gamepad_dpad;
 	}
 
     private float Scale()

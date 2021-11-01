@@ -22,7 +22,6 @@ namespace Network
         public MessageType Type;
 
         public List<Action> Actions;
-
     }
 
 }  // namespace Network

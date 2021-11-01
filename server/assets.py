@@ -13,3 +13,6 @@ class AssetId(Enum):
     GROUND_TILE_STREETLIGHT = 9
     MOUNTAIN_TILE = 10
     RAMP_TO_MOUNTAIN = 11
+    CARD_BASE_1 = 12
+    CARD_BASE_2 = 13
+    CARD_BASE_3 = 14

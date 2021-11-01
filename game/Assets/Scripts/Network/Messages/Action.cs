@@ -5,9 +5,12 @@ namespace Network
     [Serializable]
     public enum ActionType
     {
-        INSTANT = 0,
+        INIT = 0,
+        INSTANT,
         ROTATE,
         TRANSLATE,
+        OUTLINE_ON,
+        OUTLINE_OFF,
     }
 
     [Serializable]
@@ -25,15 +28,12 @@ namespace Network
     [Serializable]
     public class Action
     {
-        public int ActorId;
+        public int Id;
         public ActionType ActionType;
         public AnimationType AnimationType;
-        public HecsCoord Start;
-        public HecsCoord Destination;
-        public float StartHeading;  // Degrees. 0 = North. Clockwise increasing.
-        public float DestinationHeading;
+        public HecsCoord Displacement;
+        public float Rotation;  // Heading Degrees. 0 = North, CW.
         public float DurationS;
         public string Expiration;  // DateTime in ISO 8601.
     }
-
 }  // namespace Network

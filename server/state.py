@@ -55,6 +55,9 @@ class State(object):
                 actor.step()
     
     def handle_action(self, actor_id, action):
+        if (action.id != actor_id):
+            self.desync(actor_id)
+            return
         self._actors[actor_id].add_action(action)
     
     def create_actor(self):
@@ -156,5 +159,5 @@ class Actor(object):
         if self.empty():
             return 
         action = self._actions.get()
-        self._location = action.destination
-        self._heading_degrees = int(action.destination_heading)
+        self._location = HecsCoord.add(self._location, action.displacement)
+        self._heading_degrees += action.rotation

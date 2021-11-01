@@ -79,6 +79,14 @@ public class HexBoundary
         Edges |= (byte)LOC_TO_EDGE[displacement];
     }
 
+    // Similar to SetEdgeWith, but clears the corresponding edge.
+    public void ClearEdgeWith(HecsCoord loc, HecsCoord neighbor)
+    { 
+        HecsCoord displacement = HecsCoord.Sub(neighbor, loc);
+        if (!LOC_TO_EDGE.ContainsKey(displacement)) return;
+        Edges &= ((byte)~LOC_TO_EDGE[displacement]);
+    }
+
     public void AllBlocked()
     {
         Edges = 0xFF;

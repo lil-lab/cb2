@@ -17,7 +17,10 @@ public class UnityAssetSource : IAssetSource
         "Prefab/Tiles/GroundTile_House",
         "Prefab/Tiles/GroundTile_StreetLight",
         "Prefab/Mountain/M_Mountain_0Side",
-        "Prefab/Tiles/RampTile"
+        "Prefab/Tiles/RampTile",
+        "Prefab/Cards/CardBase_1",
+        "Prefab/Cards/CardBase_2",
+        "Prefab/Cards/CardBase_3",
     };
 
     public GameObject Load(IAssetSource.AssetId assetId)
@@ -29,4 +32,6 @@ public class UnityAssetSource : IAssetSource
 	    }
         return obj;
     }
+
+
 }

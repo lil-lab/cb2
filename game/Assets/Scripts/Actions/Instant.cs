@@ -1,42 +1,49 @@
 ﻿using System;
 using UnityEngine;
 
+// Instant instantly applies the given action.
 public class Instant : ActionQueue.IAction
 {
     private ActionQueue.ActionInfo _info;
-    private DateTime _start;
-    private HexGrid _grid;
 
     public Instant(ActionQueue.ActionInfo info)
     {
         _info = info;
-        GameObject obj = GameObject.FindWithTag(HexGrid.TAG);
-        _grid = obj.GetComponent<HexGrid>();
+    }
+    
+    public float DurationS() { return _info.DurationS;  }
+    public DateTime Expiration() { return _info.Expiration;  }
+
+    public State.Continuous Interpolate(State.Discrete initialConditions, float progress)
+    {
+        State.Discrete end = Transfer(initialConditions);
+        
+        State.Continuous interp = new State.Continuous();
+        interp.Position = end.Vector();
+        interp.HeadingDegrees = end.HeadingDegrees;
+        interp.BorderRadius = end.BorderRadius;
+        interp.Animation = _info.Type;
+        return interp; 
     }
 
-    public void Start()
+    public State.Discrete Transfer(State.Discrete s)
     {
-        _start = DateTime.Now;
+        s.Coord = HecsCoord.Add(s.Coord, _info.Displacement);
+        s.HeadingDegrees += _info.Rotation;
+        return s;
     }
 
-    public ActionQueue.ActionInfo Info() { return _info;  }
-
-    public void Update() { }
-
-    public float Heading()
+    public Network.Action Packet(int id)
     {
-        return _info.StartHeading;
-    }
-
-    public Vector3 Location()
-    {
-        (float dx, float dz) = _info.Destination.Cartesian();
-        // I'm going to need to get the ground location...
-        return new Vector3(dx, _grid.Height(_info.Destination), dz);
-    }
-
-    public bool IsDone()
-    {
-        return true;
+        return new Network.Action()
+        {
+            Id = id,
+            ActionType = Network.ActionType.INSTANT,
+            AnimationType = (Network.AnimationType)_info.Type,
+            Displacement = _info.Displacement,
+            Rotation = _info.Rotation,
+            DurationS = _info.DurationS,
+            Expiration = _info.Expiration.ToString("o"),
+        };
     }
 }

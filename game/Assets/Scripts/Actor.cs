@@ -3,8 +3,7 @@ using UnityEngine;
 
 public class Actor
 {
-    private ActionQueue _actionQueue;
-    private GameObject _asset;
+    private Prop _prop;
 
     // If _debuggingEnabled is true, these 3 boxes indicate the actor's heading.
     private bool _debuggingEnabled;
@@ -18,13 +17,11 @@ public class Actor
         GameObject asset = assetLoader.Load((IAssetSource.AssetId)netActor.AssetId);
         Actor actor = new Actor(asset);
         // Instantly move the actor to its starting location.
-        actor.AddAction(new Instant(new ActionQueue.ActionInfo()
+        actor.AddAction(new Init(new ActionQueue.ActionInfo()
         {
             Type = ActionQueue.AnimationType.IDLE,
-            Start = netActor.Location,
-            Destination = netActor.Location,
-            StartHeading = netActor.RotationDegrees,
-            DestinationHeading = netActor.RotationDegrees,
+            Displacement = netActor.Location,
+            Rotation = netActor.RotationDegrees,
             DurationS = 0.001f,
             Expiration = DateTime.MaxValue,
         }));
@@ -33,23 +30,22 @@ public class Actor
 
     public Actor(GameObject prefab)
     {
-        _actionQueue = new ActionQueue();
-        _asset = GameObject.Instantiate(prefab, new Vector3(0, 0, 0), Quaternion.identity);
+        _prop = new Prop(prefab);
         _debuggingEnabled = false;
     }
 
     // Returns true if the actor is in the middle of an action.
-    public bool IsBusy() { return _actionQueue.IsBusy(); }
+    public bool IsBusy() { return _prop.IsBusy(); }
 
     // Returns the actor's current location (or destination, if busy).
-    public HecsCoord Location() { return _actionQueue.TargetLocation();  }
+    public HecsCoord Location() { return _prop.Location();  }
 
     // Returns the actor's current heading (or destination, if rotating).
-    public float HeadingDegrees() { return _actionQueue.TargetHeading();  }
+    public float HeadingDegrees() { return _prop.HeadingDegrees();  }
 
     public void SetParent(GameObject parent)
     {
-        _asset.transform.SetParent(parent.transform, false);
+        _prop.SetParent(parent);
     }
 
     public void EnableDebugging()
@@ -75,43 +71,31 @@ public class Actor
 
     public void SetTag(string tag)
     {
-        _asset.tag = tag;
+        _prop.SetTag(tag);
     }
 
     public void Update()
     {
         if (_debuggingEnabled) { DrawHeading(); }
 
-        _actionQueue.Update();
-
-        // Update current location, orientation, and animation based on action queue.
-        _asset.transform.position = Scale() * _actionQueue.ImmediateLocation() + new Vector3(0, Scale() * 0.1f, 0);
-        _asset.transform.rotation = Quaternion.AngleAxis(_actionQueue.ImmediateHeading(), new Vector3(0, 1, 0));
-        Animation animation = _asset.GetComponentInChildren<Animation>();
-        if (_actionQueue.ImmediateAnimation() == ActionQueue.AnimationType.WALKING)
-        {
-            animation.Play("Armature|Walking");
-        } else if (_actionQueue.ImmediateAnimation() == ActionQueue.AnimationType.IDLE) {
-            // Fade into idle, to remove artifacts if we're in the middle of another animation.
-            animation.CrossFade("Armature|Idle", 0.3f);
-        }
+        _prop.Update();
     }
 
     // Flushes actions and deallocates the assets for this object.
     public void Destroy()
     {
-        GameObject.Destroy(_asset);
+        _prop.Destroy();
     }
 
     // Flushes actions in flight.
     public void Flush()
     {
-        _actionQueue.Flush();
+        _prop.Flush();
     }
 
     public void AddAction(ActionQueue.IAction action)
     {
-        _actionQueue.AddAction(action);
+        _prop.AddAction(action);
     }
 
     private float Scale()
@@ -124,13 +108,13 @@ public class Actor
     private void DrawHeading()
     {
         // Draw UR and heading debug lines.
-        (float urx, float urz) = _actionQueue.TargetLocation().UpRight().Cartesian();
+        (float urx, float urz) = _prop.Location().UpRight().Cartesian();
         _upperRight.transform.position = new Vector3(urx, 0.1f, urz) * Scale();
-        (float rx, float rz) = _actionQueue.TargetLocation().Right().Cartesian();
+        (float rx, float rz) = _prop.Location().Right().Cartesian();
         _right.transform.position = new Vector3(rx, 0.1f, rz) * Scale();
         _right.GetComponent<Renderer>().material.color = Color.blue;
 
-        (float hx, float hz) = _actionQueue.TargetLocation().NeighborAtHeading(_actionQueue.TargetHeading()).Cartesian();
+        (float hx, float hz) = _prop.Location().NeighborAtHeading(_prop.HeadingDegrees()).Cartesian();
         _facing.transform.position = new Vector3(hx, 0.1f, hz) * Scale();
     }
 }

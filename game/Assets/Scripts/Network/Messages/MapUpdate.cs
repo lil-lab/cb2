@@ -18,6 +18,4 @@ namespace Network
         public int Cols;
         public Tile[] Tiles;
     }
-
-
 }  // namespace Network

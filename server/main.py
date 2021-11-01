@@ -96,7 +96,7 @@ async def receive_agent_updates(request, ws, agent_id):
     if message.type == message_to_server.MessageType.ACTIONS:
       print("Action received. Transmit: {0}, Type: {1}, Actions:")
       for action in message.actions:
-        print("{0}:{1}".format(action.actor_id, action.destination))
+        print("{0}:{1}".format(action.id, action.displacement))
         game_state.handle_action(agent_id, action)
     if message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
       game_state.desync(agent_id)

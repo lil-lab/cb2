@@ -18,6 +18,9 @@ public interface IAssetSource
 	     GROUND_TILE_STREETLIGHT,
          MOUNTAIN_TILE,
          RAMP_TO_MOUNTAIN,
+		 CARD_BASE_1,
+		 CARD_BASE_2,
+		 CARD_BASE_3,
     }
 
 	// Returns a prefab of the requested asset.

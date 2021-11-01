@@ -23,10 +23,8 @@ public class ActionQueue
     public class ActionInfo
     {
         public AnimationType Type;
-        public HecsCoord Start;  // Where the move starts from.
-        public HecsCoord Destination;  // Where the object should end up.
-        public float StartHeading;  // Heading in degrees, 0 = north, clockwise around.
-        public float DestinationHeading;  // Heading, 0 = north, clockwise.
+        public HecsCoord Displacement;  // Object displacement in HECS coords.
+        public float Rotation;  // Heading in degrees, 0 = north, clockwise.
         public float DurationS;  // Duration in seconds.
         public DateTime Expiration;  // If the action delays past this deadline, fastforward to next action.
     };
@@ -37,25 +35,35 @@ public class ActionQueue
     // object mesh changes (leg action motion, etc) as the object moves.
     public interface IAction
     {
-        void Start();
-        ActionInfo Info();
-        void Update();
-        Vector3 Location();
-        float Heading();
-        bool IsDone();
+        // Calculate intermediate state, given initial conditions and progress.
+	    // 
+	    // progress represents the action's completion (1.0 = completely done).
+        State.Continuous Interpolate(State.Discrete initialConditions,
+	                                 float progress);
+        // Calculate the next state, given the current state and an action.
+        State.Discrete Transfer(State.Discrete s);
+        // Action's duration in seconds.
+        float DurationS();
+        // Action's expiration date in system time.
+        DateTime Expiration();
+        // Convert this action to a packet that can be sent over the network.
+        Network.Action Packet(int id);
     }
 
     private Queue<IAction> _actionQueue;
-    private HecsCoord _location;  // Current loc or destination of current action.
-    private float _heading;  // Current heading (or desination of current action).
+    private State.Discrete _state;
+    private State.Discrete _targetState;
     private bool _actionInProgress;
+    private DateTime _actionStarted;
+    private float _progress;  // Progress of the current action. 0 -> 1.0f.
     private HexGrid _grid;
 
     public ActionQueue()
     {
         _actionQueue = new Queue<IAction>();
         _actionInProgress = false;
-        _location = new HecsCoord(0, 0, 0);
+        _state = new State.Discrete();
+        _targetState = new State.Discrete();
     }
 
     // Adds a move to the queue.
@@ -65,93 +73,83 @@ public class ActionQueue
 	    {
             return;
 	    }
+        _targetState = action.Transfer(_targetState);
         _actionQueue.Enqueue(action);
     }
 
     // Is the object in the middle of a action.
     public bool IsBusy()
     {
-        return _actionQueue.Count != 0;
+        return _actionInProgress;
     }
 
-    public float ImmediateHeading()
+    public int PendingActions()
+    {
+        return _actionQueue.Count;
+    }
+
+    public State.Continuous ContinuousState()
     { 
         if (IsBusy())
 	    {
-            return _actionQueue.Peek().Heading();
+            return _actionQueue.Peek().Interpolate(_state, _progress);
 	    }
-        return _heading;
+        return _state.Continuous();
     } 
 
-    // The current location at this moment, including coordinates along the path
-    // if the object is moving.
-    public Vector3 ImmediateLocation()
+    public State.Discrete State()
     {
-        // If we're moving, return the current action location.
-        if (IsBusy())
-        {
-            return _actionQueue.Peek().Location();
-        }
-        (float x, float z) = _location.Cartesian();
-
-        // Fetch a reference to the grid for the height map.
-        GameObject obj = GameObject.FindGameObjectWithTag(HexGrid.TAG);
-        if (obj == null)
-        {
-            Debug.Log("ActionQueue could not find grid tagged with: " + HexGrid.TAG);
-            return new Vector3(x, 0, z);
-        }
-
-        _grid = obj.GetComponent<HexGrid>();
-        return new Vector3(x, _grid.Height(_location), z);
+        return _state;
     }
 
-    // Return the current animation type.
-    public AnimationType ImmediateAnimation() { 
-        if (IsBusy()) {
-            return _actionQueue.Peek().Info().Type;
-	    }
-        return AnimationType.IDLE;
-    }
-
-    public HecsCoord TargetLocation()
+    public State.Discrete TargetState()
     {
-        return _location;
-    }
-
-    public float TargetHeading()
-    {
-        return _heading;
+        return _targetState;
     }
 
     // Wipe all current actions.
     public void Flush()
     {
-        _actionQueue.Clear(); 
+        _actionQueue.Clear();
+        _actionInProgress = false;
+        _progress = 0.0f;
+        _targetState = _state;
     }
 
     public void Update()
     { 
         // If there's no animation in progress, begin the next animation in the queue.
         if (_actionQueue.Count > 0 && !_actionInProgress) {
-            _actionQueue.Peek().Start();
-            _actionInProgress = true;
+			_progress = 0.0f;
+			_actionStarted = DateTime.Now;
+			_actionInProgress = true;
+            Debug.Log("Starting action");
 	    }
 
-        // Flush any finished animations.
-        while (_actionQueue.Count > 0 && _actionQueue.Peek().IsDone())
+        // Immediately skip any expired animations.
+        if (_actionInProgress && (DateTime.Now > _actionQueue.Peek().Expiration()))
 	    {
-            // Even if we're fast-forwarding through an expired animation, the
-	        // resulting location/heading should be kept.
-            _location = _actionQueue.Peek().Info().Destination;
-            _heading = _actionQueue.Peek().Info().DestinationHeading;
+            Debug.Log("Fast-forwarding expired action");
+            _state = _actionQueue.Peek().Transfer(_state);
             _actionQueue.Dequeue();
             _actionInProgress = false;
 	    }
 
-        if (_actionQueue.Count == 0) return;
-
+        // Convert to milliseconds for higher-resolution progress.
         if (_actionInProgress)
-		    _actionQueue.Peek().Update();
+        {
+            _progress = ((DateTime.Now - _actionStarted).Milliseconds) /
+                        (_actionQueue.Peek().DurationS() * 1000.0f);
+        }
+
+        // End the current action when progress >= 1.0.
+        if (_actionInProgress && _progress >= 1.0)
+        {
+            Debug.Log("Ending action w/ progress: " + _progress);
+            _state = _actionQueue.Peek().Transfer(_state);
+            _actionQueue.Dequeue();
+            _actionInProgress = false;
+	    }
     }
+
 }

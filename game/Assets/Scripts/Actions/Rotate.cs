@@ -3,48 +3,64 @@ using UnityEngine;
 
 public class Rotate : ActionQueue.IAction
 {
+    public static Rotate Turn(float rotation, float durationS)
+    {
+        return new Rotate(
+            new ActionQueue.ActionInfo()
+            {
+                Type = ActionQueue.AnimationType.ROTATE,
+                Displacement = HecsCoord.ORIGIN,
+                Rotation = rotation,
+                DurationS = durationS,
+                Expiration = DateTime.Now.AddSeconds(10),
+            }
+        );
+    }
+
     private ActionQueue.ActionInfo _info;
-    private float _heading;
-    private DateTime _start;
-    private HexGrid _grid;
 
     public Rotate(ActionQueue.ActionInfo info)
     {
         _info = info;
-        GameObject obj = GameObject.FindWithTag(HexGrid.TAG);
-        _grid = obj.GetComponent<HexGrid>();
+    }
+    
+    public float DurationS() { return _info.DurationS;  }
+    public DateTime Expiration() { return _info.Expiration;  }
+
+    public State.Continuous Interpolate(State.Discrete initialConditions, float progress)
+    {
+        // Cap progress at 1.0f.
+        if (progress > 1.0f) progress = 1.0f;
+
+        State.Discrete end = Transfer(initialConditions);
+        
+        State.Continuous interp = new State.Continuous();
+        interp.Position = initialConditions.Vector();
+        interp.HeadingDegrees = initialConditions.HeadingDegrees
+	                            + _info.Rotation * progress; 
+        interp.BorderRadius = initialConditions.BorderRadius;
+        interp.Animation = _info.Type;
+        return interp; 
     }
 
-    public void Start()
+    public State.Discrete Transfer(State.Discrete s)
     {
-        _start = DateTime.Now;
+        s.HeadingDegrees += _info.Rotation;
+        return s;
     }
 
-    public ActionQueue.ActionInfo Info() { return _info; }
-
-    public void Update()
+    public Network.Action Packet(int id)
     {
-        float progress =
-            (float)((DateTime.Now - _start).TotalSeconds / _info.DurationS);
-        _heading = Mathf.Lerp(_info.StartHeading, _info.DestinationHeading, progress);
-    }
-
-    public float Heading()
-    {
-        return _heading;
-    }
-
-    public Vector3 Location()
-    {
-        (float x, float z) = _info.Start.Cartesian();
-        return new Vector3(x, _grid.Height(_info.Start), z);
-    }
-
-    public bool IsDone()
-    {
-        if ((DateTime.Now - _start).TotalSeconds > _info.DurationS) return true;
-        if (DateTime.Now > _info.Expiration) return true;
-        return false;
+        return new Network.Action()
+        {
+            Id = id,
+            ActionType = Network.ActionType.ROTATE,
+            AnimationType = (Network.AnimationType)_info.Type,
+            Displacement = HecsCoord.ORIGIN,
+            Rotation = _info.Rotation,
+            DurationS = _info.DurationS,
+            Expiration = _info.Expiration.ToString("o"),
+        };
     }
 }
 

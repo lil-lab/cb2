@@ -35,12 +35,12 @@ namespace Network
 				foreach (Network.Action networkAction in message.Actions)
 				{
 					ActionQueue.IAction action = ActionFromNetwork(networkAction);
-					if (networkAction.ActorId == _activeActorId)
+					if (networkAction.Id == _activeActorId)
 					{
 						_player.ValidateHistory(action);
 						continue;
 					}
-					_actorManager.AddAction(networkAction.ActorId, action);
+					_actorManager.AddAction(networkAction.Id, action);
 				}
 			}
 			if (message.Type == MessageFromServer.MessageType.STATE_SYNC)
@@ -82,13 +82,11 @@ namespace Network
 
 		private ActionQueue.IAction TeleportToStartState(Network.StateSync.Actor actorState)
 		{
-			return new Instant(new ActionQueue.ActionInfo()
+			return new Init(new ActionQueue.ActionInfo()
 			{
 				Type = ActionQueue.AnimationType.IDLE,
-				Start = actorState.Location,
-				Destination = actorState.Location,
-				StartHeading = actorState.RotationDegrees,
-				DestinationHeading = actorState.RotationDegrees,
+				Displacement = actorState.Location,
+				Rotation = actorState.RotationDegrees,
 				DurationS = 0.001f,
 				Expiration = DateTime.MaxValue,
 			});
@@ -101,16 +99,17 @@ namespace Network
 			ActionQueue.ActionInfo info = new ActionQueue.ActionInfo()
 			{
 				Type = (ActionQueue.AnimationType)networkAction.AnimationType,
-				Start = networkAction.Start,
-				Destination = networkAction.Destination,
-				StartHeading = networkAction.StartHeading,
-				DestinationHeading = networkAction.DestinationHeading,
+				Displacement = networkAction.Displacement,
+				Rotation = networkAction.Rotation,
 				DurationS = networkAction.DurationS,
 				Expiration = expiration,
 			};
 			ActionQueue.IAction action;
 			switch (networkAction.ActionType)
 			{
+				case ActionType.INIT:
+					action = new Init(info);
+					break;
 				case ActionType.INSTANT:
 					action = new Instant(info);
 					break;

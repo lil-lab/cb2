@@ -6,7 +6,7 @@ using UnityEngine;
 //
 // The neighbor direction functions only make sense if this is a pointy-top 
 [Serializable]
-public class HecsCoord
+public struct HecsCoord
 {
     public int a, r, c;
 
@@ -109,13 +109,8 @@ public class HecsCoord
     {
         return (a, r, c).GetHashCode();
     }
-    public override bool Equals(object obj)
-    {
-        return Equals(obj as HecsCoord);
-    }
     public bool Equals(HecsCoord obj)
     {
-        if (obj == null) return false;
         var rhs = (obj.a, obj.r, obj.c);
         var lhs = (a, r, c);
         return lhs == rhs;
