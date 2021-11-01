@@ -82,7 +82,7 @@ public class Player : MonoBehaviour
         HecsCoord forwardLocation = _actor.Location().NeighborAtHeading(_actor.HeadingDegrees());
         HecsCoord backLocation = _actor.Location().NeighborAtHeading(_actor.HeadingDegrees() + 180);
 
-        if (Input.GetKey(KeyCode.UpArrow) &&
+        if (UpKey() && 
 	        !grid.EdgeBetween(_actor.Location(), forwardLocation))
         { 
             var animationInfo = new ActionQueue.ActionInfo()
@@ -100,7 +100,7 @@ public class Player : MonoBehaviour
             _network.TransmitAction(action);
             return;
 	    }
-        if (Input.GetKey(KeyCode.DownArrow) &&
+        if (DownKey() &&
 	        !grid.EdgeBetween(_actor.Location(), backLocation))
         { 
             var animationInfo = new ActionQueue.ActionInfo()
@@ -118,7 +118,7 @@ public class Player : MonoBehaviour
             _network.TransmitAction(action);
             return;
 	    }
-        if (Input.GetKey(KeyCode.LeftArrow))
+        if (LeftKey())
         {
             var animationInfo = new ActionQueue.ActionInfo()
             {
@@ -136,7 +136,7 @@ public class Player : MonoBehaviour
             _network.TransmitAction(action);
             return;
 	    }
-        if (Input.GetKey(KeyCode.RightArrow))
+        if (RightKey())
         {
             var animationInfo = new ActionQueue.ActionInfo()
             {
@@ -154,6 +154,38 @@ public class Player : MonoBehaviour
             return;
 	    }
     }
+
+    private bool UpKey()
+    {
+	    bool keyboard = Input.GetKey(KeyCode.UpArrow);
+	    bool gamepad = Input.GetAxis("Axis 6") < -0.2;
+	    bool gamepad_dpad = Input.GetAxis("Axis 10") < -0.2;
+		return keyboard || gamepad || gamepad_dpad;
+	}
+
+    private bool DownKey()
+	{
+	    bool keyboard = Input.GetKey(KeyCode.DownArrow);
+	    bool gamepad = Input.GetAxis("Axis 6") > 0.2;
+	    bool gamepad_dpad = Input.GetAxis("Axis 10") > 0.2;
+		return keyboard || gamepad || gamepad_dpad;
+	}
+
+    private bool LeftKey()
+	{
+	    bool keyboard = Input.GetKey(KeyCode.LeftArrow);
+	    bool gamepad = Input.GetAxis("Axis 5") < -0.2;
+	    bool gamepad_dpad = Input.GetAxis("Axis 9") < -0.2;
+		return keyboard || gamepad || gamepad_dpad;
+	}
+
+    private bool RightKey()
+	{
+	    bool keyboard = Input.GetKey(KeyCode.RightArrow);
+	    bool gamepad = Input.GetAxis("Axis 5") > 0.2;
+	    bool gamepad_dpad = Input.GetAxis("Axis 9") > 0.2;
+		return keyboard || gamepad || gamepad_dpad;
+	}
 
     private float Scale()
     {

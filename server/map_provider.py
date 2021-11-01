@@ -44,6 +44,7 @@ def HardcodedMap():
     map[8][8] = MountainTile(8,8)
     map[9][5] = MountainTile(9,5)
     map[9][6] = MountainTile(9,6)
+    map[9][7] = RampToMountain(9,7, 180)
 
     # Add a street light.
     map[5][3] = GroundTileStreetLight(5,3)

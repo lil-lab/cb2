@@ -377,7 +377,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 226012975ce854f35b91df0db1ca6986, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  TurnSpeed: 3
+  TurnSpeed: 4
   MoveSpeed: 3
   ForceStartingPosition: 0
   StartingRow: 7
