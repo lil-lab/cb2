@@ -29,9 +29,11 @@ public class HexCell
         // Vertices starting from the top, clockwise around.
         for (int i = 0; i < 6; ++i)
         {
-            float angle = 60.0f * i - 150;
-            (float offsetx, float offsetz) = RotationOffset(angle);
-            vertices[i] = Scale() * center + (new Vector3(offsetx, 0, offsetz) * Radius());
+            float angle = 60.0f * i - 30;
+            Vector3 start = new Vector3(1.0f, 0, 0);
+		    Quaternion quat = Quaternion.AngleAxis(angle, new Vector3(0, 1.0f, 0));
+            Vector3 endpoint = Scale() * center + quat * (start * Radius());
+            vertices[i] = endpoint;
         }
         return vertices;
     }
@@ -58,12 +60,5 @@ public class HexCell
     private float Radius()
     {
         return 2.0f * Apothem() / Mathf.Sqrt(3);
-    }
-
-    // Angle is defined as degrees from direct north, clockwise.
-    private (float, float) RotationOffset(float angle)
-    {
-        float angleAdjusted = (angle) * Mathf.PI / 180.0f;
-        return (Mathf.Cos(angleAdjusted), Mathf.Sin(angleAdjusted));
     }
 }

@@ -98,7 +98,7 @@ public class HexBoundary
     }
 
     public void RotateCw(int turns)
-    { 
+    {
         for (int i = 0; i < turns; ++i)
         {
             // Perform one binary rotation.

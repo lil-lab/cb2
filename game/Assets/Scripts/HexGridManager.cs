@@ -36,8 +36,8 @@ public class HexGridManager
         (int, int) GetMapDimensions();
 
         // List of tiles. Each tile represents one cell in the grid. Calling 
-	    // this causes IsMapReady() to return false until the next map update is
-	    // available.
+        // this causes IsMapReady() to return false until the next map update is
+        // available.
         List<TileInformation> FetchTileList();
 
         // Returns true if a new map iteration is available.
@@ -60,7 +60,7 @@ public class HexGridManager
     }
 
     public void InitializeGrid()
-    { 
+    {
         (int rows, int cols) = _mapSource.GetMapDimensions();
         Debug.Log("rows: " + rows + ", cols:" + cols);
         _grid = new Tile[2, rows / 2, cols];
@@ -90,40 +90,44 @@ public class HexGridManager
     {
         UpdateMap();
         if (_debugEdges)
-	    { 
-	        foreach (Tile t in _grid)
-		    {
+        {
+            foreach (Tile t in _grid)
+            {
                 HexCell c = t.Cell;
                 if (c.boundary.Serialize() == 0) continue;
-                if (!c.coord.Equals(HecsCoord.FromOffsetCoordinates(0, 0)))
-                    continue;
                 var vertices = c.Vertices();
+                (int row, int col) = c.coord.ToOffsetCoordinates();
+                Vector3 checkerboardOffset = (row % 2 == 0 && col % 2 == 0) ? new Vector3(0, 1.0f, 0.0f) : new Vector3(0, 0, 0);
+                for (int i = 0; i < 6; ++i)
+                {
+                    vertices[i] += checkerboardOffset;
+                }
                 if (c.boundary.UpRight())
                 {
                     Debug.DrawLine(vertices[0], vertices[1], Color.blue, 2.0f, true);
-		        }
+                }
                 if (c.boundary.Right())
                 {
                     Debug.DrawLine(vertices[1], vertices[2], Color.green, 2.0f, true);
-		        }
+                }
                 if (c.boundary.DownRight())
                 {
-                    Debug.DrawLine(vertices[2], vertices[3], Color.magenta, 2.0f, true);
-		        }
+                    Debug.DrawLine(vertices[2], vertices[3], Color.cyan, 2.0f, true);
+                }
                 if (c.boundary.DownLeft())
                 {
                     Debug.DrawLine(vertices[3], vertices[4], Color.black, 2.0f, true);
-		        }
+                }
                 if (c.boundary.Left())
                 {
                     Debug.DrawLine(vertices[4], vertices[5], Color.red, 2.0f, true);
-		        }
+                }
                 if (c.boundary.UpLeft())
                 {
                     Debug.DrawLine(vertices[5], vertices[0], Color.white, 2.0f, true);
-		        }
-	        }    
-	    }
+                }
+            }
+        }
     }
 
     public bool EdgeBetween(HecsCoord a, HecsCoord b)
@@ -153,7 +157,7 @@ public class HexGridManager
 
     public void DebugEdges(bool val)
     {
-        _debugEdges = val; 
+        _debugEdges = val;
     }
 
     public HexCell Cell(HecsCoord a)
@@ -189,12 +193,12 @@ public class HexGridManager
             if (!CoordInMap(n)) continue;
             if (cell.boundary.GetEdgeWith(t.coord, n))
             {
-		        _grid[n.a, n.r, n.c].Cell.boundary.SetEdgeWith(n, t.coord);
-	        }
-            else 
-	        { 
+                _grid[n.a, n.r, n.c].Cell.boundary.SetEdgeWith(n, t.coord);
+            }
+            else
+            {
                 _grid[n.a, n.r, n.c].Cell.boundary.ClearEdgeWith(n, t.coord);
-	        }
+            }
         }
     }
 
@@ -218,13 +222,14 @@ public class HexGridManager
 
         Debug.Log("Map available, performing update!");
 
-        foreach (var tile in _grid) {
+        foreach (var tile in _grid)
+        {
             if (tile == null) continue;
             if (tile.Model)
-		        GameObject.Destroy(tile.Model);
+                GameObject.Destroy(tile.Model);
             HecsCoord c = tile.Cell.coord;
             _grid[c.a, c.r, c.c] = null;
-	    }
+        }
 
         InitializeGrid();
 
@@ -243,7 +248,7 @@ public class HexGridManager
                 Cell = t.Cell,
                 AssetId = t.AssetId,
                 Model = GameObject.Instantiate(prefab, t.Cell.Center(), Quaternion.AngleAxis(t.RotationDegrees, new Vector3(0, 1, 0))),
-			};
+            };
             UpdateEdgeMap(t);
             _grid[t.Cell.coord.a, t.Cell.coord.r, t.Cell.coord.c] = tile;
         }
