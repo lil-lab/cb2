@@ -57,6 +57,7 @@ async def stream_game_state(request, ws, agent_id):
   global map_provider
   mupdate = map_provider.get_map()
   msg = message_from_server.MessageFromServer(datetime.now(), message_from_server.MessageType.MAP_UPDATE, None, mupdate, None)
+  print(msg.to_json())
   await transmit(ws, msg.to_json(), agent_id)
   while not ws.closed:
     await asyncio.sleep(0.1)

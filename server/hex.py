@@ -123,6 +123,9 @@ class HexBoundary:
 
     def set_edge(self, edge):
         self.edges |= 1 << int(edge)
+    
+    def get_edge(self, edge):
+        return (self.edges & 1 << int(edge)) != 0
 
     def has_edge(self, edge):
         return self.edges & (1 << int(edge)) != 0
