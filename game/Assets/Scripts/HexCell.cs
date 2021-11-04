@@ -12,7 +12,7 @@ public class HexCell
     public float height;
     public int layer;
 
-    public HexCell(HecsCoord c, HexBoundary b, float h=0, int l=0)
+    public HexCell(HecsCoord c, HexBoundary b, float h = 0, int l = 0)
     {
         coord = c;
         boundary = b;
@@ -29,9 +29,9 @@ public class HexCell
         // Vertices starting from the top, clockwise around.
         for (int i = 0; i < 6; ++i)
         {
-            float angle = 60.0f * i - 30;
+            float angle = 60.0f * i - 90;
             Vector3 start = new Vector3(1.0f, 0, 0);
-		    Quaternion quat = Quaternion.AngleAxis(angle, new Vector3(0, 1.0f, 0));
+            Quaternion quat = Quaternion.AngleAxis(angle, new Vector3(0, 1.0f, 0));
             Vector3 endpoint = Scale() * center + quat * (start * Radius());
             vertices[i] = endpoint;
         }

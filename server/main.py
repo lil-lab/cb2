@@ -4,6 +4,8 @@ import fire
 import hashlib
 import json
 import os
+import pygame
+import sys
 import time
 
 from aiohttp import web
@@ -14,6 +16,7 @@ from messages import message_to_server
 from messages import state_sync
 from state import State
 from map_provider import HardcodedMapProvider
+from map_tools import visualize
 
 from datetime import datetime
 
@@ -27,6 +30,9 @@ game_state = State()
 
 # Provides map information.
 map_provider = HardcodedMapProvider()
+
+# Used if run with GUI enabled.
+SCREEN_SIZE = 1000
 
 async def transmit(ws, message, agent_id):
   global remote_table
@@ -162,19 +168,44 @@ async def debug_print():
     await asyncio.sleep(5)
     state = game_state.state()
     print(state)
+  
+async def draw_gui():
+  global game_state
+  map_provider = HardcodedMapProvider()
+  display = visualize.GameDisplay(SCREEN_SIZE)
+  while True:
+    state = game_state.state()
+    map = map_provider.get_map()
+    display.set_map(map)
+    display.set_game_state(state)
+    display.draw()
+    pygame.display.flip()
+    event = pygame.event.wait(10)
+    if event.type == pygame.QUIT:
+      pygame.quit()
+      return
+    if event.type == pygame.KEYDOWN:
+      if event.key == pygame.K_ESCAPE:
+        pygame.quit()
+        return
+    await asyncio.sleep(0.1)
 
-def main(assets_directory = "assets/"):
+def main(assets_directory = "assets/", gui=False):
   global assets_map
   global game_state
   assets_map = HashCollectAssets(assets_directory)
-  tasks = asyncio.gather(game_state.update(), debug_print(), serve())
+  tasks = asyncio.gather(game_state.update(), draw_gui(), debug_print(), serve())
+  # If map visualization command line flag is enabled, run with the visualize task.
+  # if gui:
+  #   tasks = asyncio.gather(tasks, draw_gui())
   loop = asyncio.get_event_loop()
   try:
       loop.run_until_complete(tasks)
   except KeyboardInterrupt:
       pass
-  game_state.end_game()
-  loop.close()
+  finally:
+    game_state.end_game()
+    loop.close()
 
 if __name__ == "__main__":
   fire.Fire(main)

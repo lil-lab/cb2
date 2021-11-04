@@ -181,7 +181,6 @@ public class HexGridManager
     private void UpdateCellEdges(HexCell t)
     {
         var cell = _grid[t.coord.a, t.coord.r, t.coord.c].Cell;
-        cell.boundary = t.boundary;
 
         // Edge map symmetry must be retained. That is -- if cell B has an edge
         // boundary with A, then A must also have a matching boundary with B.
@@ -191,20 +190,10 @@ public class HexGridManager
         foreach (HecsCoord n in neighbors)
         {
             if (!CoordInMap(n)) continue;
-            if (cell.boundary.GetEdgeWith(t.coord, n))
-            {
-                _grid[n.a, n.r, n.c].Cell.boundary.SetEdgeWith(n, t.coord);
-            }
-            else
-            {
-                _grid[n.a, n.r, n.c].Cell.boundary.ClearEdgeWith(n, t.coord);
-            }
-        }
-    }
+            if (!cell.boundary.GetEdgeWith(t.coord, n)) continue;
 
-    private void UpdateEdgeMap(TileInformation tile)
-    {
-        UpdateCellEdges(tile.Cell);
+            _grid[n.a, n.r, n.c].Cell.boundary.SetEdgeWith(n, t.coord);
+        }
     }
 
     private void UpdateMap()
@@ -247,10 +236,15 @@ public class HexGridManager
             {
                 Cell = t.Cell,
                 AssetId = t.AssetId,
+                RotationDegrees = t.RotationDegrees,
                 Model = GameObject.Instantiate(prefab, t.Cell.Center(), Quaternion.AngleAxis(t.RotationDegrees, new Vector3(0, 1, 0))),
             };
-            UpdateEdgeMap(t);
             _grid[t.Cell.coord.a, t.Cell.coord.r, t.Cell.coord.c] = tile;
         }
+        foreach (Tile t in _grid)
+        {
+            UpdateCellEdges(t.Cell);
+        }
+
     }
 }

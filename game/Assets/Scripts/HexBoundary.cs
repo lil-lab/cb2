@@ -17,14 +17,14 @@ public class HexBoundary
     private static readonly int UP_LEFT = 0b100000;
 
     private static readonly Dictionary<HecsCoord, int> LOC_TO_EDGE = new Dictionary<HecsCoord, int>
-	{
-	    {HecsCoord.ORIGIN.UpRight(), UP_RIGHT},
-	    {HecsCoord.ORIGIN.Right(), RIGHT},
-	    {HecsCoord.ORIGIN.DownRight(), DOWN_RIGHT},
-	    {HecsCoord.ORIGIN.DownLeft(), DOWN_LEFT},
-	    {HecsCoord.ORIGIN.Left(), LEFT},
-	    {HecsCoord.ORIGIN.UpLeft(), UP_LEFT},
-	};
+    {
+        {HecsCoord.ORIGIN.UpRight(), UP_RIGHT},
+        {HecsCoord.ORIGIN.Right(), RIGHT},
+        {HecsCoord.ORIGIN.DownRight(), DOWN_RIGHT},
+        {HecsCoord.ORIGIN.DownLeft(), DOWN_LEFT},
+        {HecsCoord.ORIGIN.Left(), LEFT},
+        {HecsCoord.ORIGIN.UpLeft(), UP_LEFT},
+    };
 
     public static HexBoundary FromBinary(byte e)
     {
@@ -33,7 +33,8 @@ public class HexBoundary
         return b;
     }
 
-    public HexBoundary() {
+    public HexBoundary()
+    {
         Edges = 0;
     }
 
@@ -81,7 +82,7 @@ public class HexBoundary
 
     // Similar to SetEdgeWith, but clears the corresponding edge.
     public void ClearEdgeWith(HecsCoord loc, HecsCoord neighbor)
-    { 
+    {
         HecsCoord displacement = HecsCoord.Sub(neighbor, loc);
         if (!LOC_TO_EDGE.ContainsKey(displacement)) return;
         Edges &= ((byte)~LOC_TO_EDGE[displacement]);
@@ -97,20 +98,11 @@ public class HexBoundary
         Edges = 0;
     }
 
-    public void RotateCw(int turns)
-    {
-        for (int i = 0; i < turns; ++i)
-        {
-            // Perform one binary rotation.
-            Edges = (byte)((Edges >> 5) | (Edges << 1));
-	    }
-    }
-
     // Save the current edge boundary info to a single byte.
     public byte Serialize() { return Edges; }
 
     // Warning, this overwrites the current edge state.
-    public void Deserialize(byte edges) { Edges = edges;  }
+    public void Deserialize(byte edges) { Edges = edges; }
 
     public void MergeWith(HexBoundary other)
     {

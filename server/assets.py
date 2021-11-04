@@ -1,6 +1,6 @@
-from enum import Enum
+from enum import IntEnum
 
-class AssetId(Enum):
+class AssetId(IntEnum):
     PLAYER = 0
     PLAYER_WITH_CAM = 1
     GROUND_TILE = 2

@@ -21,6 +21,6 @@ class Actor:
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
 class StateSync:
-    Population: int
-    Actors: List[Actor]
+    population: int
+    actors: List[Actor]
     player_id: int = -1
