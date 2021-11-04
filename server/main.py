@@ -15,7 +15,6 @@ from messages import message_from_server
 from messages import message_to_server
 from messages import state_sync
 from state import State
-from map_provider import HardcodedMapProvider
 from map_tools import visualize
 
 from datetime import datetime
@@ -27,9 +26,6 @@ remote_table = {}
 
 # Keeps track of game state.
 game_state = State()
-
-# Provides map information.
-map_provider = HardcodedMapProvider()
 
 # Used if run with GUI enabled.
 SCREEN_SIZE = 1000
@@ -60,8 +56,7 @@ async def Index(request):
 async def stream_game_state(request, ws, agent_id):
   global remote_table
   global game_state
-  global map_provider
-  mupdate = map_provider.get_map()
+  mupdate = game_state.get_map()
   msg = message_from_server.MessageFromServer(datetime.now(), message_from_server.MessageType.MAP_UPDATE, None, mupdate, None)
   print(msg.to_json())
   await transmit(ws, msg.to_json(), agent_id)
@@ -171,11 +166,10 @@ async def debug_print():
   
 async def draw_gui():
   global game_state
-  map_provider = HardcodedMapProvider()
   display = visualize.GameDisplay(SCREEN_SIZE)
   while True:
     state = game_state.state()
-    map = map_provider.get_map()
+    map = game_state.get_map()
     display.set_map(map)
     display.set_game_state(state)
     display.draw()
@@ -188,7 +182,7 @@ async def draw_gui():
       if event.key == pygame.K_ESCAPE:
         pygame.quit()
         return
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(0.05)
 
 def main(assets_directory = "assets/", gui=False):
   global assets_map

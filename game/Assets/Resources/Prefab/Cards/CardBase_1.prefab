@@ -24,7 +24,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1212094478756256}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.004038495, y: 1.2240114, z: 0.0019999212}
+  m_LocalPosition: {x: -0.004038495, y: 0.6, z: 0.0019999212}
   m_LocalScale: {x: 0.20202021, y: 9.382083, z: 0.09169039}
   m_Children: []
   m_Father: {fileID: 4734156013857636}
@@ -40,7 +40,6 @@ GameObject:
   m_Component:
   - component: {fileID: 4734156013857636}
   - component: {fileID: 33247983072380880}
-  - component: {fileID: 65955565256875970}
   - component: {fileID: 23840560771100046}
   m_Layer: 0
   m_Name: CardBase_1
@@ -57,8 +56,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1980972681193112}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 98.24481, y: 7.695254, z: 322.53137}
-  m_LocalScale: {x: 10.202452, y: 0.14922059, z: 20.74896}
+  m_LocalPosition: {x: 0, y: 0.42, z: 0}
+  m_LocalScale: {x: 1, y: 0.015, z: 2}
   m_Children:
   - {fileID: 4289540249318488}
   m_Father: {fileID: 0}
@@ -72,19 +71,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1980972681193112}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!65 &65955565256875970
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1980972681193112}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 1, y: 3.0215995, z: 0.75}
-  m_Center: {x: 0, y: 1.0107998, z: 0}
 --- !u!23 &23840560771100046
 MeshRenderer:
   m_ObjectHideFlags: 0

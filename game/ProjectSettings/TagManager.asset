@@ -6,7 +6,9 @@ TagManager:
   tags:
   - HexGrid
   - NetworkManager
-  - ActorManager
+  - Card
+  - EntityManager
+  - Outline
   layers:
   - Default
   - TransparentFX
@@ -14,7 +16,7 @@ TagManager:
   - 
   - Water
   - UI
-  - 
+  - Outline
   - 
   - 
   - 

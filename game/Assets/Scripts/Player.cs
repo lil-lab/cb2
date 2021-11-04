@@ -20,7 +20,7 @@ public class Player : MonoBehaviour
 
     public void Awake()
     {
-        UnityAssetSource assets = new UnityAssetSource(); 
+        UnityAssetSource assets = new UnityAssetSource();
         _actor = new Actor(assets.Load(IAssetSource.AssetId.PLAYER_WITH_CAM));
         _actor.SetParent(gameObject);
 
@@ -30,13 +30,13 @@ public class Player : MonoBehaviour
 
     void Start()
     {
-	    if (ForceStartingPosition)
-	    {
+        if (ForceStartingPosition)
+        {
             _actor.AddAction(
-		        Init.InitAt(
-		            HecsCoord.FromOffsetCoordinates(StartingRow,
-		                                            StartingCol), 0));
-	    }
+                Init.InitAt(
+                    HecsCoord.FromOffsetCoordinates(StartingRow,
+                                                    StartingCol), 0));
+        }
     }
 
     public void FlushActionQueue()
@@ -46,14 +46,14 @@ public class Player : MonoBehaviour
 
     public void AddAction(ActionQueue.IAction action)
     {
-        _actor.AddAction(action); 
+        _actor.AddAction(action);
     }
 
     // Actions are looped back from the server. This method is called to
     // validate actions. If an unrecognized action is received, then 
     // the client can request a state sync from the server.
     public void ValidateHistory(ActionQueue.IAction action)
-    { 
+    {
         // TODO(sharf): Implement this...
     }
 
@@ -62,10 +62,11 @@ public class Player : MonoBehaviour
         if (ShowHeading)
         {
             _actor.EnableDebugging();
-	    } else
-	    {
+        }
+        else
+        {
             _actor.DisableDebugging();
-	    }
+        }
 
         _actor.Update();
 
@@ -78,74 +79,74 @@ public class Player : MonoBehaviour
         HecsCoord forwardLocation = _actor.Location().NeighborAtHeading(_actor.HeadingDegrees());
         HecsCoord backLocation = _actor.Location().NeighborAtHeading(_actor.HeadingDegrees() + 180);
 
-        if (UpKey() && 
-	        !grid.EdgeBetween(_actor.Location(), forwardLocation))
-        { 
-            Translate action = Translate.Walk(
-		        HecsCoord.ORIGIN.NeighborAtHeading(_actor.HeadingDegrees()),
-		                                           1 / MoveSpeed);
-            _actor.AddAction(action);
-            _network.TransmitAction(action);
-            return;
-	    }
-        if (DownKey() &&
-	        !grid.EdgeBetween(_actor.Location(), backLocation))
+        if (UpKey() &&
+            !grid.EdgeBetween(_actor.Location(), forwardLocation))
         {
             Translate action = Translate.Walk(
-		        HecsCoord.ORIGIN.NeighborAtHeading(
-		            _actor.HeadingDegrees() + 180), 1 / MoveSpeed);
+                HecsCoord.ORIGIN.NeighborAtHeading(_actor.HeadingDegrees()),
+                                                   1 / MoveSpeed);
             _actor.AddAction(action);
             _network.TransmitAction(action);
             return;
-	    }
+        }
+        if (DownKey() &&
+            !grid.EdgeBetween(_actor.Location(), backLocation))
+        {
+            Translate action = Translate.Walk(
+                HecsCoord.ORIGIN.NeighborAtHeading(
+                    _actor.HeadingDegrees() + 180), 1 / MoveSpeed);
+            _actor.AddAction(action);
+            _network.TransmitAction(action);
+            return;
+        }
         if (LeftKey())
         {
-		    Debug.Log("Heading: " + (_actor.HeadingDegrees() - 60.0f));
+            Debug.Log("Heading: " + (_actor.HeadingDegrees() - 60.0f));
             Rotate action = Rotate.Turn(-60.0f, 1 / TurnSpeed);
             _actor.AddAction(action);
             _network.TransmitAction(action);
             return;
-	    }
+        }
         if (RightKey())
         {
             Rotate action = Rotate.Turn(60.0f, 1 / TurnSpeed);
             _actor.AddAction(action);
             _network.TransmitAction(action);
             return;
-	    }
+        }
     }
 
     private bool UpKey()
     {
-	    bool keyboard = Input.GetKey(KeyCode.UpArrow);
-	    // bool gamepad = Input.GetAxis("Axis 6") < -0.2;
-	    // bool gamepad_dpad = Input.GetAxis("Axis 10") < -0.2;
+        bool keyboard = Input.GetKey(KeyCode.UpArrow);
+        // bool gamepad = Input.GetAxis("Axis 6") < -0.2;
+        // bool gamepad_dpad = Input.GetAxis("Axis 10") < -0.2;
         return keyboard;  // || gamepad || gamepad_dpad;
-	}
+    }
 
     private bool DownKey()
-	{
-	    bool keyboard = Input.GetKey(KeyCode.DownArrow);
+    {
+        bool keyboard = Input.GetKey(KeyCode.DownArrow);
         // bool gamepad = Input.GetAxis("Axis 6") > 0.2;
         // bool gamepad_dpad = Input.GetAxis("Axis 10") > 0.2;
         return keyboard;  // || gamepad || gamepad_dpad;
-	}
+    }
 
     private bool LeftKey()
-	{
-	    bool keyboard = Input.GetKey(KeyCode.LeftArrow);
-	    // bool gamepad = Input.GetAxis("Axis 5") < -0.2;
-	    // bool gamepad_dpad = Input.GetAxis("Axis 9") < -0.2;
+    {
+        bool keyboard = Input.GetKey(KeyCode.LeftArrow);
+        // bool gamepad = Input.GetAxis("Axis 5") < -0.2;
+        // bool gamepad_dpad = Input.GetAxis("Axis 9") < -0.2;
         return keyboard; // || gamepad || gamepad_dpad;
-	}
+    }
 
     private bool RightKey()
-	{
-	    bool keyboard = Input.GetKey(KeyCode.RightArrow);
+    {
+        bool keyboard = Input.GetKey(KeyCode.RightArrow);
         // bool gamepad = Input.GetAxis("Axis 5") > 0.2;
         // bool gamepad_dpad = Input.GetAxis("Axis 9") > 0.2;
         return keyboard;  // || gamepad || gamepad_dpad;
-	}
+    }
 
     private float Scale()
     {

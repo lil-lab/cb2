@@ -1,5 +1,7 @@
 from assets import AssetId
 from messages.map_update import MapUpdate
+from messages.prop import PropType, GenericPropInfo, CardConfig, Prop
+from card import Shape, Color
 from hex import HexBoundary, Edges
 
 import math
@@ -22,6 +24,23 @@ def wait_for_key():
             if event.type == pygame.KEYDOWN:
                 pygame.quit()
                 quit()  
+
+def PygameColorFromCardColor(card_color):
+    """ Matches an instance of card.Color to a pygame color object."""
+    if card_color == Color.BLACK:
+        return pygame.Color("black")
+    elif card_color == Color.BLUE:
+        return pygame.Color("blue")
+    elif card_color == Color.GREEN:
+        return pygame.Color("green")
+    elif card_color == Color.ORANGE:
+        return pygame.Color("orange")
+    elif card_color == Color.PINK:
+        return pygame.Color("pink")
+    elif card_color == Color.RED:
+        return pygame.Color("red")
+    elif card_color == Color.YELLOW:
+        return pygame.Color("yellow")
 
 def asset_id_to_color(asset_id):
     """ Matches each asset id (in AssetId) with a unique color.
@@ -125,6 +144,51 @@ def draw_hexagon(screen, x, y, width, height, color, rotation, boundary):
     if boundary.get_edge(Edges.UPPER_LEFT):
         pygame.draw.line(screen, line_color, vertices[5], vertices[0], line_width)
 
+def draw_card(screen, x, y, width, height, card_info):
+    """ Draws a card to the screen.
+
+        screen: A pygame screen to draw to.
+        x, y: The center of the card.
+        width, height: The width and height of the card.
+        card_info: Card info, including shape, color, and more.
+    """
+    # Draw the card as a rectangle with a white fill and 1px black border.
+    pygame.draw.rect(screen, pygame.Color("white"), (x - width / 2, y - height / 2, width, height), 0)
+    outline_color = pygame.Color("blue") if card_info.selected else pygame.Color("black")
+    outline_radius = 5 if card_info.selected else 1
+    pygame.draw.rect(screen, outline_color, (x - width / 2, y - height / 2, width, height), outline_radius)
+
+    for i in range(card_info.count):
+        color = PygameColorFromCardColor(card_info.color)
+        offset = - (height / 5) * ((card_info.count) / 2) + (height / 5) * i
+        draw_shape(screen, x, y + offset, card_info.shape, color)
+
+def draw_shape(screen, x, y, shape, color):
+    """ Draws a shape to the screen.
+
+        screen: A pygame screen to draw to.
+        x, y: The center of the shape.
+        shape: The shape to draw.
+    """
+    (x, y) = (int(x), int(y))
+    if shape == Shape.PLUS:
+        pygame.draw.line(screen, color, (x - 2, y), (x + 2, y), 1)
+        pygame.draw.line(screen, color, (x, y - 2), (x, y + 2), 1)
+    elif shape == Shape.TORUS:
+        pygame.draw.circle(screen, color, (x, y), 2, 0)
+    elif shape == Shape.HEART:
+        pygame.draw.polygon(screen, color, ((x, y + 3), (x - 4, y - 1), (x - 2, y - 3), (x, y - 1), (x + 2, y - 3), (x + 4, y - 1)), 0)
+    elif shape == Shape.DIAMOND:
+        pygame.draw.polygon(screen, color, ((x, y + 3), (x - 3, y), (x, y - 3), (x + 3, y)), 0)
+    elif shape == Shape.SQUARE:
+        pygame.draw.rect(screen, color, (x - 2.5, y - 2.5, 5, 5), 0)
+    elif shape == Shape.STAR:
+        pygame.draw.polygon(screen, color, ((x - 3, y - 1), (x + 3, y - 1), (x, y + 5)), 0)
+        pygame.draw.polygon(screen, color, ((x - 3, y + 3), (x + 3, y + 3), (x, y - 3)), 0)
+    elif shape == Shape.TRIANGLE:
+        vertices = [(x, y - 2.5), (x - 2.5, y + 2.5), (x + 2.5, y + 2.5)]
+        pygame.draw.polygon(screen, color, vertices, 0)
+
 def draw_map_and_wait(map_update): 
     display = GameDisplay(SCREEN_SIZE)
 
@@ -148,11 +212,33 @@ class GameDisplay(object):
     
     def set_map(self, map):
         self._map = map
-        self._cell_height = self._screen_size / self._map.rows
-        self._cell_width = self._screen_size / self._map.cols
+        border = 100
+        screen_size = self._screen_size - 2 * border
+        self._cell_height = (screen_size / self._map.rows) * 1.5
+        self._cell_width = (screen_size / self._map.cols) * math.sqrt(3)
+        # Determine which cell dimension is smaller. Recalculate the other dimension
+        # to maintain the aspect ratio.
+        if self._cell_width > self._cell_height:
+            self._cell_width = self._cell_height * (1/1.5) * math.sqrt(3)
+        else:
+            self._cell_height = self._cell_width * 1.5 / math.sqrt(3)
 
     def set_game_state(self, game_state):
         self._game_state = game_state
+
+    def transform_to_screen_coords(self, coords):
+        """ Transforms the given map x, y coordinates to screen coordinates.
+
+            x, y: A coordinate in map space.
+        """
+        (x, y) = coords
+        x_scale = self._cell_width * 0.9
+        y_scale = self._cell_height * 0.9
+        x *= x_scale
+        x += x_scale * 0.8
+        y *= y_scale
+        y += y_scale * 0.8
+        return (x, y)
     
     def visualize_map(self):
         if self._map is None:
@@ -166,12 +252,7 @@ class GameDisplay(object):
 
             # Get the center of the hexagonal cell.
             cell = tile.cell
-            (center_x, center_y) = cell.coord.cartesian()
-
-            center_x *= self._cell_width * 0.9
-            center_x += self._cell_width * 0.5
-            center_y *= self._cell_height * 0.9
-            center_y += self._cell_height
+            (center_x, center_y) = self.transform_to_screen_coords(cell.coord.cartesian())
 
             # Get the boundary of the cell.
             boundary = cell.boundary
@@ -181,13 +262,21 @@ class GameDisplay(object):
                          self._cell_height, color, tile.rotation_degrees,
                          boundary)
 
+        # Draw card props.
+        for prop in self._map.props:
+            if prop.prop_type != PropType.CARD:
+                continue
+            # Get the card location.
+            loc = prop.prop_info.location
+            (center_x, center_y) = self.transform_to_screen_coords(loc.cartesian())
+            draw_card(self._screen, center_x, center_y,
+                      self._cell_width / 2, self._cell_height * 0.7,
+                      prop.card_init)
+
+
     def visualize_actor(self, actor_index):
         actor = self._game_state.actors[actor_index]
-        (x, y) = actor.location.cartesian()
-        x *= self._cell_width * 0.9
-        x += self._cell_width * 0.5
-        y *= self._cell_height * 0.9
-        y += self._cell_height
+        (x, y) = self.transform_to_screen_coords(actor.location.cartesian())
         pygame.draw.circle(self._screen, pygame.Color("red"), (x, y), 10)
         heading = actor.rotation_degrees - 60
         pointer_length = 20
@@ -197,7 +286,7 @@ class GameDisplay(object):
         actor_id = actor.actor_id
         text = GAME_FONT.render(str(actor_id), False, pygame.Color("black"))
         self._screen.blit(text, (x - text.get_width() / 2, y - text.get_height() / 2))
-
+    
     def visualize_game_state(self):
         if self._map is None or self._game_state is None:
             return

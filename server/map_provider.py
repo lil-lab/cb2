@@ -2,13 +2,18 @@
 from messages.map_update import MapUpdate,Tile
 from assets import AssetId
 from hex import HecsCoord,HexCell,HexBoundary
+from card import Card, Shape, Color
+import random
+
+MAP_WIDTH = 12
+MAP_HEIGHT = 24
 
 def HardcodedMap():
-    """ Creates a 10x10 map of Tile objects, each with HECS coordinates and locations."""
+    """ Creates a map of Tile objects, each with HECS coordinates and locations."""
     map = []
-    for r in range(0,10):
+    for r in range(0,MAP_HEIGHT):
         row = []
-        for c in range(0,10):
+        for c in range(0,MAP_WIDTH):
             tile = GroundTile(r, c)
             row.append(tile)
         map.append(row)
@@ -59,8 +64,43 @@ def HardcodedMap():
     # Recompute heights.
     for i in range(len(map_tiles)):
         map_tiles[i].cell.height = LayerToHeight(map_tiles[i].cell.layer)
+    
+    return MapUpdate(MAP_HEIGHT, MAP_WIDTH, map_tiles, [])
 
-    return MapUpdate(10, 10, map_tiles)
+class CardGenerator(object):
+    def __init__(self, id_assigner):
+        self._id_assigner = id_assigner
+    
+    def generate_card_at(self, r, c, shape, color, count):
+        return Card(self._id_assigner.alloc(),
+                    HecsCoord.from_offset(r, c),
+                    0,
+                    shape,
+                    color,
+                    count,
+                    0)
+
+    def generate_random_card_at(self, r, c):
+        return Card(self._id_assigner.alloc(),
+                    HecsCoord.from_offset(r, c),
+                    0,
+                    self.random_shape(),
+                    self.random_color(),
+                    self.random_count(),
+                    0)
+    
+    def random_shape(self):
+        shapes = [Shape.PLUS, Shape.TORUS, Shape.HEART, Shape.DIAMOND,
+                  Shape.SQUARE, Shape.STAR, Shape.TRIANGLE]
+        return random.choice(shapes)
+    
+    def random_color(self):
+        colors = [Color.BLACK, Color.BLUE, Color.GREEN, Color.ORANGE,
+                  Color.PINK, Color.RED, Color.YELLOW]
+        return random.choice(colors)
+    
+    def random_count(self):
+        return random.randint(1, 3)
 
 def LayerToHeight(layer):
     """ Converts a layer to a height."""
@@ -185,11 +225,25 @@ def RampToMountain(r, c, rotation_degrees=0):
     )
 
 class HardcodedMapProvider(object):
-    def __init__(self):
+    def __init__(self, id_assigner):
         map = HardcodedMap()
         self._tiles = map.tiles
         self._rows = map.rows
         self._cols = map.cols
+        self._cards = []
+        self._selected_cards = {}
+        self._card_generator = CardGenerator(id_assigner)
+        shapes = [Shape.PLUS, Shape.TORUS, Shape.HEART, Shape.DIAMOND,
+                  Shape.SQUARE, Shape.STAR, Shape.TRIANGLE]
+        colors = [Color.BLACK, Color.BLUE, Color.GREEN, Color.ORANGE, Color.PINK, Color.RED, Color.YELLOW]
+        shape_idx = 0
+        for i in range(11, 24, 2):
+            for j in range(0, 10):
+                self._cards.append(self._card_generator.generate_card_at(i, j + 1, shapes[(shape_idx) % len(shapes)], colors[j % len(colors)], j % 3 + 1))
+            shape_idx += 1
+        self._cards_by_location = {}
+        for card in self._cards:
+            self._cards_by_location[card.location] = card
         self.add_map_boundaries()
         self.add_layer_boundaries()
     
@@ -216,5 +270,25 @@ class HardcodedMapProvider(object):
                 if abs(it.cell.layer - jt.cell.layer) > 1:
                     self._tiles[i].cell.boundary.set_edge_between(iloc, jloc)
     
+    def get_cards(self):
+        return self._cards
+    
+    def set_selected(self, card_id, selected):
+        for idx, card in enumerate(self._cards):
+            if card.id == card_id:
+                self._cards[idx].selected = selected
+                if selected:
+                    card.selected = True
+                    self._selected_cards[card_id] = card
+                else:
+                    del self._selected_cards[card_id]
+                break
+    
+    def selected_cards(self):
+        return self._selected_cards.values()
+    
+    def card_by_location(self, location):
+        return self._cards_by_location.get(location, None)
+    
     def get_map(self):
-        return MapUpdate(self._rows, self._cols, self._tiles)
+        return MapUpdate(self._rows, self._cols, self._tiles, [card.prop() for card in self._cards])

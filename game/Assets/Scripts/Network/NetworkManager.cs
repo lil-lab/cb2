@@ -14,7 +14,7 @@ namespace Network
         private ClientConnection _client;
         private NetworkMapSource _networkMapSource;
         private NetworkRouter _router;
-        private ActorManager _actorManager;
+        private EntityManager _entityManager;
         private Player _player;
         private DateTime _lastReconnect;
 
@@ -22,10 +22,10 @@ namespace Network
         {
             if (_networkMapSource == null)
             {
-                Debug.Log("Retrieved map source before it was initialized."); 
-	        }
-            return _networkMapSource; 
-	    }
+                Debug.Log("Retrieved map source before it was initialized.");
+            }
+            return _networkMapSource;
+        }
 
         public void TransmitAction(ActionQueue.IAction action)
         {
@@ -35,14 +35,19 @@ namespace Network
         public void Awake()
         {
             gameObject.tag = TAG;
+        }
+
+        // Start is called before the first frame update
+        private void Start()
+        {
             _networkMapSource = new NetworkMapSource();
 
-            GameObject obj = GameObject.FindGameObjectWithTag(ActorManager.TAG);
-            _actorManager = obj.GetComponent<ActorManager>();
-            if (_actorManager == null)
+            GameObject obj = GameObject.FindGameObjectWithTag(EntityManager.TAG);
+            _entityManager = obj.GetComponent<EntityManager>();
+            if (_entityManager == null)
             {
-                Debug.LogError("Could not initialize ActorManager via tag: " + ActorManager.TAG);
-	        }
+                Debug.LogError("Could not initialize EntityManager via tag: " + EntityManager.TAG);
+            }
 
             GameObject playerObj = GameObject.FindGameObjectWithTag(Player.TAG);
             _player = playerObj.GetComponent<Player>();
@@ -50,7 +55,7 @@ namespace Network
             if (_player == null)
             {
                 Debug.LogError("Could not initialize Player via tag: " + Player.TAG);
-	        }
+            }
 
             string url = URL;
             if (Application.absoluteURL != "")
@@ -58,27 +63,22 @@ namespace Network
                 // We can figure out the server's address based on Unity's API.
                 Uri servedUrl = new Uri(Application.absoluteURL);
                 UriBuilder endpointUrlBuilder =
-		            new UriBuilder("ws", servedUrl.Host, servedUrl.Port,
-		                           "/player_endpoint");
+                    new UriBuilder("ws", servedUrl.Host, servedUrl.Port,
+                                   "/player_endpoint");
                 url = endpointUrlBuilder.Uri.AbsoluteUri;
-	        }
+            }
             Debug.Log("Using url: " + url);
             _client = new ClientConnection(url);
-            _router = new NetworkRouter(_client, _networkMapSource, _actorManager, _player);
+            _router = new NetworkRouter(_client, _networkMapSource, _entityManager, _player);
 
             _lastReconnect = DateTime.Now;
-        }
-
-        // Start is called before the first frame update
-        private void Start()
-        {
             _client.Start();
         }
 
         public void Reconnect()
         {
             _client.Reconnect();
-	    }
+        }
 
         // Update is called once per frame
         void Update()
@@ -87,7 +87,7 @@ namespace Network
             {
                 Invoke("Reconnect", 3);
                 _lastReconnect = DateTime.Now;
-	        }
+            }
             _client.Update();
         }
     }

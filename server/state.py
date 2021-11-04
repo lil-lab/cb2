@@ -5,6 +5,8 @@ from messages.action import Action
 from messages import state_sync
 from hex import HecsCoord
 from queue import Queue
+from map_provider import HardcodedMapProvider
+from card import CardSelectAction
 
 MAX_ID = 1000000
 
@@ -29,15 +31,26 @@ class State(object):
         self._synced = {}
         self._id_assigner = IdAssigner()
         self._action_history = {}
+        # Map props and actors share IDs from the same pool, so the ID assigner
+        # is shared to prevent overlap.
+        self._map_provider = HardcodedMapProvider(self._id_assigner)
         self._done = False
     
     def end_game(self):
         self._done = True
 
     def record_action(self, action):
+        # Marks an action as validated (i.e. it did not conflict with other actions).
+        # Queues this action to be sent to each user.
         for id in self._actors:
             actor = self._actors[id]
             self._action_history[actor.actor_id()].append(action)       
+    
+    def get_map(self):
+        return self._map_provider.get_map()
+    
+    def get_cards(self):
+        self._map_provider.get_cards()
     
     async def update(self):
         while not self._done:
@@ -53,6 +66,34 @@ class State(object):
                     continue
                 self.record_action(action)
                 actor.step()
+                stepped_on_card = self._map_provider.card_by_location(actor.location())
+                # If the actor just moved and stepped on a card, mark it as selected.
+                if (action.action_type == Action.TRANSLATE) and (stepped_on_card is not None):
+                    selected = not stepped_on_card.selected
+                    self._map_provider.set_selected(stepped_on_card.id, selected)
+                    self.record_action(CardSelectAction(stepped_on_card.id, selected))
+            
+            selected_cards = list(self._map_provider.selected_cards())
+            if len(selected_cards) >= 3:
+                # Determine if the cards are unique.
+                shapes = set()
+                colors = set()
+                counts = set()
+                for card in selected_cards:
+                    shapes.add(card.shape)
+                    colors.add(card.color)
+                    counts.add(card.count)
+                if len(shapes) == len(colors) == len(counts) == 3:
+                    print("GAME WON")
+                else:
+                    print("GAME LOST")
+
+                # Clear card state.
+                print("RESETTING BOARD.")
+                for card in selected_cards:
+                    self._map_provider.set_selected(card.id, False)
+                    self.record_action(CardSelectAction(card.id, False))
+
     
     def handle_action(self, actor_id, action):
         if (action.id != actor_id):

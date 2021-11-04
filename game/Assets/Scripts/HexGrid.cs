@@ -23,12 +23,12 @@ public class HexGrid : MonoBehaviour
 
     public HexCell Cell(HecsCoord a)
     {
-        return _manager.Cell(a); 
+        return _manager.Cell(a);
     }
 
     public float Height(HecsCoord a)
     {
-        return _manager.Height(a); 
+        return _manager.Height(a);
     }
 
     void Start()

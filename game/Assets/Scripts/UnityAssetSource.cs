@@ -5,6 +5,7 @@ using UnityEngine;
 public class UnityAssetSource : IAssetSource
 {
     // Maps IAssetSource.AssetId to resource paths in Unity.
+    // Must be kept in order with the enum definitions in IAssetSource.
     private static readonly string[] assetPaths = new string[]{
         "Prefab/Actors/Player",
         "Prefab/Actors/PlayerWithCam",
@@ -21,17 +22,47 @@ public class UnityAssetSource : IAssetSource
         "Prefab/Cards/CardBase_1",
         "Prefab/Cards/CardBase_2",
         "Prefab/Cards/CardBase_3",
+        "Prefab/Cards/Shapes/Square",
+        "Prefab/Cards/Shapes/Star",
+        "Prefab/Cards/Shapes/Torus",
+        "Prefab/Cards/Shapes/Triangle",
+        "Prefab/Cards/Shapes/Plus",
+        "Prefab/Cards/Shapes/Heart",
+        "Prefab/Cards/Shapes/Diamond",
+    };
+
+    // Maps IAssetSource.MaterialId to resource paths in Unity.
+    // Must be kept in order with the enum definitions in IAssetSource.
+    private static readonly string[] materialPaths = new string[] {
+        "Prefab/Cards/Materials/Card",
+        "Prefab/Cards/Materials/card_black",
+        "Prefab/Cards/Materials/card_blue",
+        "Prefab/Cards/Materials/card_green",
+        "Prefab/Cards/Materials/card_orange",
+        "Prefab/Cards/Materials/card_pink",
+        "Prefab/Cards/Materials/card_red",
+        "Prefab/Cards/Materials/card_yellow",
     };
 
     public GameObject Load(IAssetSource.AssetId assetId)
     {
         int assetIndex = (int)assetId;
         GameObject obj = Resources.Load<GameObject>(assetPaths[assetIndex]);
-        if (obj == null) {
+        if (obj == null)
+        {
             Debug.Log("Null: " + assetPaths[assetIndex]);
-	    }
+        }
         return obj;
     }
 
-
+    public Material LoadMat(IAssetSource.MaterialId materialId)
+    {
+        int materialIndex = (int)materialId;
+        Material mat = Resources.Load<Material>(materialPaths[materialIndex]);
+        if (mat == null)
+        {
+            Debug.Log("Null: " + materialPaths[materialIndex]);
+        }
+        return mat;
+    }
 }

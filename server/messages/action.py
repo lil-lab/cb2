@@ -13,15 +13,17 @@ class ActionType(Enum):
     INSTANT = 1
     ROTATE = 2
     TRANSLATE = 3
+    OUTLINE = 4
 
 class AnimationType(Enum):
-    IDLE = 0
-    WALKING = 1
-    INSTANT = 2
-    TRANSLATE = 3
-    ACCEL_DECEL = 4
-    SKIPPING = 5
-    ROTATE = 6
+    NONE = 0
+    IDLE = 1
+    WALKING = 2
+    INSTANT = 3
+    TRANSLATE = 4
+    ACCEL_DECEL = 5
+    SKIPPING = 6
+    ROTATE = 7
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
@@ -31,6 +33,7 @@ class Action:
     animation_type: AnimationType
     displacement: HecsCoord
     rotation: float
+    border_radius: float
     duration_s: float
     expiration: datetime = field(
         metadata=config(

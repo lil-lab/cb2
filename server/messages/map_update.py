@@ -8,6 +8,7 @@ from typing import List, Optional
 import datetime
 import dateutil.parser
 import typing
+import messages.prop
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
@@ -23,3 +24,4 @@ class MapUpdate:
     rows: int
     cols: int
     tiles: List[Tile]
+    props: List[messages.prop.Prop]

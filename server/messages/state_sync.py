@@ -16,7 +16,7 @@ class Actor:
     actor_id: int
     asset_id: int
     location: HecsCoord
-    rotation_degrees: int
+    rotation_degrees: float
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)

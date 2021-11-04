@@ -10,7 +10,8 @@ public class ActionQueue
 {
     [Serializable]
     public enum AnimationType
-    { 
+    {
+        NONE,
         IDLE,
         WALKING,
         INSTANT,
@@ -25,6 +26,7 @@ public class ActionQueue
         public AnimationType Type;
         public HecsCoord Displacement;  // Object displacement in HECS coords.
         public float Rotation;  // Heading in degrees, 0 = north, clockwise.
+        public float BorderRadius;  // Radius of the object's outline, if applicable.
         public float DurationS;  // Duration in seconds.
         public DateTime Expiration;  // If the action delays past this deadline, fastforward to next action.
     };
@@ -36,10 +38,10 @@ public class ActionQueue
     public interface IAction
     {
         // Calculate intermediate state, given initial conditions and progress.
-	    // 
-	    // progress represents the action's completion (1.0 = completely done).
+        // 
+        // progress represents the action's completion (1.0 = completely done).
         State.Continuous Interpolate(State.Discrete initialConditions,
-	                                 float progress);
+                                     float progress);
         // Calculate the next state, given the current state and an action.
         State.Discrete Transfer(State.Discrete s);
         // Action's duration in seconds.
@@ -70,9 +72,9 @@ public class ActionQueue
     public void AddAction(IAction action)
     {
         if (action == null)
-	    {
+        {
             return;
-	    }
+        }
         _targetState = action.Transfer(_targetState);
         _actionQueue.Enqueue(action);
     }
@@ -89,13 +91,13 @@ public class ActionQueue
     }
 
     public State.Continuous ContinuousState()
-    { 
+    {
         if (IsBusy())
-	    {
+        {
             return _actionQueue.Peek().Interpolate(_state, _progress);
-	    }
+        }
         return _state.Continuous();
-    } 
+    }
 
     public State.Discrete State()
     {
@@ -117,23 +119,24 @@ public class ActionQueue
     }
 
     public void Update()
-    { 
+    {
         // If there's no animation in progress, begin the next animation in the queue.
-        if (_actionQueue.Count > 0 && !_actionInProgress) {
-			_progress = 0.0f;
-			_actionStarted = DateTime.Now;
-			_actionInProgress = true;
+        if (_actionQueue.Count > 0 && !_actionInProgress)
+        {
+            _progress = 0.0f;
+            _actionStarted = DateTime.Now;
+            _actionInProgress = true;
             Debug.Log("Starting action");
-	    }
+        }
 
         // Immediately skip any expired animations.
         if (_actionInProgress && (DateTime.Now > _actionQueue.Peek().Expiration()))
-	    {
+        {
             Debug.Log("Fast-forwarding expired action");
             _state = _actionQueue.Peek().Transfer(_state);
             _actionQueue.Dequeue();
             _actionInProgress = false;
-	    }
+        }
 
         // Convert to milliseconds for higher-resolution progress.
         if (_actionInProgress)
@@ -149,7 +152,7 @@ public class ActionQueue
             _state = _actionQueue.Peek().Transfer(_state);
             _actionQueue.Dequeue();
             _actionInProgress = false;
-	    }
+        }
     }
 
 }

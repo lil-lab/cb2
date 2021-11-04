@@ -9,14 +9,14 @@ namespace Network
         INSTANT,
         ROTATE,
         TRANSLATE,
-        OUTLINE_ON,
-        OUTLINE_OFF,
+        OUTLINE,
     }
 
     [Serializable]
     public enum AnimationType
     {
-        IDLE = 0,
+        NONE = 0,
+        IDLE,
         WALKING,
         INSTANT,
         TRANSLATE,
@@ -33,6 +33,7 @@ namespace Network
         public AnimationType AnimationType;
         public HecsCoord Displacement;
         public float Rotation;  // Heading Degrees. 0 = North, CW.
+        public float BorderRadius;  // Outline radius.
         public float DurationS;
         public string Expiration;  // DateTime in ISO 8601.
     }
