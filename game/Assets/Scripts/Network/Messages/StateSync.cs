@@ -20,25 +20,25 @@ namespace Network
 
     public enum PropType
     {
-        SIMPLE=0,  // A simple asset with little to no behavior.
+        SIMPLE = 0,  // A simple asset with little to no behavior.
         CARD,  // A card the user can activate by standing on.
     }
 
     [Serializable]
     public class StateSync
     {
-	    [Serializable]
-	    public class Prop
-	    {
+        [Serializable]
+        public class Prop
+        {
             // Always provided.
             public int PropId;
-			public PropType PropType;
-			public GenericPropInfo PropInfo;
+            public PropType PropType;
+            public GenericPropInfo PropInfo;
 
-			// At most one member below is initialized, based on parent's PropType
-			    // (see PropUpdate class).
-			public CardConfig CardInit;
-	    }
+            // At most one member below is initialized, based on parent's PropType
+            // (see PropUpdate class).
+            public CardConfig CardInit;
+        }
 
         [Serializable]
         public class Actor
@@ -46,8 +46,8 @@ namespace Network
             public int ActorId;
             public int AssetId;
             public HecsCoord Location;
-            public int RotationDegrees;
-	    }
+            public float RotationDegrees;
+        }
 
         // A list of actor initial states.
         public List<Actor> Actors;
