@@ -65,7 +65,7 @@ public class Prop
         _asset.transform.rotation = Quaternion.AngleAxis(state.HeadingDegrees, new Vector3(0, 1, 0));
         if (state.BorderRadius != 0)
         {
-            if (_asset.transform.FindChild("Outline") == null)
+            if (_asset.transform.Find("Outline") == null)
             {
                 GameObject outline = GameObject.Instantiate(assetSource.Load(IAssetSource.AssetId.CARD_BASE_1));
                 outline.transform.localScale += new Vector3(state.BorderRadius, 0, state.BorderRadius);
