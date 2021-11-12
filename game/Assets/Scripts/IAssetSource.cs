@@ -35,13 +35,15 @@ public interface IAssetSource
     {
         CARD_BACKGROUND,
         // These are colors for the 2D shapes on card faces.
-        SHAPE_BLACK,
-        SHAPE_BLUE,
-        SHAPE_GREEN,
-        SHAPE_ORANGE,
-        SHAPE_PINK,
-        SHAPE_RED,
-        SHAPE_YELLOW,
+        COLOR_BLACK,
+        COLOR_BLUE,
+        COLOR_GREEN,
+        COLOR_ORANGE,
+        COLOR_PINK,
+        COLOR_RED,
+        COLOR_YELLOW,
+        // This material is emissive and used to draw the card's outline.
+        CARD_OUTLINE,
     }
 
     // Returns a prefab of the requested asset.

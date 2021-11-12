@@ -6,6 +6,10 @@ public class Prop
     private ActionQueue _actionQueue;
     private GameObject _asset;
 
+    // If set (see SetOutline()), contains a reference to the outline geometry for this prop.
+    // The outline geometry is only renderered if the State's BorderRadius is non-zero.
+    private GameObject _outline;
+
     public static Prop FromNetwork(Network.Prop netProp)
     {
         if (netProp.PropType != Network.PropType.SIMPLE)
@@ -33,6 +37,11 @@ public class Prop
         {
             _asset = obj;
         }
+    }
+
+    public void SetOutline(GameObject outline)
+    {
+        _outline = outline;
     }
 
     // Returns true if the actor is in the middle of an action.
@@ -63,29 +72,20 @@ public class Prop
         // Update current location, orientation, and animation based on action queue.
         _asset.transform.position = Scale() * state.Position;
         _asset.transform.rotation = Quaternion.AngleAxis(state.HeadingDegrees, new Vector3(0, 1, 0));
-        if (state.BorderRadius != 0)
+
+        // If the object has an outline geometry, conditionally scale and draw it.
+        if (_outline != null)
         {
-            if (_asset.transform.Find("Outline") == null)
+            MeshRenderer renderer = _outline.GetComponent<MeshRenderer>();
+            if (renderer != null)
             {
-                GameObject outline = GameObject.Instantiate(assetSource.Load(IAssetSource.AssetId.CARD_BASE_1));
-                outline.transform.localScale += new Vector3(state.BorderRadius, 0, state.BorderRadius);
-                outline.tag = "Outline";
-                Material mat = outline.GetComponent<Material>();
-                if (mat != null)
-                    mat.color = Color.blue;
-                outline.transform.SetParent(_asset.transform);
-            }
-            Debug.Log("Outline exists: " + (_asset.transform.Find("Outline") != null));
-        }
-        else
-        {
-            Transform outline = _asset.transform.Find("Outline");
-            if (outline != null)
-            {
-                outline.parent = null;
-                GameObject.Destroy(outline.gameObject);
+                renderer.enabled = state.BorderRadius > 0;
+                float scale = 1.0f + (state.BorderRadius / 100);
+                float height = _outline.transform.localScale.y;
+                _outline.transform.localScale = new Vector3(scale, height, scale);
             }
         }
+
         Animation animation = _asset.GetComponentInChildren<Animation>();
         if (animation == null)
             return;

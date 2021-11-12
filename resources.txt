@@ -38,6 +38,3 @@ https://github.com/jilleJr/Newtonsoft.Json-for-Unity/wiki/Installation-via-UPM
 
 Unity has built-in JSON parsing, but it's limited and doesn't support nested objects.
 
-- Outline effect implementation tutorial:
-
-http://willweissman.com/unity-outlines

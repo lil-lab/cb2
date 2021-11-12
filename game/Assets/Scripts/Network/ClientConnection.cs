@@ -1,14 +1,14 @@
-using UnityEngine;
-using NativeWebSocket;
-using System.Collections.Generic;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using NativeWebSocket;
 using Newtonsoft.Json;
+using UnityEngine;
 
 namespace Network
 {
 
-    public class ClientConnection 
+    public class ClientConnection
     {
         private WebSocket _webSocket;
         public string _url;
@@ -30,18 +30,18 @@ namespace Network
 
         public void RegisterHandler(NetworkRouter router)
         {
-            _router = router; 
-	    }
+            _router = router;
+        }
 
         public bool IsClosed()
-        { 
+        {
             return _webSocket.State.HasFlag(WebSocketState.Closed);
-	    }
+        }
 
         public void TransmitAction(int id, ActionQueue.IAction action)
         {
             _actionQueue.Enqueue(action.Packet(id));
-	    }
+        }
 
         public async void Reconnect()
         {
@@ -65,16 +65,16 @@ namespace Network
             {
                 if (_router == null)
                 {
-                    return; 
-		        }
+                    return;
+                }
 
-                Debug.Log("Received msg");
 
                 string received = System.Text.Encoding.ASCII.GetString(bytes);
 
+                Debug.Log("Received: " + received);
                 MessageFromServer message = JsonConvert.DeserializeObject<MessageFromServer>(System.Text.Encoding.ASCII.GetString(bytes));
-                 _router.HandleMessage(message);
-		    };
+                _router.HandleMessage(message);
+            };
 
             // waiting for messages
             await _webSocket.Connect();
@@ -100,22 +100,22 @@ namespace Network
             {
                 List<Action> actionsForServer = new List<Action>();
                 Action action;
-		        while (_actionQueue.TryDequeue(out action))
+                while (_actionQueue.TryDequeue(out action))
                 {
                     actionsForServer.Add(action);
-		        }
+                }
 
                 if (actionsForServer.Count == 0)
                 {
-                    return; 
-		        }
+                    return;
+                }
 
                 MessageToServer toServer = new MessageToServer();
 
                 toServer.Type = MessageToServer.MessageType.ACTIONS;
                 toServer.Actions = actionsForServer;
                 toServer.TransmitTime = DateTime.Now.ToString("o");
-                Debug.Log(JsonUtility.ToJson(toServer));
+                Debug.Log("Sending: " + JsonUtility.ToJson(toServer));
                 await _webSocket.SendText(JsonUtility.ToJson(toServer));
             }
         }

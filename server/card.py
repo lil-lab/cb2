@@ -8,6 +8,7 @@ import datetime
 
 import messages.prop
 
+
 class Shape(Enum):
     NONE = 0
     PLUS = 1
@@ -17,7 +18,8 @@ class Shape(Enum):
     SQUARE = 5
     STAR = 6
     TRIANGLE = 7
-    
+
+
 class Color(Enum):
     NONE = 0
     BLACK = 1
@@ -28,12 +30,17 @@ class Color(Enum):
     RED = 6
     YELLOW = 7
 
+
+OUTLINE_RADIUS = 5
+
+
 def CardSelectAction(card_id, selected):
     action_type = ActionType.OUTLINE
-    radius = 5 if selected else 0
+    radius = OUTLINE_RADIUS if selected else 0
     expiration = datetime.datetime.now() + datetime.timedelta(seconds=10)
     return Action(card_id, action_type, AnimationType.NONE, HecsCoord(0, 0, 0),
-                  0, radius, 0.2, expiration) 
+                  0, radius, 0.2, expiration)
+
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=False)
@@ -48,11 +55,12 @@ class Card:
 
     def prop(self):
         return messages.prop.Prop(self.id,
-            messages.prop.PropType.CARD,
-            messages.prop.GenericPropInfo(self.location, self.rotation_degrees, False),
-            messages.prop.CardConfig(
-                self.color,
-                self.shape,
-                self.count,
-                self.selected),
-            None)
+                                  messages.prop.PropType.CARD,
+                                  messages.prop.GenericPropInfo(
+                                      self.location, self.rotation_degrees, False, OUTLINE_RADIUS),
+                                  messages.prop.CardConfig(
+                                      self.color,
+                                      self.shape,
+                                      self.count,
+                                      self.selected),
+                                  None)

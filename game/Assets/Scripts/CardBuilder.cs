@@ -119,6 +119,8 @@ public class CardBuilder
         card.transform.SetParent(cardSlot.transform);
         Prop prop = new Prop(cardSlot);
         prop.AddAction(Init.InitAt(_location, _rotationDegrees));
+        GameObject outline = card.transform.Find("outline").gameObject;
+        prop.SetOutline(outline);
         return prop;
     }
 
@@ -139,6 +141,9 @@ public class CardBuilder
         {
             // Ignore the parent object Transform.
             if (loc.gameObject.tag == "Card")
+                continue;
+
+            if (loc.name == "outline")
                 continue;
 
             GameObject symbol = GameObject.Instantiate(LoadShape(shape), loc);
@@ -196,19 +201,19 @@ public class CardBuilder
         switch (color)
         {
             case Color.BLACK:
-                return source.LoadMat(IAssetSource.MaterialId.SHAPE_BLACK);
+                return source.LoadMat(IAssetSource.MaterialId.COLOR_BLACK);
             case Color.BLUE:
-                return source.LoadMat(IAssetSource.MaterialId.SHAPE_BLUE);
+                return source.LoadMat(IAssetSource.MaterialId.COLOR_BLUE);
             case Color.GREEN:
-                return source.LoadMat(IAssetSource.MaterialId.SHAPE_GREEN);
+                return source.LoadMat(IAssetSource.MaterialId.COLOR_GREEN);
             case Color.ORANGE:
-                return source.LoadMat(IAssetSource.MaterialId.SHAPE_ORANGE);
+                return source.LoadMat(IAssetSource.MaterialId.COLOR_ORANGE);
             case Color.PINK:
-                return source.LoadMat(IAssetSource.MaterialId.SHAPE_PINK);
+                return source.LoadMat(IAssetSource.MaterialId.COLOR_PINK);
             case Color.RED:
-                return source.LoadMat(IAssetSource.MaterialId.SHAPE_RED);
+                return source.LoadMat(IAssetSource.MaterialId.COLOR_RED);
             case Color.YELLOW:
-                return source.LoadMat(IAssetSource.MaterialId.SHAPE_YELLOW);
+                return source.LoadMat(IAssetSource.MaterialId.COLOR_YELLOW);
             default:
                 Debug.LogWarning("Encountered unknown Color.");
                 return null;

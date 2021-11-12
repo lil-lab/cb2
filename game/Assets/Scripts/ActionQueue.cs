@@ -126,7 +126,7 @@ public class ActionQueue
             _progress = 0.0f;
             _actionStarted = DateTime.Now;
             _actionInProgress = true;
-            Debug.Log("Starting action");
+            Debug.Log("Starting action: " + _actionQueue.Peek().ToString() + ", Queue size: " + _actionQueue.Count);
         }
 
         // Immediately skip any expired animations.
@@ -138,19 +138,22 @@ public class ActionQueue
             _actionInProgress = false;
         }
 
+        TimeSpan delta = DateTime.Now - _actionStarted;
+
         // Convert to milliseconds for higher-resolution progress.
         if (_actionInProgress)
         {
-            _progress = ((DateTime.Now - _actionStarted).Milliseconds) /
+            _progress = ((delta).Milliseconds) /
                         (_actionQueue.Peek().DurationS() * 1000.0f);
         }
 
         // End the current action when progress >= 1.0.
-        if (_actionInProgress && _progress >= 1.0)
+        if (_actionInProgress &&
+            (delta.Milliseconds > (_actionQueue.Peek().DurationS() * 1000.0f)))
         {
-            Debug.Log("Ending action w/ progress: " + _progress);
             _state = _actionQueue.Peek().Transfer(_state);
             _actionQueue.Dequeue();
+            Debug.Log("Ending action. Remaining: " + _actionQueue.Count);
             _actionInProgress = false;
         }
     }

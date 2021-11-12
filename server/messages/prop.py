@@ -9,10 +9,12 @@ from marshmallow import fields
 
 import dateutil.parser
 
+
 class PropType(Enum):
     NONE = 0
     SIMPLE = 1
     CARD = 2
+
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
@@ -20,6 +22,8 @@ class GenericPropInfo:
     location: HecsCoord
     rotation_degrees: int
     collide: bool
+    border_radius: int
+
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
@@ -29,10 +33,12 @@ class CardConfig:
     count: int
     selected: bool
 
+
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
 class SimpleConfig:
     asset_id: int
+
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
@@ -42,5 +48,5 @@ class Prop:
     prop_info: GenericPropInfo
 
     # Only one of these is populated, depending on this prop's prop_type.
-    card_init: CardConfig # Only used for Card props.
-    simple_init: SimpleConfig # Only used for Simple props.
+    card_init: CardConfig  # Only used for Card props.
+    simple_init: SimpleConfig  # Only used for Simple props.

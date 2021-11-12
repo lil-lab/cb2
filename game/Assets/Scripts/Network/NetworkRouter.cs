@@ -74,6 +74,10 @@ namespace Network
                     {
                         CardBuilder cardBuilder = CardBuilder.FromNetwork(netProp);
                         _entityManager.RegisterProp(netProp.Id, cardBuilder.Build());
+                        if (netProp.CardInit.Selected)
+                        {
+                            _entityManager.AddAction(netProp.Id, Outline.Select(netProp.PropInfo.BorderRadius, 0.1f));
+                        }
                         continue;
                     }
                     if (netProp.PropType == PropType.SIMPLE)

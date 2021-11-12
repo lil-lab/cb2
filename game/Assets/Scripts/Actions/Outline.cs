@@ -53,7 +53,7 @@ public class Outline : ActionQueue.IAction
         State.Continuous interp = new State.Continuous();
         interp.Position = initialConditions.Vector();
         interp.HeadingDegrees = initialConditions.HeadingDegrees;
-        interp.BorderRadius = Mathf.Lerp(initialConditions.BorderRadius, _info.BorderRadius, progress);
+        interp.BorderRadius = Mathf.Lerp(initialConditions.BorderRadius, end.BorderRadius, progress);
         interp.Animation = _info.Type;
         return interp;
     }

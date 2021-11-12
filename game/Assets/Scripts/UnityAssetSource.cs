@@ -42,6 +42,7 @@ public class UnityAssetSource : IAssetSource
         "Prefab/Cards/Materials/card_pink",
         "Prefab/Cards/Materials/card_red",
         "Prefab/Cards/Materials/card_yellow",
+        "Prefab/Cards/Materials/card_outline",
     };
 
     public GameObject Load(IAssetSource.AssetId assetId)

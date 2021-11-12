@@ -1,7 +1,7 @@
 import aiohttp
 import asyncio
 
-from messages.action import Action
+from messages.action import Action, ActionType
 from messages import state_sync
 from hex import HecsCoord
 from queue import Queue
@@ -68,7 +68,7 @@ class State(object):
                 actor.step()
                 stepped_on_card = self._map_provider.card_by_location(actor.location())
                 # If the actor just moved and stepped on a card, mark it as selected.
-                if (action.action_type == Action.TRANSLATE) and (stepped_on_card is not None):
+                if (action.action_type == ActionType.TRANSLATE) and (stepped_on_card is not None):
                     selected = not stepped_on_card.selected
                     self._map_provider.set_selected(stepped_on_card.id, selected)
                     self.record_action(CardSelectAction(stepped_on_card.id, selected))
