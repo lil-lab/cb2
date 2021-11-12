@@ -1,6 +1,17 @@
 Cereal Bar V2
 ============
 
+- [Cereal Bar V2](#cereal-bar-v2)
+  - [Intro](#intro)
+  - [Setup](#setup)
+    - [Cloning the repository.](#cloning-the-repository)
+    - [Download Submodules](#download-submodules)
+    - [Server](#server)
+    - [Client](#client)
+  - [Deploying a WebGL Client](#deploying-a-webgl-client)
+  - [Server Endpoints](#server-endpoints)
+  - [Resources](#resources)
+
 Intro
 -----
 
@@ -75,7 +86,7 @@ Server Endpoints
 | `/player_endpoint`   | Websocket endpoint for communication with clients.    |
 | `/assets/{asset_id}` | Currently unused mechanism to obscurely serve assets. |
 
-See Also...
+Resources
 ---------
 
 `resources.txt`: Links to resources that were useful in development of this game.
