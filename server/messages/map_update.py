@@ -3,7 +3,7 @@ from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from hex import HexCell
 from marshmallow import fields
-from typing import List, Optional
+from typing import List
 
 import datetime
 import dateutil.parser
@@ -17,6 +17,7 @@ class Tile:
     asset_id: int
     cell: HexCell
     rotation_degrees: int
+
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)

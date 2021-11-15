@@ -1,7 +1,8 @@
 """ Defines message structure sent to server.  """
- 
+
 from enum import Enum
-from .action import Action
+from messages.action import Action
+from messages.rooms import RoomManagementRequest
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
@@ -12,9 +13,12 @@ from typing import List, Optional
 import dateutil.parser
 import typing
 
+
 class MessageType(Enum):
-     ACTIONS = 0
-     STATE_SYNC_REQUEST = 1
+    ACTIONS = 0
+    STATE_SYNC_REQUEST = 1
+    ROOM_MANAGEMENT = 2
+
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
@@ -27,3 +31,4 @@ class MessageToServer:
         ))
     type: MessageType
     actions: Optional[List[Action]]
+    room_management_request: Optional[RoomManagementRequest]
