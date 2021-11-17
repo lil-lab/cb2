@@ -120,7 +120,7 @@ namespace Network
             }
         }
 
-        private async void OnApplicationQuit()
+        public async void OnApplicationQuit()
         {
             await _webSocket.Close();
         }

@@ -35,6 +35,7 @@ namespace Network
         public void Awake()
         {
             gameObject.tag = TAG;
+            DontDestroyOnLoad(this);  // Persist network connection between scene changes.
         }
 
         // Start is called before the first frame update
@@ -73,6 +74,11 @@ namespace Network
 
             _lastReconnect = DateTime.Now;
             _client.Start();
+        }
+
+        public void OnApplicationQuit()
+        {
+            _client.OnApplicationQuit();
         }
 
         public void Reconnect()
