@@ -12,7 +12,9 @@ namespace Network
             // Send list of player actions to the server.
             ACTIONS = 0,
             // Request the server send a state synch.
-            STATE_SYNC_REQUEST = 1,
+            STATE_SYNC_REQUEST,
+
+            ROOM_MANAGEMENT,
         }
 
         // These fields are populated for every packet.
@@ -22,6 +24,7 @@ namespace Network
         public MessageType Type;
 
         public List<Action> Actions;
+        public RoomManagementRequest RoomManagementRequest;
     }
 
 }  // namespace Network

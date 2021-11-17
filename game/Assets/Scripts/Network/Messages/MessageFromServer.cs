@@ -7,12 +7,13 @@ namespace Network
     [Serializable]
     public class MessageFromServer
     {
-	    public enum MessageType
-	    {
-			ACTIONS = 0,
-			MAP_UPDATE,
-			STATE_SYNC,
-	    }
+        public enum MessageType
+        {
+            ACTIONS = 0,
+            MAP_UPDATE,
+            STATE_SYNC,
+            ROOM_MANAGEMENT,
+        }
 
         // These fields are always provided with any packet.
         public string TransmitTime;  // When the server transmitted this message in ISO 8601 format.
@@ -24,5 +25,6 @@ namespace Network
         public List<Action> Actions;
         public MapUpdate MapUpdate;
         public StateSync State;
+        public RoomManagementResponse RoomManagementResponse;
     }
 }  // namespace Network
