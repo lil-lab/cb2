@@ -17,41 +17,20 @@ from typing import List, Optional
 import dateutil.parser
 
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
-@dataclass(frozen=True)
-class Room:
-    name: str
-    id: int
-    capacity: int
-    players: int
-    locked: bool
+class Role(Enum):
+    """ The role of a player in a game. """
+    NONE = 0
+    FOLLOWER = 1
+    LEADER = 2
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
-class RoomListing:
-    servers: List[Room]
-
-
-@dataclass_json(letter_case=LetterCase.PASCAL)
-@dataclass(frozen=True)
-class CreateRoomRequest:
-    name: str
-    capacity: int
-    password: str
-
-
-@dataclass_json(letter_case=LetterCase.PASCAL)
-@dataclass(frozen=True)
-class JoinRoomRequest:
-    proposed_server: Room
-    password: str
-
-
-@dataclass_json(letter_case=LetterCase.PASCAL)
-@dataclass(frozen=True)
-class JoinRoomResponse:
+class JoinResponse:
     joined: bool
+
+    place_in_queue: Optional[int]  # If joined == false.
+    role: Role  # If joined == true.
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
@@ -65,13 +44,21 @@ class LeaveRoomNotice:
     reason: str
 
 
+@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass(frozen=True)
+class StatsResponse:
+    number_of_games: int
+    players_in_game: int
+    followers_waiting: int
+    leaders_waiting: int
+
+
 class RoomRequestType(Enum):
     """ Enumeration of the different types of management requests.  """
     NONE = 0
-    LIST_ROOMS = 1
-    CREATE_ROOM = 2
-    JOIN_ROOM = 3
-    LEAVE_ROOM = 4
+    STATS = 1
+    JOIN = 2
+    LEAVE = 3
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
@@ -79,20 +66,14 @@ class RoomRequestType(Enum):
 class RoomManagementRequest:
     type: RoomRequestType
 
-    # Depending on the type above, the below are optionally populated.
-    create_room: Optional[CreateRoomRequest]
-    join_room: Optional[JoinRoomRequest]
-
 
 class RoomResponseType(Enum):
     """ Enumeration of the different types of management responses.  """
     NONE = 0
-    LIST_ROOMS = 1
-    JOIN_ROOM_RESPONSE = 2
+    STATS = 1
+    JOIN_RESPONSE = 2
     LEAVE_NOTICE = 3
-
-    # Depending on the type, the below are optionally populated.
-    list_room: Optional[RoomListing]
+    ERROR = 4
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
@@ -101,5 +82,6 @@ class RoomManagementResponse:
     type: RoomResponseType
 
     # Depending on the type above, the below are optionally populated.
-    join_room: Optional[JoinRoomResponse]
+    stats: Optional[StatsResponse]
+    join_response: Optional[JoinResponse]
     leave_notice: Optional[LeaveRoomNotice]
