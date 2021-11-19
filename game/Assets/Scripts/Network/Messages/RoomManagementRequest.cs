@@ -1,3 +1,5 @@
+using System;
+
 namespace Network
 {
     public enum RoomRequestType
@@ -8,6 +10,7 @@ namespace Network
         LEAVE,
     }
 
+    [Serializable]
     public class RoomManagementRequest
     {
         public RoomRequestType Type;

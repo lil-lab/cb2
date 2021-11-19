@@ -111,7 +111,7 @@ class RoomManager(object):
         """ Runs asyncronously, creating rooms for pending followers and
         leaders. """
         while not self._is_done:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(1)
             leader, follower = self.get_leader_follower_match()
             if not leader or not follower:
                 continue
@@ -135,12 +135,12 @@ class RoomManager(object):
 
     def handle_join_request(self, request, ws):
         # Assign a role depending on which role queue is smaller.
-        if len(self._follower_queue) >= len(self._leader_queue):
+        if self._follower_queue.qsize() >= self._leader_queue.qsize():
             self._leader_queue.put(ws)
-            return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, len(self._leader_queue)))
+            return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, self._leader_queue.qsize(), Role.NONE), None)
         else:
             self._follower_queue.put(ws)
-            return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, len(self._follower_queue)))
+            return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, self._follower_queue.qsize(), Role.NONE), None)
 
     def handle_leave_request(self, request, ws):
         if not ws in self._remotes:
@@ -153,9 +153,9 @@ class RoomManager(object):
     def handle_stats_request(self, request, ws):
         total_players = sum(
             [room.number_of_players for room in self._rooms.values()])
-        stats = StatsResponse(len(self._rooms), total_players, len(
-            self._follower_queue), len(self._leader_queue))
-        return RoomManagementResponse(RoomResponseType.STATS_RESPONSE, stats, None, None)
+        stats = StatsResponse(len(self._rooms), total_players,
+                              self._follower_queue.qsize(), self._leader_queue.qsize())
+        return RoomManagementResponse(RoomResponseType.STATS, stats, None, None)
 
     def handle_request(self, request, ws):
         if request.type == RoomRequestType.JOIN:

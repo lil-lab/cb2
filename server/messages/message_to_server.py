@@ -31,4 +31,4 @@ class MessageToServer:
         ))
     type: MessageType
     actions: Optional[List[Action]]
-    room_management_request: Optional[RoomManagementRequest]
+    room_request: Optional[RoomManagementRequest]

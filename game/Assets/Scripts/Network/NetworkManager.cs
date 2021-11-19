@@ -2,6 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
 
 namespace Network
 {
@@ -17,6 +20,7 @@ namespace Network
         private EntityManager _entityManager;
         private Player _player;
         private DateTime _lastReconnect;
+        private DateTime _lastStatsPoll;
 
         public NetworkMapSource MapSource()
         {
@@ -38,25 +42,51 @@ namespace Network
             DontDestroyOnLoad(this);  // Persist network connection between scene changes.
         }
 
+        // Called when a user clicks the "Join Game" menu button. Starts a new game.
+        public void JoinGame()
+        {
+            MessageToServer msg = new MessageToServer();
+            msg.TransmitTime = DateTime.Now.ToString("o");
+            msg.Type = MessageToServer.MessageType.ROOM_MANAGEMENT;
+            msg.RoomRequest = new RoomManagementRequest();
+            msg.RoomRequest.Type = RoomRequestType.JOIN;
+            Debug.Log("Joining game...");
+            _client.TransmitMessage(msg);
+        }
+
+        public Util.Status InitializeTaggedObjects()
+        {
+            GameObject obj = GameObject.FindGameObjectWithTag(EntityManager.TAG);
+            if (obj == null)
+            {
+                return Util.Status.NotFound("Could not find tag: " + EntityManager.TAG);
+            }
+            _entityManager = obj.GetComponent<EntityManager>();
+            if (_entityManager == null)
+            {
+                return Util.Status.NotFound("Could not find component: " + EntityManager.TAG);
+            }
+
+            GameObject playerObj = GameObject.FindGameObjectWithTag(Player.TAG);
+            if (playerObj == null)
+            {
+                return Util.Status.NotFound("Could not find tag: " + Player.TAG);
+            }
+            _player = playerObj.GetComponent<Player>();
+            if (_player == null)
+            {
+                return Util.Status.NotFound("Could not find component: " + Player.TAG);
+            }
+
+            _router.SetEntityManager(_entityManager);
+            _router.SetPlayer(_player);
+            return Util.Status.OkStatus();
+        }
+
         // Start is called before the first frame update
         private void Start()
         {
             _networkMapSource = new NetworkMapSource();
-
-            GameObject obj = GameObject.FindGameObjectWithTag(EntityManager.TAG);
-            _entityManager = obj.GetComponent<EntityManager>();
-            if (_entityManager == null)
-            {
-                Debug.LogError("Could not initialize EntityManager via tag: " + EntityManager.TAG);
-            }
-
-            GameObject playerObj = GameObject.FindGameObjectWithTag(Player.TAG);
-            _player = playerObj.GetComponent<Player>();
-
-            if (_player == null)
-            {
-                Debug.LogError("Could not initialize Player via tag: " + Player.TAG);
-            }
 
             string url = URL;
             if (Application.absoluteURL != "")
@@ -70,10 +100,30 @@ namespace Network
             }
             Debug.Log("Using url: " + url);
             _client = new ClientConnection(url);
-            _router = new NetworkRouter(_client, _networkMapSource, _entityManager, _player);
+            _router = new NetworkRouter(_client, _networkMapSource, this, null, null);
+
+            Util.Status result = InitializeTaggedObjects();
+            if (!result.Ok())
+            {
+                Debug.Log(result);
+            }
+
+            // Subscribe to new scene changes.
+            SceneManager.activeSceneChanged += ChangedActiveScene;
+
 
             _lastReconnect = DateTime.Now;
+            _lastStatsPoll = DateTime.Now;
             _client.Start();
+        }
+
+        public void ChangedActiveScene(Scene oldScene, Scene newScene)
+        {
+            Util.Status result = InitializeTaggedObjects();
+            if (!result.Ok())
+            {
+                Debug.Log(result);
+            }
         }
 
         public void OnApplicationQuit()
@@ -86,11 +136,61 @@ namespace Network
             _client.Reconnect();
         }
 
+        public void HandleRoomManagement(RoomManagementResponse response)
+        {
+            if (response.Type == RoomResponseType.JOIN_RESPONSE)
+            {
+                if (response.JoinResponse.Joined)
+                {
+                    Debug.Log("Joined room as " + response.JoinResponse.Role + "!");
+                    SceneManager.LoadScene("game_scene");
+                }
+                else
+                {
+                    Debug.Log("Waiting for room. Position in queue: " + response.JoinResponse.PlaceInQueue);
+                }
+            }
+            else if (response.Type == RoomResponseType.LEAVE_NOTICE)
+            {
+                Debug.Log("Kicked from game. Reason: " + response.LeaveNotice.Reason);
+                SceneManager.LoadScene("menu_scene");
+                _router.SetEntityManager(null);
+                _router.SetPlayer(null);
+            }
+            else if (response.Type == RoomResponseType.STATS)
+            {
+                Debug.Log("Stats: " + response.Stats.ToString());
+                GameObject obj = GameObject.FindGameObjectWithTag("Stats");
+                Text stats = obj.GetComponent<Text>();
+                stats.text = "Players: " + response.Stats.PlayersInGame + "\n" +
+                             "Games: " + response.Stats.NumberOfGames + "\n" +
+                             "Followers Waiting: " + response.Stats.FollowersWaiting + "\n" +
+                             "Leaders Waiting: " + response.Stats.LeadersWaiting + "\n";
+            }
+            else
+            {
+                Debug.Log("Received unknown room management response type: " + response.Type);
+            }
+        }
+
         // Update is called once per frame
         void Update()
         {
+            GameObject statsObj = GameObject.FindGameObjectWithTag("Stats");
+            if (((DateTime.Now - _lastStatsPoll).Seconds > 1) && (statsObj != null) && (statsObj.activeInHierarchy))
+            {
+                Debug.Log("Requesting stats...");
+                _lastStatsPoll = DateTime.Now;
+                MessageToServer msg = new MessageToServer();
+                msg.TransmitTime = DateTime.Now.ToString("o");
+                msg.Type = MessageToServer.MessageType.ROOM_MANAGEMENT;
+                msg.RoomRequest = new RoomManagementRequest();
+                msg.RoomRequest.Type = RoomRequestType.STATS;
+                _client.TransmitMessage(msg);
+            }
             if (_client.IsClosed() && ((DateTime.Now - _lastReconnect).Seconds > 3))
             {
+                Debug.Log("Reconnecting...");
                 Invoke("Reconnect", 3);
                 _lastReconnect = DateTime.Now;
             }

@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
+using Network;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class HexGrid : MonoBehaviour
 {
@@ -33,12 +35,28 @@ public class HexGrid : MonoBehaviour
 
     void Start()
     {
-        GameObject obj = GameObject.FindWithTag(Network.NetworkManager.TAG);
-        Network.NetworkManager net = obj.GetComponent<Network.NetworkManager>();
-        HexGridManager.IMapSource networkMapSource = net.MapSource();
-        FixedMapSource fixedMap = new FixedMapSource();
-        _manager = new HexGridManager(networkMapSource, new UnityAssetSource());
+        Scene activeScene = SceneManager.GetActiveScene();
+        HexGridManager.IMapSource mapSource = null;
+        if (activeScene.name == "menu_scene")
+        {
+            mapSource = new FixedMapSource();
+        }
+        else if (activeScene.name == "game_scene")
+        {
+            GameObject obj = GameObject.FindWithTag(Network.NetworkManager.TAG);
+            mapSource = obj.GetComponent<Network.NetworkManager>().MapSource();
+        }
+        else
+        {
+            Debug.LogError("Unknown scene: " + activeScene.name);
+        }
+        _manager = new HexGridManager(mapSource, new UnityAssetSource());
         _manager.Start();
+    }
+
+    public void SetMap(HexGridManager.IMapSource map)
+    {
+        _manager.SetMap(map);
     }
 
     void Update()

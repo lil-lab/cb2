@@ -15,12 +15,12 @@ public class FixedMapSource : HexGridManager.IMapSource
         {
             for (int j = 0; j < 20; ++j)
             {
-                mapInfo[i,j] = FixedMapSource.GroundTile();
+                mapInfo[i, j] = FixedMapSource.GroundTile();
             }
         }
-        
+
         mapInfo[10, 10] = FixedMapSource.GroundTileForest();
-        mapInfo[10, 11] = FixedMapSource.GroundTileHouse();
+        mapInfo[10, 11] = FixedMapSource.GroundTileHouse(60);
         mapInfo[11, 11] = FixedMapSource.GroundTileStones();
         mapInfo[11, 10] = FixedMapSource.GroundTileStreetLight();
         mapInfo[9, 10] = FixedMapSource.GroundTileSingleTree();
@@ -29,13 +29,14 @@ public class FixedMapSource : HexGridManager.IMapSource
         mapInfo[9, 8] = FixedMapSource.MountainTile();
         mapInfo[9, 9] = FixedMapSource.MountainTile();
         mapInfo[9, 8] = FixedMapSource.RampToMountain();
-        
+
         return mapInfo;
     }
 
     private static Tile GroundTile()
     {
-        return new Tile() {
+        return new Tile()
+        {
             AssetId = IAssetSource.AssetId.GROUND_TILE,
             RotationDegrees = 0,
             Edges = 0,
@@ -46,7 +47,8 @@ public class FixedMapSource : HexGridManager.IMapSource
 
     private static Tile GroundTileRocky()
     {
-        return new Tile() {
+        return new Tile()
+        {
             AssetId = IAssetSource.AssetId.GROUND_TILE_ROCKY,
             RotationDegrees = 0,
             Edges = 0x3f,
@@ -57,7 +59,8 @@ public class FixedMapSource : HexGridManager.IMapSource
 
     private static Tile GroundTileStones()
     {
-        return new Tile() {
+        return new Tile()
+        {
             AssetId = IAssetSource.AssetId.GROUND_TILE_STONES,
             RotationDegrees = 0,
             Edges = 0x3f,
@@ -68,7 +71,8 @@ public class FixedMapSource : HexGridManager.IMapSource
 
     private static Tile GroundTileTrees()
     {
-        return new Tile() {
+        return new Tile()
+        {
             AssetId = IAssetSource.AssetId.GROUND_TILE_TREES,
             RotationDegrees = 0,
             Edges = 0x3f,
@@ -78,7 +82,8 @@ public class FixedMapSource : HexGridManager.IMapSource
     }
     private static Tile GroundTileSingleTree()
     {
-        return new Tile() {
+        return new Tile()
+        {
             AssetId = IAssetSource.AssetId.GROUND_TILE_TREES_2,
             RotationDegrees = 0,
             Edges = 0x3f,
@@ -87,7 +92,8 @@ public class FixedMapSource : HexGridManager.IMapSource
     }
     private static Tile GroundTileForest()
     {
-        return new Tile() {
+        return new Tile()
+        {
             AssetId = IAssetSource.AssetId.GROUND_TILE_FOREST,
             RotationDegrees = 0,
             Edges = 0x3f,
@@ -95,12 +101,12 @@ public class FixedMapSource : HexGridManager.IMapSource
             Layer = 0,
         };
     }
-    private static Tile GroundTileHouse()
+    private static Tile GroundTileHouse(int rotation)
     {
         return new Tile()
         {
             AssetId = IAssetSource.AssetId.GROUND_TILE_HOUSE,
-            RotationDegrees = 0,
+            RotationDegrees = rotation,
             Edges = 0x3f,
             Height = 0,
             Layer = 0,
@@ -108,7 +114,8 @@ public class FixedMapSource : HexGridManager.IMapSource
     }
     private static Tile GroundTileStreetLight()
     {
-        return new Tile() {
+        return new Tile()
+        {
             AssetId = IAssetSource.AssetId.GROUND_TILE_STREETLIGHT,
             RotationDegrees = 0,
             Edges = 0x3f,
@@ -118,7 +125,8 @@ public class FixedMapSource : HexGridManager.IMapSource
     }
     private static Tile MountainTile()
     {
-        return new Tile() {
+        return new Tile()
+        {
             AssetId = IAssetSource.AssetId.MOUNTAIN_TILE,
             RotationDegrees = 0,
             Edges = 0x00,
@@ -128,7 +136,8 @@ public class FixedMapSource : HexGridManager.IMapSource
     }
     private static Tile RampToMountain()
     {
-        return new Tile() {
+        return new Tile()
+        {
             AssetId = IAssetSource.AssetId.RAMP_TO_MOUNTAIN,
             RotationDegrees = 0,
             Edges = 0b101101,
@@ -144,11 +153,11 @@ public class FixedMapSource : HexGridManager.IMapSource
         public byte Edges;
 
         // Height is the Y-displacement of the tile (how high to place objects
-		// on the tile).
+        // on the tile).
         public float Height = 0;
         // Layer is the index height of the tile. This is an integer 
-	    // categorization of height. For example, 0 = ground, 1 = ramp,
-	    // 2 = mountain.
+        // categorization of height. For example, 0 = ground, 1 = ramp,
+        // 2 = mountain.
         public int Layer = 0;
     }
 
@@ -185,16 +194,16 @@ public class FixedMapSource : HexGridManager.IMapSource
         {
             // For each neighbor which is out of bounds, add a boundary.
             HecsCoord loc = _map[i].Cell.coord;
-	        foreach (HecsCoord n in loc.Neighbors())
+            foreach (HecsCoord n in loc.Neighbors())
             {
                 (int nr, int nc) = n.ToOffsetCoordinates();
                 // If the neighbor cell is outside the map.
-		        if ((nr < 0) || (nc < 0) || (nr >= mapInfo.GetLength(0)) || (nc >= mapInfo.GetLength(1)))
+                if ((nr < 0) || (nc < 0) || (nr >= mapInfo.GetLength(0)) || (nc >= mapInfo.GetLength(1)))
                 {
                     _map[i].Cell.boundary.SetEdgeWith(loc, n);
-		        }
-	        } 
-	    }
+                }
+            }
+        }
 
         // Adds edges between adjacent cells that are on far-apart layers.
         AddLayerEdges();
@@ -209,7 +218,7 @@ public class FixedMapSource : HexGridManager.IMapSource
         // Ground has a layer of 0, the ramp has a layer of 1, and mountains have a layer of 2.
         for (int i = 0; i < _map.Count; ++i)
         {
-	        for (int j = 0; j < _map.Count; ++j)
+            for (int j = 0; j < _map.Count; ++j)
             {
                 if (i == j) continue;
                 if (!_map[i].Cell.coord.IsAdjacentTo(_map[j].Cell.coord)) continue;
@@ -219,10 +228,10 @@ public class FixedMapSource : HexGridManager.IMapSource
                 if (layer_diff > 1)
                 {
                     // Only need to add the edge to _map[i]. The HexGridManager adds edge symmetry later.
-                    _map[i].Cell.boundary.SetEdgeWith(_map[i].Cell.coord, _map[j].Cell.coord); 
-		        }
-	        }
-	    }
+                    _map[i].Cell.boundary.SetEdgeWith(_map[i].Cell.coord, _map[j].Cell.coord);
+                }
+            }
+        }
     }
 
     // Retrieves the dimensions of the hexagon grid.

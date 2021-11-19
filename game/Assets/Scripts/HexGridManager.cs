@@ -59,6 +59,11 @@ public class HexGridManager
         _assetSource = assetSource;
     }
 
+    public void SetMap(IMapSource mapSource)
+    {
+        _mapSource = mapSource;
+    }
+
     public void InitializeGrid()
     {
         (int rows, int cols) = _mapSource.GetMapDimensions();

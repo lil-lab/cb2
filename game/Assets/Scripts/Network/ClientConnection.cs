@@ -13,7 +13,7 @@ namespace Network
         private WebSocket _webSocket;
         public string _url;
         private NetworkRouter _router;
-        private ConcurrentQueue<Network.Action> _actionQueue;
+        private ConcurrentQueue<Network.MessageToServer> _messageQueue;
 
         string fix_json(string value)
         {
@@ -25,7 +25,7 @@ namespace Network
         {
             _url = url;
             _webSocket = new WebSocket(_url);
-            _actionQueue = new ConcurrentQueue<Network.Action>();
+            _messageQueue = new ConcurrentQueue<Network.MessageToServer>();
         }
 
         public void RegisterHandler(NetworkRouter router)
@@ -38,9 +38,10 @@ namespace Network
             return _webSocket.State.HasFlag(WebSocketState.Closed);
         }
 
-        public void TransmitAction(int id, ActionQueue.IAction action)
+
+        public void TransmitMessage(MessageToServer message)
         {
-            _actionQueue.Enqueue(action.Packet(id));
+            _messageQueue.Enqueue(message);
         }
 
         public async void Reconnect()
@@ -98,23 +99,17 @@ namespace Network
         {
             if (_webSocket.State == WebSocketState.Open)
             {
-                List<Action> actionsForServer = new List<Action>();
-                Action action;
-                while (_actionQueue.TryDequeue(out action))
-                {
-                    actionsForServer.Add(action);
-                }
-
-                if (actionsForServer.Count == 0)
+                if (!_messageQueue.TryDequeue(out MessageToServer toServer))
                 {
                     return;
                 }
 
-                MessageToServer toServer = new MessageToServer();
+                if (toServer == null)
+                {
+                    Debug.Log("Dequeued a null MessageToServer.");
+                    return;
+                }
 
-                toServer.Type = MessageToServer.MessageType.ACTIONS;
-                toServer.Actions = actionsForServer;
-                toServer.TransmitTime = DateTime.Now.ToString("o");
                 Debug.Log("Sending: " + JsonUtility.ToJson(toServer));
                 await _webSocket.SendText(JsonUtility.ToJson(toServer));
             }

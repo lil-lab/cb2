@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Network
@@ -11,20 +12,32 @@ namespace Network
     // for the server.
     public class NetworkRouter
     {
-        private ClientConnection _client;
+        private readonly ClientConnection _client;
         private NetworkMapSource _mapSource;
+        private readonly NetworkManager _networkManager;
         private EntityManager _entityManager;
         private Player _player;
         private int _activeActorId = -1;
 
-        public NetworkRouter(ClientConnection client, NetworkMapSource mapSource, EntityManager entityManager, Player player)
+        public NetworkRouter(ClientConnection client, NetworkMapSource mapSource, NetworkManager networkManager, EntityManager entityManager, Player player)
         {
             _client = client;
             _mapSource = mapSource;
+            _networkManager = networkManager;
             _entityManager = entityManager;
             _player = player;
 
             _client.RegisterHandler(this);
+        }
+
+        public void SetEntityManager(EntityManager entityManager)
+        {
+            _entityManager = entityManager;
+        }
+
+        public void SetPlayer(Player player)
+        {
+            _player = player;
         }
 
         public void HandleMessage(MessageFromServer message)
@@ -32,6 +45,11 @@ namespace Network
             Debug.Log("Received message of type: " + message.Type);
             if (message.Type == MessageFromServer.MessageType.ACTIONS)
             {
+                if (_player == null || _entityManager == null)
+                {
+                    Debug.LogError("Player or entity manager not set, yet received state sync.");
+                    return;
+                }
                 foreach (Network.Action networkAction in message.Actions)
                 {
                     ActionQueue.IAction action = ActionFromNetwork(networkAction);
@@ -45,6 +63,11 @@ namespace Network
             }
             if (message.Type == MessageFromServer.MessageType.STATE_SYNC)
             {
+                if (_player == null || _entityManager == null)
+                {
+                    Debug.LogError("Player or entity manager not set, yet received state sync.");
+                    return;
+                }
                 _activeActorId = message.State.PlayerId;
                 _entityManager.DestroyActors();
                 _player.FlushActionQueue();
@@ -61,6 +84,11 @@ namespace Network
             }
             if (message.Type == MessageFromServer.MessageType.MAP_UPDATE)
             {
+                if (_entityManager == null)
+                {
+                    Debug.LogError("Entity manager not set, yet received state sync.");
+                    return;
+                }
                 if (_mapSource == null)
                 {
                     Debug.Log("Network Router received map update but no map source to forward it to.");
@@ -89,6 +117,10 @@ namespace Network
                     Debug.LogWarning("Unknown proptype encountered.");
                 }
             }
+            if (message.Type == MessageFromServer.MessageType.ROOM_MANAGEMENT)
+            {
+                _networkManager.HandleRoomManagement(message.RoomManagementResponse);
+            }
         }
 
         public void TransmitAction(ActionQueue.IAction action)
@@ -98,7 +130,13 @@ namespace Network
                 Debug.Log("Can't send action to server; Player ID unknown.");
                 return;
             }
-            _client.TransmitAction(_activeActorId, action);
+
+            MessageToServer toServer = new MessageToServer();
+            toServer.TransmitTime = DateTime.Now.ToString("o");
+            toServer.Type = MessageToServer.MessageType.ACTIONS;
+            toServer.Actions = new List<Action>();
+            toServer.Actions.Add(action.Packet(_activeActorId));
+            _client.TransmitMessage(toServer);
         }
 
         private ActionQueue.IAction TeleportToStartState(Network.StateSync.Actor actorState)

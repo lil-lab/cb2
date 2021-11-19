@@ -24,7 +24,7 @@ namespace Network
         public MessageType Type;
 
         public List<Action> Actions;
-        public RoomManagementRequest RoomManagementRequest;
+        public RoomManagementRequest RoomRequest;
     }
 
 }  // namespace Network

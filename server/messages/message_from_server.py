@@ -20,7 +20,7 @@ class MessageType(Enum):
     ACTIONS = 0
     MAP_UPDATE = 1
     STATE_SYNC = 2
-    ROOM_MANAGEMENT_RESPONSE = 3
+    ROOM_MANAGEMENT = 3
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)

@@ -96,6 +96,7 @@ async def receive_agent_updates(request, ws):
     global remote_table
     global room_manager
     async for msg in ws:
+        await asyncio.sleep(0.01)
         if msg.type == aiohttp.WSMsgType.ERROR:
             closed = True
             await ws.close()
@@ -113,6 +114,7 @@ async def receive_agent_updates(request, ws):
             await ws.close()
             continue
 
+        print("Received msg: " + msg.data)
         message = message_to_server.MessageToServer.from_json(msg.data)
         # Only handle in-game actions if we're in a room.
         if room_manager.socket_in_room(ws):
@@ -131,7 +133,11 @@ async def receive_agent_updates(request, ws):
                 continue
 
         if message.type == message_to_server.MessageType.ROOM_MANAGEMENT:
-            room_manager.handle_request(message.room_management_request, ws)
+            response = room_manager.handle_request(message.room_request, ws)
+            if response is not None:
+                msg = message_from_server.MessageFromServer(
+                    datetime.now(), message_from_server.MessageType.ROOM_MANAGEMENT, None, None, None, response)
+                await transmit(ws, msg.to_json())
             continue
 
         print("Received unknown message type:" + str(message.type))
@@ -150,7 +156,7 @@ async def PlayerEndpoint(request):
         await asyncio.gather(receive_agent_updates(request, ws), stream_game_state(request, ws))
     finally:
         print("player disconnected from : " + request.remote)
-        room_manager.disconnect_socket(ws)
+        await room_manager.disconnect_socket(ws)
         del remote_table[ws]
     return ws
 
@@ -216,6 +222,7 @@ async def draw_gui():
     room = room_manager.get_room_by_name("debug")
     display = visualize.GameDisplay(SCREEN_SIZE)
     while True:
+        await asyncio.sleep(0.05)
         if room is None:
             room = room_manager.get_room_by_name("debug")
             continue
@@ -233,7 +240,6 @@ async def draw_gui():
             if event.key == pygame.K_ESCAPE:
                 pygame.quit()
                 return
-        await asyncio.sleep(0.05)
 
 
 def main(assets_directory="assets/", gui=False):
