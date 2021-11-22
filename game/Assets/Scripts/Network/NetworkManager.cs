@@ -185,6 +185,7 @@ namespace Network
             {
                 Debug.Log("Stats: " + response.Stats.ToString());
                 GameObject obj = GameObject.FindGameObjectWithTag("Stats");
+                if (obj == null) return;
                 Text stats = obj.GetComponent<Text>();
                 stats.text = "Players in game: " + response.Stats.PlayersInGame + "\n" +
                              "Games: " + response.Stats.NumberOfGames + "\n" +

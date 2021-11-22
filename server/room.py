@@ -45,7 +45,7 @@ class Room(object):
     def start(self):
         if self._update_loop is not None:
             return RuntimeError("started Room that is already running.")
-        self._update_loop = asyncio.create_task(self._game_state.update_loop())
+        self._update_loop = asyncio.create_task(self._game_state.update())
 
     def stop(self):
         if self._update_loop is None:
@@ -60,7 +60,7 @@ class Room(object):
 
     def is_full(self):
         """ Returns True if the room is full. """
-        return len(self._players) == self.max_players
+        return len(self._players) == self._max_players
 
     def is_empty(self):
         """ Returns True if the room is empty. """
