@@ -7,6 +7,7 @@ namespace Network
         NONE = 0,
         STATS,
         JOIN,
+        CANCEL,  // Cancel a previous JOIN.
         LEAVE,
     }
 

@@ -58,7 +58,8 @@ class RoomRequestType(Enum):
     NONE = 0
     STATS = 1
     JOIN = 2
-    LEAVE = 3
+    CANCEL = 3
+    LEAVE = 4
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)

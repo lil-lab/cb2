@@ -53,9 +53,8 @@ async def Index(request):
     global room_manager
     server_state = {
         "assets": assets_map,
-        "endpoints": remote_table,
         "number_rooms": len(room_manager.room_ids()),
-        "rooms": [room_manager.get_room(room_id).state() for room_id in room_manager.rooms()]
+        "rooms": [room_manager.get_room(room_id).state() for room_id in room_manager.room_ids()]
     }
     return web.json_response(server_state)
 
@@ -114,7 +113,7 @@ async def receive_agent_updates(request, ws):
             await ws.close()
             continue
 
-        print("Received msg: " + msg.data)
+        # print("Received msg: " + msg.data)
         message = message_to_server.MessageToServer.from_json(msg.data)
         # Only handle in-game actions if we're in a room.
         if room_manager.socket_in_room(ws):
@@ -143,7 +142,7 @@ async def receive_agent_updates(request, ws):
         print("Received unknown message type:" + str(message.type))
 
 
-@routes.get('/player_endpoint')
+@ routes.get('/player_endpoint')
 async def PlayerEndpoint(request):
     global remote_table
     global room_manager

@@ -116,6 +116,7 @@ class RoomManager(object):
             if not leader or not follower:
                 continue
             room = self.create_room()
+            print("Creating new game " + room.name())
             self._remotes[leader] = SocketInfo(
                 room.id(), room.add_player(), Role.LEADER)
             self._remotes[follower] = SocketInfo(
@@ -135,12 +136,20 @@ class RoomManager(object):
 
     def handle_join_request(self, request, ws):
         # Assign a role depending on which role queue is smaller.
-        if self._follower_queue.qsize() >= self._leader_queue.qsize():
+        if self._follower_queue.qsize() > self._leader_queue.qsize():
             self._leader_queue.put(ws)
             return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, self._leader_queue.qsize(), Role.NONE), None)
-        else:
+        elif self._follower_queue.qsize() < self._leader_queue.qsize():
             self._follower_queue.put(ws)
-            return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, self._follower_queue.qsize(), Role.NONE), None)
+            return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, self._follower_queue.qsize(), Role.NONE), None)
+        else:
+            # Select a random role.
+            if random.randint(0, 1) == 0:
+                self._leader_queue.put(ws)
+                return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, self._follower_queue.qsize(), Role.NONE), None)
+            else:
+                self._follower_queue.put(ws)
+                return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, self._follower_queue.qsize(), Role.NONE), None)
 
     def handle_leave_request(self, request, ws):
         if not ws in self._remotes:
@@ -157,6 +166,24 @@ class RoomManager(object):
                               self._follower_queue.qsize(), self._leader_queue.qsize())
         return RoomManagementResponse(RoomResponseType.STATS, stats, None, None)
 
+    def handle_cancel_request(self, request, ws):
+        # Iterate through the queue of followers and leaders,
+        # removing the given socket.
+        print("Client requested cancellation")
+        follower_queue = queue.Queue()
+        leader_queue = queue.Queue()
+        while not self._follower_queue.empty():
+            follower = self._follower_queue.get()
+            if follower != ws:
+                follower_queue.put(follower)
+        self._follower_queue = follower_queue
+
+        while not self._leader_queue.empty():
+            leader = self._leader_queue.get()
+            if leader != ws:
+                leader_queue.put(leader)
+        self._leader_queue = leader_queue
+
     def handle_request(self, request, ws):
         if request.type == RoomRequestType.JOIN:
             return self.handle_join_request(request, ws)
@@ -164,5 +191,7 @@ class RoomManager(object):
             return self.handle_leave_request(request, ws)
         elif request.type == RoomRequestType.STATS:
             return self.handle_stats_request(request, ws)
+        elif request.type == RoomRequestType.CANCEL:
+            return self.handle_cancel_request(request, ws)
         else:
             return RoomManagementResponse(RoomResponseType.ERROR, "Unknown request type.")

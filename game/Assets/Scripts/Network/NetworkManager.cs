@@ -54,11 +54,34 @@ namespace Network
             _client.TransmitMessage(msg);
         }
 
+        // Pulls the player out of the wait queue to join a new game.
+        public void CancelGameQueue()
+        {
+            MessageToServer msg = new MessageToServer();
+            msg.TransmitTime = DateTime.Now.ToString("o");
+            msg.Type = MessageToServer.MessageType.ROOM_MANAGEMENT;
+            msg.RoomRequest = new RoomManagementRequest();
+            msg.RoomRequest.Type = RoomRequestType.CANCEL;
+            _client.TransmitMessage(msg);
+        }
+
+        public void QuitGame()
+        {
+            MessageToServer msg = new MessageToServer();
+            msg.TransmitTime = DateTime.Now.ToString("o");
+            msg.Type = MessageToServer.MessageType.ROOM_MANAGEMENT;
+            msg.RoomRequest = new RoomManagementRequest();
+            msg.RoomRequest.Type = RoomRequestType.LEAVE;
+            _client.TransmitMessage(msg);
+            SceneManager.LoadScene("menu_scene");
+        }
+
         public Util.Status InitializeTaggedObjects()
         {
             GameObject obj = GameObject.FindGameObjectWithTag(EntityManager.TAG);
             if (obj == null)
             {
+                _entityManager = null;
                 return Util.Status.NotFound("Could not find tag: " + EntityManager.TAG);
             }
             _entityManager = obj.GetComponent<EntityManager>();
@@ -70,6 +93,7 @@ namespace Network
             GameObject playerObj = GameObject.FindGameObjectWithTag(Player.TAG);
             if (playerObj == null)
             {
+                _player = null;
                 return Util.Status.NotFound("Could not find tag: " + Player.TAG);
             }
             _player = playerObj.GetComponent<Player>();
@@ -162,7 +186,7 @@ namespace Network
                 Debug.Log("Stats: " + response.Stats.ToString());
                 GameObject obj = GameObject.FindGameObjectWithTag("Stats");
                 Text stats = obj.GetComponent<Text>();
-                stats.text = "Players: " + response.Stats.PlayersInGame + "\n" +
+                stats.text = "Players in game: " + response.Stats.PlayersInGame + "\n" +
                              "Games: " + response.Stats.NumberOfGames + "\n" +
                              "Followers Waiting: " + response.Stats.FollowersWaiting + "\n" +
                              "Leaders Waiting: " + response.Stats.LeadersWaiting + "\n";

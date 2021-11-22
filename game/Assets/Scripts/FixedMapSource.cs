@@ -7,7 +7,8 @@ using UnityEngine;
 // defined in static function FixedMap() at the top of the class.
 public class FixedMapSource : HexGridManager.IMapSource
 {
-    // This is where the map is defined.
+    // This is where the hardcoded map is defined. The rest of this class is
+    // helper functions and post-processing.
     private static FixedMapSource.Tile[,] FixedMap()
     {
         FixedMapSource.Tile[,] mapInfo = new FixedMapSource.Tile[20, 20];
@@ -24,11 +25,6 @@ public class FixedMapSource : HexGridManager.IMapSource
         mapInfo[11, 11] = FixedMapSource.GroundTileStones();
         mapInfo[11, 10] = FixedMapSource.GroundTileStreetLight();
         mapInfo[9, 10] = FixedMapSource.GroundTileSingleTree();
-
-        mapInfo[8, 8] = FixedMapSource.MountainTile();
-        mapInfo[9, 8] = FixedMapSource.MountainTile();
-        mapInfo[9, 9] = FixedMapSource.MountainTile();
-        mapInfo[9, 8] = FixedMapSource.RampToMountain();
 
         return mapInfo;
     }
