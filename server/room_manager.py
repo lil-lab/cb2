@@ -1,6 +1,7 @@
 """ Used to manage game rooms. """
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, astuple
 from dataclasses_json import dataclass_json, config, LetterCase
+from datetime import datetime
 from messages.message_from_server import MessageFromServer
 from messages.message_from_server import MessageType
 from messages.rooms import Role
@@ -16,7 +17,6 @@ from util import IdAssigner, SafePasswordCompare
 
 import aiohttp
 import asyncio
-import datetime
 import messages.rooms
 import queue
 import random
@@ -45,18 +45,18 @@ class RoomManager(object):
         """ This socket terminated its connection. End the game that the person was in."""
         if not ws in self._remotes:
             return
-        room_id, player_id, _ = self._remotes[ws]
-        self._rooms[room_id].remove_player(player_id)
+        room_id, player_id, _ = astuple(self._remotes[ws])
+        self._rooms[room_id].remove_player(player_id, ws)
         # If a player leaves, the game ends for everyone in the room. Send them leave notices and end the game.
         self._rooms[room_id].stop()
         for socket in self._rooms[room_id].player_endpoints():
             if not socket.closed:
                 leave_notice = LeaveRoomNotice(
                     "Other player disconnected, game ending.")
-                msg = MessageFromServer(datetime.now(), MessageType.ROOM_MANAGEMENT_RESPONSE, None, None, None, RoomManagementResponse(
+                msg = MessageFromServer(datetime.now(), MessageType.ROOM_MANAGEMENT, None, None, None, RoomManagementResponse(
                     RoomResponseType.LEAVE_NOTICE, None, None, leave_notice))
                 await socket.send_str(msg.to_json())
-                socket.close()
+                await socket.close()
         del self._remotes[ws]
 
     def socket_in_room(self, ws):
@@ -129,7 +129,7 @@ class RoomManager(object):
         follower = self._follower_queue.get()
         return leader, follower
 
-    def handle_join_request(self, request, ws):
+    async def handle_join_request(self, request, ws):
         # Assign a role depending on which role queue is smaller.
         if self._follower_queue.qsize() > self._leader_queue.qsize():
             self._leader_queue.put(ws)
@@ -146,24 +146,23 @@ class RoomManager(object):
                 self._follower_queue.put(ws)
                 return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, self._follower_queue.qsize(), Role.NONE), None)
 
-    def handle_leave_request(self, request, ws):
+    async def handle_leave_request(self, request, ws):
         if not ws in self._remotes:
             return RoomManagementResponse(RoomResponseType.ERROR, "You are not in a room.")
         room_id, player_id, _ = self._remotes[ws]
-        self._rooms[room_id].remove_player(player_id)
-        self.disconnect_socket(ws)
+        await self.disconnect_socket(ws)
 
         del self._remotes[ws]
         return RoomManagementResponse(RoomResponseType.LEAVE_NOTICE, None, None, LeaveRoomNotice("Player requested leave."))
 
-    def handle_stats_request(self, request, ws):
+    async def handle_stats_request(self, request, ws):
         total_players = sum(
             [room.number_of_players() for room in self._rooms.values()])
         stats = StatsResponse(len(self._rooms), total_players,
                               self._follower_queue.qsize(), self._leader_queue.qsize())
         return RoomManagementResponse(RoomResponseType.STATS, stats, None, None)
 
-    def handle_cancel_request(self, request, ws):
+    async def handle_cancel_request(self, request, ws):
         # Iterate through the queue of followers and leaders,
         # removing the given socket.
         print("Client requested cancellation")
@@ -181,14 +180,14 @@ class RoomManager(object):
                 leader_queue.put(leader)
         self._leader_queue = leader_queue
 
-    def handle_request(self, request, ws):
+    async def handle_request(self, request, ws):
         if request.type == RoomRequestType.JOIN:
-            return self.handle_join_request(request, ws)
+            return await self.handle_join_request(request, ws)
         elif request.type == RoomRequestType.LEAVE:
-            return self.handle_leave_request(request, ws)
+            return await self.handle_leave_request(request, ws)
         elif request.type == RoomRequestType.STATS:
-            return self.handle_stats_request(request, ws)
+            return await self.handle_stats_request(request, ws)
         elif request.type == RoomRequestType.CANCEL:
-            return self.handle_cancel_request(request, ws)
+            return await self.handle_cancel_request(request, ws)
         else:
             return RoomManagementResponse(RoomResponseType.ERROR, "Unknown request type.")

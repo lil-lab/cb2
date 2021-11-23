@@ -2,7 +2,7 @@ from messages import message_from_server
 from state import State
 
 import asyncio
-import datetime
+from datetime import datetime
 
 
 class Room(object):
@@ -34,7 +34,7 @@ class Room(object):
         self._game_state.free_actor(id)
 
     def player_endpoints(self):
-        return self._player_endpoints()
+        return self._player_endpoints
 
     def number_of_players(self):
         return len(self._players)
@@ -84,15 +84,16 @@ class Room(object):
             If no message is available, returns None.
         """
         if not self._game_state.is_synced(player_id):
-            state_sync = self._game_state.sync_message_for_transmission(id)
+            state_sync = self._game_state.sync_message_for_transmission(
+                player_id)
             msg = message_from_server.MessageFromServer(datetime.now(
-            ), message_from_server.MessageType.STATE_SYNC, None, None, state_sync)
+            ), message_from_server.MessageType.STATE_SYNC, None, None, state_sync, None)
             return msg
 
         actions = self._game_state.drain_actions(player_id)
         if len(actions) > 0:
             msg = message_from_server.MessageFromServer(
-                datetime.now(), message_from_server.MessageType.ACTIONS, actions, None, None)
+                datetime.now(), message_from_server.MessageType.ACTIONS, actions, None, None, None)
             return msg
 
         # Nothing to send.

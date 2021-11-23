@@ -307,5 +307,5 @@ class HardcodedMapProvider(object):
     def card_by_location(self, location):
         return self._cards_by_location.get(location, None)
 
-    def get_map(self):
+    def map(self):
         return MapUpdate(self._rows, self._cols, self._tiles, [card.prop() for card in self._cards])

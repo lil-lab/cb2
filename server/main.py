@@ -9,6 +9,7 @@ import sys
 import time
 
 from aiohttp import web
+from dataclasses import astuple
 from hex import HecsCoord, HexBoundary, HexCell
 from messages import map_update
 from messages import message_from_server
@@ -54,7 +55,7 @@ async def Index(request):
     server_state = {
         "assets": assets_map,
         "number_rooms": len(room_manager.room_ids()),
-        "rooms": [room_manager.get_room(room_id).state() for room_id in room_manager.room_ids()]
+        "rooms": [room_manager.get_room(room_id).state().to_json() for room_id in room_manager.room_ids()]
     }
     return web.json_response(server_state)
 
@@ -70,19 +71,19 @@ async def stream_game_state(request, ws):
             client_initialized = False
             continue
 
-        (room_id, player_id, role) = room_manager.socket_info(ws)
+        (room_id, player_id, role) = astuple(room_manager.socket_info(ws))
         room = room_manager.get_room(room_id)
 
         if not client_initialized:
             # Notify the user that they've joined a room, then send the map.
             join_notification = RoomManagementResponse(
-                RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, None, role))
+                RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, role), None)
             room_response = message_from_server.MessageFromServer(datetime.now(
             ), message_from_server.MessageType.ROOM_MANAGEMENT, None, None, None, join_notification)
             await transmit(ws, room_response.to_json())
             mupdate = room.map()
             msg = message_from_server.MessageFromServer(
-                datetime.now(), message_from_server.MessageType.MAP_UPDATE, None, mupdate, None)
+                datetime.now(), message_from_server.MessageType.MAP_UPDATE, None, mupdate, None, None)
             await transmit(ws, msg.to_json())
             client_initialized = True
 
@@ -117,8 +118,8 @@ async def receive_agent_updates(request, ws):
         message = message_to_server.MessageToServer.from_json(msg.data)
         # Only handle in-game actions if we're in a room.
         if room_manager.socket_in_room(ws):
-            (room_id, player_id) = room_manager.socket_info(
-                ws)["room_id", "player_id"]
+            (room_id, player_id, _) = astuple(room_manager.socket_info(
+                ws))
             room = room_manager.get_room(room_id)
             if message.type == message_to_server.MessageType.ACTIONS:
                 print(
@@ -132,7 +133,7 @@ async def receive_agent_updates(request, ws):
                 continue
 
         if message.type == message_to_server.MessageType.ROOM_MANAGEMENT:
-            response = room_manager.handle_request(message.room_request, ws)
+            response = await room_manager.handle_request(message.room_request, ws)
             if response is not None:
                 msg = message_from_server.MessageFromServer(
                     datetime.now(), message_from_server.MessageType.ROOM_MANAGEMENT, None, None, None, response)
