@@ -38,18 +38,31 @@ public class MenuTransitionHandler : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        GameObject esc_menu = GameObject.FindWithTag(ESCAPE_MENU_TAG);
+        GameObject tab_menu = GameObject.FindWithTag(TAB_MENU_TAG);
+        if (esc_menu == null)
+        {
+            Debug.Log("Could not find escape menu!");
+            return;
+        }
+        if (tab_menu == null)
+        {
+            Debug.Log("Could not find tab menu!");
+            return;
+        }
+
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             if (_currentMenuState == MenuState.NONE)
             {
                 _currentMenuState = MenuState.ESCAPE_MENU;
-                GameObject.FindWithTag(ESCAPE_MENU_TAG).SetActive(true);
+                esc_menu.GetComponent<Canvas>().enabled = true;
                 Debug.Log("Opening esc menu");
             }
             else if (_currentMenuState == MenuState.ESCAPE_MENU)
             {
                 _currentMenuState = MenuState.NONE;
-                GameObject.FindWithTag(ESCAPE_MENU_TAG).SetActive(false);
+                esc_menu.GetComponent<Canvas>().enabled = false;
                 Debug.Log("Closed esc menu");
             }
         }
@@ -58,12 +71,12 @@ public class MenuTransitionHandler : MonoBehaviour
             if (_currentMenuState == MenuState.NONE)
             {
                 _currentMenuState = MenuState.TAB_MENU;
-                GameObject.FindWithTag(TAB_MENU_TAG).SetActive(true);
+                tab_menu.GetComponent<Canvas>().enabled = true;
             }
             else if (_currentMenuState == MenuState.TAB_MENU)
             {
                 _currentMenuState = MenuState.NONE;
-                GameObject.FindWithTag(TAB_MENU_TAG).SetActive(true);
+                tab_menu.GetComponent<Canvas>().enabled = false;
             }
         }
     }

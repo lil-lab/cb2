@@ -12,6 +12,7 @@ TagManager:
   - Stats
   - TAB_MENU
   - ESCAPE_MENU
+  - ConnectionStatus
   layers:
   - Default
   - TransparentFX
