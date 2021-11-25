@@ -43,9 +43,15 @@ class RoomManager(object):
 
     async def disconnect_socket(self, ws):
         """ This socket terminated its connection. End the game that the person was in."""
+        self.remove_socket_from_queue(ws)
         if not ws in self._remotes:
+            print("Socket not found in self._remotes!")
             return
         room_id, player_id, _ = astuple(self._remotes[ws])
+        if not room_id in self._rooms:
+            # The room was already terminated by the other player.
+            del self._remotes[ws]
+            return
         self._rooms[room_id].remove_player(player_id, ws)
         # If a player leaves, the game ends for everyone in the room. Send them leave notices and end the game.
         self._rooms[room_id].stop()
@@ -58,6 +64,7 @@ class RoomManager(object):
                 await socket.send_str(msg.to_json())
                 await socket.close()
         del self._remotes[ws]
+        del self._rooms[room_id]
 
     def socket_in_room(self, ws):
         return ws in self._remotes
@@ -106,7 +113,7 @@ class RoomManager(object):
         """ Runs asyncronously, creating rooms for pending followers and
         leaders. """
         while not self._is_done:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.5)
             leader, follower = self.get_leader_follower_match()
             if (leader is None) or (follower is None):
                 continue
@@ -131,6 +138,7 @@ class RoomManager(object):
 
     async def handle_join_request(self, request, ws):
         # Assign a role depending on which role queue is smaller.
+        print("Received join request from : " + str(ws))
         if self._follower_queue.qsize() > self._leader_queue.qsize():
             self._leader_queue.put(ws)
             return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, self._leader_queue.qsize(), Role.NONE), None)
@@ -162,10 +170,7 @@ class RoomManager(object):
                               self._follower_queue.qsize(), self._leader_queue.qsize())
         return RoomManagementResponse(RoomResponseType.STATS, stats, None, None)
 
-    async def handle_cancel_request(self, request, ws):
-        # Iterate through the queue of followers and leaders,
-        # removing the given socket.
-        print("Client requested cancellation")
+    def remove_socket_from_queue(self, ws):
         follower_queue = queue.Queue()
         leader_queue = queue.Queue()
         while not self._follower_queue.empty():
@@ -179,6 +184,12 @@ class RoomManager(object):
             if leader != ws:
                 leader_queue.put(leader)
         self._leader_queue = leader_queue
+
+    async def handle_cancel_request(self, request, ws):
+        # Iterate through the queue of followers and leaders,
+        # removing the given socket.
+        print("Client requested cancellation")
+        self.remove_socket_from_queue(ws)
 
     async def handle_request(self, request, ws):
         if request.type == RoomRequestType.JOIN:

@@ -75,9 +75,6 @@ class Room(object):
     def state(self, actor_id=-1):
         return self._game_state.state(actor_id)
 
-    def handle_action(self, action):
-        return self._game_state.handle_action(action)
-
     def drain_message(self, player_id):
         """ Returns a MessageFromServer object to send to the indicated player.
 

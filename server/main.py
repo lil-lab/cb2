@@ -55,6 +55,7 @@ async def Index(request):
     server_state = {
         "assets": assets_map,
         "number_rooms": len(room_manager.room_ids()),
+        "remotes": [remote_table[ws] for ws in remote_table],
         "rooms": [room_manager.get_room(room_id).state().to_json() for room_id in room_manager.room_ids()]
     }
     return web.json_response(server_state)
@@ -66,8 +67,8 @@ async def stream_game_state(request, ws):
 
     client_initialized = False
     while not ws.closed:
-        await asyncio.sleep(0.1)
         if not room_manager.socket_in_room(ws):
+            await asyncio.sleep(0.1)
             client_initialized = False
             continue
 
@@ -81,6 +82,8 @@ async def stream_game_state(request, ws):
             room_response = message_from_server.MessageFromServer(datetime.now(
             ), message_from_server.MessageType.ROOM_MANAGEMENT, None, None, None, join_notification)
             await transmit(ws, room_response.to_json())
+            # Sleep to give the client some time to change scenes.
+            await asyncio.sleep(1)
             mupdate = room.map()
             msg = message_from_server.MessageFromServer(
                 datetime.now(), message_from_server.MessageType.MAP_UPDATE, None, mupdate, None, None)
@@ -90,6 +93,7 @@ async def stream_game_state(request, ws):
         msg_from_server = room.drain_message(player_id)
         if msg_from_server is not None:
             await transmit(ws, msg_from_server.to_json())
+        await asyncio.sleep(0.1)
 
 
 async def receive_agent_updates(request, ws):
@@ -219,12 +223,12 @@ async def debug_print():
 
 async def draw_gui():
     global room_manager
-    room = room_manager.get_room_by_name("debug")
+    room = room_manager.get_room_by_name("Room #0")
     display = visualize.GameDisplay(SCREEN_SIZE)
     while True:
         await asyncio.sleep(0.05)
         if room is None:
-            room = room_manager.get_room_by_name("debug")
+            room = room_manager.get_room_by_name("Room #0")
             continue
         state = room.state()
         map = room.map()
