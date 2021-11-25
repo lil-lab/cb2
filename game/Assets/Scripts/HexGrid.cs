@@ -36,20 +36,9 @@ public class HexGrid : MonoBehaviour
     void Start()
     {
         Scene activeScene = SceneManager.GetActiveScene();
-        HexGridManager.IMapSource mapSource = null;
-        if (activeScene.name == "menu_scene")
-        {
-            mapSource = new FixedMapSource();
-        }
-        else if (activeScene.name == "game_scene")
-        {
-            GameObject obj = GameObject.FindWithTag(Network.NetworkManager.TAG);
-            mapSource = obj.GetComponent<Network.NetworkManager>().MapSource();
-        }
-        else
-        {
-            Debug.LogError("Unknown scene: " + activeScene.name);
-        }
+        GameObject obj = GameObject.FindWithTag(Network.NetworkManager.TAG);
+        HexGridManager.IMapSource mapSource = obj.GetComponent<Network.NetworkManager>().MapSource();
+        Debug.Log("[DEBUG] Loading HexGrid.");
         _manager = new HexGridManager(mapSource, new UnityAssetSource());
         _manager.Start();
     }

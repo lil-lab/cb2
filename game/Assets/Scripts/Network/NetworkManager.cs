@@ -12,6 +12,8 @@ namespace Network
     {
         public static string TAG = "NetworkManager";
 
+        public static NetworkManager Instance;
+
         public string URL = "ws://localhost:8080/player_endpoint";
 
         private ClientConnection _client;
@@ -22,8 +24,15 @@ namespace Network
         private DateTime _lastReconnect;
         private DateTime _lastStatsPoll;
 
-        public NetworkMapSource MapSource()
+        public HexGridManager.IMapSource MapSource()
         {
+            Scene scene = SceneManager.GetActiveScene();
+            Debug.Log("[DEBUG] scene: " + scene.name);
+            if (scene.name == "menu_scene")
+            {
+                Debug.Log("Loading menu map");
+                return new FixedMapSource();
+            }
             if (_networkMapSource == null)
             {
                 Debug.Log("Retrieved map source before it was initialized.");
@@ -39,7 +48,6 @@ namespace Network
         public void Awake()
         {
             gameObject.tag = TAG;
-            DontDestroyOnLoad(this);  // Persist network connection between scene changes.
         }
 
         // Called when a user clicks the "Join Game" menu button. Starts a new game.
@@ -50,7 +58,7 @@ namespace Network
             msg.Type = MessageToServer.MessageType.ROOM_MANAGEMENT;
             msg.RoomRequest = new RoomManagementRequest();
             msg.RoomRequest.Type = RoomRequestType.JOIN;
-            Debug.Log("Joining game...");
+            Debug.Log("[DEBUG]Joining game...");
             _client.TransmitMessage(msg);
         }
 
@@ -67,12 +75,14 @@ namespace Network
 
         public void QuitGame()
         {
+            _networkMapSource.ClearMapUpdate();
             MessageToServer msg = new MessageToServer();
             msg.TransmitTime = DateTime.Now.ToString("o");
             msg.Type = MessageToServer.MessageType.ROOM_MANAGEMENT;
             msg.RoomRequest = new RoomManagementRequest();
             msg.RoomRequest.Type = RoomRequestType.LEAVE;
             _client.TransmitMessage(msg);
+            Invoke("Reconnect", 0);
             SceneManager.LoadScene("menu_scene");
         }
 
@@ -110,6 +120,15 @@ namespace Network
         // Start is called before the first frame update
         private void Start()
         {
+            if (Instance == null) 
+            {
+                Instance = this;
+                DontDestroyOnLoad(this);  // Persist network connection between scene changes.
+            } else if (Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
             _networkMapSource = new NetworkMapSource();
 
             string url = URL;
@@ -133,7 +152,7 @@ namespace Network
             }
 
             // Subscribe to new scene changes.
-            SceneManager.activeSceneChanged += ChangedActiveScene;
+            SceneManager.sceneLoaded += OnSceneLoaded;
 
 
             _lastReconnect = DateTime.Now;
@@ -141,7 +160,7 @@ namespace Network
             _client.Start();
         }
 
-        public void ChangedActiveScene(Scene oldScene, Scene newScene)
+        public void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             Util.Status result = InitializeTaggedObjects();
             if (!result.Ok())
@@ -219,6 +238,25 @@ namespace Network
                 Invoke("Reconnect", 3);
                 _lastReconnect = DateTime.Now;
             }
+
+            Text connectionStatus = GameObject.FindGameObjectWithTag("ConnectionStatus").GetComponent<Text>();
+            if (_client.IsClosed())
+            {
+                connectionStatus.text = "Disconnected";
+            }
+            else if (_client.IsConnected())
+            {
+                connectionStatus.text = "";
+            }
+            else if (_client.IsConnecting())
+            {
+                connectionStatus.text = "Connecting...";
+            }
+            else if (_client.IsClosing())
+            {
+                connectionStatus.text = "Closing...";
+            }
+
             _client.Update();
         }
     }

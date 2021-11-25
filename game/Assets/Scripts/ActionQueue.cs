@@ -126,7 +126,6 @@ public class ActionQueue
             _progress = 0.0f;
             _actionStarted = DateTime.Now;
             _actionInProgress = true;
-            Debug.Log("Starting action: " + _actionQueue.Peek().ToString() + ", Queue size: " + _actionQueue.Count);
         }
 
         // Immediately skip any expired animations.
@@ -153,7 +152,6 @@ public class ActionQueue
         {
             _state = _actionQueue.Peek().Transfer(_state);
             _actionQueue.Dequeue();
-            Debug.Log("Ending action. Remaining: " + _actionQueue.Count);
             _actionInProgress = false;
         }
     }

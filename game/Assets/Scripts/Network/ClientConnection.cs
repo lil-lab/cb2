@@ -38,6 +38,19 @@ namespace Network
             return _webSocket.State.HasFlag(WebSocketState.Closed);
         }
 
+        public bool IsConnected()
+        {
+            return _webSocket.State.HasFlag(WebSocketState.Open);
+        }
+        public bool IsConnecting()
+        {
+            return _webSocket.State.HasFlag(WebSocketState.Connecting);
+        }
+
+        public bool IsClosing()
+        {
+            return _webSocket.State.HasFlag(WebSocketState.Closing);
+        }
 
         public void TransmitMessage(MessageToServer message)
         {
@@ -46,7 +59,6 @@ namespace Network
 
         public async void Reconnect()
         {
-
             _webSocket.OnOpen += () =>
             {
                 Debug.Log("Connection open!");
@@ -69,10 +81,8 @@ namespace Network
                     return;
                 }
 
-
                 string received = System.Text.Encoding.ASCII.GetString(bytes);
 
-                Debug.Log("Received: " + received);
                 MessageFromServer message = JsonConvert.DeserializeObject<MessageFromServer>(System.Text.Encoding.ASCII.GetString(bytes));
                 _router.HandleMessage(message);
             };
