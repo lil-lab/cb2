@@ -80,14 +80,13 @@ async def stream_game_state(request, ws):
             # Notify the user that they've joined a room, then send the map.
             join_notification = RoomManagementResponse(
                 RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, role), None)
-            room_response = message_from_server.MessageFromServer(datetime.now(
-            ), message_from_server.MessageType.ROOM_MANAGEMENT, None, None, None, join_notification)
+            room_response = message_from_server.RoomResponseFromServer(
+                join_notification)
             await transmit(ws, room_response.to_json())
             # Sleep to give the client some time to change scenes.
             await asyncio.sleep(1)
             mupdate = room.map()
-            msg = message_from_server.MessageFromServer(
-                datetime.now(), message_from_server.MessageType.MAP_UPDATE, None, mupdate, None, None)
+            msg = message_from_server.MapUpdateFromServer(mupdate)
             await transmit(ws, msg.to_json())
             client_initialized = True
 
@@ -126,22 +125,12 @@ async def receive_agent_updates(request, ws):
             (room_id, player_id, _) = astuple(room_manager.socket_info(
                 ws))
             room = room_manager.get_room(room_id)
-            if message.type == message_to_server.MessageType.ACTIONS:
-                print(
-                    "Action received. Transmit: {0}, Type: {1}, Actions:")
-                for action in message.actions:
-                    print("{0}:{1}".format(action.id, action.displacement))
-                    room.handle_action(player_id, action)
-                continue
-            if message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
-                room.desync(player_id)
-                continue
+            room.handle_packet(message)
 
         if message.type == message_to_server.MessageType.ROOM_MANAGEMENT:
             response = await room_manager.handle_request(message.room_request, ws)
             if response is not None:
-                msg = message_from_server.MessageFromServer(
-                    datetime.now(), message_from_server.MessageType.ROOM_MANAGEMENT, None, None, None, response)
+                msg = message_from_server.RoomResponseFromServer(response)
                 await transmit(ws, msg.to_json())
             continue
 
@@ -154,13 +143,13 @@ async def PlayerEndpoint(request):
     global room_manager
     ws = web.WebSocketResponse(autoclose=True, heartbeat=1.0, autoping=1.0)
     await ws.prepare(request)
-    print("player connected from : " + request.remote)
+    logging.info("player connected from : " + request.remote)
     remote_table[ws] = {"last_message_up": time.time(), "last_message_down": time.time(
     ), "ip": request.remote, "id": 0, "bytes_up": 0, "bytes_down": 0}
     try:
         await asyncio.gather(receive_agent_updates(request, ws), stream_game_state(request, ws))
     finally:
-        print("player disconnected from : " + request.remote)
+        logging.info("player disconnected from : " + request.remote)
         await room_manager.disconnect_socket(ws)
         del remote_table[ws]
     return ws
@@ -249,7 +238,8 @@ async def draw_gui():
 
 def setup_logging():
     log_format = "[%(asctime)s] %(levelname)s [%(module)s:%(funcName)s:%(lineno)d] %(message)s"
-    logging.basicConfig(level=logging.DEBUG, format=log_format)
+    logging.basicConfig(level=logging.DEBUG, format=log_format,
+                        filename='cerealbar-server.log', filemode='w')
     logging.getLogger("asyncio").setLevel(logging.INFO)
 
 
@@ -258,8 +248,7 @@ def main(assets_directory="assets/", gui=False):
     global room_manager
     setup_logging()
     assets_map = HashCollectAssets(assets_directory)
-    tasks = asyncio.gather(room_manager.matchmake(),
-                           draw_gui(), debug_print(), serve())
+    tasks = asyncio.gather(room_manager.matchmake(), debug_print(), serve())
     # If map visualization command line flag is enabled, run with the visualize task.
     # if gui:
     #   tasks = asyncio.gather(tasks, draw_gui())

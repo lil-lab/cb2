@@ -14,7 +14,10 @@ namespace Network
             // Request the server send a state synch.
             STATE_SYNC_REQUEST,
 
+            // Used to join a new game/other game management actions.
             ROOM_MANAGEMENT,
+            // Used to send messages to other players in the same room.
+            TEXT,
         }
 
         // These fields are populated for every packet.
@@ -25,6 +28,7 @@ namespace Network
 
         public List<Action> Actions;
         public RoomManagementRequest RoomRequest;
+        public TextMessage Message;
     }
 
 }  // namespace Network

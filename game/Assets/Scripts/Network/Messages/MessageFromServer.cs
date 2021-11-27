@@ -13,6 +13,8 @@ namespace Network
             MAP_UPDATE,
             STATE_SYNC,
             ROOM_MANAGEMENT,
+            TEXT,
+            GAME_STATE,
         }
 
         // These fields are always provided with any packet.
@@ -26,5 +28,7 @@ namespace Network
         public MapUpdate MapUpdate;
         public StateSync State;
         public RoomManagementResponse RoomManagementResponse;
+        public TextMessage Message;
+        public GameState GameState;
     }
 }  // namespace Network

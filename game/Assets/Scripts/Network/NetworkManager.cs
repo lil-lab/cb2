@@ -23,6 +23,7 @@ namespace Network
         private Player _player;
         private DateTime _lastReconnect;
         private DateTime _lastStatsPoll;
+        private Role _role = Network.Role.NONE;
 
         public HexGridManager.IMapSource MapSource()
         {
@@ -38,6 +39,11 @@ namespace Network
                 Debug.Log("Retrieved map source before it was initialized.");
             }
             return _networkMapSource;
+        }
+
+        public Role Role()
+        {
+            return _role;
         }
 
         public void TransmitAction(ActionQueue.IAction action)
@@ -120,11 +126,12 @@ namespace Network
         // Start is called before the first frame update
         private void Start()
         {
-            if (Instance == null) 
+            if (Instance == null)
             {
                 Instance = this;
                 DontDestroyOnLoad(this);  // Persist network connection between scene changes.
-            } else if (Instance != this)
+            }
+            else if (Instance != this)
             {
                 Destroy(gameObject);
                 return;
@@ -187,6 +194,7 @@ namespace Network
                 {
                     Debug.Log("Joined room as " + response.JoinResponse.Role + "!");
                     SceneManager.LoadScene("game_scene");
+                    _role = response.JoinResponse.Role;
                 }
                 else
                 {

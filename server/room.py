@@ -1,7 +1,10 @@
 from messages import message_from_server
+from messages import message_to_server
+from messages import text
 from state import State
 
 import asyncio
+import logging
 from datetime import datetime
 
 
@@ -18,11 +21,11 @@ class Room(object):
         self._password = password
         self._update_loop = None
 
-    def add_player(self, ws):
+    def add_player(self, ws, role):
         """ Adds a player to the room. """
         if self.is_full():
             raise ValueError("Room is full.")
-        id = self._game_state.create_actor()
+        id = self._game_state.create_actor(role)
         self._players.append(id)
         self._player_endpoints.append(ws)
         return id
@@ -41,6 +44,26 @@ class Room(object):
 
     def handle_action(self, id, action):
         self._game_state.handle_action(id, action)
+
+    def handle_text(self, id, message):
+        self._game_state.handle_text(id, message)
+
+    def handle_packet(self, id, message):
+        if message.type == message_to_server.MessageType.ACTIONS:
+            logging.info(f'Actions received. Room: {self.id()}')
+            for action in message.actions:
+                logging.info(f'{action.id}:{action.displacement}')
+                self.handle_action(id, action)
+        elif message.type == message_to_server.MessageType.TEXT:
+            logging.info(
+                f'Text received. Room: {self.id()}, Text: {message.message.text}')
+            self.handle_text(id, message.message.text)
+        elif message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
+            logging.info(
+                f'Sync request recvd. Room: {self.id()}, Player: {id}')
+            self.desync(id)
+        else:
+            logging.warn(f'Received unknown packet type: {message.type}')
 
     def start(self):
         if self._update_loop is not None:
@@ -83,14 +106,18 @@ class Room(object):
         if not self._game_state.is_synced(player_id):
             state_sync = self._game_state.sync_message_for_transmission(
                 player_id)
-            msg = message_from_server.MessageFromServer(datetime.now(
-            ), message_from_server.MessageType.STATE_SYNC, None, None, state_sync, None)
+            msg = message_from_server.StateSyncFromServer(state_sync)
             return msg
 
         actions = self._game_state.drain_actions(player_id)
         if len(actions) > 0:
-            msg = message_from_server.MessageFromServer(
-                datetime.now(), message_from_server.MessageType.ACTIONS, actions, None, None, None)
+            msg = message_from_server.ActionsFromServer(actions)
+            return msg
+
+        messages = self._game_state.drain_messages(player_id)
+        if len(messages) > 0:
+            texts = [text.TextMessage(msg) for msg in messages]
+            msg = message_from_server.TextFromServer(texts)
             return msg
 
         # Nothing to send.

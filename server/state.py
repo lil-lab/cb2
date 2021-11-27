@@ -1,7 +1,9 @@
 import aiohttp
 import asyncio
+import logging
 
 from messages.action import Action, ActionType
+from messages.rooms import Role
 from messages import state_sync
 from hex import HecsCoord
 from queue import Queue
@@ -13,6 +15,7 @@ from util import IdAssigner
 class State(object):
     def __init__(self):
         self._actors = {}
+        self._messages_per_actor = {}  # Per-turn messages per actor.
         self._synced = {}
         self._id_assigner = IdAssigner()
         self._action_history = {}
@@ -31,6 +34,9 @@ class State(object):
             actor = self._actors[id]
             self._action_history[actor.actor_id()].append(action)
 
+    def record_text(self, actor, message):
+        self._message_history[actor.actor_id()].append(message)
+
     def map(self):
         return self._map_provider.map()
 
@@ -44,6 +50,8 @@ class State(object):
                 actor = self._actors[actor_id]
                 if actor.empty():
                     continue
+
+                # Handle actor actions.
                 action = actor.peek()
                 if not self.valid_action(actor_id, action):
                     self.desync_all()
@@ -51,6 +59,23 @@ class State(object):
                     continue
                 self.record_action(action)
                 actor.step()
+
+                # Handle any pending text messages.
+                if not actor in self._messages_per_actor:
+                    self._messages_per_actor[actor] = 0
+                messages = actor.drain_messages()
+                if self._messages_per_actor < 1:
+                    if len(messages) > 1:
+                        logging.warn(
+                            f'Warning, multiple messages received for actor {actor_id} in one turn.')
+                    self.record_text(actor, messages[0])
+                    self._messages_per_actor[actor] = 1
+                else:
+                    if len(messages) > 0:
+                        logging.warn(
+                            f'Warning, multiple messages received for actor {actor_id} in one turn.')
+
+                # Handle game state.
                 stepped_on_card = self._map_provider.card_by_location(
                     actor.location())
                 # If the actor just moved and stepped on a card, mark it as selected.
@@ -88,8 +113,17 @@ class State(object):
             return
         self._actors[actor_id].add_action(action)
 
-    def create_actor(self):
-        actor = Actor(self._id_assigner.alloc(), 0)
+    def handle_text(self, id, message):
+        if self._actors[id].role() != Role.LEADER:
+            logging.warn(
+                f'Warning, text message received from non-leader ID: {str(id)}')
+            return
+        for a in self._actors:
+            if a.role() != Role.FOLLOWER:
+                continue
+
+    def create_actor(self, role):
+        actor = Actor(self._id_assigner.alloc(), 0, role)
         self._actors[actor.actor_id()] = actor
         self._action_history[actor.actor_id()] = []
         self._synced[actor.actor_id()] = False
@@ -128,6 +162,13 @@ class State(object):
         self._action_history[actor_id] = []
         return action_history
 
+    def drain_messages(self, actor_id):
+        if not actor_id in self._message_history:
+            return []
+        message_history = self._message_history[actor_id]
+        self._message_history[actor_id] = []
+        return message_history
+
     # Returns the current state of the game.
     def state(self, actor_id=-1):
         actor_states = []
@@ -152,12 +193,14 @@ class State(object):
 
 
 class Actor(object):
-    def __init__(self, actor_id, asset_id):
+    def __init__(self, actor_id, asset_id, role):
         self._actor_id = actor_id
         self._asset_id = asset_id
         self._actions = Queue()
+        self._messages = []
         self._location = HecsCoord(0, 0, 0)
         self._heading_degrees = 0
+        self._role = role
 
     def actor_id(self):
         return self._actor_id
@@ -165,8 +208,19 @@ class Actor(object):
     def asset_id(self):
         return self._asset_id
 
+    def role(self):
+        return self._role
+
     def add_action(self, action):
         self._actions.put(action)
+
+    def add_message(self, message):
+        self._messages.append(message.text)
+
+    def drain_messages(self):
+        messages = self._messages
+        self._messages = []
+        return messages
 
     def empty(self):
         return self._actions.empty()

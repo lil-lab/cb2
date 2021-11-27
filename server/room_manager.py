@@ -2,8 +2,7 @@
 from dataclasses import dataclass, field, astuple
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
-from messages.message_from_server import MessageFromServer
-from messages.message_from_server import MessageType
+from messages import message_from_server
 from messages.rooms import Role
 from messages.rooms import JoinResponse
 from messages.rooms import LeaveRoomNotice
@@ -45,7 +44,7 @@ class RoomManager(object):
         """ This socket terminated its connection. End the game that the person was in."""
         self.remove_socket_from_queue(ws)
         if not ws in self._remotes:
-            print("Socket not found in self._remotes!")
+            logging.info("Socket not found in self._remotes!")
             return
         room_id, player_id, _ = astuple(self._remotes[ws])
         if not room_id in self._rooms:
@@ -59,7 +58,7 @@ class RoomManager(object):
             if not socket.closed:
                 leave_notice = LeaveRoomNotice(
                     "Other player disconnected, game ending.")
-                msg = MessageFromServer(datetime.now(), MessageType.ROOM_MANAGEMENT, None, None, None, RoomManagementResponse(
+                msg = message_from_server.RoomResponseFromServer(RoomManagementResponse(
                     RoomResponseType.LEAVE_NOTICE, None, None, leave_notice))
                 await socket.send_str(msg.to_json())
                 await socket.close()
@@ -120,9 +119,9 @@ class RoomManager(object):
             room = self.create_room()
             print("Creating new game " + room.name())
             self._remotes[leader] = SocketInfo(
-                room.id(), room.add_player(leader), Role.LEADER)
+                room.id(), room.add_player(leader, Role.LEADER), Role.LEADER)
             self._remotes[follower] = SocketInfo(
-                room.id(), room.add_player(follower), Role.FOLLOWER)
+                room.id(), room.add_player(follower, Role.FOLLOWER), Role.FOLLOWER)
 
     def get_leader_follower_match(self):
         """ Returns a pair of leader, follower.

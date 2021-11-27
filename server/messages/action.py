@@ -8,12 +8,14 @@ from marshmallow import fields
 
 import dateutil.parser
 
+
 class ActionType(Enum):
     INIT = 0
     INSTANT = 1
     ROTATE = 2
     TRANSLATE = 3
     OUTLINE = 4
+
 
 class AnimationType(Enum):
     NONE = 0
@@ -25,14 +27,15 @@ class AnimationType(Enum):
     SKIPPING = 6
     ROTATE = 7
 
+
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
 class Action:
     id: int
     action_type: ActionType
     animation_type: AnimationType
-    displacement: HecsCoord
-    rotation: float
+    displacement: HecsCoord  # For TRANSLATE, INIT, and INSTANT actions.
+    rotation: float  # For rotations.
     border_radius: float
     duration_s: float
     expiration: datetime = field(
