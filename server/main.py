@@ -118,7 +118,7 @@ async def receive_agent_updates(request, ws):
             await ws.close()
             continue
 
-        # print("Received msg: " + msg.data)
+        logging.debug("Raw message: " + msg.data)
         message = message_to_server.MessageToServer.from_json(msg.data)
         # Only handle in-game actions if we're in a room.
         if room_manager.socket_in_room(ws):
@@ -238,8 +238,7 @@ async def draw_gui():
 
 def setup_logging():
     log_format = "[%(asctime)s] %(levelname)s [%(module)s:%(funcName)s:%(lineno)d] %(message)s"
-    logging.basicConfig(level=logging.DEBUG, format=log_format,
-                        filename='cerealbar-server.log', filemode='w')
+    logging.basicConfig(level=logging.DEBUG, format=log_format)
     logging.getLogger("asyncio").setLevel(logging.INFO)
 
 

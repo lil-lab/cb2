@@ -16,6 +16,7 @@ from util import IdAssigner, SafePasswordCompare
 
 import aiohttp
 import asyncio
+import logging
 import messages.rooms
 import queue
 import random
