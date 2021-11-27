@@ -3,6 +3,7 @@ import asyncio
 import fire
 import hashlib
 import json
+import logging
 import os
 import pygame
 import sys
@@ -246,9 +247,16 @@ async def draw_gui():
                 return
 
 
+def setup_logging():
+    log_format = "[%(asctime)s] %(levelname)s [%(module)s:%(funcName)s:%(lineno)d] %(message)s"
+    logging.basicConfig(level=logging.DEBUG, format=log_format)
+    logging.getLogger("asyncio").setLevel(logging.INFO)
+
+
 def main(assets_directory="assets/", gui=False):
     global assets_map
     global room_manager
+    setup_logging()
     assets_map = HashCollectAssets(assets_directory)
     tasks = asyncio.gather(room_manager.matchmake(),
                            draw_gui(), debug_print(), serve())
