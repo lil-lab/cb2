@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 public class MenuTransitionHandler : MonoBehaviour
 {
-    public static readonly string TAG = "MenuTransitionHandler";
+    public static readonly string TAG = "InGameMenuHandler";
 
     public enum MenuState
     {
@@ -75,6 +75,7 @@ public class MenuTransitionHandler : MonoBehaviour
             Debug.Log("Could not find network manager!");
             return;
         }
+
         Network.NetworkManager networkManager = obj.GetComponent<Network.NetworkManager>();
         networkManager.TransmitTextMessage(text);
         textMeshPro.text = "";

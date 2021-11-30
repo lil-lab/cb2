@@ -11,12 +11,14 @@ from map_provider import HardcodedMapProvider
 from card import CardSelectAction
 from util import IdAssigner
 
+import time
+
 
 class State(object):
-    def __init__(self):
+    def __init__(self, room_id):
+        self._room_id = room_id
         self._actors = {}
-        self._messages_per_actor = {}  # Per-turn messages per actor.
-        self._message_history = []
+        self._message_history = {}
         self._synced = {}
         self._id_assigner = IdAssigner()
         self._action_history = {}
@@ -26,6 +28,7 @@ class State(object):
         self._done = False
 
     def end_game(self):
+        logging.info(f"Game ending.")
         self._done = True
 
     def record_action(self, action):
@@ -36,6 +39,8 @@ class State(object):
             self._action_history[actor.actor_id()].append(action)
 
     def record_text(self, actor, message):
+        if not actor.actor_id() in self._message_history:
+            self._message_history[actor.actor_id()] = []
         self._message_history[actor.actor_id()].append(message)
 
     def map(self):
@@ -45,47 +50,35 @@ class State(object):
         self._map_provider.cards()
 
     async def update(self):
+        last_loop = time.time()
         while not self._done:
-            await asyncio.sleep(0.001)
+            await asyncio.sleep(0.01)
+            poll_period = time.time() - last_loop
+            if (poll_period) > 0.1:
+                logging.warn(
+                    f"Game {self._room_id} slow poll period of {poll_period}s")
+            last_loop = time.time()
             for actor_id in self._actors:
                 actor = self._actors[actor_id]
-                if actor.empty():
-                    continue
 
                 # Handle actor actions.
-                action = actor.peek()
-                if not self.valid_action(actor_id, action):
-                    self.desync_all()
-                    print("Found invalid action. Resyncing...")
-                    continue
-                self.record_action(action)
-                actor.step()
+                if actor.has_actions():
+                    logging.info(f"Actor {actor_id} has pending actions.")
+                    action = actor.peek()
+                    actor.step()
+                    if self.valid_action(actor_id, action):
+                        self.record_action(action)
+                        self.check_for_stepped_on_cards(actor_id, action)
+                    else:
+                        self.desync_all()
+                        print("Found invalid action. Resyncing...")
+                        continue
 
                 # Handle any pending text messages.
-                if not actor in self._messages_per_actor[actor]:
-                    self._messages_per_actor[actor] = 0
                 messages = actor.drain_messages()
-                if self._messages_per_actor[actor] < 1:
-                    if len(messages) > 1:
-                        logging.warn(
-                            f'Warning, multiple messages received for actor {actor_id} in one turn.')
+                if len(messages) > 0:
+                    logging.info(f"Actor {actor_id} has message {messages[0]} pending for them")
                     self.record_text(actor, messages[0])
-                    self._messages_per_actor[actor] = 1
-                else:
-                    if len(messages) > 0:
-                        logging.warn(
-                            f'Warning, multiple messages received for actor {actor_id} in one turn.')
-
-                # Handle game state.
-                stepped_on_card = self._map_provider.card_by_location(
-                    actor.location())
-                # If the actor just moved and stepped on a card, mark it as selected.
-                if (action.action_type == ActionType.TRANSLATE) and (stepped_on_card is not None):
-                    selected = not stepped_on_card.selected
-                    self._map_provider.set_selected(
-                        stepped_on_card.id, selected)
-                    self.record_action(CardSelectAction(
-                        stepped_on_card.id, selected))
 
             selected_cards = list(self._map_provider.selected_cards())
             if len(selected_cards) >= 3:
@@ -108,6 +101,20 @@ class State(object):
                     self._map_provider.set_selected(card.id, False)
                     self.record_action(CardSelectAction(card.id, False))
 
+    def check_for_stepped_on_cards(self, actor_id, action):
+        actor = self._actors[actor_id]
+        stepped_on_card = self._map_provider.card_by_location(
+            actor.location())
+        # If the actor just moved and stepped on a card, mark it as selected.
+        if (action.action_type == ActionType.TRANSLATE) and (stepped_on_card is not None):
+            logging.info(
+                f"Player {actor.actor_id()} stepped on card {str(stepped_on_card)}.")
+            selected = not stepped_on_card.selected
+            self._map_provider.set_selected(
+                stepped_on_card.id, selected)
+            self.record_action(CardSelectAction(
+                stepped_on_card.id, selected))
+
     def handle_action(self, actor_id, action):
         if (action.id != actor_id):
             self.desync(actor_id)
@@ -120,8 +127,7 @@ class State(object):
                 f'Warning, text message received from non-leader ID: {str(id)}')
             return
         for a in self._actors:
-            if a.role() != Role.FOLLOWER:
-                continue
+            self._actors[a].add_message(message)
 
     def create_actor(self, role):
         actor = Actor(self._id_assigner.alloc(), 0, role)
@@ -139,6 +145,9 @@ class State(object):
         # Mark clients as desynced.
         self.desync_all()
 
+    def get_actor(self, player_id):
+        return self._actors[player_id]
+
     def desync(self, actor_id):
         self._synced[actor_id] = False
 
@@ -152,7 +161,7 @@ class State(object):
 
     def is_synced_all(self):
         for a in self._actors:
-            if not self.synced(a.actor_id()):
+            if not self.synced(self._actors[a].actor_id()):
                 return False
         return True
 
@@ -203,6 +212,9 @@ class Actor(object):
         self._heading_degrees = 0
         self._role = role
 
+    def turn():
+        pass
+
     def actor_id(self):
         return self._actor_id
 
@@ -216,15 +228,16 @@ class Actor(object):
         self._actions.put(action)
 
     def add_message(self, message):
-        self._messages.append(message.text)
+        self._messages.append(message)
+        logging.info(f"Actor {self._actor_id} received message {message}. messages pending: {len(self._messages)}")
 
     def drain_messages(self):
         messages = self._messages
         self._messages = []
         return messages
 
-    def empty(self):
-        return self._actions.empty()
+    def has_actions(self):
+        return not self._actions.empty()
 
     def location(self):
         return self._location
@@ -240,7 +253,7 @@ class Actor(object):
                                 self._location, self._heading_degrees)
 
     def step(self):
-        if self.empty():
+        if not self.has_actions():
             return
         action = self._actions.get()
         self._location = HecsCoord.add(self._location, action.displacement)

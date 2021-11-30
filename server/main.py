@@ -199,12 +199,24 @@ async def serve():
 async def debug_print():
     global room_manager
     room = room_manager.get_room_by_name("debug")
+    loop = asyncio.get_event_loop()
+    prev_tasks = set(asyncio.all_tasks())
     while True:
-        await asyncio.sleep(5)
+        await asyncio.sleep(1)
+        tasks = set(asyncio.all_tasks())
+        if len(prev_tasks) != len(tasks):
+            logging.debug(
+                f"New task added. size: {len(tasks)}. prev size: {len(prev_tasks)}.")
+            logging.debug(
+                "========================= New Tasks added =========================")
+            logging.debug(f"{str(tasks - prev_tasks)}")
+            logging.debug(
+                "========================= New Tasks removed =========================")
+            logging.debug(f"{str(prev_tasks - tasks)}")
+        prev_tasks = tasks
         if room is None:
-            room = room_manager.get_room_by_name("debug")
+            room = room_manager.get_room_by_name("Room 0")
             continue
-
         state = room.state()
         print(state)
 

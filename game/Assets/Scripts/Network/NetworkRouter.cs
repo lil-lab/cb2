@@ -126,17 +126,20 @@ namespace Network
                 GameObject obj = GameObject.FindGameObjectWithTag(MenuTransitionHandler.TAG);
                 if (obj == null)
                 {
-                    Debug.Log("Could not find menu transition handler object. Received text message: " + message.Message.Text);
+                    Debug.Log("Could not find menu transition handler object.");
                     return;
                 }
                 MenuTransitionHandler menuTransitionHandler = obj.GetComponent<MenuTransitionHandler>();
                 if (menuTransitionHandler == null)
                 {
-                    Debug.Log("Could not find menu transition handler. Received text message: " + message.Message.Text);
+                    Debug.Log("Could not find menu transition handler.");
                     return;
                 }
-                string sender = (message.Message.Sender == Role.LEADER) ? "LEADER" : "FOLLOWER";
-                menuTransitionHandler.DisplayMessage(sender, message.Message.Text);
+                foreach (Network.TextMessage textMessage in message.Messages)
+                {
+                    string sender = (textMessage.Sender == Role.LEADER) ? "LEADER" : "FOLLOWER";
+                    menuTransitionHandler.DisplayMessage(sender, textMessage.Text);
+                }
             }
         }
 

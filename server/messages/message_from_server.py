@@ -43,8 +43,8 @@ def RoomResponseFromServer(room_response):
     return MessageFromServer(datetime.now(), MessageType.ROOM_MANAGEMENT, None, None, None, room_response, None, None)
 
 
-def TextFromServer(text):
-    return MessageFromServer(datetime.now(), MessageType.TEXT, None, None, None, None, text, None)
+def TextsFromServer(texts):
+    return MessageFromServer(datetime.now(), MessageType.TEXT, None, None, None, None, texts, None)
 
 
 def GameStateFromServer(game_state):
@@ -65,5 +65,5 @@ class MessageFromServer:
     map_update: Optional[MapUpdate]
     state: Optional[StateSync]
     room_management_response: Optional[RoomManagementResponse]
-    message: Optional[List[TextMessage]]
+    messages: Optional[List[TextMessage]]
     game_state: Optional[GameState]

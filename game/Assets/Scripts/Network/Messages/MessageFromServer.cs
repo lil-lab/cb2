@@ -28,7 +28,7 @@ namespace Network
         public MapUpdate MapUpdate;
         public StateSync State;
         public RoomManagementResponse RoomManagementResponse;
-        public TextMessage Message;
+        public List<TextMessage> Messages;
         public GameState GameState;
     }
 }  // namespace Network

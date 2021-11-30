@@ -1,5 +1,6 @@
 from messages import message_from_server
 from messages import message_to_server
+from messages.rooms import Role
 from messages import text
 from state import State
 
@@ -17,7 +18,7 @@ class Room(object):
         self._players = []
         self._player_endpoints = []
         self._id = game_id
-        self._game_state = State()
+        self._game_state = State(self._id)
         self._password = password
         self._update_loop = None
 
@@ -68,11 +69,14 @@ class Room(object):
     def start(self):
         if self._update_loop is not None:
             return RuntimeError("started Room that is already running.")
+
         self._update_loop = asyncio.create_task(self._game_state.update())
+        logging.info(f"Room {self.id()} started game.")
 
     def stop(self):
         if self._update_loop is None:
             return RuntimeError("stopped Room that is not running.")
+        logging.info(f"Room {self.id()} ending game.")
         self._game_state.end_game()
 
     def desync(self, id):
@@ -111,13 +115,17 @@ class Room(object):
 
         actions = self._game_state.drain_actions(player_id)
         if len(actions) > 0:
+            logging.info(
+                f'Room {self.id()} drained {len(actions)} actions for player_id {player_id}')
             msg = message_from_server.ActionsFromServer(actions)
             return msg
 
         messages = self._game_state.drain_messages(player_id)
         if len(messages) > 0:
-            texts = [text.TextMessage(msg) for msg in messages]
-            msg = message_from_server.TextFromServer(texts)
+            logging.info(
+                f'Room {self.id()} drained {len(messages)} texts for player_id {player_id}')
+            texts = [text.TextMessage("LEADER", msg) for msg in messages]
+            msg = message_from_server.TextsFromServer(texts)
             return msg
 
         # Nothing to send.

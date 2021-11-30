@@ -16,6 +16,7 @@ TagManager:
   - MessageInputField
   - ChatLog
   - ScrollView
+  - InGameMenuHandler
   layers:
   - Default
   - TransparentFX
