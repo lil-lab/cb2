@@ -15,11 +15,11 @@ public class EnableIfLeader : MonoBehaviour
         Network.NetworkManager networkManager = obj.GetComponent<Network.NetworkManager>();
         if (networkManager.Role() == Network.Role.LEADER)
         {
-            gameObject.GetComponent<Renderer>().enabled = true;
+            gameObject.SetActive(true);
         }
         else
         {
-            gameObject.GetComponent<Renderer>().enabled = false;
+            gameObject.SetActive(false);
         }
     }
 }
