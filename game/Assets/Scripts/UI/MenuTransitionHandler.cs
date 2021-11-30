@@ -43,11 +43,22 @@ public class MenuTransitionHandler : MonoBehaviour
             return;
         }
         TMPro.TMP_Text chatLog = obj.GetComponent<TMPro.TMP_Text>();
-        chatLog.text += "\n<" + sender + ">: " + message + "\n";
+
+        // Add a new line to the log, unless this is the first line.
+        if (chatLog.text.Length > 0)
+        {
+            chatLog.text += "\n";
+        }
+        chatLog.text += "<" + sender + ">: " + message;
+
+        // Before we move the scrollview to the bottom, the text needs to be
+        // re-rendered so that the new chat log height is accounted for. Without
+        // this it's off by about 20 pixels.
+        Canvas.ForceUpdateCanvases();
 
         // Scroll to the bottom of the chat history to display the new message.
         GameObject scrollObj = GameObject.FindWithTag(SCROLL_VIEW_TAG);
-        scrollObj.GetComponent<ScrollRect>().verticalNormalizedPosition = 0;
+        scrollObj.GetComponent<ScrollRect>().verticalScrollbar.GetComponent<Scrollbar>().value = 0;
     }
 
     public void SendMessage()
@@ -56,7 +67,6 @@ public class MenuTransitionHandler : MonoBehaviour
         GameObject textObj = GameObject.FindWithTag(INPUT_FIELD_TAG);
         TMPro.TMP_Text textMeshPro = textObj.GetComponent<TMPro.TMP_Text>();
         string text = textMeshPro.text;
-        DisplayMessage("self", text);
 
         // Load the NetworkManager.
         GameObject obj = GameObject.FindWithTag(Network.NetworkManager.TAG);
