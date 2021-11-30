@@ -7,5 +7,5 @@ from messages.rooms import Role
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
 class TextMessage:
-    sender_role: Role
     text: str
+    sender: Role = Role.NONE

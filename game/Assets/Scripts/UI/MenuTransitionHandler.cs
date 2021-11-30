@@ -76,7 +76,7 @@ public class MenuTransitionHandler : MonoBehaviour
             return;
         }
         Network.NetworkManager networkManager = obj.GetComponent<Network.NetworkManager>();
-        networkManager.SendMessage(text);
+        networkManager.TransmitTextMessage(text);
         textMeshPro.text = "";
     }
 

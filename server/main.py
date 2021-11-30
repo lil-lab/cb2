@@ -125,7 +125,7 @@ async def receive_agent_updates(request, ws):
             (room_id, player_id, _) = astuple(room_manager.socket_info(
                 ws))
             room = room_manager.get_room(room_id)
-            room.handle_packet(message)
+            room.handle_packet(player_id, message)
 
         if message.type == message_to_server.MessageType.ROOM_MANAGEMENT:
             response = await room_manager.handle_request(message.room_request, ws)
@@ -133,8 +133,6 @@ async def receive_agent_updates(request, ws):
                 msg = message_from_server.RoomResponseFromServer(response)
                 await transmit(ws, msg.to_json())
             continue
-
-        print("Received unknown message type:" + str(message.type))
 
 
 @ routes.get('/player_endpoint')

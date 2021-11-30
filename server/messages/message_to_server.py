@@ -34,4 +34,4 @@ class MessageToServer:
     type: MessageType
     actions: Optional[List[Action]]
     room_request: Optional[RoomManagementRequest]
-    message: Optional[TextMessage]
+    message: Optional[TextMessage] = TextMessage("")

@@ -16,6 +16,7 @@ class State(object):
     def __init__(self):
         self._actors = {}
         self._messages_per_actor = {}  # Per-turn messages per actor.
+        self._message_history = []
         self._synced = {}
         self._id_assigner = IdAssigner()
         self._action_history = {}
@@ -61,10 +62,10 @@ class State(object):
                 actor.step()
 
                 # Handle any pending text messages.
-                if not actor in self._messages_per_actor:
+                if not actor in self._messages_per_actor[actor]:
                     self._messages_per_actor[actor] = 0
                 messages = actor.drain_messages()
-                if self._messages_per_actor < 1:
+                if self._messages_per_actor[actor] < 1:
                     if len(messages) > 1:
                         logging.warn(
                             f'Warning, multiple messages received for actor {actor_id} in one turn.')
