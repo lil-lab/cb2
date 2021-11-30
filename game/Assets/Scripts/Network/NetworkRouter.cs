@@ -121,6 +121,23 @@ namespace Network
             {
                 _networkManager.HandleRoomManagement(message.RoomManagementResponse);
             }
+            if (message.Type == MessageFromServer.MessageType.TEXT)
+            {
+                GameObject obj = GameObject.FindGameObjectWithTag(MenuTransitionHandler.TAG);
+                if (obj == null)
+                {
+                    Debug.Log("Could not find menu transition handler object. Received text message: " + message.Message.Text);
+                    return;
+                }
+                MenuTransitionHandler menuTransitionHandler = obj.GetComponent<MenuTransitionHandler>();
+                if (menuTransitionHandler == null)
+                {
+                    Debug.Log("Could not find menu transition handler. Received text message: " + message.Message.Text);
+                    return;
+                }
+                string sender = (message.Message.Sender == Role.LEADER) ? "LEADER" : "FOLLOWER";
+                menuTransitionHandler.DisplayMessage(sender, message.Message.Text);
+            }
         }
 
         public void TransmitAction(ActionQueue.IAction action)

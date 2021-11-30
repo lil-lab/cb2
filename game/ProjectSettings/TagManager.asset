@@ -13,6 +13,9 @@ TagManager:
   - TAB_MENU
   - ESCAPE_MENU
   - ConnectionStatus
+  - MessageInputField
+  - ChatLog
+  - ScrollView
   layers:
   - Default
   - TransparentFX

@@ -51,6 +51,17 @@ namespace Network
             _router.TransmitAction(action);
         }
 
+        public void TransmitTextMessage(string message)
+        {
+            MessageToServer toServer = new MessageToServer();
+            toServer.TransmitTime = DateTime.Now.ToString("o");
+            toServer.Type = MessageToServer.MessageType.TEXT;
+            toServer.Message = new TextMessage();
+            toServer.Message.Text = message;
+            toServer.Message.Sender = _role;
+            _client.TransmitMessage(toServer);
+        }
+
         public void Awake()
         {
             gameObject.tag = TAG;
