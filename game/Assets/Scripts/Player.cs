@@ -37,6 +37,14 @@ public class Player : MonoBehaviour
                     HecsCoord.FromOffsetCoordinates(StartingRow,
                                                     StartingCol), 0));
         }
+
+        // Followers have their vision limited by fog.
+        if (_network.Role() == Network.Role.FOLLOWER)
+        {
+            RenderSettings.fog = true;
+        } else {
+            RenderSettings.fog = false;
+        }
     }
 
     public void FlushActionQueue()
