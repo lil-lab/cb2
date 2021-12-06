@@ -11,6 +11,7 @@ from map_provider import HardcodedMapProvider
 from card import CardSelectAction
 from util import IdAssigner
 
+import math
 import time
 
 
@@ -65,11 +66,12 @@ class State(object):
                 if actor.has_actions():
                     logging.info(f"Actor {actor_id} has pending actions.")
                     action = actor.peek()
-                    actor.step()
                     if self.valid_action(actor_id, action):
+                        actor.step()
                         self.record_action(action)
                         self.check_for_stepped_on_cards(actor_id, action)
                     else:
+                        actor.drop()
                         self.desync_all()
                         print("Found invalid action. Resyncing...")
                         continue
@@ -77,7 +79,8 @@ class State(object):
                 # Handle any pending text messages.
                 messages = actor.drain_messages()
                 if len(messages) > 0:
-                    logging.info(f"Actor {actor_id} has message {messages[0]} pending for them")
+                    logging.info(
+                        f"Actor {actor_id} has message {messages[0]} pending for them")
                     self.record_text(actor, messages[0])
 
             selected_cards = list(self._map_provider.selected_cards())
@@ -94,7 +97,6 @@ class State(object):
                     print("GAME WON")
                 else:
                     print("GAME LOST")
-
                 # Clear card state.
                 print("RESETTING BOARD.")
                 for card in selected_cards:
@@ -199,6 +201,14 @@ class State(object):
         return sync_message
 
     def valid_action(self, actor_id, action):
+        if (action.action_type == ActionType.TRANSLATE):
+            cartesian = action.displacement.cartesian()
+            # Add a small delta for floating point comparison.
+            if (math.sqrt(cartesian[0]**2 + cartesian[1]**2) > 1.001):
+                return False
+        if (action.action_type == ActionType.ROTATE):
+            if (action.rotation > 60.01):
+                return False
         return True
 
 
@@ -229,7 +239,8 @@ class Actor(object):
 
     def add_message(self, message):
         self._messages.append(message)
-        logging.info(f"Actor {self._actor_id} received message {message}. messages pending: {len(self._messages)}")
+        logging.info(
+            f"Actor {self._actor_id} received message {message}. messages pending: {len(self._messages)}")
 
     def drain_messages(self):
         messages = self._messages
@@ -245,16 +256,24 @@ class Actor(object):
     def heading_degrees(self):
         return int(self._heading_degrees)
 
-    def peek(self):
-        return self._actions.queue[0]
-
     def state(self):
         return state_sync.Actor(self.actor_id(), self.asset_id(),
                                 self._location, self._heading_degrees)
 
+    def peek(self):
+        """ Peeks at the next action without consuming it. """
+        return self._actions.queue[0]
+
     def step(self):
+        """ Executes & consumes an action from the queue."""
         if not self.has_actions():
             return
         action = self._actions.get()
         self._location = HecsCoord.add(self._location, action.displacement)
         self._heading_degrees += action.rotation
+
+    def drop(self):
+        """ Drops an action instead of acting upon it."""
+        if not self.has_actions():
+            return
+        _ = self._actions.get()
