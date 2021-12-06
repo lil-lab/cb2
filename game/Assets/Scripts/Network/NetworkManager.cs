@@ -242,7 +242,7 @@ namespace Network
             GameObject statsObj = GameObject.FindGameObjectWithTag("Stats");
             if (((DateTime.Now - _lastStatsPoll).Seconds > 1) && (statsObj != null) && (statsObj.activeInHierarchy))
             {
-                Debug.Log("Requesting stats...");
+                Debug.Log("Requesting stats..");
                 _lastStatsPoll = DateTime.Now;
                 MessageToServer msg = new MessageToServer();
                 msg.TransmitTime = DateTime.Now.ToString("o");

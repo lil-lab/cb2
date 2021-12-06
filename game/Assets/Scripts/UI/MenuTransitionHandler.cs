@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Network;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 public class MenuTransitionHandler : MonoBehaviour
 {
@@ -65,7 +66,7 @@ public class MenuTransitionHandler : MonoBehaviour
     {
         // Get the text entered by the user.
         GameObject textObj = GameObject.FindWithTag(INPUT_FIELD_TAG);
-        TMPro.TMP_Text textMeshPro = textObj.GetComponent<TMPro.TMP_Text>();
+        TMPro.TMP_InputField textMeshPro = textObj.GetComponent<TMPro.TMP_InputField>();
         string text = textMeshPro.text;
 
         // Load the NetworkManager.
@@ -79,6 +80,9 @@ public class MenuTransitionHandler : MonoBehaviour
         Network.NetworkManager networkManager = obj.GetComponent<Network.NetworkManager>();
         networkManager.TransmitTextMessage(text);
         textMeshPro.text = "";
+
+        // Unselect the text field.
+        EventSystem.current.SetSelectedGameObject(null);
     }
 
     // Start is called before the first frame update

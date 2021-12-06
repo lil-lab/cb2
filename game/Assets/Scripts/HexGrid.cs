@@ -6,7 +6,7 @@ using UnityEngine.SceneManagement;
 
 public class HexGrid : MonoBehaviour
 {
-    public float Scale = 3.49f;
+    public float Scale = 3.46f;
     public bool DebugEdges = false;
 
     public static string TAG = "HexGrid";
@@ -37,7 +37,13 @@ public class HexGrid : MonoBehaviour
     {
         Scene activeScene = SceneManager.GetActiveScene();
         GameObject obj = GameObject.FindWithTag(Network.NetworkManager.TAG);
-        HexGridManager.IMapSource mapSource = obj.GetComponent<Network.NetworkManager>().MapSource();
+        Network.NetworkManager networkManager = obj.GetComponent<Network.NetworkManager>();
+        HexGridManager.IMapSource mapSource = networkManager.MapSource();
+        if (networkManager.Role() == Network.Role.FOLLOWER)
+        {
+            // Subtract a 
+            Scale += 0.04f;
+        }
         Debug.Log("[DEBUG] Loading HexGrid.");
         _manager = new HexGridManager(mapSource, new UnityAssetSource());
         _manager.Start();

@@ -1723,7 +1723,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5f0ebedefdb29491b88cf8b90de58014, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Scale: 3.49
+  Scale: 3.46
   DebugEdges: 1
 --- !u!4 &1508406246
 Transform:

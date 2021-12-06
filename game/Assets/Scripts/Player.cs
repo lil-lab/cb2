@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class Player : MonoBehaviour
 {
@@ -36,14 +37,6 @@ public class Player : MonoBehaviour
                 Init.InitAt(
                     HecsCoord.FromOffsetCoordinates(StartingRow,
                                                     StartingCol), 0));
-        }
-
-        // Followers have their vision limited by fog.
-        if (_network.Role() == Network.Role.FOLLOWER)
-        {
-            RenderSettings.fog = true;
-        } else {
-            RenderSettings.fog = false;
         }
     }
 
@@ -86,6 +79,14 @@ public class Player : MonoBehaviour
 
         HecsCoord forwardLocation = _actor.Location().NeighborAtHeading(_actor.HeadingDegrees());
         HecsCoord backLocation = _actor.Location().NeighborAtHeading(_actor.HeadingDegrees() + 180);
+
+        // When a UI element is selected, ignore keypresses. This prevents the
+        // player from moving when the user is typing and hits the left or right
+        // keys to move the cursor.
+        if (EventSystem.current.currentSelectedGameObject != null)
+        {
+            return;
+        }
 
         if (UpKey() &&
             !grid.EdgeBetween(_actor.Location(), forwardLocation))

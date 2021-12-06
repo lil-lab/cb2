@@ -10,6 +10,7 @@ public class EnableIfFollower : MonoBehaviour
         if (obj == null)
         {
             Debug.Log("Could not find network manager!");
+            gameObject.SetActive(false);
             return;
         }
         Network.NetworkManager networkManager = obj.GetComponent<Network.NetworkManager>();

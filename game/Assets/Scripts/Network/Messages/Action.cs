@@ -32,7 +32,7 @@ namespace Network
         public ActionType ActionType;
         public AnimationType AnimationType;
         public HecsCoord Displacement;
-        public float Rotation;  // Heading Degrees. 0 = North, CW.
+        public float Rotation;  // Degrees.
         public float BorderRadius;  // Outline radius.
         public float DurationS;
         public string Expiration;  // DateTime in ISO 8601.
