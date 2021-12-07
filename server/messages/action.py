@@ -35,7 +35,7 @@ class Action:
     action_type: ActionType
     animation_type: AnimationType
     displacement: HecsCoord  # For TRANSLATE, INIT, and INSTANT actions.
-    rotation: float  # For rotations.
+    rotation: float  # For rotations. In Degrees.
     border_radius: float
     duration_s: float
     expiration: datetime = field(

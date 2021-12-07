@@ -18,7 +18,7 @@ import dateutil.parser
 
 
 class Role(Enum):
-    """ The role of a player in a game. """
+    """ The role of a player in a game."""
     NONE = 0
     FOLLOWER = 1
     LEADER = 2

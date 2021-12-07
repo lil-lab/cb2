@@ -15,49 +15,70 @@ def HardcodedMap():
     for r in range(0, MAP_HEIGHT):
         row = []
         for c in range(0, MAP_WIDTH):
-            tile = GroundTile(r, c)
+            tile = GroundTile()
             row.append(tile)
         map.append(row)
 
+    #Pathway around some water at the start.
+    map[0][0] = PathTile()
+    map[0][1] = PathTile()
+    map[0][2] = PathTile()
+    map[0][3] = PathTile()
+    map[0][4] = PathTile()
+    map[0][5] = PathTile()
+    map[0][6] = PathTile()
+    map[1][0] = PathTile()
+    map[1][1] = PathTile()
+    map[1][2] = WaterTile()
+    map[1][3] = WaterTile()
+    map[1][4] = WaterTile()
+    map[1][5] = WaterTile()
+    map[1][6] = PathTile()
+
     # Single ramp at start
-    map[2][2] = RampToMountain(2, 2)
-    map[2][3] = MountainTile(2, 3)
-    map[2][4] = MountainTile(2, 4)
-    map[2][5] = MountainTile(2, 5)
-    map[2][6] = RampToMountain(2, 6, 180)
-    map[3][5] = RampToMountain(3, 5, 240)
+    map[2][2] = RampToMountain()
+    map[2][3] = MountainTile()
+    map[2][4] = MountainTile()
+    map[2][5] = MountainTile()
+    map[2][6] = RampToMountain(180)
+    map[3][5] = RampToMountain(240)
 
     # Add trees
-    map[5][5] = GroundTileTrees(5, 5)
-    map[5][7] = GroundTileTrees(5, 7, 60)
-    map[6][5] = GroundTileTrees(6, 5, 120)
-    map[6][7] = GroundTileTrees(6, 7, 180)
+    map[5][5] = GroundTileTrees()
+    map[5][7] = GroundTileTrees(60)
+    map[6][5] = GroundTileTrees(120)
+    map[6][7] = GroundTileTrees(180)
 
     # Add rocks
-    map[4][4] = GroundTileRocky(4, 4, 60)
-    map[4][8] = GroundTileRocky(4, 8, 180)
-    map[2][9] = GroundTileRocky(2, 9, 240)
-    map[5][8] = GroundTileRocky(5, 8, 300)
-    map[6][4] = GroundTileRocky(6, 4)
+    map[4][4] = GroundTileRocky(60)
+    map[4][8] = GroundTileRocky(180)
+    map[2][9] = GroundTileRocky(240)
+    map[5][8] = GroundTileRocky(300)
+    map[6][4] = GroundTileRocky()
 
     # Add a house.
-    map[7][7] = GroundTileHouse(7, 7)
+    map[7][7] = GroundTileHouse()
 
     # Add mountains.
-    map[8][5] = MountainTile(8, 5)
-    map[8][6] = MountainTile(8, 6)
-    map[8][7] = MountainTile(8, 7)
-    map[8][8] = MountainTile(8, 8)
-    map[9][5] = MountainTile(9, 5)
-    map[9][6] = MountainTile(9, 6)
-    map[9][7] = RampToMountain(9, 7, 180)
+    map[8][5] = MountainTile()
+    map[8][6] = MountainTile()
+    map[8][7] = MountainTile()
+    map[8][8] = MountainTile()
+    map[9][5] = MountainTile()
+    map[9][6] = MountainTile()
+    map[9][7] = RampToMountain(180)
 
     # Add a street light.
-    map[5][3] = GroundTileStreetLight(5, 3)
+    map[5][3] = GroundTileStreetLight()
 
     # Add ramps to mountain.
-    map[8][4] = RampToMountain(8, 4)
-    map[9][4] = RampToMountain(9, 4)
+    map[8][4] = RampToMountain()
+    map[9][4] = RampToMountain()
+
+    # Fix all the tile coordinates.
+    for r in range(0, MAP_HEIGHT):
+        for c in range(0, MAP_WIDTH):
+            map[r][c].cell.coord = HecsCoord.from_offset(r, c)
 
     # Flatten the 2D map of tiles to a list.
     map_tiles = [tile for row in map for tile in row]
@@ -118,11 +139,11 @@ def LayerToHeight(layer):
     return layer_to_height[layer]
 
 
-def GroundTile(r, c, rotation_degrees=0):
+def GroundTile(rotation_degrees=0):
     """ Creates a single tile of ground."""
     return Tile(
         AssetId.GROUND_TILE,
-        HexCell(HecsCoord.from_offset(r, c), HexBoundary(0),
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0),
                 LayerToHeight(0),  # Height (float)
                 0,  # Z-Layer (int)
                 ),
@@ -130,11 +151,35 @@ def GroundTile(r, c, rotation_degrees=0):
     )
 
 
-def GroundTileRocky(r, c, rotation_degrees=0):
+def WaterTile(rotation_degrees=0):
+    """ Creates a single tile of Water."""
+    return Tile(
+        AssetId.WATER_TILE,
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
+                LayerToHeight(0),  # Height (float)
+                0,  # Z-Layer (int)
+                ),
+        rotation_degrees
+    )
+
+
+def PathTile(rotation_degrees=0):
+    """ Creates a single tile of Path."""
+    return Tile(
+        AssetId.GROUND_TILE_PATH,
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0),
+                LayerToHeight(0),  # Height (float)
+                0,  # Z-Layer (int)
+                ),
+        rotation_degrees
+    )
+
+
+def GroundTileRocky(rotation_degrees=0):
     """ Creates a single tile of rocky ground."""
     return Tile(
         AssetId.GROUND_TILE_ROCKY,
-        HexCell(HecsCoord.from_offset(r, c), HexBoundary(0x3F),
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
                 LayerToHeight(0),  # Height (float)
                 0  # Z-Layer (int)
                 ),
@@ -142,11 +187,11 @@ def GroundTileRocky(r, c, rotation_degrees=0):
     )
 
 
-def GroundTileStones(r, c, rotation_degrees=0):
+def GroundTileStones(rotation_degrees=0):
     """ Creates a single tile of ground with stones."""
     return Tile(
         AssetId.GROUND_TILE_STONES,
-        HexCell(HecsCoord.from_offset(r, c), HexBoundary(0x3F),
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
                 LayerToHeight(0),  # Height (float)
                 0  # Z-Layer (int)
                 ),
@@ -154,11 +199,11 @@ def GroundTileStones(r, c, rotation_degrees=0):
     )
 
 
-def GroundTileTrees(r, c, rotation_degrees=0):
+def GroundTileTrees(rotation_degrees=0):
     """ Creates a single tile of ground with several trees. """
     return Tile(
         AssetId.GROUND_TILE_TREES,
-        HexCell(HecsCoord.from_offset(r, c), HexBoundary(0x3F),
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
                 LayerToHeight(0),  # Height (float)
                 0  # Z-Layer (int)
                 ),
@@ -166,11 +211,11 @@ def GroundTileTrees(r, c, rotation_degrees=0):
     )
 
 
-def GroundTileSingleTree(r, c, rotation_degrees=0):
+def GroundTileSingleTree(rotation_degrees=0):
     """ Creates a single tile of ground with a tree."""
     return Tile(
         AssetId.GROUND_TILE_TREES_2,
-        HexCell(HecsCoord.from_offset(r, c), HexBoundary(0x3F),
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
                 LayerToHeight(0),  # Height (float)
                 0  # Z-Layer (int)
                 ),
@@ -178,11 +223,11 @@ def GroundTileSingleTree(r, c, rotation_degrees=0):
     )
 
 
-def GroundTileForest(r, c, rotation_degrees=0):
+def GroundTileForest(rotation_degrees=0):
     """ Creates a single tile of ground with a forest."""
     return Tile(
         AssetId.GROUND_TILE_FOREST,
-        HexCell(HecsCoord.from_offset(r, c), HexBoundary(0x3F),
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
                 LayerToHeight(0),  # Height (float)
                 0  # Z-Layer (int)
                 ),
@@ -190,11 +235,11 @@ def GroundTileForest(r, c, rotation_degrees=0):
     )
 
 
-def GroundTileHouse(r, c, rotation_degrees=0):
+def GroundTileHouse(rotation_degrees=0):
     """ Creates a single tile of ground with a house."""
     return Tile(
         AssetId.GROUND_TILE_HOUSE,
-        HexCell(HecsCoord.from_offset(r, c), HexBoundary(0x3F),
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
                 LayerToHeight(0),  # Height (float)
                 0  # Z-Layer (int)
                 ),
@@ -202,11 +247,11 @@ def GroundTileHouse(r, c, rotation_degrees=0):
     )
 
 
-def GroundTileStreetLight(r, c, rotation_degrees=0):
+def GroundTileStreetLight(rotation_degrees=0):
     """ Creates a single tile of ground with a street light."""
     return Tile(
         AssetId.GROUND_TILE_STREETLIGHT,
-        HexCell(HecsCoord.from_offset(r, c), HexBoundary(0x3F),
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
                 LayerToHeight(0),  # Height (float)
                 0  # Z-Layer (int)
                 ),
@@ -214,11 +259,11 @@ def GroundTileStreetLight(r, c, rotation_degrees=0):
     )
 
 
-def MountainTile(r, c, rotation_degrees=0):
+def MountainTile(rotation_degrees=0):
     """ Creates a single tile of mountain."""
     return Tile(
         AssetId.MOUNTAIN_TILE,
-        HexCell(HecsCoord.from_offset(r, c), HexBoundary(0),
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0),
                 LayerToHeight(2),  # Height (float)
                 2  # Z-Layer (int)
                 ),
@@ -226,11 +271,11 @@ def MountainTile(r, c, rotation_degrees=0):
     )
 
 
-def RampToMountain(r, c, rotation_degrees=0):
+def RampToMountain(rotation_degrees=0):
     """ Creates a single tile of ramp."""
     return Tile(
         AssetId.RAMP_TO_MOUNTAIN,
-        HexCell(HecsCoord.from_offset(r, c), HexBoundary.rotate_cw(HexBoundary(0b101101), rotation_degrees),
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary.rotate_cw(HexBoundary(0b101101), rotation_degrees),
                 LayerToHeight(1),  # Height (float)
                 1  # Z-Layer (int)
                 ),

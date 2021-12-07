@@ -16,6 +16,8 @@ public interface IAssetSource
         GROUND_TILE_FOREST,
         GROUND_TILE_HOUSE,
         GROUND_TILE_STREETLIGHT,
+        GROUND_TILE_PATH,
+        WATER_TILE,
         MOUNTAIN_TILE,
         RAMP_TO_MOUNTAIN,
         CARD_BASE_1,

@@ -17,6 +17,8 @@ public class UnityAssetSource : IAssetSource
         "Prefab/Tiles/GroundTile_Forest",
         "Prefab/Tiles/GroundTile_House",
         "Prefab/Tiles/GroundTile_StreetLight",
+        "Prefab/Tiles/PathTile",
+        "Prefab/Tiles/WaterTile",
         "Prefab/Mountain/M_Mountain_0Side",
         "Prefab/Tiles/RampTile",
         "Prefab/Cards/CardBase_1",

@@ -89,6 +89,7 @@ async def stream_game_state(request, ws):
             msg = message_from_server.MapUpdateFromServer(mupdate)
             await transmit(ws, msg.to_json())
             client_initialized = True
+            continue
 
         msg_from_server = room.drain_message(player_id)
         if msg_from_server is not None:
@@ -101,6 +102,8 @@ async def receive_agent_updates(request, ws):
     global room_manager
     async for msg in ws:
         await asyncio.sleep(0.01)
+        if ws.closed:
+            return
         if msg.type == aiohttp.WSMsgType.ERROR:
             closed = True
             await ws.close()
@@ -120,12 +123,6 @@ async def receive_agent_updates(request, ws):
 
         logging.debug("Raw message: " + msg.data)
         message = message_to_server.MessageToServer.from_json(msg.data)
-        # Only handle in-game actions if we're in a room.
-        if room_manager.socket_in_room(ws):
-            (room_id, player_id, _) = astuple(room_manager.socket_info(
-                ws))
-            room = room_manager.get_room(room_id)
-            room.handle_packet(player_id, message)
 
         if message.type == message_to_server.MessageType.ROOM_MANAGEMENT:
             response = await room_manager.handle_request(message.room_request, ws)
@@ -133,6 +130,14 @@ async def receive_agent_updates(request, ws):
                 msg = message_from_server.RoomResponseFromServer(response)
                 await transmit(ws, msg.to_json())
             continue
+
+        # Only handle in-game actions if we're in a room.
+        if room_manager.socket_in_room(ws):
+            (room_id, player_id, _) = astuple(room_manager.socket_info(
+                ws))
+            room = room_manager.get_room(room_id)
+            room.handle_packet(player_id, message)
+
 
 
 @ routes.get('/player_endpoint')

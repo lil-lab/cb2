@@ -12,8 +12,10 @@ namespace Network
     {
         private WebSocket _webSocket;
         public string _url;
+        private bool _autoReconnect;
         private NetworkRouter _router;
         private ConcurrentQueue<Network.MessageToServer> _messageQueue;
+        private DateTime _lastReconnect;
 
         string fix_json(string value)
         {
@@ -21,11 +23,13 @@ namespace Network
             return value;
         }
 
-        public ClientConnection(string url)
+        public ClientConnection(string url, bool autoReconnect=false)
         {
             _url = url;
             _webSocket = new WebSocket(_url);
             _messageQueue = new ConcurrentQueue<Network.MessageToServer>();
+            _autoReconnect = autoReconnect;
+            _lastReconnect = DateTime.Now;
         }
 
         public void RegisterHandler(NetworkRouter router)
@@ -57,38 +61,49 @@ namespace Network
             _messageQueue.Enqueue(message);
         }
 
+        private void OnOpen()
+        {
+            Debug.Log("Connection open!");
+        }
+
+        private void OnError(string e)
+        {
+            Debug.Log("Connection error: " + e);
+        }
+
+        private void OnClose(WebSocketCloseCode code)
+        {
+            Debug.Log("Connection closed: " + code);
+            _webSocket.OnOpen -= OnOpen;
+            _webSocket.OnError -= OnError;
+            _webSocket.OnClose -= OnClose;
+            _webSocket.OnMessage -= OnMessage;
+        }
+
+        private void OnMessage(byte[] bytes)
+        {
+            if (_router == null)
+            {
+                return;
+            }
+
+            string received = System.Text.Encoding.ASCII.GetString(bytes);
+            Debug.Log("Received: " + received);
+            MessageFromServer message = JsonConvert.DeserializeObject<MessageFromServer>(System.Text.Encoding.ASCII.GetString(bytes));
+            _router.HandleMessage(message);
+        }
+
         public async void Reconnect()
         {
-            _webSocket.OnOpen += () =>
-            {
-                Debug.Log("Connection open!");
-            };
+            _webSocket.OnOpen += OnOpen;
+            _webSocket.OnError += OnError;
+            _webSocket.OnClose += OnClose;
+            _webSocket.OnMessage += OnMessage;
 
-            _webSocket.OnError += (e) =>
-            {
-                Debug.Log("Error! " + e);
-            };
-
-            _webSocket.OnClose += (e) =>
-            {
-                Debug.Log("Connection closed! Reconnecting...");
-            };
-
-            _webSocket.OnMessage += (bytes) =>
-            {
-                if (_router == null)
-                {
-                    return;
-                }
-
-                string received = System.Text.Encoding.ASCII.GetString(bytes);
-                Debug.Log("Received: " + received);
-                MessageFromServer message = JsonConvert.DeserializeObject<MessageFromServer>(System.Text.Encoding.ASCII.GetString(bytes));
-                _router.HandleMessage(message);
-            };
-
+            Debug.Log("Connecting...");
             // waiting for messages
             await _webSocket.Connect();
+            _lastReconnect = DateTime.Now;
         }
 
         // Start is called before the first frame update
@@ -99,6 +114,13 @@ namespace Network
 
         public void Update()
         {
+            if (_autoReconnect && IsClosed() && ((DateTime.Now - _lastReconnect).Seconds > 3))
+            {
+                Debug.Log("Reconnecting...");
+                _webSocket = new WebSocket(_url);
+                Reconnect();
+            }
+
             SendPendingActions();
 #if !UNITY_WEBGL || UNITY_EDITOR
             _webSocket.DispatchMessageQueue();

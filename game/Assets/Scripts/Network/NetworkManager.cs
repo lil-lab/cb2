@@ -21,7 +21,6 @@ namespace Network
         private NetworkRouter _router;
         private EntityManager _entityManager;
         private Player _player;
-        private DateTime _lastReconnect;
         private DateTime _lastStatsPoll;
         private Role _role = Network.Role.NONE;
 
@@ -39,6 +38,14 @@ namespace Network
                 Debug.Log("Retrieved map source before it was initialized.");
             }
             return _networkMapSource;
+        }
+
+        public static NetworkManager TaggedInstance()
+        {
+            GameObject obj = GameObject.FindGameObjectWithTag(Network.NetworkManager.TAG);
+            if (obj == null)
+                return null;
+            return obj.GetComponent<Network.NetworkManager>();
         }
 
         public Role Role()
@@ -160,7 +167,7 @@ namespace Network
                 url = endpointUrlBuilder.Uri.AbsoluteUri;
             }
             Debug.Log("Using url: " + url);
-            _client = new ClientConnection(url);
+            _client = new ClientConnection(url, /*autoReconnect=*/ true);
             _router = new NetworkRouter(_client, _networkMapSource, this, null, null);
 
             Util.Status result = InitializeTaggedObjects();
@@ -173,7 +180,6 @@ namespace Network
             SceneManager.sceneLoaded += OnSceneLoaded;
 
 
-            _lastReconnect = DateTime.Now;
             _lastStatsPoll = DateTime.Now;
             _client.Start();
         }
@@ -250,12 +256,6 @@ namespace Network
                 msg.RoomRequest = new RoomManagementRequest();
                 msg.RoomRequest.Type = RoomRequestType.STATS;
                 _client.TransmitMessage(msg);
-            }
-            if (_client.IsClosed() && ((DateTime.Now - _lastReconnect).Seconds > 3))
-            {
-                Debug.Log("Reconnecting...");
-                Invoke("Reconnect", 3);
-                _lastReconnect = DateTime.Now;
             }
 
             Text connectionStatus = GameObject.FindGameObjectWithTag("ConnectionStatus").GetComponent<Text>();

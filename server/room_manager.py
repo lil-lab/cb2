@@ -62,7 +62,6 @@ class RoomManager(object):
                 msg = message_from_server.RoomResponseFromServer(RoomManagementResponse(
                     RoomResponseType.LEAVE_NOTICE, None, None, leave_notice))
                 await socket.send_str(msg.to_json())
-                await socket.close()
         del self._remotes[ws]
         del self._rooms[room_id]
 
@@ -157,10 +156,8 @@ class RoomManager(object):
     async def handle_leave_request(self, request, ws):
         if not ws in self._remotes:
             return RoomManagementResponse(RoomResponseType.ERROR, "You are not in a room.")
-        room_id, player_id, _ = self._remotes[ws]
+        room_id, player_id, _ = astuple(self._remotes[ws])
         await self.disconnect_socket(ws)
-
-        del self._remotes[ws]
         return RoomManagementResponse(RoomResponseType.LEAVE_NOTICE, None, None, LeaveRoomNotice("Player requested leave."))
 
     async def handle_stats_request(self, request, ws):
