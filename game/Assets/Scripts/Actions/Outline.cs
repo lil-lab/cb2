@@ -69,11 +69,13 @@ public class Outline : ActionQueue.IAction
         return new Network.Action()
         {
             Id = id,
-            ActionType = Network.ActionType.ROTATE,
+            ActionType = Network.ActionType.OUTLINE,
             AnimationType = (Network.AnimationType)_info.Type,
             Displacement = HecsCoord.ORIGIN,
             Rotation = _info.Rotation,
             DurationS = _info.DurationS,
+            BorderRadius = _info.BorderRadius,
+            Opacity = _info.Opacity,
             Expiration = _info.Expiration.ToString("o"),
         };
     }

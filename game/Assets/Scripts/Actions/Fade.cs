@@ -1,31 +1,49 @@
-﻿using System;
+using System;
 using UnityEngine;
 
-public class Rotate : ActionQueue.IAction
+public class Fade : ActionQueue.IAction
 {
-    public static Rotate Turn(float rotation, float durationS)
+    public static Fade FadeIn(float durationS)
     {
-        return new Rotate(
+        return new Fade(
             new ActionQueue.ActionInfo()
             {
-                Type = ActionQueue.AnimationType.ROTATE,
+                Type = ActionQueue.AnimationType.NONE,
                 Displacement = HecsCoord.ORIGIN,
-                Rotation = rotation,
+                Rotation = 0,
+                BorderRadius = 0,
+                Opacity = 1,
                 DurationS = durationS,
                 Expiration = DateTime.Now.AddSeconds(10),
             }
-        );
+        ); ;
+    }
+
+    public static Fade FadeOut(float durationS)
+    {
+        return new Fade(
+            new ActionQueue.ActionInfo()
+            {
+                Type = ActionQueue.AnimationType.NONE,
+                Displacement = HecsCoord.ORIGIN,
+                Rotation = 0,
+                BorderRadius = 0,
+                Opacity = 0,
+                DurationS = durationS,
+                Expiration = DateTime.Now.AddSeconds(10),
+            }
+        ); ;
     }
 
     private ActionQueue.ActionInfo _info;
 
-    public Rotate(ActionQueue.ActionInfo info)
+    public Fade(ActionQueue.ActionInfo info)
     {
         _info = info;
     }
-    
-    public float DurationS() { return _info.DurationS;  }
-    public DateTime Expiration() { return _info.Expiration;  }
+
+    public float DurationS() { return _info.DurationS; }
+    public DateTime Expiration() { return _info.Expiration; }
 
     public State.Continuous Interpolate(State.Discrete initialConditions, float progress)
     {
@@ -33,20 +51,19 @@ public class Rotate : ActionQueue.IAction
         if (progress > 1.0f) progress = 1.0f;
 
         State.Discrete end = Transfer(initialConditions);
-        
+
         State.Continuous interp = new State.Continuous();
         interp.Position = initialConditions.Vector();
-        interp.HeadingDegrees = initialConditions.HeadingDegrees
-	                            + _info.Rotation * progress; 
+        interp.HeadingDegrees = initialConditions.HeadingDegrees;
         interp.BorderRadius = initialConditions.BorderRadius;
-        interp.Opacity = initialConditions.Opacity;
+        interp.Opacity = Mathf.Lerp(initialConditions.Opacity, end.Opacity, progress);
         interp.Animation = _info.Type;
-        return interp; 
+        return interp;
     }
 
     public State.Discrete Transfer(State.Discrete s)
     {
-        s.HeadingDegrees += _info.Rotation;
+        s.Opacity = _info.Opacity;
         return s;
     }
 
@@ -60,6 +77,7 @@ public class Rotate : ActionQueue.IAction
             Displacement = HecsCoord.ORIGIN,
             Rotation = _info.Rotation,
             DurationS = _info.DurationS,
+            Opacity = _info.Opacity,
             Expiration = _info.Expiration.ToString("o"),
         };
     }

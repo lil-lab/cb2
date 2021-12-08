@@ -88,6 +88,12 @@ public class Player : MonoBehaviour
             return;
         }
 
+        // Ignore keypresses when it's not our turn.
+        if (_network.CurrentTurn() != _network.Role())
+        {
+            return;
+        }
+
         if (UpKey() &&
             !grid.EdgeBetween(_actor.Location(), forwardLocation))
         {

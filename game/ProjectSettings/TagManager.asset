@@ -17,6 +17,11 @@ TagManager:
   - ChatLog
   - ScrollView
   - InGameMenuHandler
+  - GAME_OVER_UI
+  - GAME_OVER_STATS
+  - SCORE_TEXT
+  - OUR_TURN_INDICATOR
+  - NOT_OUR_TURN_INDICATOR
   layers:
   - Default
   - TransparentFX

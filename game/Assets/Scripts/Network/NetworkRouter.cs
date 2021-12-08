@@ -141,6 +141,24 @@ namespace Network
                     menuTransitionHandler.DisplayMessage(sender, textMessage.Text);
                 }
             }
+            if (message.Type == MessageFromServer.MessageType.TURN_STATE)
+            {
+                GameObject obj = GameObject.FindGameObjectWithTag(MenuTransitionHandler.TAG);
+                if (obj == null)
+                {
+                    Debug.Log("Could not find menu transition handler object.");
+                    return;
+                }
+                MenuTransitionHandler menuTransitionHandler = obj.GetComponent<MenuTransitionHandler>();
+                if (menuTransitionHandler == null)
+                {
+                    Debug.Log("Could not find menu transition handler.");
+                    return;
+                }
+                TurnState state = message.TurnState;
+                menuTransitionHandler.HandleTurnState(state);
+                _networkManager.HandleTurnState(state);
+            }
         }
 
         public void TransmitAction(ActionQueue.IAction action)

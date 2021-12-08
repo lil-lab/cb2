@@ -2,7 +2,7 @@
 
 from enum import Enum
 from messages.action import Action
-from messages.game_state import GameState
+from messages.turn_state import TurnState
 from messages.state_sync import StateSync
 from messages.map_update import MapUpdate
 from messages.rooms import RoomManagementResponse
@@ -66,4 +66,4 @@ class MessageFromServer:
     state: Optional[StateSync]
     room_management_response: Optional[RoomManagementResponse]
     messages: Optional[List[TextMessage]]
-    game_state: Optional[GameState]
+    turn_state: Optional[TurnState]

@@ -14,7 +14,7 @@ namespace Network
             STATE_SYNC,
             ROOM_MANAGEMENT,
             TEXT,
-            GAME_STATE,
+            TURN_STATE,
         }
 
         // These fields are always provided with any packet.
@@ -29,6 +29,6 @@ namespace Network
         public StateSync State;
         public RoomManagementResponse RoomManagementResponse;
         public List<TextMessage> Messages;
-        public GameState GameState;
+        public TurnState TurnState;
     }
 }  // namespace Network

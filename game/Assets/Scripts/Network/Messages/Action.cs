@@ -34,6 +34,7 @@ namespace Network
         public HecsCoord Displacement;
         public float Rotation;  // Degrees.
         public float BorderRadius;  // Outline radius.
+        public float Opacity;  // Used to animate some UI elements.
         public float DurationS;
         public string Expiration;  // DateTime in ISO 8601.
     }

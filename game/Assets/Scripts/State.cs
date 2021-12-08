@@ -8,6 +8,7 @@ namespace State
 		public Vector3 Position;
 	    public float HeadingDegrees;
 		public float BorderRadius;
+        public float Opacity;
 		public ActionQueue.AnimationType Animation;
     }
 
@@ -17,6 +18,7 @@ namespace State
 		public HecsCoord Coord;
 		public float HeadingDegrees;
 		public float BorderRadius;
+        public float Opacity;
 
 	    public Vector3 Vector()
 	    { 
@@ -34,6 +36,7 @@ namespace State
 				Position = Vector(),
 				HeadingDegrees = HeadingDegrees,
 				BorderRadius = BorderRadius,
+                Opacity = Opacity,
 				Animation = ActionQueue.AnimationType.IDLE,
 			};
 		}

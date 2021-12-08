@@ -4,6 +4,18 @@ using UnityEngine;
 // Instant instantly applies the given action.
 public class Instant : ActionQueue.IAction
 {
+    public static ActionQueue.IAction Pause(float durationS)
+    {
+        return new Instant(new ActionQueue.ActionInfo()
+        {
+            Type = ActionQueue.AnimationType.NONE,
+            Displacement = HecsCoord.ORIGIN,
+            Rotation = 0,
+            DurationS = durationS,
+            Expiration = DateTime.Now.AddSeconds(10),
+        });
+    }
+
     private ActionQueue.ActionInfo _info;
 
     public Instant(ActionQueue.ActionInfo info)
@@ -22,6 +34,7 @@ public class Instant : ActionQueue.IAction
         interp.Position = end.Vector();
         interp.HeadingDegrees = end.HeadingDegrees;
         interp.BorderRadius = end.BorderRadius;
+        interp.Opacity = end.Opacity;
         interp.Animation = _info.Type;
         return interp; 
     }

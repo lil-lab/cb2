@@ -36,6 +36,7 @@ room_manager = RoomManager()
 # Used if run with GUI enabled.
 SCREEN_SIZE = 1000
 
+logger = logging.getLogger()
 
 async def transmit(ws, message):
     global remote_table
@@ -121,7 +122,7 @@ async def receive_agent_updates(request, ws):
             await ws.close()
             continue
 
-        logging.debug("Raw message: " + msg.data)
+        logger.debug("Raw message: " + msg.data)
         message = message_to_server.MessageToServer.from_json(msg.data)
 
         if message.type == message_to_server.MessageType.ROOM_MANAGEMENT:
@@ -146,13 +147,14 @@ async def PlayerEndpoint(request):
     global room_manager
     ws = web.WebSocketResponse(autoclose=True, heartbeat=1.0, autoping=1.0)
     await ws.prepare(request)
-    logging.info("player connected from : " + request.remote)
+    logger = logging.getLogger()
+    logger.info("player connected from : " + request.remote)
     remote_table[ws] = {"last_message_up": time.time(), "last_message_down": time.time(
     ), "ip": request.remote, "id": 0, "bytes_up": 0, "bytes_down": 0}
     try:
         await asyncio.gather(receive_agent_updates(request, ws), stream_game_state(request, ws))
     finally:
-        logging.info("player disconnected from : " + request.remote)
+        logger.info("player disconnected from : " + request.remote)
         await room_manager.disconnect_socket(ws)
         del remote_table[ws]
     return ws
@@ -210,14 +212,14 @@ async def debug_print():
         await asyncio.sleep(1)
         tasks = set(asyncio.all_tasks())
         if len(prev_tasks) != len(tasks):
-            logging.debug(
+            logger.debug(
                 f"New task added. size: {len(tasks)}. prev size: {len(prev_tasks)}.")
-            logging.debug(
+            logger.debug(
                 "========================= New Tasks added =========================")
-            logging.debug(f"{str(tasks - prev_tasks)}")
-            logging.debug(
+            logger.debug(f"{str(tasks - prev_tasks)}")
+            logger.debug(
                 "========================= New Tasks removed =========================")
-            logging.debug(f"{str(prev_tasks - tasks)}")
+            logger.debug(f"{str(prev_tasks - tasks)}")
         prev_tasks = tasks
         if room is None:
             room = room_manager.get_room_by_name("Room 0")

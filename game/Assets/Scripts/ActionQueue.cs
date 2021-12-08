@@ -6,6 +6,8 @@ using UnityEngine;
 // This class is a queue of actions that some object shall take. Custom actions 
 // can be implemented via the IAction interface and each action can be
 // associated with its own animation type.
+
+// This is generally used to animate game objects, however it is also repurposed for UI animation.
 public class ActionQueue
 {
     [Serializable]
@@ -19,6 +21,7 @@ public class ActionQueue
         ACCEL_DECEL,
         SKIPPING,
         ROTATE,
+        FADE,
     }
 
     public class ActionInfo
@@ -27,6 +30,7 @@ public class ActionQueue
         public HecsCoord Displacement;  // Object displacement in HECS coords.
         public float Rotation;  // Heading in degrees, 0 = north, clockwise.
         public float BorderRadius;  // Radius of the object's outline, if applicable.
+        public float Opacity;  // Used for UI element animations.
         public float DurationS;  // Duration in seconds.
         public DateTime Expiration;  // If the action delays past this deadline, fastforward to next action.
     };

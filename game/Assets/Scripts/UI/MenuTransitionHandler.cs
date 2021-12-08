@@ -1,9 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using Network;
+using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 public class MenuTransitionHandler : MonoBehaviour
 {
@@ -21,7 +22,21 @@ public class MenuTransitionHandler : MonoBehaviour
     private static readonly string CHAT_LOG_TAG = "ChatLog";
     private static readonly string SCROLL_VIEW_TAG = "ScrollView";
 
+    private static readonly string GAME_OVER_MENU = "GAME_OVER_UI";
+    private static readonly string GAME_OVER_STATS = "GAME_OVER_STATS";
+
+    private static readonly string SCORE_TEXT_TAG = "SCORE_TEXT";
+    private static readonly string OUR_TURN_TAG = "OUR_TURN_INDICATOR";
+    private static readonly string NOT_OUR_TURN_TAG = "NOT_OUR_TURN_INDICATOR";
+
+    // We re-use ActionQueue here to animate UI transparency. It's a bit
+    // overkill to have two animation queues here, but it's very obvious what's
+    // happening for the reader, and that's worth it.
+    private ActionQueue notOurTurnIndicatorFade = new ActionQueue();
+    private ActionQueue ourTurnIndicatorFade = new ActionQueue();
+
     private MenuState _currentMenuState;
+    private TurnState _lastTurn = new TurnState();
 
     public void QuitGame()
     {
@@ -85,6 +100,74 @@ public class MenuTransitionHandler : MonoBehaviour
         EventSystem.current.SetSelectedGameObject(null);
     }
 
+    public void HandleTurnState(Network.TurnState state)
+    {
+        if (state.GameOver)
+        {
+            EndGame(state);
+        }
+        else
+        {
+            DisplayTurnState(state);
+        }
+    }
+
+    private void DisplayTurnState(Network.TurnState state)
+    {
+        // Load the NetworkManager.
+        GameObject obj = GameObject.FindWithTag(Network.NetworkManager.TAG);
+        if (obj == null)
+        {
+            Debug.Log("Could not find network manager!");
+            return;
+        }
+
+        Network.NetworkManager networkManager = obj.GetComponent<Network.NetworkManager>();
+
+        string twoLineSummary = state.ShortStatus();
+        GameObject scoreObj = GameObject.FindWithTag(SCORE_TEXT_TAG);
+        TMPro.TMP_Text textMeshPro = scoreObj.GetComponent<TMPro.TMP_Text>();
+        textMeshPro.text = twoLineSummary;
+
+        if (_lastTurn.Turn != state.Turn)
+        {
+            if (state.Turn == networkManager.Role())
+            {
+                notOurTurnIndicatorFade.AddAction(Fade.FadeOut(0.5f));
+                ourTurnIndicatorFade.AddAction(Instant.Pause(0.5f));
+                ourTurnIndicatorFade.AddAction(Fade.FadeIn(0.5f));
+            }
+            else
+            {
+                ourTurnIndicatorFade.AddAction(Fade.FadeOut(0.5f));
+                notOurTurnIndicatorFade.AddAction(Instant.Pause(0.5f));
+                notOurTurnIndicatorFade.AddAction(Fade.FadeIn(0.5f));
+            }
+        }
+        _lastTurn = state;
+
+        // Force the canvas to re-render in order to display the new text mesh.
+        Canvas.ForceUpdateCanvases();
+    }
+
+    private void EndGame(Network.TurnState state)
+    {
+        GameObject obj = GameObject.FindWithTag(GAME_OVER_MENU);
+        if (obj == null)
+        {
+            Debug.Log("Could not find game over menu!");
+            return;
+        }
+        Canvas gameOverCanvas = obj.GetComponent<Canvas>();
+        gameOverCanvas.enabled = true;
+
+        GameObject scoreObj = GameObject.FindWithTag(GAME_OVER_STATS);
+        TMPro.TMP_Text textMeshPro = scoreObj.GetComponent<TMPro.TMP_Text>();
+        textMeshPro.text = state.ScoreString();
+
+        Canvas.ForceUpdateCanvases();
+    }
+
     // Start is called before the first frame update
     void Start()
     {
@@ -94,6 +177,19 @@ public class MenuTransitionHandler : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        // Handle UI animations.
+        ourTurnIndicatorFade.Update();
+        State.Discrete tS = ourTurnIndicatorFade.State();
+        GameObject turn_obj = GameObject.FindWithTag(OUR_TURN_TAG);
+        CanvasGroup turn_group = turn_obj.GetComponent<CanvasGroup>();
+        turn_group.alpha = tS.Opacity;
+
+        notOurTurnIndicatorFade.Update();
+        State.Discrete nTS = notOurTurnIndicatorFade.State();
+        GameObject not_turn_obj = GameObject.FindWithTag(NOT_OUR_TURN_TAG);
+        CanvasGroup not_turn_group = not_turn_obj.GetComponent<CanvasGroup>();
+        not_turn_group.alpha = nTS.Opacity;
+
         GameObject esc_menu = GameObject.FindWithTag(ESCAPE_MENU_TAG);
         if (esc_menu == null)
         {

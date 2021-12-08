@@ -23,6 +23,7 @@ namespace Network
         private Player _player;
         private DateTime _lastStatsPoll;
         private Role _role = Network.Role.NONE;
+        private Role _currentTurn = Network.Role.NONE;
 
         public HexGridManager.IMapSource MapSource()
         {
@@ -51,6 +52,11 @@ namespace Network
         public Role Role()
         {
             return _role;
+        }
+
+        public Role CurrentTurn()
+        {
+            return _currentTurn;
         }
 
         public void TransmitAction(ActionQueue.IAction action)
@@ -240,6 +246,11 @@ namespace Network
             {
                 Debug.Log("Received unknown room management response type: " + response.Type);
             }
+        }
+
+        public void HandleTurnState(TurnState state)
+        {
+            _currentTurn = state.Turn;
         }
 
         // Update is called once per frame

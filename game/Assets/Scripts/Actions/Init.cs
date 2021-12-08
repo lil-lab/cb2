@@ -37,6 +37,7 @@ public class Init : ActionQueue.IAction
         interp.Position = end.Vector();
         interp.HeadingDegrees = end.HeadingDegrees;
         interp.BorderRadius = end.BorderRadius;
+        interp.Opacity = end.Opacity;
         interp.Animation = _info.Type;
         return interp; 
     }

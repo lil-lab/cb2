@@ -40,6 +40,7 @@ public class Translate : ActionQueue.IAction
 	                                   progress);
         interp.HeadingDegrees = initialConditions.HeadingDegrees;
         interp.BorderRadius = initialConditions.BorderRadius;
+        interp.Opacity = initialConditions.Opacity;
         interp.Animation = _info.Type;
         return interp; 
     }

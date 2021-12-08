@@ -10,23 +10,54 @@ from queue import Queue
 from map_provider import HardcodedMapProvider
 from card import CardSelectAction
 from util import IdAssigner
+from datetime import datetime, timedelta
+from messages.turn_state import TurnState, GameOverMessage, TurnUpdate
 
 import math
 import time
+import dataclasses
 
 
 class State(object):
     def __init__(self, room_id):
         self._room_id = room_id
+        self._recvd_log = logging.getLogger(f'room_{room_id}.recv')
+        self._record_log = logging.getLogger(f'room_{room_id}.log')
+        self._sent_log = logging.getLogger(f'room_{room_id}.sent')
         self._actors = {}
         self._message_history = {}
         self._synced = {}
         self._id_assigner = IdAssigner()
         self._action_history = {}
+        self._start_time = datetime.now()
+        self._last_tick = datetime.now() # Used to time 100ms ticks for turn state updates.
+        self._last_desync = datetime.now() # Used to periodically force all clients to statesync. (every 10s)
+        initial_turn = TurnUpdate(Role.LEADER, 1000, datetime.now() +
+                                  timedelta(minutes=1), self._start_time, 0, 0)
+        self._turn_history = {}
+        self.record_turn_state(initial_turn)
+
         # Map props and actors share IDs from the same pool, so the ID assigner
         # is shared to prevent overlap.
         self._map_provider = HardcodedMapProvider(self._id_assigner)
         self._done = False
+
+    def record_turn_state(self, turn_state):
+        # Record a copy of the current turn state.
+        self._record_log.info(turn_state)
+        self._turn_state = turn_state
+        for actor in self._actors:
+            if not actor.actor_id() in self._turn_history:
+                self._turn_history[actor.actor_id()] = []
+            self._turn_history[actor.actor_id()].append(
+                dataclasses.replace(turn_state))
+
+    def drain_turn_state(self, actor_id):
+        turn_history = self._turn_history[actor_id]
+        for turn in turn_history:
+            self._sent_log.info(f"to: {actor_id} turn_state: {turn}")
+        self._turn_history[actor_id] = []
+        return turn_history
 
     def end_game(self):
         logging.info(f"Game ending.")
@@ -35,6 +66,7 @@ class State(object):
     def record_action(self, action):
         # Marks an action as validated (i.e. it did not conflict with other actions).
         # Queues this action to be sent to each user.
+        self._record_log.info(action)
         for id in self._actors:
             actor = self._actors[id]
             self._action_history[actor.actor_id()].append(action)
@@ -59,6 +91,30 @@ class State(object):
                 logging.warn(
                     f"Game {self._room_id} slow poll period of {poll_period}s")
             last_loop = time.time()
+
+            # Check to see if the game is out of time.
+            if datetime.now() > self._turn_state.game_end_date:
+                logging.info(
+                    f"Game {self._room_id} is out of time. Game over!")
+                game_over_message = GameOverMessage(
+                    self._start_time, self._turn_state.sets_collected, self._turn_state.score)
+                self.record_action(game_over_message)
+                self.end_game()
+                continue
+
+            # Recalculate the turn state with the remaining game time.
+            if datetime.now() > self._last_tick + timedelta(milliseconds=100):
+                self._last_tick = datetime.now()
+                turn_update = TurnUpdate(self._turn_state.role,
+                                         self._turn_state.moves_remaining, self._turn_state.game_end_date,
+                                         self._start_time, self._turn_state.sets_collected,
+                                         self._turn_state.score)
+                self.record_action(turn_update)
+            
+            if datetime.now() > self._last_desync + timedelta(seconds=10):
+                self._last_desync = datetime.now()
+                self.desync_all()
+
             for actor_id in self._actors:
                 actor = self._actors[actor_id]
 
@@ -66,10 +122,23 @@ class State(object):
                 if actor.has_actions():
                     logging.info(f"Actor {actor_id} has pending actions.")
                     action = actor.peek()
+                    if not self._turn_state.role == actor.role():
+                        actor.drop()
+                        self.desync_all()
+                        logging.info(
+                            f"Actor {actor_id} is not the current role. Dropping pending action.")
+                        continue
                     if self.valid_action(actor_id, action):
                         actor.step()
                         self.record_action(action)
                         self.check_for_stepped_on_cards(actor_id, action)
+                        opposite_role = Role.LEADER if self._turn_state.role == Role.FOLLOWER else Role.FOLLOWER
+                        next_role = opposite_role if self._turn_state.moves_remaining == 0 else self._turn_state.role
+                        moves_remaining = self.moves_per_turn(
+                            next_role) if self._turn_state.moves_remaining == 0 else self._turn_state.moves_remaining - 1
+                        turn_update = TurnUpdate(self._turn_state.role, moves_remaining, self._turn_state.game_end_date,
+                                                 self._start_Time, self._turn_state.sets_collected, self._turn_state.score)
+                        self.record_turn_state(turn_update)
                     else:
                         actor.drop()
                         self.desync_all()
@@ -81,10 +150,12 @@ class State(object):
                 if len(messages) > 0:
                     logging.info(
                         f"Actor {actor_id} has message {messages[0]} pending for them")
+                    self._record_log.info(messages[0])
                     self.record_text(actor, messages[0])
 
             selected_cards = list(self._map_provider.selected_cards())
             if len(selected_cards) >= 3:
+                logging.info("3 cards collected.")
                 # Determine if the cards are unique.
                 shapes = set()
                 colors = set()
@@ -93,15 +164,26 @@ class State(object):
                     shapes.add(card.shape)
                     colors.add(card.color)
                     counts.add(card.count)
+
                 if len(shapes) == len(colors) == len(counts) == 3:
-                    print("GAME WON")
-                else:
-                    print("GAME LOST")
+                    logging.info("Unique set collected. Awarding points.")
+                    new_turn_state = TurnUpdate(
+                        self._turn_state.role, self._turn_state.score + 1, self._turn_state.end_time + timedelta(minutes=1), self._start_time, self._turn_state.sets_collected + 1, self._turn_state.score)
+                    self.record_turn_state(new_turn_state)
+                    self.desync_all()
+
                 # Clear card state.
-                print("RESETTING BOARD.")
+                logging.info("Clearing selected cards")
                 for card in selected_cards:
                     self._map_provider.set_selected(card.id, False)
-                    self.record_action(CardSelectAction(card.id, False))
+                    card_select_action = CardSelectAction(card.id, False)
+                    self.record_action(card_select_action)
+
+    def calculate_moves_per_turn(self, role):
+        return 5 if role == Role.LEADER else 10
+
+    def calculate_score(self):
+        self._turn_state.score = self._turn_state.sets_collected * 100
 
     def check_for_stepped_on_cards(self, actor_id, action):
         actor = self._actors[actor_id]
@@ -114,13 +196,14 @@ class State(object):
             selected = not stepped_on_card.selected
             self._map_provider.set_selected(
                 stepped_on_card.id, selected)
-            self.record_action(CardSelectAction(
-                stepped_on_card.id, selected))
+            card_select_action = CardSelectAction(stepped_on_card.id, selected)
+            self.record_action(card_select_action)
 
     def handle_action(self, actor_id, action):
         if (action.id != actor_id):
             self.desync(actor_id)
             return
+        self._recvd_log.info(action)
         self._actors[actor_id].add_action(action)
 
     def handle_text(self, id, message):
@@ -128,6 +211,7 @@ class State(object):
             logging.warn(
                 f'Warning, text message received from non-leader ID: {str(id)}')
             return
+        self._recvd_log.info(message)
         for a in self._actors:
             self._actors[a].add_message(message)
 
@@ -171,6 +255,9 @@ class State(object):
         if not actor_id in self._action_history:
             return []
         action_history = self._action_history[actor_id]
+        # Log actions sent to client.
+        for action in action_history:
+            self._sent_log.info(f"to: {actor_id} action: {action}")
         self._action_history[actor_id] = []
         return action_history
 
@@ -178,6 +265,9 @@ class State(object):
         if not actor_id in self._message_history:
             return []
         message_history = self._message_history[actor_id]
+        # Log actions sent to client.
+        for message in message_history:
+            self._sent_log.info(f"to: {actor_id} message: {message}")
         self._message_history[actor_id] = []
         return message_history
 
