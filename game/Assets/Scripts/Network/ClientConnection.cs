@@ -78,6 +78,9 @@ namespace Network
             _webSocket.OnError -= OnError;
             _webSocket.OnClose -= OnClose;
             _webSocket.OnMessage -= OnMessage;
+
+            // Quit the active game.
+            NetworkManager.TaggedInstance().QuitGame();
         }
 
         private void OnMessage(byte[] bytes)

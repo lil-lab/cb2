@@ -86,3 +86,4 @@ class RoomManagementResponse:
     stats: Optional[StatsResponse]
     join_response: Optional[JoinResponse]
     leave_notice: Optional[LeaveRoomNotice]
+    error: str = ""

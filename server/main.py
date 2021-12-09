@@ -254,8 +254,8 @@ async def draw_gui():
 
 
 def setup_logging():
-    log_format = "[%(asctime)s] %(levelname)s [%(module)s:%(funcName)s:%(lineno)d] %(message)s"
-    logging.basicConfig(level=logging.DEBUG, format=log_format)
+    log_format = "[%(asctime)s] %(name)s %(levelname)s [%(module)s:%(funcName)s:%(lineno)d] %(message)s"
+    logging.basicConfig(level=logging.INFO, format=log_format)
     logging.getLogger("asyncio").setLevel(logging.INFO)
 
 

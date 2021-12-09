@@ -17,14 +17,17 @@ import math
 import time
 import dataclasses
 
-
 class State(object):
     def __init__(self, room_id):
         self._room_id = room_id
         self._recvd_log = logging.getLogger(f'room_{room_id}.recv')
         self._record_log = logging.getLogger(f'room_{room_id}.log')
         self._sent_log = logging.getLogger(f'room_{room_id}.sent')
+        self._recvd_log.info("State created.")
+        self._record_log.info("State created.")
+        self._sent_log.info("State created.")
         self._actors = {}
+        
         self._message_history = {}
         self._synced = {}
         self._id_assigner = IdAssigner()
@@ -46,18 +49,20 @@ class State(object):
         # Record a copy of the current turn state.
         self._record_log.info(turn_state)
         self._turn_state = turn_state
-        for actor in self._actors:
-            if not actor.actor_id() in self._turn_history:
-                self._turn_history[actor.actor_id()] = []
-            self._turn_history[actor.actor_id()].append(
+        for actor_id in self._actors:
+            if not actor_id in self._turn_history:
+                self._turn_history[actor_id] = Queue()
+            self._turn_history[actor_id].put(
                 dataclasses.replace(turn_state))
 
     def drain_turn_state(self, actor_id):
-        turn_history = self._turn_history[actor_id]
-        for turn in turn_history:
-            self._sent_log.info(f"to: {actor_id} turn_state: {turn}")
-        self._turn_history[actor_id] = []
-        return turn_history
+        if not actor_id in self._turn_history:
+            self._turn_history[actor_id] = Queue()
+        if self._turn_history[actor_id].empty():
+            return None
+        turn = self._turn_history[actor_id].get()
+        self._sent_log.info(f"to: {actor_id} turn_state: {turn}")
+        return turn
 
     def end_game(self):
         logging.info(f"Game ending.")
@@ -98,18 +103,18 @@ class State(object):
                     f"Game {self._room_id} is out of time. Game over!")
                 game_over_message = GameOverMessage(
                     self._start_time, self._turn_state.sets_collected, self._turn_state.score)
-                self.record_action(game_over_message)
+                self.record_turn_state(game_over_message)
                 self.end_game()
                 continue
 
             # Recalculate the turn state with the remaining game time.
-            if datetime.now() > self._last_tick + timedelta(milliseconds=100):
+            if datetime.now() > self._last_tick + timedelta(milliseconds=1000):
                 self._last_tick = datetime.now()
-                turn_update = TurnUpdate(self._turn_state.role,
+                turn_update = TurnUpdate(self._turn_state.turn,
                                          self._turn_state.moves_remaining, self._turn_state.game_end_date,
                                          self._start_time, self._turn_state.sets_collected,
                                          self._turn_state.score)
-                self.record_action(turn_update)
+                self.record_turn_state(turn_update)
             
             if datetime.now() > self._last_desync + timedelta(seconds=10):
                 self._last_desync = datetime.now()
@@ -168,7 +173,7 @@ class State(object):
                 if len(shapes) == len(colors) == len(counts) == 3:
                     logging.info("Unique set collected. Awarding points.")
                     new_turn_state = TurnUpdate(
-                        self._turn_state.role, self._turn_state.score + 1, self._turn_state.end_time + timedelta(minutes=1), self._start_time, self._turn_state.sets_collected + 1, self._turn_state.score)
+                        self._turn_state.role, self._turn_state.moves_remaining + 10, self._turn_state.end_time + timedelta(minutes=1), self._start_time, self._turn_state.sets_collected + 1, self._turn_state.score + 10)
                     self.record_turn_state(new_turn_state)
                     self.desync_all()
 

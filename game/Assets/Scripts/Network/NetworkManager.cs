@@ -112,7 +112,8 @@ namespace Network
             msg.RoomRequest = new RoomManagementRequest();
             msg.RoomRequest.Type = RoomRequestType.LEAVE;
             _client.TransmitMessage(msg);
-            Invoke("Reconnect", 0);
+            _role = Network.Role.NONE;
+            _currentTurn = Network.Role.NONE;
             SceneManager.LoadScene("menu_scene");
         }
 
@@ -192,6 +193,8 @@ namespace Network
 
         public void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            if (scene.name == "menu_scene")
+                return;    
             Util.Status result = InitializeTaggedObjects();
             if (!result.Ok())
             {
@@ -202,11 +205,6 @@ namespace Network
         public void OnApplicationQuit()
         {
             _client.OnApplicationQuit();
-        }
-
-        public void Reconnect()
-        {
-            _client.Reconnect();
         }
 
         public void HandleRoomManagement(RoomManagementResponse response)
@@ -241,6 +239,10 @@ namespace Network
                              "Games: " + response.Stats.NumberOfGames + "\n" +
                              "Followers Waiting: " + response.Stats.FollowersWaiting + "\n" +
                              "Leaders Waiting: " + response.Stats.LeadersWaiting + "\n";
+            }
+            else if (response.Type == RoomResponseType.ERROR)
+            {
+                Debug.Log("Received room management error: " + response.Error);
             }
             else
             {

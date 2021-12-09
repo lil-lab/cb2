@@ -155,7 +155,7 @@ class RoomManager(object):
 
     async def handle_leave_request(self, request, ws):
         if not ws in self._remotes:
-            return RoomManagementResponse(RoomResponseType.ERROR, "You are not in a room.")
+            return RoomManagementResponse(RoomResponseType.ERROR, None, None, None, "You are not in a room.")
         room_id, player_id, _ = astuple(self._remotes[ws])
         await self.disconnect_socket(ws)
         return RoomManagementResponse(RoomResponseType.LEAVE_NOTICE, None, None, LeaveRoomNotice("Player requested leave."))

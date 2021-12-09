@@ -48,7 +48,7 @@ def TextsFromServer(texts):
 
 
 def GameStateFromServer(game_state):
-    return MessageFromServer(datetime.now, MessageType.GAME_STATE, None, None, None, None, None, game_state)
+    return MessageFromServer(datetime.now(), MessageType.GAME_STATE, None, None, None, None, None, game_state)
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)

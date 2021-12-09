@@ -52,5 +52,6 @@ namespace Network
         public StatsResponse Stats;
         public JoinResponse JoinResponse;
         public LeaveRoomNotice LeaveNotice;
+        public string Error;
     }
 }

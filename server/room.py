@@ -128,14 +128,12 @@ class Room(object):
             msg = message_from_server.TextsFromServer(texts)
             return msg
         
-        turnState = self._game_state.drain_turn_state(player_id)
-        if not turnState is None:
+        turn_state = self._game_state.drain_turn_state(player_id)
+        if not turn_state is None:
             logging.info(
-                f'Room {self.id()} drained ts {turnState} for player_id {player_id}')
-            msg = message_from_server.GameStateFromServer(turnState)
+                f'Room {self.id()} drained ts {turn_state} for player_id {player_id}')
+            msg = message_from_server.GameStateFromServer(turn_state)
             return msg
-
-
 
         # Nothing to send.
         return None
