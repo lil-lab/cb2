@@ -21,7 +21,7 @@ namespace Network
 
         public string ShortStatus()
         {
-            return "Score: " + Score + "\tTime Remaining" + GameDuration + "\nMoves this turn: " + MovesRemaining + "\tMoves Remaining: " + MovesRemaining;
+            return "Score: " + Score + "\tGame Time" + GameDuration + "\nMoves this turn: " + MovesRemaining + "\tSets Collected: " + SetsCollected;
         }
     }
 }

@@ -40,14 +40,12 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public void QuitGame()
     {
-        GameObject obj = GameObject.FindWithTag(Network.NetworkManager.TAG);
-        if (obj == null)
-        {
-            Debug.Log("Could not find network manager!");
-            return;
-        }
-        Network.NetworkManager networkManager = obj.GetComponent<Network.NetworkManager>();
-        networkManager.QuitGame();
+        Network.NetworkManager.TaggedInstance().QuitGame();
+    }
+
+    public void BackToMenu()
+    {
+        Network.NetworkManager.TaggedInstance().ReturnToMenu();
     }
 
     public void DisplayMessage(string sender, string message)
@@ -131,6 +129,7 @@ public class MenuTransitionHandler : MonoBehaviour
 
         if (_lastTurn.Turn != state.Turn)
         {
+            Debug.Log("Changing turn animation. " + _lastTurn.Turn + " -> " + state.Turn);
             if (state.Turn == networkManager.Role())
             {
                 notOurTurnIndicatorFade.AddAction(Fade.FadeOut(0.5f));
@@ -162,16 +161,16 @@ public class MenuTransitionHandler : MonoBehaviour
         gameOverCanvas.enabled = true;
 
         GameObject scoreObj = GameObject.FindWithTag(GAME_OVER_STATS);
-        TMPro.TMP_Text textMeshPro = scoreObj.GetComponent<TMPro.TMP_Text>();
-        textMeshPro.text = state.ScoreString();
-
-        Canvas.ForceUpdateCanvases();
+        Text scoreText = scoreObj.GetComponent<Text>();
+        scoreText.text = state.ScoreString();
     }
 
     // Start is called before the first frame update
     void Start()
     {
         _currentMenuState = MenuState.NONE;
+        notOurTurnIndicatorFade = new ActionQueue("NotOurTurnQueue");
+        ourTurnIndicatorFade = new ActionQueue("OurTurnQueue");
     }
 
     // Update is called once per frame
@@ -179,13 +178,13 @@ public class MenuTransitionHandler : MonoBehaviour
     {
         // Handle UI animations.
         ourTurnIndicatorFade.Update();
-        State.Discrete tS = ourTurnIndicatorFade.State();
+        State.Continuous tS = ourTurnIndicatorFade.ContinuousState();
         GameObject turn_obj = GameObject.FindWithTag(OUR_TURN_TAG);
         CanvasGroup turn_group = turn_obj.GetComponent<CanvasGroup>();
         turn_group.alpha = tS.Opacity;
 
         notOurTurnIndicatorFade.Update();
-        State.Discrete nTS = notOurTurnIndicatorFade.State();
+        State.Continuous nTS = notOurTurnIndicatorFade.ContinuousState();
         GameObject not_turn_obj = GameObject.FindWithTag(NOT_OUR_TURN_TAG);
         CanvasGroup not_turn_group = not_turn_obj.GetComponent<CanvasGroup>();
         not_turn_group.alpha = nTS.Opacity;

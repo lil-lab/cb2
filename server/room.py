@@ -78,6 +78,9 @@ class Room(object):
             return RuntimeError("stopped Room that is not running.")
         logging.info(f"Room {self.id()} ending game.")
         self._game_state.end_game()
+    
+    def done(self):
+        return self._game_state.done()
 
     def desync(self, id):
         self._game_state.desync(id)

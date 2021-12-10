@@ -21,6 +21,7 @@ import messages.rooms
 import queue
 import random
 
+logger = logging.getLogger()
 
 @dataclass_json()
 @dataclass(frozen=True)
@@ -93,9 +94,10 @@ class RoomManager(object):
         self._rooms[id].start()
         return self._rooms[id]
 
-    def cleanup_unused_rooms(self):
+    def delete_unused_rooms(self):
         for room in self._rooms.values():
             if room.is_empty():
+                logger.info(f"Deleting unused room: {room.name()}")
                 self.delete_room(room.id())
 
     def delete_room(self, id):
@@ -107,12 +109,17 @@ class RoomManager(object):
             if not self._rooms[room_id].is_full():
                 return room_id
         return None
+    
+    async def cleanup_rooms(self):
+        while not self._is_done:
+            await asyncio.sleep(0.1)
+            self.delete_unused_rooms()
 
     async def matchmake(self):
         """ Runs asyncronously, creating rooms for pending followers and
         leaders. """
         while not self._is_done:
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.1)
             leader, follower = self.get_leader_follower_match()
             if (leader is None) or (follower is None):
                 continue

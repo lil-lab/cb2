@@ -264,7 +264,7 @@ def main(assets_directory="assets/", gui=False):
     global room_manager
     setup_logging()
     assets_map = HashCollectAssets(assets_directory)
-    tasks = asyncio.gather(room_manager.matchmake(), debug_print(), serve())
+    tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), debug_print(), serve())
     # If map visualization command line flag is enabled, run with the visualize task.
     # if gui:
     #   tasks = asyncio.gather(tasks, draw_gui())

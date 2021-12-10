@@ -10,6 +10,8 @@ using UnityEngine;
 // This is generally used to animate game objects, however it is also repurposed for UI animation.
 public class ActionQueue
 {
+    // Enable to get action queue debug messages.
+    public static readonly bool DebugActionQueue = false;
     [Serializable]
     public enum AnimationType
     {
@@ -63,100 +65,133 @@ public class ActionQueue
     private DateTime _actionStarted;
     private float _progress;  // Progress of the current action. 0 -> 1.0f.
     private HexGrid _grid;
+    private string _name;
 
-    public ActionQueue()
+    private System.Object _animationLock = new System.Object();
+
+    public ActionQueue(string name="")
     {
         _actionQueue = new Queue<IAction>();
         _actionInProgress = false;
+        _actionStarted = DateTime.Now;
         _state = new State.Discrete();
         _targetState = new State.Discrete();
+        _name = name;
     }
 
     // Adds a move to the queue.
     public void AddAction(IAction action)
     {
-        if (action == null)
-        {
-            return;
+        lock(_animationLock) {
+            if (action == null)
+            {
+                return;
+            }
+            _targetState = action.Transfer(_targetState);
+            _actionQueue.Enqueue(action);
         }
-        _targetState = action.Transfer(_targetState);
-        _actionQueue.Enqueue(action);
     }
 
     // Is the object in the middle of a action.
     public bool IsBusy()
     {
-        return _actionInProgress;
+        lock(_animationLock) {
+            return _actionInProgress;
+        }
     }
 
     public int PendingActions()
     {
-        return _actionQueue.Count;
+        lock(_animationLock) {
+            return _actionQueue.Count;
+        }
     }
 
     public State.Continuous ContinuousState()
     {
-        if (IsBusy())
-        {
-            return _actionQueue.Peek().Interpolate(_state, _progress);
+        lock(_animationLock) {
+            if (IsBusy())
+            {
+                return _actionQueue.Peek().Interpolate(_state, _progress);
+            }
+            return _state.Continuous();
         }
-        return _state.Continuous();
     }
 
     public State.Discrete State()
     {
-        return _state;
+        lock(_animationLock) {
+            return _state;
+        }
     }
 
     public State.Discrete TargetState()
     {
-        return _targetState;
+        lock(_animationLock) {
+            return _targetState;
+        }
     }
 
     // Wipe all current actions.
     public void Flush()
     {
-        _actionQueue.Clear();
-        _actionInProgress = false;
-        _progress = 0.0f;
-        _targetState = _state;
+        lock(_animationLock) {
+            _actionQueue.Clear();
+            _actionInProgress = false;
+            _progress = 0.0f;
+            _targetState = _state;
+        }
     }
 
     public void Update()
     {
-        // If there's no animation in progress, begin the next animation in the queue.
-        if (_actionQueue.Count > 0 && !_actionInProgress)
-        {
-            _progress = 0.0f;
-            _actionStarted = DateTime.Now;
-            _actionInProgress = true;
-        }
+        lock(_animationLock) {
+            // If there's no animation in progress, begin the next animation in the queue.
+            if (_actionQueue.Count > 0 && !_actionInProgress)
+            {
+                if (DebugActionQueue)
+                    Debug.Log(_name + " Q Start: " + _actionQueue.Peek());
+                _progress = 0.0f;
+                _actionStarted = DateTime.Now;
+                _actionInProgress = true;
+                return;
+            }
 
-        // Immediately skip any expired animations.
-        if (_actionInProgress && (DateTime.Now > _actionQueue.Peek().Expiration()))
-        {
-            Debug.Log("Fast-forwarding expired action");
-            _state = _actionQueue.Peek().Transfer(_state);
-            _actionQueue.Dequeue();
-            _actionInProgress = false;
-        }
+            TimeSpan delta = DateTime.Now - _actionStarted;
 
-        TimeSpan delta = DateTime.Now - _actionStarted;
+            // Immediately skip any expired animations.
+            if (_actionInProgress && (DateTime.Now > _actionQueue.Peek().Expiration()))
+            {
+                if (DebugActionQueue)
+                {
+                    Debug.Log(_name + " Q Fast-forwarding expired action of duration " 
+                              + _actionQueue.Peek().DurationS() + "s. Duration: "
+                              + delta.Seconds);
+                }
+                _state = _actionQueue.Peek().Transfer(_state);
+                _actionQueue.Dequeue();
+                _actionInProgress = false;
+                return;
+            }
 
-        // Convert to milliseconds for higher-resolution progress.
-        if (_actionInProgress)
-        {
-            _progress = ((delta).Milliseconds) /
-                        (_actionQueue.Peek().DurationS() * 1000.0f);
-        }
+            // Convert to milliseconds for higher-resolution progress.
+            if (_actionInProgress)
+            {
+                _progress = ((float)delta.TotalMilliseconds) /
+                            (_actionQueue.Peek().DurationS() * 1000.0f);
+            }
 
-        // End the current action when progress >= 1.0.
-        if (_actionInProgress &&
-            (delta.Milliseconds > (_actionQueue.Peek().DurationS() * 1000.0f)))
-        {
-            _state = _actionQueue.Peek().Transfer(_state);
-            _actionQueue.Dequeue();
-            _actionInProgress = false;
+            // End the current action when progress >= 1.0.
+            if (_actionInProgress &&
+                (delta.TotalMilliseconds > (_actionQueue.Peek().DurationS() * 1000.0f)))
+            {
+                if (DebugActionQueue)
+                    Debug.Log(_name + " Q Finish: " + _actionQueue.Peek());
+                _state = _actionQueue.Peek().Transfer(_state);
+                _actionQueue.Dequeue();
+                _actionInProgress = false;
+                return;
+            }
         }
     }
 

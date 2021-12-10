@@ -1996,11 +1996,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: 'Time taken: 13m5s
-
-    Sets collected: 5
-
-    Points: 10'
+  m_Text: 
 --- !u!222 &879045929
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -2254,7 +2250,7 @@ Canvas:
   m_OverrideSorting: 0
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
-  m_AdditionalShaderChannelsFlag: 0
+  m_AdditionalShaderChannelsFlag: 25
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
@@ -2545,7 +2541,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 838050367}
   m_HandleRect: {fileID: 838050366}
   m_Direction: 2
-  m_Value: 0
+  m_Value: 1
   m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:

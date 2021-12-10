@@ -103,15 +103,22 @@ namespace Network
             _client.TransmitMessage(msg);
         }
 
+        // Leave an active game -- signals to the server that we are leaving.
         public void QuitGame()
         {
-            _networkMapSource.ClearMapUpdate();
             MessageToServer msg = new MessageToServer();
             msg.TransmitTime = DateTime.Now.ToString("o");
             msg.Type = MessageToServer.MessageType.ROOM_MANAGEMENT;
             msg.RoomRequest = new RoomManagementRequest();
             msg.RoomRequest.Type = RoomRequestType.LEAVE;
             _client.TransmitMessage(msg);
+            ReturnToMenu();
+        }
+
+        // Return to the main menu.
+        public void ReturnToMenu()
+        {
+            _networkMapSource.ClearMapUpdate();
             _role = Network.Role.NONE;
             _currentTurn = Network.Role.NONE;
             SceneManager.LoadScene("menu_scene");

@@ -17,6 +17,10 @@ import math
 import time
 import dataclasses
 
+LEADER_MOVES_PER_TURN = 5
+FOLLOWER_MOVES_PER_TURN = 10
+
+
 class State(object):
     def __init__(self, room_id):
         self._room_id = room_id
@@ -35,7 +39,7 @@ class State(object):
         self._start_time = datetime.now()
         self._last_tick = datetime.now() # Used to time 100ms ticks for turn state updates.
         self._last_desync = datetime.now() # Used to periodically force all clients to statesync. (every 10s)
-        initial_turn = TurnUpdate(Role.LEADER, 1000, datetime.now() +
+        initial_turn = TurnUpdate(Role.LEADER, LEADER_MOVES_PER_TURN, datetime.now() +
                                   timedelta(minutes=1), self._start_time, 0, 0)
         self._turn_history = {}
         self.record_turn_state(initial_turn)
@@ -86,6 +90,9 @@ class State(object):
 
     def cards(self):
         self._map_provider.cards()
+    
+    def done(self):
+        return self._done
 
     async def update(self):
         last_loop = time.time()
@@ -127,7 +134,7 @@ class State(object):
                 if actor.has_actions():
                     logging.info(f"Actor {actor_id} has pending actions.")
                     action = actor.peek()
-                    if not self._turn_state.role == actor.role():
+                    if not self._turn_state.turn == actor.role():
                         actor.drop()
                         self.desync_all()
                         logging.info(
@@ -137,12 +144,12 @@ class State(object):
                         actor.step()
                         self.record_action(action)
                         self.check_for_stepped_on_cards(actor_id, action)
-                        opposite_role = Role.LEADER if self._turn_state.role == Role.FOLLOWER else Role.FOLLOWER
-                        next_role = opposite_role if self._turn_state.moves_remaining == 0 else self._turn_state.role
+                        opposite_role = Role.LEADER if self._turn_state.turn == Role.FOLLOWER else Role.FOLLOWER
+                        next_role = opposite_role if self._turn_state.moves_remaining == 1 else self._turn_state.turn
                         moves_remaining = self.moves_per_turn(
-                            next_role) if self._turn_state.moves_remaining == 0 else self._turn_state.moves_remaining - 1
-                        turn_update = TurnUpdate(self._turn_state.role, moves_remaining, self._turn_state.game_end_date,
-                                                 self._start_Time, self._turn_state.sets_collected, self._turn_state.score)
+                            next_role) if self._turn_state.moves_remaining == 1 else self._turn_state.moves_remaining - 1
+                        turn_update = TurnUpdate(next_role, moves_remaining, self._turn_state.game_end_date,
+                                                 self._start_time, self._turn_state.sets_collected, self._turn_state.score)
                         self.record_turn_state(turn_update)
                     else:
                         actor.drop()
@@ -173,7 +180,7 @@ class State(object):
                 if len(shapes) == len(colors) == len(counts) == 3:
                     logging.info("Unique set collected. Awarding points.")
                     new_turn_state = TurnUpdate(
-                        self._turn_state.role, self._turn_state.moves_remaining + 10, self._turn_state.end_time + timedelta(minutes=1), self._start_time, self._turn_state.sets_collected + 1, self._turn_state.score + 10)
+                        self._turn_state.turn, self._turn_state.moves_remaining + 10, self._turn_state.end_time + timedelta(minutes=1), self._start_time, self._turn_state.sets_collected + 1, self._turn_state.score + 10)
                     self.record_turn_state(new_turn_state)
                     self.desync_all()
 
@@ -184,8 +191,8 @@ class State(object):
                     card_select_action = CardSelectAction(card.id, False)
                     self.record_action(card_select_action)
 
-    def calculate_moves_per_turn(self, role):
-        return 5 if role == Role.LEADER else 10
+    def moves_per_turn(self, role):
+        return LEADER_MOVES_PER_TURN if role == Role.LEADER else FOLLOWER_MOVES_PER_TURN
 
     def calculate_score(self):
         self._turn_state.score = self._turn_state.sets_collected * 100
