@@ -1,7 +1,7 @@
 from messages import message_from_server
 from messages import message_to_server
 from messages.rooms import Role
-from messages import text
+from messages import objective
 from state import State
 
 import asyncio
@@ -46,8 +46,11 @@ class Room(object):
     def handle_action(self, id, action):
         self._game_state.handle_action(id, action)
 
-    def handle_text(self, id, message):
-        self._game_state.handle_text(id, message)
+    def handle_objective(self, id, objective):
+        self._game_state.handle_objective(id, objective)
+    
+    def handle_objective_completed(self, id, objective_completed):
+        self._game_state.handle_objective_completed(id, objective_completed)
 
     def handle_packet(self, id, message):
         if message.type == message_to_server.MessageType.ACTIONS:
@@ -55,10 +58,14 @@ class Room(object):
             for action in message.actions:
                 logging.info(f'{action.id}:{action.displacement}')
                 self.handle_action(id, action)
-        elif message.type == message_to_server.MessageType.TEXT:
+        elif message.type == message_to_server.MessageType.OBJECTIVE:
             logging.info(
-                f'Text received. Room: {self.id()}, Text: {message.message.text}')
-            self.handle_text(id, message.message.text)
+                f'Objective received. Room: {self.id()}, Text: {message.objective.text}')
+            self.handle_objective(id, message.objective)
+        elif message.type == message_to_server.MessageType.OBJECTIVE_COMPLETED:
+            logging.info(
+                f'Objective Compl received. Room: {self.id()}, Text: {message.objective_completed.text}')
+            self.handle_objective_completed(id, message.message.objective_completed)
         elif message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
             logging.info(
                 f'Sync request recvd. Room: {self.id()}, Player: {id}')
@@ -123,12 +130,11 @@ class Room(object):
             msg = message_from_server.ActionsFromServer(actions)
             return msg
 
-        messages = self._game_state.drain_messages(player_id)
-        if len(messages) > 0:
+        objectives = self._game_state.drain_objectives(player_id)
+        if len(objectives) > 0:
             logging.info(
-                f'Room {self.id()} drained {len(messages)} texts for player_id {player_id}')
-            texts = [text.TextMessage("LEADER", msg) for msg in messages]
-            msg = message_from_server.TextsFromServer(texts)
+                f'Room {self.id()} drained {len(objectives)} texts for player_id {player_id}')
+            msg = message_from_server.ObjectivesFromServer(objectives)
             return msg
         
         turn_state = self._game_state.drain_turn_state(player_id)

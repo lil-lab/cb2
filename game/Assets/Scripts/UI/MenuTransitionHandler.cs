@@ -19,11 +19,12 @@ public class MenuTransitionHandler : MonoBehaviour
     private static readonly string ESCAPE_MENU_TAG = "ESCAPE_MENU";
 
     private static readonly string INPUT_FIELD_TAG = "MessageInputField";
-    private static readonly string CHAT_LOG_TAG = "ChatLog";
+    private static readonly string OBJECTIVE_LIST = "OBJECTIVE_LIST";
     private static readonly string SCROLL_VIEW_TAG = "ScrollView";
 
     private static readonly string GAME_OVER_MENU = "GAME_OVER_UI";
     private static readonly string GAME_OVER_STATS = "GAME_OVER_STATS";
+    private static readonly string GAME_OVER_REASON = "GAME_OVER_REASON";
 
     private static readonly string SCORE_TEXT_TAG = "SCORE_TEXT";
     private static readonly string OUR_TURN_TAG = "OUR_TURN_INDICATOR";
@@ -38,6 +39,14 @@ public class MenuTransitionHandler : MonoBehaviour
     private MenuState _currentMenuState;
     private TurnState _lastTurn = new TurnState();
 
+    public static MenuTransitionHandler TaggedInstance()
+    {
+        GameObject obj = GameObject.FindGameObjectWithTag(MenuTransitionHandler.TAG);
+        if (obj == null)
+            return null;
+        return obj.GetComponent<MenuTransitionHandler>();
+    }
+
     public void QuitGame()
     {
         Network.NetworkManager.TaggedInstance().QuitGame();
@@ -48,53 +57,73 @@ public class MenuTransitionHandler : MonoBehaviour
         Network.NetworkManager.TaggedInstance().ReturnToMenu();
     }
 
-    public void DisplayMessage(string sender, string message)
+
+    public void RenderObjectiveList(List<Network.ObjectiveMessage> objectives)
     {
-        GameObject obj = GameObject.FindWithTag(CHAT_LOG_TAG);
-        if (obj == null)
+        GameObject objectivesPanel = GameObject.FindGameObjectWithTag(MenuTransitionHandler.OBJECTIVE_LIST);
+        if (objectivesPanel == null)
         {
-            Debug.Log("Could not find chat log!");
+            Debug.LogError("Could not find objective list panel");
             return;
         }
-        TMPro.TMP_Text chatLog = obj.GetComponent<TMPro.TMP_Text>();
-
-        // Add a new line to the log, unless this is the first line.
-        if (chatLog.text.Length > 0)
+        
+        foreach (Transform child in objectivesPanel.transform)
         {
-            chatLog.text += "\n";
+            Destroy(child.gameObject);
         }
-        chatLog.text += "<" + sender + ">: " + message;
 
-        // Before we move the scrollview to the bottom, the text needs to be
-        // re-rendered so that the new chat log height is accounted for. Without
-        // this it's off by about 20 pixels.
-        Canvas.ForceUpdateCanvases();
-
-        // Scroll to the bottom of the chat history to display the new message.
-        GameObject scrollObj = GameObject.FindWithTag(SCROLL_VIEW_TAG);
-        scrollObj.GetComponent<ScrollRect>().verticalScrollbar.GetComponent<Scrollbar>().value = 0;
+        int activeIndex = -1;
+        for(int i = 0; i < objectives.Count; ++i)
+        {
+            UnityAssetSource source = new UnityAssetSource();
+            GameObject uiTemplate;
+            if (objectives[i].Completed)
+            {
+                uiTemplate = source.LoadUi(IAssetSource.UiId.OBJECTIVE_COMPLETE);
+            } else if (activeIndex == -1)
+            {
+                activeIndex = i;
+                uiTemplate = source.LoadUi(IAssetSource.UiId.OBJECTIVE_ACTIVE);
+            } else {
+                uiTemplate = source.LoadUi(IAssetSource.UiId.OBJECTIVE_PENDING);
+            }
+            GameObject objectiveUi = Instantiate(uiTemplate) as GameObject;
+            objectiveUi.transform.SetParent(objectivesPanel.transform);
+            objectiveUi.transform.localScale = Vector3.one;
+            objectiveUi.transform.localPosition = Vector3.zero;
+            objectiveUi.transform.localRotation = Quaternion.identity;
+            objectiveUi.transform.Find("Label").GetComponent<Text>().text = objectives[i].Text;
+            if (activeIndex == i)
+            {
+                objectiveUi.GetComponent<UIObjectiveInfo>().Objective = objectives[i];
+            }
+        }
     }
 
-    public void SendMessage()
+    public void OnCompleteObjective(ObjectiveCompleteMessage complete)
     {
+        Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
+        networkManager.TransmitObjectiveComplete(complete);
+    }
+
+    public void SendObjective()
+    {
+        ObjectiveMessage objective = new ObjectiveMessage();
+
         // Get the text entered by the user.
         GameObject textObj = GameObject.FindWithTag(INPUT_FIELD_TAG);
         TMPro.TMP_InputField textMeshPro = textObj.GetComponent<TMPro.TMP_InputField>();
-        string text = textMeshPro.text;
+        objective.Text = textMeshPro.text;
 
-        // Load the NetworkManager.
-        GameObject obj = GameObject.FindWithTag(Network.NetworkManager.TAG);
-        if (obj == null)
-        {
-            Debug.Log("Could not find network manager!");
-            return;
-        }
+        Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
 
-        Network.NetworkManager networkManager = obj.GetComponent<Network.NetworkManager>();
-        networkManager.TransmitTextMessage(text);
+        objective.Sender = networkManager.Role();
+        objective.Completed = false;
+
+        networkManager.TransmitObjective(objective);
+
+        // Clear the text field and unselect it.
         textMeshPro.text = "";
-
-        // Unselect the text field.
         EventSystem.current.SetSelectedGameObject(null);
     }
 
@@ -149,20 +178,51 @@ public class MenuTransitionHandler : MonoBehaviour
         Canvas.ForceUpdateCanvases();
     }
 
-    private void EndGame(Network.TurnState state)
+    Canvas FindCanvasWithTag(string tag)
     {
-        GameObject obj = GameObject.FindWithTag(GAME_OVER_MENU);
+        GameObject obj = GameObject.FindGameObjectWithTag(tag);
         if (obj == null)
         {
-            Debug.Log("Could not find game over menu!");
+            Debug.Log("Unable to find canvas with tag: " + tag);
+            return null;
+        }
+        return obj.GetComponent<Canvas>();
+    }
+
+    Text FindTextWithTag(string tag)
+    {
+        GameObject obj = GameObject.FindGameObjectWithTag(tag);
+        if (obj == null)
+        {
+            Debug.Log("Unable to find text with tag: " + tag);
+            return null;
+        }
+        return obj.GetComponent<Text>();
+    }
+
+    // Displays the end game menu. Optionally display an explanation.
+    public void DisplayEndGameMenu(string reason="")
+    {
+        Canvas gameOverCanvas = FindCanvasWithTag(GAME_OVER_MENU);
+        if (gameOverCanvas.enabled)
+        {
+            // Don't do anything if the end game menu is already displayed. Just log the reason.
+            Debug.Log("Attempted to display the end game menu while already enabled. Reason: " + reason);
             return;
         }
-        Canvas gameOverCanvas = obj.GetComponent<Canvas>();
+
+        Text reasonText = FindTextWithTag(GAME_OVER_REASON);
+        reasonText.text = reason;
+        EndGame(_lastTurn);
+    }
+
+    private void EndGame(Network.TurnState state)
+    {
+        Canvas gameOverCanvas = FindCanvasWithTag(GAME_OVER_MENU);
         gameOverCanvas.enabled = true;
 
-        GameObject scoreObj = GameObject.FindWithTag(GAME_OVER_STATS);
-        Text scoreText = scoreObj.GetComponent<Text>();
-        scoreText.text = state.ScoreString();
+        Text score = FindTextWithTag(GAME_OVER_STATS);
+        score.text = state.ScoreString();
     }
 
     // Start is called before the first frame update

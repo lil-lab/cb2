@@ -16,8 +16,10 @@ namespace Network
 
             // Used to join a new game/other game management actions.
             ROOM_MANAGEMENT,
-            // Used to send messages to other players in the same room.
-            TEXT,
+            // Used by the leader to send objectives (tasks) to the follower.
+            OBJECTIVE,
+            // Used by the follower to signal that an objective has been completed.
+            OBJECTIVE_COMPLETE
         }
 
         // These fields are populated for every packet.
@@ -28,7 +30,8 @@ namespace Network
 
         public List<Action> Actions;
         public RoomManagementRequest RoomRequest;
-        public TextMessage Message;
+        public ObjectiveMessage Objective;
+        public ObjectiveCompleteMessage ObjectiveComplete;
     }
 
 }  // namespace Network

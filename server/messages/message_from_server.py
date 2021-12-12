@@ -6,7 +6,7 @@ from messages.turn_state import TurnState
 from messages.state_sync import StateSync
 from messages.map_update import MapUpdate
 from messages.rooms import RoomManagementResponse
-from messages.text import TextMessage
+from messages.objective import ObjectiveMessage
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
@@ -23,7 +23,7 @@ class MessageType(Enum):
     MAP_UPDATE = 1
     STATE_SYNC = 2
     ROOM_MANAGEMENT = 3
-    TEXT = 4
+    OBJECTIVE = 4
     GAME_STATE = 5
 
 
@@ -43,8 +43,8 @@ def RoomResponseFromServer(room_response):
     return MessageFromServer(datetime.now(), MessageType.ROOM_MANAGEMENT, None, None, None, room_response, None, None)
 
 
-def TextsFromServer(texts):
-    return MessageFromServer(datetime.now(), MessageType.TEXT, None, None, None, None, texts, None)
+def ObjectivesFromServer(texts):
+    return MessageFromServer(datetime.now(), MessageType.OBJECTIVE, None, None, None, None, texts, None)
 
 
 def GameStateFromServer(game_state):
@@ -65,5 +65,5 @@ class MessageFromServer:
     map_update: Optional[MapUpdate]
     state: Optional[StateSync]
     room_management_response: Optional[RoomManagementResponse]
-    messages: Optional[List[TextMessage]]
+    objectives: Optional[List[ObjectiveMessage]]
     turn_state: Optional[TurnState]

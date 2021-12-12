@@ -5,7 +5,14 @@ from messages.rooms import Role
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
-@dataclass(frozen=True)
-class TextMessage:
+@dataclass
+class ObjectiveMessage:
     sender: Role = Role.NONE
     text: str = ""
+    uuid: str = ""
+    completed = False
+
+@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass(frozen=True)
+class ObjectiveCompleteMessage:
+    uuid: str = ""

@@ -13,7 +13,7 @@ namespace Network
             MAP_UPDATE,
             STATE_SYNC,
             ROOM_MANAGEMENT,
-            TEXT,
+            OBJECTIVE,
             TURN_STATE,
         }
 
@@ -28,7 +28,7 @@ namespace Network
         public MapUpdate MapUpdate;
         public StateSync State;
         public RoomManagementResponse RoomManagementResponse;
-        public List<TextMessage> Messages;
+        public List<ObjectiveMessage> Objectives;
         public TurnState TurnState;
     }
 }  // namespace Network

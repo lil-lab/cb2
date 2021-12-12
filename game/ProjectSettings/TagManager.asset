@@ -22,6 +22,9 @@ TagManager:
   - SCORE_TEXT
   - OUR_TURN_INDICATOR
   - NOT_OUR_TURN_INDICATOR
+  - GAME_OVER_REASON
+  - OBJECTIVES
+  - OBJECTIVE_LIST
   layers:
   - Default
   - TransparentFX

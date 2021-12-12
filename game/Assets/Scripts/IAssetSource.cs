@@ -48,11 +48,20 @@ public interface IAssetSource
         CARD_OUTLINE,
     }
 
+    public enum UiId
+    {
+        OBJECTIVE_ACTIVE,
+        OBJECTIVE_COMPLETE,
+        OBJECTIVE_PENDING,
+    }
+
     // Returns a prefab of the requested asset.
     GameObject Load(AssetId assetId);
 
     // Loads a material into memory.
     Material LoadMat(MaterialId material);
+
+    GameObject LoadUi(UiId uiId);
 
     // TODO(sharf): If we want to remove unity-specific interfaces entirely,
     // this interface can be rewritten to add something similar to Unity's

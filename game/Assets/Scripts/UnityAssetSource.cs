@@ -47,6 +47,15 @@ public class UnityAssetSource : IAssetSource
         "Prefab/Cards/Materials/card_outline",
     };
 
+    // Maps IAssetSource.UiId to resource paths in Unity.
+    // Must be kept in order with the enum definitions in IAssetSource.
+    private static readonly string[] uiPaths = new string[] {
+        "Prefab/UI/ActiveObjective",
+        "Prefab/UI/CompletedObjective",
+        "Prefab/UI/PendingObjective",
+    };
+
+
     public GameObject Load(IAssetSource.AssetId assetId)
     {
         int assetIndex = (int)assetId;
@@ -67,5 +76,15 @@ public class UnityAssetSource : IAssetSource
             Debug.Log("Null: " + materialPaths[materialIndex]);
         }
         return mat;
+    }
+    public GameObject LoadUi(IAssetSource.UiId uiId)
+    {
+        int uiIndex = (int)uiId;
+        GameObject obj = Resources.Load<GameObject>(uiPaths[uiIndex]);
+        if (obj == null)
+        {
+            Debug.Log("Null: " + assetPaths[uiIndex]);
+        }
+        return obj;
     }
 }

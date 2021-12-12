@@ -121,7 +121,7 @@ namespace Network
             {
                 _networkManager.HandleRoomManagement(message.RoomManagementResponse);
             }
-            if (message.Type == MessageFromServer.MessageType.TEXT)
+            if (message.Type == MessageFromServer.MessageType.OBJECTIVE)
             {
                 GameObject obj = GameObject.FindGameObjectWithTag(MenuTransitionHandler.TAG);
                 if (obj == null)
@@ -135,11 +135,7 @@ namespace Network
                     Debug.Log("Could not find menu transition handler.");
                     return;
                 }
-                foreach (Network.TextMessage textMessage in message.Messages)
-                {
-                    string sender = (textMessage.Sender == Role.LEADER) ? "LEADER" : "FOLLOWER";
-                    menuTransitionHandler.DisplayMessage(sender, textMessage.Text);
-                }
+                menuTransitionHandler.RenderObjectiveList(message.Objectives);
             }
             if (message.Type == MessageFromServer.MessageType.TURN_STATE)
             {

@@ -26,7 +26,6 @@ namespace Network
         public ClientConnection(string url, bool autoReconnect=false)
         {
             _url = url;
-            _webSocket = new WebSocket(_url);
             _messageQueue = new ConcurrentQueue<Network.MessageToServer>();
             _autoReconnect = autoReconnect;
             _lastReconnect = DateTime.Now;
@@ -80,7 +79,7 @@ namespace Network
             _webSocket.OnMessage -= OnMessage;
 
             // Quit the active game.
-            NetworkManager.TaggedInstance().QuitGame();
+            NetworkManager.TaggedInstance().DisplayGameOverMenu("Lost connection to server.");
         }
 
         private void OnMessage(byte[] bytes)
@@ -96,8 +95,9 @@ namespace Network
             _router.HandleMessage(message);
         }
 
-        public async void Reconnect()
+        private async void Reconnect()
         {
+            _webSocket = new WebSocket(_url);
             _webSocket.OnOpen += OnOpen;
             _webSocket.OnError += OnError;
             _webSocket.OnClose += OnClose;
@@ -120,7 +120,6 @@ namespace Network
             if (_autoReconnect && IsClosed() && ((DateTime.Now - _lastReconnect).Seconds > 3))
             {
                 Debug.Log("Reconnecting...");
-                _webSocket = new WebSocket(_url);
                 Reconnect();
             }
 

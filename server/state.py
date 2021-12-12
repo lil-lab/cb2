@@ -16,6 +16,7 @@ from messages.turn_state import TurnState, GameOverMessage, TurnUpdate
 import math
 import time
 import dataclasses
+import uuid
 
 LEADER_MOVES_PER_TURN = 5
 FOLLOWER_MOVES_PER_TURN = 10
@@ -32,13 +33,14 @@ class State(object):
         self._sent_log.info("State created.")
         self._actors = {}
         
-        self._message_history = {}
+        self._objectives = []
+        self._objectives_stale = {}  # Maps from player_id -> whether or not their objective list is up to date.
+
         self._synced = {}
         self._id_assigner = IdAssigner()
         self._action_history = {}
         self._start_time = datetime.now()
-        self._last_tick = datetime.now() # Used to time 100ms ticks for turn state updates.
-        self._last_desync = datetime.now() # Used to periodically force all clients to statesync. (every 10s)
+        self._last_tick = datetime.now() # Used to time 1s ticks for turn state updates.
         initial_turn = TurnUpdate(Role.LEADER, LEADER_MOVES_PER_TURN, datetime.now() +
                                   timedelta(minutes=1), self._start_time, 0, 0)
         self._turn_history = {}
@@ -80,11 +82,6 @@ class State(object):
             actor = self._actors[id]
             self._action_history[actor.actor_id()].append(action)
 
-    def record_text(self, actor, message):
-        if not actor.actor_id() in self._message_history:
-            self._message_history[actor.actor_id()] = []
-        self._message_history[actor.actor_id()].append(message)
-
     def map(self):
         return self._map_provider.map()
 
@@ -122,10 +119,6 @@ class State(object):
                                          self._start_time, self._turn_state.sets_collected,
                                          self._turn_state.score)
                 self.record_turn_state(turn_update)
-            
-            if datetime.now() > self._last_desync + timedelta(seconds=10):
-                self._last_desync = datetime.now()
-                self.desync_all()
 
             for actor_id in self._actors:
                 actor = self._actors[actor_id]
@@ -136,7 +129,7 @@ class State(object):
                     action = actor.peek()
                     if not self._turn_state.turn == actor.role():
                         actor.drop()
-                        self.desync_all()
+                        self.desync(actor_id)
                         logging.info(
                             f"Actor {actor_id} is not the current role. Dropping pending action.")
                         continue
@@ -153,17 +146,9 @@ class State(object):
                         self.record_turn_state(turn_update)
                     else:
                         actor.drop()
-                        self.desync_all()
-                        print("Found invalid action. Resyncing...")
+                        self.desync(actor_id)
+                        self._record_log.error(f"Resyncing {actor_id} after invalid action.")
                         continue
-
-                # Handle any pending text messages.
-                messages = actor.drain_messages()
-                if len(messages) > 0:
-                    logging.info(
-                        f"Actor {actor_id} has message {messages[0]} pending for them")
-                    self._record_log.info(messages[0])
-                    self.record_text(actor, messages[0])
 
             selected_cards = list(self._map_provider.selected_cards())
             if len(selected_cards) >= 3:
@@ -178,11 +163,14 @@ class State(object):
                     counts.add(card.count)
 
                 if len(shapes) == len(colors) == len(counts) == 3:
-                    logging.info("Unique set collected. Awarding points.")
+                    self._record_log.info("Unique set collected. Awarding points.")
                     new_turn_state = TurnUpdate(
-                        self._turn_state.turn, self._turn_state.moves_remaining + 10, self._turn_state.end_time + timedelta(minutes=1), self._start_time, self._turn_state.sets_collected + 1, self._turn_state.score + 10)
+                        self._turn_state.turn, self._turn_state.moves_remaining + 10,
+                        self._turn_state.game_end_date + timedelta(minutes=1),
+                        self._start_time,
+                        self._turn_state.sets_collected + 1,
+                        self._turn_state.score + 10)
                     self.record_turn_state(new_turn_state)
-                    self.desync_all()
 
                 # Clear card state.
                 logging.info("Clearing selected cards")
@@ -218,14 +206,32 @@ class State(object):
         self._recvd_log.info(action)
         self._actors[actor_id].add_action(action)
 
-    def handle_text(self, id, message):
+    def handle_objective(self, id, objective):
         if self._actors[id].role() != Role.LEADER:
             logging.warn(
-                f'Warning, text message received from non-leader ID: {str(id)}')
+                f'Warning, objective received from non-leader ID: {str(id)}')
             return
-        self._recvd_log.info(message)
-        for a in self._actors:
-            self._actors[a].add_message(message)
+        # TODO: Make UUID and non-UUID'd objectives separate message types.
+        objective.uuid = uuid.uuid4().hex
+        self._recvd_log.info(objective)
+        self._objectives.append(objective)
+        for actor_id in self._actors:
+            self._objectives_stale[actor_id] = True
+
+    def handle_objective_completed(self, id, objective_completed):
+        if self._actors[id].role() != Role.FOLLOWER:
+            logging.warn(
+                f'Warning, text message received from non-follower ID: {str(id)}')
+            return
+        self._recvd_log.info(objective_completed)
+        for i, objective in enumerate(self._objectives):
+            if objective.uuid == objective_completed.uuid:
+                self._record_log.info(objective_completed)
+                self._objectives[i].completed = True
+                break
+
+        for actor_id in self._actors:
+            self._objectives_stale[actor_id] = True
 
     def create_actor(self, role):
         actor = Actor(self._id_assigner.alloc(), 0, role)
@@ -273,15 +279,17 @@ class State(object):
         self._action_history[actor_id] = []
         return action_history
 
-    def drain_messages(self, actor_id):
-        if not actor_id in self._message_history:
+    def drain_objectives(self, actor_id):
+        if not actor_id in self._objectives_stale:
+            self._objectives_stale[actor_id] = True
+        
+        if not self._objectives_stale[actor_id]:
             return []
-        message_history = self._message_history[actor_id]
-        # Log actions sent to client.
-        for message in message_history:
-            self._sent_log.info(f"to: {actor_id} message: {message}")
-        self._message_history[actor_id] = []
-        return message_history
+        
+        # Send the latest objective list and mark as fresh for this player.
+        self._objectives_stale[actor_id] = False
+        self._sent_log.info(f"to: {actor_id} objectives: {self._objectives}")
+        return self._objectives
 
     # Returns the current state of the game.
     def state(self, actor_id=-1):
@@ -319,7 +327,6 @@ class Actor(object):
         self._actor_id = actor_id
         self._asset_id = asset_id
         self._actions = Queue()
-        self._messages = []
         self._location = HecsCoord(0, 0, 0)
         self._heading_degrees = 0
         self._role = role
@@ -338,16 +345,6 @@ class Actor(object):
 
     def add_action(self, action):
         self._actions.put(action)
-
-    def add_message(self, message):
-        self._messages.append(message)
-        logging.info(
-            f"Actor {self._actor_id} received message {message}. messages pending: {len(self._messages)}")
-
-    def drain_messages(self):
-        messages = self._messages
-        self._messages = []
-        return messages
 
     def has_actions(self):
         return not self._actions.empty()

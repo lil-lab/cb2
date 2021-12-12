@@ -64,14 +64,22 @@ namespace Network
             _router.TransmitAction(action);
         }
 
-        public void TransmitTextMessage(string message)
+        public void TransmitObjective(ObjectiveMessage objective)
         {
             MessageToServer toServer = new MessageToServer();
             toServer.TransmitTime = DateTime.Now.ToString("o");
-            toServer.Type = MessageToServer.MessageType.TEXT;
-            toServer.Message = new TextMessage();
-            toServer.Message.Text = message;
-            toServer.Message.Sender = _role;
+            toServer.Type = MessageToServer.MessageType.OBJECTIVE;
+            toServer.Objective = objective;
+            toServer.Objective.Sender = _role;
+            _client.TransmitMessage(toServer);
+        }
+
+        public void TransmitObjectiveComplete(ObjectiveCompleteMessage objectiveComplete)
+        {
+            MessageToServer toServer = new MessageToServer();
+            toServer.TransmitTime = DateTime.Now.ToString("o");
+            toServer.Type = MessageToServer.MessageType.OBJECTIVE_COMPLETE;
+            toServer.ObjectiveComplete = objectiveComplete;
             _client.TransmitMessage(toServer);
         }
 
@@ -121,7 +129,15 @@ namespace Network
             _networkMapSource.ClearMapUpdate();
             _role = Network.Role.NONE;
             _currentTurn = Network.Role.NONE;
+            _router.SetEntityManager(null);
+            _router.SetPlayer(null);
             SceneManager.LoadScene("menu_scene");
+        }
+
+        // Display the Game Over screen, with an optional explanation.
+        public void DisplayGameOverMenu(string reason="")
+        {
+            MenuTransitionHandler.TaggedInstance().DisplayEndGameMenu(reason);
         }
 
         public Util.Status InitializeTaggedObjects()
@@ -231,10 +247,8 @@ namespace Network
             }
             else if (response.Type == RoomResponseType.LEAVE_NOTICE)
             {
-                Debug.Log("Kicked from game. Reason: " + response.LeaveNotice.Reason);
-                SceneManager.LoadScene("menu_scene");
-                _router.SetEntityManager(null);
-                _router.SetPlayer(null);
+                Debug.Log("Game ended. Reason: " + response.LeaveNotice.Reason);
+                DisplayGameOverMenu("Game ended. Reason: " + response.LeaveNotice.Reason);
             }
             else if (response.Type == RoomResponseType.STATS)
             {
