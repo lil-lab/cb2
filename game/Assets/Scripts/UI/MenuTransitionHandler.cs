@@ -92,12 +92,25 @@ public class MenuTransitionHandler : MonoBehaviour
             objectiveUi.transform.localScale = Vector3.one;
             objectiveUi.transform.localPosition = Vector3.zero;
             objectiveUi.transform.localRotation = Quaternion.identity;
-            objectiveUi.transform.Find("Label").GetComponent<Text>().text = objectives[i].Text;
+            objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = objectives[i].Text;
             if (activeIndex == i)
             {
                 objectiveUi.GetComponent<UIObjectiveInfo>().Objective = objectives[i];
             }
+            if (activeIndex < i)
+            {
+                objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = objectives[i].Text.Substring(0, 10) + "... (unseen)";
+            }
         }
+        Canvas.ForceUpdateCanvases();
+
+        GameObject scrollObj = GameObject.FindGameObjectWithTag(MenuTransitionHandler.SCROLL_VIEW_TAG);
+        if (scrollObj == null)
+        {
+            Debug.LogError("Could not find scroll view");
+            return;
+        }
+        scrollObj.GetComponent<ScrollRect>().verticalNormalizedPosition = 1.0f;
     }
 
     public void OnCompleteObjective(ObjectiveCompleteMessage complete)

@@ -64,7 +64,7 @@ class Room(object):
             self.handle_objective(id, message.objective)
         elif message.type == message_to_server.MessageType.OBJECTIVE_COMPLETED:
             logging.info(
-                f'Objective Compl received. Room: {self.id()}, Text: {message.objective_completed.text}')
+                f'Objective Compl received. Room: {self.id()}, Text: {message.objective_completed.uuid}')
             self.handle_objective_completed(id, message.message.objective_completed)
         elif message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
             logging.info(
