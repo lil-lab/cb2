@@ -1,0 +1,16 @@
+[Unit]
+Description=Cerealbar Service
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=lil-lab
+ExecStart=/bin/bash /home/lil-lab/projects/cb2-game-dev/service/launch.sh
+ProtectHome=off
+
+
+[Install]
+WantedBy=multi-user.target
