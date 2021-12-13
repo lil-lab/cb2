@@ -137,10 +137,15 @@ public class MenuTransitionHandler : MonoBehaviour
         // Get the text entered by the user.
         GameObject textObj = GameObject.FindWithTag(INPUT_FIELD_TAG);
         TMPro.TMP_InputField textMeshPro = textObj.GetComponent<TMPro.TMP_InputField>();
-        objective.Text = textMeshPro.text;
+        if (textMeshPro.text.Length == 0)
+        {
+            Debug.LogError("No objective text entered");
+            return;
+        }
 
         Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
 
+        objective.Text = textMeshPro.text;
         objective.Sender = networkManager.Role();
         objective.Completed = false;
 
