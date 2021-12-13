@@ -218,15 +218,15 @@ class State(object):
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True
 
-    def handle_objective_completed(self, id, objective_completed):
+    def handle_objective_complete(self, id, objective_complete):
         if self._actors[id].role() != Role.FOLLOWER:
             logging.warn(
                 f'Warning, text message received from non-follower ID: {str(id)}')
             return
-        self._recvd_log.info(objective_completed)
+        self._recvd_log.info(objective_complete)
         for i, objective in enumerate(self._objectives):
-            if objective.uuid == objective_completed.uuid:
-                self._record_log.info(objective_completed)
+            if objective.uuid == objective_complete.uuid:
+                self._record_log.info(objective_complete)
                 self._objectives[i].completed = True
                 break
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Network;
@@ -97,20 +98,30 @@ public class MenuTransitionHandler : MonoBehaviour
             {
                 objectiveUi.GetComponent<UIObjectiveInfo>().Objective = objectives[i];
             }
-            if (activeIndex < i)
+            if ((activeIndex != -1) && (activeIndex < i))
             {
-                objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = objectives[i].Text.Substring(0, 10) + "... (unseen)";
+                int cutoff = Math.Min(10, objectives[i].Text.Length);
+                objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = objectives[i].Text.Substring(0, cutoff) + "... (unseen)";
             }
         }
-        Canvas.ForceUpdateCanvases();
 
+        Canvas.ForceUpdateCanvases();
         GameObject scrollObj = GameObject.FindGameObjectWithTag(MenuTransitionHandler.SCROLL_VIEW_TAG);
         if (scrollObj == null)
         {
             Debug.LogError("Could not find scroll view");
             return;
         }
-        scrollObj.GetComponent<ScrollRect>().verticalNormalizedPosition = 1.0f;
+
+        ScrollRect sRect = scrollObj.GetComponent<ScrollRect>();
+        StartCoroutine(ApplyScrollPosition(sRect, 0.0f));
+    }
+
+    private IEnumerator ApplyScrollPosition(ScrollRect sr, float verticalPos)
+    {
+        yield return new WaitForEndOfFrame();
+        sr.verticalNormalizedPosition = verticalPos;
+        LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)sr.transform);
     }
 
     public void OnCompleteObjective(ObjectiveCompleteMessage complete)

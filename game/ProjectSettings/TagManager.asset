@@ -25,6 +25,7 @@ TagManager:
   - GAME_OVER_REASON
   - OBJECTIVES
   - OBJECTIVE_LIST
+  - OverheadViewCam
   layers:
   - Default
   - TransparentFX
@@ -33,7 +34,7 @@ TagManager:
   - Water
   - UI
   - Outline
-  - 
+  - All
   - 
   - 
   - 

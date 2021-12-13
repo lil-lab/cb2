@@ -49,8 +49,8 @@ class Room(object):
     def handle_objective(self, id, objective):
         self._game_state.handle_objective(id, objective)
     
-    def handle_objective_completed(self, id, objective_completed):
-        self._game_state.handle_objective_completed(id, objective_completed)
+    def handle_objective_complete(self, id, objective_complete):
+        self._game_state.handle_objective_complete(id, objective_complete)
 
     def handle_packet(self, id, message):
         if message.type == message_to_server.MessageType.ACTIONS:
@@ -64,8 +64,8 @@ class Room(object):
             self.handle_objective(id, message.objective)
         elif message.type == message_to_server.MessageType.OBJECTIVE_COMPLETED:
             logging.info(
-                f'Objective Compl received. Room: {self.id()}, Text: {message.objective_completed.uuid}')
-            self.handle_objective_completed(id, message.message.objective_completed)
+                f'Objective Compl received. Room: {self.id()}, Text: {message.objective_complete.uuid}')
+            self.handle_objective_complete(id, message.objective_complete)
         elif message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
             logging.info(
                 f'Sync request recvd. Room: {self.id()}, Player: {id}')

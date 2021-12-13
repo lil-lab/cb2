@@ -10,7 +10,7 @@ class ObjectiveMessage:
     sender: Role = Role.NONE
     text: str = ""
     uuid: str = ""
-    completed = False
+    completed: bool = False
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)

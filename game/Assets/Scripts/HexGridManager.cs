@@ -59,6 +59,35 @@ public class HexGridManager
         _assetSource = assetSource;
     }
 
+    public Vector3 CenterPosition()
+    {
+        // Gets the location of the center of the map.
+        if (!_mapSource.IsMapReady())
+        {
+            Debug.Log("Center requested before map is ready. Returning (0, 0, 0).");
+            return Vector3.zero;
+        }
+        var (rows, cols) = _mapSource.GetMapDimensions();
+        rows /= 2;
+        cols /= 2;
+        int a = rows % 2;
+        int r = rows / 2;
+        int c = cols;
+        Tile center_tile = _grid[a, r, c];
+        return center_tile.Cell.Center();
+    }
+
+    public (int, int) MapDimensions()
+    {
+        // Gets the dimensions of the map.
+        if (!_mapSource.IsMapReady())
+        {
+            Debug.Log("Map dimensions requested before map is ready. Returning (0, 0).");
+            return (0, 0);
+        }
+        return _mapSource.GetMapDimensions();
+    }
+
     public void SetMap(IMapSource mapSource)
     {
         _mapSource = mapSource;
