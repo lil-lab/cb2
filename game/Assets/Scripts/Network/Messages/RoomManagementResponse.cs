@@ -24,8 +24,7 @@ namespace Network
     {
         public int NumberOfGames;
         public int PlayersInGame;
-        public int FollowersWaiting;
-        public int LeadersWaiting;
+        public int PlayersWaiting;
     }
 
     public class JoinResponse

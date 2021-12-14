@@ -39,8 +39,7 @@ class RoomManager(object):
         self._room_id_assigner = IdAssigner()
         self._remotes = {}  # {ws: SocketInfo}
         self._is_done = False
-        self._follower_queue = queue.Queue()
-        self._leader_queue = queue.Queue()
+        self._player_queue = queue.Queue()
 
     async def disconnect_socket(self, ws):
         """ This socket terminated its connection. End the game that the person was in."""
@@ -112,14 +111,14 @@ class RoomManager(object):
     
     async def cleanup_rooms(self):
         while not self._is_done:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.001)
             self.delete_unused_rooms()
 
     async def matchmake(self):
         """ Runs asyncronously, creating rooms for pending followers and
         leaders. """
         while not self._is_done:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.001)
             leader, follower = self.get_leader_follower_match()
             if (leader is None) or (follower is None):
                 continue
@@ -136,29 +135,17 @@ class RoomManager(object):
             Leaders and followers are removed from their respective queues. If
             either queue is empty, leaves the other untouched.
         """
-        if self._leader_queue.empty() or self._follower_queue.empty():
+        if self._player_queue.qsize() < 2:
             return None, None
-        leader = self._leader_queue.get()
-        follower = self._follower_queue.get()
+        leader = self._player_queue.get()
+        follower = self._player_queue.get()
         return leader, follower
 
     async def handle_join_request(self, request, ws):
         # Assign a role depending on which role queue is smaller.
         print("Received join request from : " + str(ws))
-        if self._follower_queue.qsize() > self._leader_queue.qsize():
-            self._leader_queue.put(ws)
-            return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, self._leader_queue.qsize(), Role.NONE), None)
-        elif self._follower_queue.qsize() < self._leader_queue.qsize():
-            self._follower_queue.put(ws)
-            return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, self._follower_queue.qsize(), Role.NONE), None)
-        else:
-            # Select a random role.
-            if random.randint(0, 1) == 0:
-                self._leader_queue.put(ws)
-                return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, self._follower_queue.qsize(), Role.NONE), None)
-            else:
-                self._follower_queue.put(ws)
-                return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, self._follower_queue.qsize(), Role.NONE), None)
+        self._player_queue.put(ws)
+        return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, self._player_queue.qsize(), Role.NONE), None)
 
     async def handle_leave_request(self, request, ws):
         if not ws in self._remotes:
@@ -170,24 +157,16 @@ class RoomManager(object):
     async def handle_stats_request(self, request, ws):
         total_players = sum(
             [room.number_of_players() for room in self._rooms.values()])
-        stats = StatsResponse(len(self._rooms), total_players,
-                              self._follower_queue.qsize(), self._leader_queue.qsize())
+        stats = StatsResponse(len(self._rooms), total_players, self._player_queue.qsize())
         return RoomManagementResponse(RoomResponseType.STATS, stats, None, None)
 
     def remove_socket_from_queue(self, ws):
-        follower_queue = queue.Queue()
-        leader_queue = queue.Queue()
-        while not self._follower_queue.empty():
-            follower = self._follower_queue.get()
-            if follower != ws:
-                follower_queue.put(follower)
-        self._follower_queue = follower_queue
-
-        while not self._leader_queue.empty():
-            leader = self._leader_queue.get()
-            if leader != ws:
-                leader_queue.put(leader)
-        self._leader_queue = leader_queue
+        player_queue = queue.Queue()
+        while not self._player_queue.empty():
+            player = self._player_queue.get()
+            if player != ws:
+                player_queue.put(player)
+        self._player_queue = player_queue
 
     async def handle_cancel_request(self, request, ws):
         # Iterate through the queue of followers and leaders,

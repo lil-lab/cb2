@@ -49,8 +49,7 @@ class LeaveRoomNotice:
 class StatsResponse:
     number_of_games: int
     players_in_game: int
-    followers_waiting: int
-    leaders_waiting: int
+    players_waiting: int
 
 
 class RoomRequestType(Enum):
