@@ -94,7 +94,7 @@ class State(object):
     async def update(self):
         last_loop = time.time()
         while not self._done:
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.001)
             poll_period = time.time() - last_loop
             if (poll_period) > 0.1:
                 logging.warn(

@@ -70,7 +70,7 @@ async def stream_game_state(request, ws):
     client_initialized = False
     while not ws.closed:
         if not room_manager.socket_in_room(ws):
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.001)
             client_initialized = False
             continue
 
@@ -95,14 +95,14 @@ async def stream_game_state(request, ws):
         msg_from_server = room.drain_message(player_id)
         if msg_from_server is not None:
             await transmit(ws, msg_from_server.to_json())
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.001)
 
 
 async def receive_agent_updates(request, ws):
     global remote_table
     global room_manager
     async for msg in ws:
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0.001)
         if ws.closed:
             return
         if msg.type == aiohttp.WSMsgType.ERROR:
@@ -209,7 +209,7 @@ async def debug_print():
     loop = asyncio.get_event_loop()
     prev_tasks = set(asyncio.all_tasks())
     while True:
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.001)
         tasks = set(asyncio.all_tasks())
         if len(prev_tasks) != len(tasks):
             logger.debug(
@@ -233,7 +233,7 @@ async def draw_gui():
     room = room_manager.get_room_by_name("Room #0")
     display = visualize.GameDisplay(SCREEN_SIZE)
     while True:
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(0.001)
         if room is None:
             room = room_manager.get_room_by_name("Room #0")
             continue
