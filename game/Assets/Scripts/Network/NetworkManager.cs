@@ -258,7 +258,7 @@ namespace Network
                 Text stats = obj.GetComponent<Text>();
                 stats.text = "Players in game: " + response.Stats.PlayersInGame + "\n" +
                              "Games: " + response.Stats.NumberOfGames + "\n" +
-                             "Players Waiting: " + response.Stats.PlayersWaiting + "\n" +
+                             "Players Waiting: " + response.Stats.PlayersWaiting + "\n";
             }
             else if (response.Type == RoomResponseType.ERROR)
             {
