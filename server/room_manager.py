@@ -1,4 +1,5 @@
 """ Used to manage game rooms. """
+from collections import deque
 from dataclasses import dataclass, field, astuple
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
@@ -18,7 +19,6 @@ import aiohttp
 import asyncio
 import logging
 import messages.rooms
-import queue
 import random
 
 logger = logging.getLogger()
@@ -39,7 +39,10 @@ class RoomManager(object):
         self._room_id_assigner = IdAssigner()
         self._remotes = {}  # {ws: SocketInfo}
         self._is_done = False
-        self._player_queue = queue.Queue()
+        self._player_queue = deque()
+    
+    def player_queue(self):
+        return self._player_queue
 
     async def disconnect_socket(self, ws):
         """ This socket terminated its connection. End the game that the person was in."""
@@ -122,6 +125,7 @@ class RoomManager(object):
             leader, follower = self.get_leader_follower_match()
             if (leader is None) or (follower is None):
                 continue
+            logger.info(f"Creating room for {leader} and {follower}. Queue size: {len(self._player_queue)}")
             room = self.create_room()
             print("Creating new game " + room.name())
             self._remotes[leader] = SocketInfo(
@@ -135,17 +139,20 @@ class RoomManager(object):
             Leaders and followers are removed from their respective queues. If
             either queue is empty, leaves the other untouched.
         """
-        if self._player_queue.qsize() < 2:
+        if len(self._player_queue) < 2:
             return None, None
-        leader = self._player_queue.get()
-        follower = self._player_queue.get()
+        leader = self._player_queue.popleft()
+        follower = self._player_queue.popleft()
         return leader, follower
 
     async def handle_join_request(self, request, ws):
         # Assign a role depending on which role queue is smaller.
-        print("Received join request from : " + str(ws))
-        self._player_queue.put(ws)
-        return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, self._player_queue.qsize(), Role.NONE), None)
+        logger.info(f"Received join request from : {str(ws)}. Queue size: {len(self._player_queue)}")
+        if ws in self._player_queue:
+            logger.info(f"Join request is from socket which is already in the wait queue. Ignoring.")
+            return
+        self._player_queue.append(ws)
+        return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, len(self._player_queue), Role.NONE), None)
 
     async def handle_leave_request(self, request, ws):
         if not ws in self._remotes:
@@ -157,21 +164,28 @@ class RoomManager(object):
     async def handle_stats_request(self, request, ws):
         total_players = sum(
             [room.number_of_players() for room in self._rooms.values()])
-        stats = StatsResponse(len(self._rooms), total_players, self._player_queue.qsize())
+        stats = StatsResponse(len(self._rooms), total_players, len(self._player_queue))
         return RoomManagementResponse(RoomResponseType.STATS, stats, None, None)
 
     def remove_socket_from_queue(self, ws):
-        player_queue = queue.Queue()
-        while not self._player_queue.empty():
-            player = self._player_queue.get()
-            if player != ws:
-                player_queue.put(player)
+        player_queue = deque()
+        removed = False
+        for element in self._player_queue:
+            if element == ws:
+                logger.info("Removed socket from queue.")
+                removed = True
+                continue
+                
+            logger.info(f"{element}(element) != {ws}(ws -- to be deleted)")
+            player_queue.append(element)
+        if not removed:
+            logger.warning("Socket not found in queue!")
         self._player_queue = player_queue
 
     async def handle_cancel_request(self, request, ws):
         # Iterate through the queue of followers and leaders,
         # removing the given socket.
-        print("Client requested cancellation")
+        print("Received queue cancel request from : " + str(ws))
         self.remove_socket_from_queue(ws)
 
     async def handle_request(self, request, ws):

@@ -12,6 +12,6 @@ public class JoinGameOnClick : MonoBehaviour, IPointerClickHandler
     public void OnPointerClick(PointerEventData eventData)
     {
         Debug.Log("[DEBUG]OnPointerClick -> NetworkManager.Instance.JoinGame();");
-        Network.NetworkManager.Instance.JoinGame();
+        Network.NetworkManager.TaggedInstance().JoinGame();
     }
 }
