@@ -42,7 +42,7 @@ class State(object):
         self._start_time = datetime.now()
         self._last_tick = datetime.now() # Used to time 1s ticks for turn state updates.
         initial_turn = TurnUpdate(Role.LEADER, LEADER_MOVES_PER_TURN, datetime.now() +
-                                  timedelta(minutes=1), self._start_time, 0, 0)
+                                  timedelta(minutes=5), self._start_time, 0, 0)
         self._turn_history = {}
         self.record_turn_state(initial_turn)
 
