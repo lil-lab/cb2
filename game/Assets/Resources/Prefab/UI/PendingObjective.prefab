@@ -479,7 +479,6 @@ GameObject:
   - component: {fileID: 7484478267748428356}
   - component: {fileID: 7484478267748428358}
   - component: {fileID: 7484478267748428359}
-  - component: {fileID: 7484478267748428353}
   m_Layer: 5
   m_Name: PendingObjective
   m_TagString: Untagged
@@ -555,15 +554,3 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
---- !u!114 &7484478267748428353
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7484478267748428357}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 618fb298e78b64bcd9d1bde36e59af98, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 

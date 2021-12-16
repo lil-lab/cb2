@@ -73,6 +73,8 @@ public class MenuTransitionHandler : MonoBehaviour
             Destroy(child.gameObject);
         }
 
+        Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
+
         int activeIndex = -1;
         for(int i = 0; i < objectives.Count; ++i)
         {
@@ -100,8 +102,13 @@ public class MenuTransitionHandler : MonoBehaviour
             }
             if ((activeIndex != -1) && (activeIndex < i))
             {
-                int cutoff = Math.Min(10, objectives[i].Text.Length);
-                objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = objectives[i].Text.Substring(0, cutoff) + "... (unseen)";
+                
+                if (networkManager.Role() == Network.Role.LEADER)
+                {
+                    objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = "(unseen) " + objectives[i].Text;
+                } else {
+                    objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = "(pending objective)";
+                }
             }
         }
 
