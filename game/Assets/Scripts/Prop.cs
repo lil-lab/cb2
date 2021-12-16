@@ -39,6 +39,11 @@ public class Prop
         }
     }
 
+    public GameObject Find(string path)
+    {
+        return _asset.transform.Find(path).gameObject;
+    }
+
     public void SetOutline(GameObject outline)
     {
         _outline = outline;

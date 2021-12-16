@@ -13,6 +13,17 @@ public class HexGrid : MonoBehaviour
 
     private HexGridManager _manager;
 
+    public static HexGrid TaggedInstance()
+    {
+        GameObject obj = GameObject.FindGameObjectWithTag(TAG);
+        if (obj == null)
+        {
+            Debug.LogError("Could not find HexGrid with tag " + TAG);
+            return null;
+        }
+        return obj.GetComponent<HexGrid>();
+    }
+
     void Awake()
     {
         gameObject.tag = TAG;
@@ -31,6 +42,21 @@ public class HexGrid : MonoBehaviour
     public float Height(HecsCoord a)
     {
         return _manager.Height(a);
+    }
+
+    public Vector3 CenterPosition()
+    {
+        return _manager.CenterPosition();
+    }
+
+    public Vector3 Position(int i, int j)
+    {
+        return _manager.Position(i, j);
+    }
+
+    public (int, int) MapDimensions()
+    {
+        return _manager.MapDimensions();
     }
 
     void Start()

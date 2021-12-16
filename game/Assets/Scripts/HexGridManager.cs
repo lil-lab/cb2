@@ -61,12 +61,6 @@ public class HexGridManager
 
     public Vector3 CenterPosition()
     {
-        // Gets the location of the center of the map.
-        if (!_mapSource.IsMapReady())
-        {
-            Debug.Log("Center requested before map is ready. Returning (0, 0, 0).");
-            return Vector3.zero;
-        }
         var (rows, cols) = _mapSource.GetMapDimensions();
         rows /= 2;
         cols /= 2;
@@ -75,6 +69,21 @@ public class HexGridManager
         int c = cols;
         Tile center_tile = _grid[a, r, c];
         return center_tile.Cell.Center();
+    }
+
+    public Vector3 Position(int i, int j)
+    {
+        var (rows, cols) = _mapSource.GetMapDimensions();
+        if (i < 0 || i >= rows || j < 0 || j >= cols)
+        {
+            Debug.Log("Position requested outside of map. Returning (0, 0, 0). (" + i + ", " + j + ")");
+            return Vector3.zero;
+        }
+        int a = i % 2;
+        int r = i / 2;
+        int c = j;
+        Tile tile = _grid[a, r, c];
+        return tile.Cell.Center();
     }
 
     public (int, int) MapDimensions()
@@ -279,6 +288,11 @@ public class HexGridManager
         {
             UpdateCellEdges(t.Cell);
         }
-
+        OverheadCamera camera = OverheadCamera.TaggedInstance();
+        if (camera != null)
+        {
+            Debug.Log("Updating camera position.");
+            camera.UpdateCamera();
+        }
     }
 }

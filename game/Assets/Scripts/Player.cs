@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -19,6 +20,10 @@ public class Player : MonoBehaviour
 
     private Actor _actor;
 
+    public GameObject OverheadCamera;
+    private Camera _fpvCamera;
+    private DateTime _lastCameraToggle;
+
     public void Awake()
     {
         UnityAssetSource assets = new UnityAssetSource();
@@ -27,6 +32,12 @@ public class Player : MonoBehaviour
 
         GameObject obj = GameObject.FindGameObjectWithTag(Network.NetworkManager.TAG);
         _network = obj.GetComponent<Network.NetworkManager>();
+
+        if (OverheadCamera == null)
+        {
+            Debug.Log("Error: No overhead camera provided.");
+        }
+        _fpvCamera = _actor.Find("Parent/Main Camera").GetComponent<Camera>();
     }
 
     void Start()
@@ -38,6 +49,12 @@ public class Player : MonoBehaviour
                     HecsCoord.FromOffsetCoordinates(StartingRow,
                                                     StartingCol), 0));
         }
+        if ((OverheadCamera != null) && (_network.Role() == Network.Role.LEADER))
+        {
+            _fpvCamera.enabled = false;
+            OverheadCamera.GetComponent<Camera>().enabled = true;
+        }
+        _lastCameraToggle = DateTime.Now;
     }
 
     public void FlushActionQueue()
@@ -88,6 +105,24 @@ public class Player : MonoBehaviour
             return;
         }
 
+        if (CameraKey() &&
+            (_network.Role() == Network.Role.LEADER) &&
+            (OverheadCamera != null) &&
+            (DateTime.Now - _lastCameraToggle).TotalMilliseconds > 500)
+        {
+            if (OverheadCamera.GetComponent<Camera>().enabled)
+            {
+                OverheadCamera.GetComponent<Camera>().enabled = false;
+                _fpvCamera.enabled = true;
+            }
+            else
+            {
+                OverheadCamera.GetComponent<Camera>().enabled = true;
+                _fpvCamera.enabled = false;
+            }
+            _lastCameraToggle = DateTime.Now;
+        }
+
         // Ignore keypresses when it's not our turn.
         if (_network.CurrentTurn() != _network.Role())
         {
@@ -129,6 +164,12 @@ public class Player : MonoBehaviour
             _network.TransmitAction(action);
             return;
         }
+    }
+
+    private bool CameraKey()
+    {
+        bool keyboard = Input.GetKey(KeyCode.C);
+        return keyboard;
     }
 
     private bool UpKey()

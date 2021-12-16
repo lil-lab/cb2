@@ -34,6 +34,10 @@ public class Actor
         _debuggingEnabled = false;
     }
 
+    public GameObject Find(string path){
+        return _prop.Find(path);
+    }
+
     // Returns true if the actor is in the middle of an action.
     public bool IsBusy() { return _prop.IsBusy(); }
 
