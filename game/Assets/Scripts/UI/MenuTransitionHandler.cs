@@ -108,6 +108,8 @@ public class MenuTransitionHandler : MonoBehaviour
                     objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = "(unseen) " + objectives[i].Text;
                 } else {
                     objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = "(pending objective)";
+                    // Only draw one "(pending objective)", even if multiple are available.
+                    break;
                 }
             }
         }
