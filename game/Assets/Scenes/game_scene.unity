@@ -1566,6 +1566,7 @@ GameObject:
   - component: {fileID: 554951614}
   - component: {fileID: 554951613}
   - component: {fileID: 554951612}
+  - component: {fileID: 554951615}
   m_Layer: 5
   m_Name: Send
   m_TagString: Untagged
@@ -1687,6 +1688,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 554951610}
   m_CullTransparentMesh: 1
+--- !u!114 &554951615
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 554951610}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf47bed4395ce4c0ab8b70b9cd796d66, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Turn: 2
 --- !u!1 &579336239
 GameObject:
   m_ObjectHideFlags: 0
@@ -3044,6 +3058,7 @@ GameObject:
   - component: {fileID: 1234295554}
   - component: {fileID: 1234295553}
   - component: {fileID: 1234295552}
+  - component: {fileID: 1234295555}
   m_Layer: 5
   m_Name: InputField (TMP)
   m_TagString: MessageInputField
@@ -3207,6 +3222,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1234295550}
   m_CullTransparentMesh: 1
+--- !u!114 &1234295555
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1234295550}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf47bed4395ce4c0ab8b70b9cd796d66, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Turn: 2
 --- !u!1 &1239388415
 GameObject:
   m_ObjectHideFlags: 0
@@ -4696,7 +4724,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 948f4100a11a5c24981795d21301da5c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  volumeTrigger: {fileID: 1852689590}
+  volumeTrigger: {fileID: 0}
   volumeLayer:
     serializedVersion: 2
     m_Bits: 0
@@ -5109,7 +5137,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 280864490}
   m_HandleRect: {fileID: 280864489}
   m_Direction: 2
-  m_Value: 0
+  m_Value: 1
   m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
