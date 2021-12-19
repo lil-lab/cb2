@@ -102,7 +102,6 @@ public class MenuTransitionHandler : MonoBehaviour
             }
             if ((activeIndex != -1) && (activeIndex < i))
             {
-                
                 if (networkManager.Role() == Network.Role.LEADER)
                 {
                     objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = "(unseen) " + objectives[i].Text;
@@ -148,7 +147,7 @@ public class MenuTransitionHandler : MonoBehaviour
         TMPro.TMP_InputField textMeshPro = textObj.GetComponent<TMPro.TMP_InputField>();
         if (textMeshPro.text.Length == 0)
         {
-            Debug.LogError("No objective text entered");
+            Debug.Log("No objective text entered.");
             return;
         }
 
@@ -158,11 +157,13 @@ public class MenuTransitionHandler : MonoBehaviour
         objective.Sender = networkManager.Role();
         objective.Completed = false;
 
+        Debug.Log("MOOOO1");
         networkManager.TransmitObjective(objective);
 
         // Clear the text field and unselect it.
         textMeshPro.text = "";
         EventSystem.current.SetSelectedGameObject(null);
+        Debug.Log("MOOOO2");
     }
 
     public void HandleTurnState(Network.TurnState state)
@@ -286,6 +287,11 @@ public class MenuTransitionHandler : MonoBehaviour
         GameObject not_turn_obj = GameObject.FindWithTag(NOT_OUR_TURN_TAG);
         CanvasGroup not_turn_group = not_turn_obj.GetComponent<CanvasGroup>();
         not_turn_group.alpha = nTS.Opacity;
+
+        if (Input.GetKeyDown(KeyCode.Return))
+        {
+            SendObjective();
+        }
 
         GameObject esc_menu = GameObject.FindWithTag(ESCAPE_MENU_TAG);
         if (esc_menu == null)
