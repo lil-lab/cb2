@@ -65,6 +65,7 @@ class RoomManager(object):
                 msg = message_from_server.RoomResponseFromServer(RoomManagementResponse(
                     RoomResponseType.LEAVE_NOTICE, None, None, leave_notice))
                 await socket.send_str(msg.to_json())
+                del self._remotes[socket]
         del self._remotes[ws]
         del self._rooms[room_id]
 

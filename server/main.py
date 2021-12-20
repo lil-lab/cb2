@@ -80,6 +80,12 @@ async def stream_game_state(request, ws):
         (room_id, player_id, role) = astuple(room_manager.socket_info(ws))
         room = room_manager.get_room(room_id)
 
+        if room is None:
+            logger.warn("room_manager.socket_in_room() returned true but room lookup failed.")
+            await asyncio.sleep(0.001)
+            client_initialized = False
+            continue
+
         if not client_initialized:
             # Notify the user that they've joined a room, then send the map.
             join_notification = RoomManagementResponse(
