@@ -157,13 +157,11 @@ public class MenuTransitionHandler : MonoBehaviour
         objective.Sender = networkManager.Role();
         objective.Completed = false;
 
-        Debug.Log("MOOOO1");
         networkManager.TransmitObjective(objective);
 
         // Clear the text field and unselect it.
         textMeshPro.text = "";
         EventSystem.current.SetSelectedGameObject(null);
-        Debug.Log("MOOOO2");
     }
 
     public void HandleTurnState(Network.TurnState state)
