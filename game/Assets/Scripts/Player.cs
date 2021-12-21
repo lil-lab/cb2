@@ -21,6 +21,7 @@ public class Player : MonoBehaviour
     private Actor _actor;
 
     public GameObject OverheadCamera;
+    public GameObject AngledOverheadCamera;
     private Camera _fpvCamera;
     private DateTime _lastCameraToggle;
     private Network.TurnState _currentTurn;
@@ -54,6 +55,7 @@ public class Player : MonoBehaviour
         {
             _fpvCamera.enabled = false;
             OverheadCamera.GetComponent<Camera>().enabled = true;
+            AngledOverheadCamera.GetComponent<Camera>().enabled = false;
         }
         _lastCameraToggle = DateTime.Now;
     }
@@ -118,12 +120,12 @@ public class Player : MonoBehaviour
             if (OverheadCamera.GetComponent<Camera>().enabled)
             {
                 OverheadCamera.GetComponent<Camera>().enabled = false;
-                _fpvCamera.enabled = true;
+                AngledOverheadCamera.GetComponent<Camera>().enabled = true;
             }
             else
             {
                 OverheadCamera.GetComponent<Camera>().enabled = true;
-                _fpvCamera.enabled = false;
+                AngledOverheadCamera.GetComponent<Camera>().enabled = false;
             }
             _lastCameraToggle = DateTime.Now;
         }
