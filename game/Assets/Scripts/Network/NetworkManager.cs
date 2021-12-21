@@ -83,6 +83,14 @@ namespace Network
             _client.TransmitMessage(toServer);
         }
 
+        public void TransmitTurnComplete()
+        {
+            MessageToServer toServer = new MessageToServer();
+            toServer.TransmitTime = DateTime.Now.ToString("o");
+            toServer.Type = MessageToServer.MessageType.TURN_COMPLETE;
+            _client.TransmitMessage(toServer);
+        }
+
         public void Awake()
         {
             gameObject.tag = TAG;

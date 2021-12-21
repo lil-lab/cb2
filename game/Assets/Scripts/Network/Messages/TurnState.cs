@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 
 namespace Network
@@ -7,21 +8,32 @@ namespace Network
     public class TurnState
     {
         public Role Turn;  // Who's turn it is.
-        public int MovesRemaining;  // How many moves the player has left.
-        public string GameEndDate;  // Time when the game ends, as a DateTime string in ISO 8601 format. As turns progress, this date may move further back.
-        public string GameDuration;  // Duration of the game, in a human readable HHhMMmSSs format. E.g. "1h30m30s".
+        public int MovesRemaining;  // How many moves the player has left in this turn.
+        public int TurnsLeft;  // How many turns the game has left.
+        public string TurnEnd;  // Time when the current turn began.
+        public string GameStart;  // Time when the game began.
         public int SetsCollected;
         public int Score;
         public bool GameOver;
 
-        public string ScoreString()
+        public string ScoreString(DateTime transmitTime)
         {
-            return "Time taken: " + GameDuration + "\nSets Collected: " + SetsCollected + "\nScore: " + Score;
+            DateTime game_start = DateTime.Parse(GameStart, null, System.Globalization.DateTimeStyles.RoundtripKind);
+            TimeSpan gameDuration = transmitTime - game_start;
+            return "Time taken: " + gameDuration.ToString(@"mm\:ss") + "\nSets Collected: " + SetsCollected + "\nScore: " + Score;
         }
 
-        public string ShortStatus()
+        public string ShortStatus(DateTime transmitTime, Role role)
         {
-            return "Score: " + Score + "\tGame Time" + GameDuration + "\nMoves this turn: " + MovesRemaining + "\tSets Collected: " + SetsCollected;
+            DateTime turn_end = DateTime.Parse(TurnEnd, null, System.Globalization.DateTimeStyles.RoundtripKind);
+            TimeSpan timeLeftInTurn = (role == Turn) ? turn_end - transmitTime : new TimeSpan(0);
+            int movesRemaining = (role == Turn) ? MovesRemaining : 0;
+            return "Score: " + Score + "\tTime Left in turn: " + timeLeftInTurn.ToString(@"mm\:ss") + "\nMoves this turn: " + movesRemaining + "\tTurns Left: " + TurnsLeft;
         }
+    }
+
+    [Serializable]
+    public class TurnComplete
+    {
     }
 }

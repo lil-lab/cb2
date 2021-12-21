@@ -19,7 +19,8 @@ namespace Network
             // Used by the leader to send objectives (tasks) to the follower.
             OBJECTIVE,
             // Used by the follower to signal that an objective has been completed.
-            OBJECTIVE_COMPLETE
+            OBJECTIVE_COMPLETE,
+            TURN_COMPLETE
         }
 
         // These fields are populated for every packet.
@@ -32,6 +33,7 @@ namespace Network
         public RoomManagementRequest RoomRequest;
         public ObjectiveMessage Objective;
         public ObjectiveCompleteMessage ObjectiveComplete;
+        public TurnComplete TurnComplete;
     }
 
 }  // namespace Network

@@ -23,6 +23,7 @@ public class Player : MonoBehaviour
     public GameObject OverheadCamera;
     private Camera _fpvCamera;
     private DateTime _lastCameraToggle;
+    private Network.TurnState _currentTurn;
 
     public void Awake()
     {
@@ -65,6 +66,10 @@ public class Player : MonoBehaviour
     public void AddAction(ActionQueue.IAction action)
     {
         _actor.AddAction(action);
+    }
+    public void HandleTurnState(Network.TurnState state)
+    {
+        _currentTurn = state;
     }
 
     // Actions are looped back from the server. This method is called to
@@ -123,8 +128,18 @@ public class Player : MonoBehaviour
             _lastCameraToggle = DateTime.Now;
         }
 
+        // Don't move until we've received a TurnState.
+        if (_currentTurn == null) return;
+
+
         // Ignore keypresses when it's not our turn.
-        if (_network.CurrentTurn() != _network.Role())
+        if (_currentTurn.Turn != _network.Role())
+        {
+            return;
+        }
+
+        // Don't try to move if we're out of moves.
+        if (_currentTurn.MovesRemaining <= 0)
         {
             return;
         }

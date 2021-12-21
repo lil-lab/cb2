@@ -7,36 +7,36 @@ from marshmallow import fields
 import dateutil.parser
 
 
-def GameOverMessage(start_time, sets_collected, score):
-    game_duration = datetime.now() - start_time
-    sec = game_duration.seconds
-    minutes = (sec // 60)
-    seconds_remaining = sec - minutes * 60
-    duration_str = f"{minutes}m{seconds_remaining}s"
-    return TurnState(Role.NONE, 0, datetime.now(), duration_str, sets_collected, score, True)
+def GameOverMessage(game_start_date, sets_collected, score):
+    return TurnState(Role.NONE, 0, 0, datetime.now(), game_start_date, sets_collected, score, True)
 
 
-def TurnUpdate(turn_role, moves_remaining, game_end_date, start_time, sets_collected, score):
-    game_duration = datetime.now() - start_time
-    sec = game_duration.seconds
-    minutes = (sec // 60)
-    seconds_remaining = sec - minutes * 60
-    duration_str = f"{minutes}m{seconds_remaining}s"
-    return TurnState(turn_role, moves_remaining, game_end_date, duration_str, sets_collected, score, False)
-
+def TurnUpdate(turn_role, moves_remaining, turns_left, turn_end, game_start, sets_collected, score):
+    return TurnState(turn_role, moves_remaining, turns_left, turn_end, game_start, sets_collected, score, False)
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass
 class TurnState:
     turn: Role
-    moves_remaining: int  # Number of moves remaining.
-    game_end_date: datetime = field(
+    moves_remaining: int  # Number of moves remaining this turn.
+    turns_left: int # Number of turns until the game ends.
+    turn_end: datetime = field(
         metadata=config(
             encoder=datetime.isoformat,
             decoder=dateutil.parser.isoparse,
             mm_field=fields.DateTime(format='iso')
         ))
-    game_duration: str
+    game_start: datetime = field(
+        metadata=config(
+            encoder=datetime.isoformat,
+            decoder=dateutil.parser.isoparse,
+            mm_field=fields.DateTime(format='iso')
+        ))
     sets_collected: int
     score: int
     game_over: bool
+
+@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass(frozen=True)
+class TurnComplete:
+    pass

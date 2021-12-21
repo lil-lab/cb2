@@ -152,8 +152,10 @@ namespace Network
                     return;
                 }
                 TurnState state = message.TurnState;
-                menuTransitionHandler.HandleTurnState(state);
+                DateTime transmitTime = DateTime.Parse(message.TransmitTime, null, System.Globalization.DateTimeStyles.RoundtripKind);
+                menuTransitionHandler.HandleTurnState(transmitTime, state);
                 _networkManager.HandleTurnState(state);
+                _player.HandleTurnState(state);
             }
         }
 

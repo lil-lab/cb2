@@ -98,13 +98,19 @@ class RoomManager(object):
         return self._rooms[id]
 
     def delete_unused_rooms(self):
-        for room in self._rooms.values():
-            if room.is_empty():
+        rooms = list(self._rooms.values())
+        for room in rooms:
+            if room.done() and not room.has_pending_messages():
                 logger.info(f"Deleting unused room: {room.name()}")
                 self.delete_room(room.id())
 
     def delete_room(self, id):
         self._rooms[id].stop()
+        player_endpoints = list(self._rooms[id].player_endpoints())
+        for ws in player_endpoints:
+            room_id, player_id, _ = astuple(self._remotes[ws])
+            self._rooms[id].remove_player(player_id, ws)
+            del self._remotes[ws]    
         del self._rooms[id]
 
     def available_room_id(self):

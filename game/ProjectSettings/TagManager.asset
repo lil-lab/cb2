@@ -26,6 +26,7 @@ TagManager:
   - OBJECTIVES
   - OBJECTIVE_LIST
   - OverheadViewCam
+  - END_TURN_PANEL
   layers:
   - Default
   - TransparentFX

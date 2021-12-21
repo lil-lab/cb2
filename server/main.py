@@ -55,12 +55,15 @@ async def Index(request):
     global remote_table
     global room_manager
     player_queue = {str(x):remote_table[x] for x in room_manager.player_queue()}
+
     server_state = {
         "assets": assets_map,
         "number_rooms": len(room_manager.room_ids()),
         "remotes": [remote_table[ws] for ws in remote_table],
+        "room_manager_remotes":[str(room_manager.socket_info(ws)) for ws in remote_table],
         "rooms": [room_manager.get_room(room_id).state().to_json() for room_id in room_manager.room_ids()],
         "player_queue": player_queue,
+        "room_debug_info": [room_manager.get_room(room_id).debug_status() for room_id in room_manager.room_ids()],
     }
     pretty_dumper = lambda x: json.dumps(x, indent=4, sort_keys=True)
     return web.json_response(server_state, dumps=pretty_dumper)
@@ -150,7 +153,7 @@ async def receive_agent_updates(request, ws):
 
 
 
-@ routes.get('/player_endpoint')
+@routes.get('/player_endpoint')
 async def PlayerEndpoint(request):
     global remote_table
     global room_manager

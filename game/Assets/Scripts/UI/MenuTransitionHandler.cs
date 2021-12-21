@@ -31,6 +31,8 @@ public class MenuTransitionHandler : MonoBehaviour
     private static readonly string OUR_TURN_TAG = "OUR_TURN_INDICATOR";
     private static readonly string NOT_OUR_TURN_TAG = "NOT_OUR_TURN_INDICATOR";
 
+    private static readonly string END_TURN_PANEL = "END_TURN_PANEL";
+
     // We re-use ActionQueue here to animate UI transparency. It's a bit
     // overkill to have two animation queues here, but it's very obvious what's
     // happening for the reader, and that's worth it.
@@ -38,6 +40,8 @@ public class MenuTransitionHandler : MonoBehaviour
     private ActionQueue ourTurnIndicatorFade = new ActionQueue();
 
     private MenuState _currentMenuState;
+
+    private DateTime _lastTurnTransmitTime;
     private TurnState _lastTurn = new TurnState();
 
     public static MenuTransitionHandler TaggedInstance()
@@ -164,19 +168,19 @@ public class MenuTransitionHandler : MonoBehaviour
         EventSystem.current.SetSelectedGameObject(null);
     }
 
-    public void HandleTurnState(Network.TurnState state)
+    public void HandleTurnState(DateTime transmitTime, Network.TurnState state)
     {
         if (state.GameOver)
         {
-            EndGame(state);
+            EndGame(transmitTime, state);
         }
         else
         {
-            DisplayTurnState(state);
+            DisplayTurnState(transmitTime, state);
         }
     }
 
-    private void DisplayTurnState(Network.TurnState state)
+    private void DisplayTurnState(DateTime transmitTime, Network.TurnState state)
     {
         // Load the NetworkManager.
         GameObject obj = GameObject.FindWithTag(Network.NetworkManager.TAG);
@@ -188,7 +192,7 @@ public class MenuTransitionHandler : MonoBehaviour
 
         Network.NetworkManager networkManager = obj.GetComponent<Network.NetworkManager>();
 
-        string twoLineSummary = state.ShortStatus();
+        string twoLineSummary = state.ShortStatus(transmitTime, networkManager.Role());
         GameObject scoreObj = GameObject.FindWithTag(SCORE_TEXT_TAG);
         TMPro.TMP_Text textMeshPro = scoreObj.GetComponent<TMPro.TMP_Text>();
         textMeshPro.text = twoLineSummary;
@@ -196,19 +200,27 @@ public class MenuTransitionHandler : MonoBehaviour
         if (_lastTurn.Turn != state.Turn)
         {
             Debug.Log("Changing turn animation. " + _lastTurn.Turn + " -> " + state.Turn);
+            GameObject endTurnPanel = GameObject.FindGameObjectWithTag(END_TURN_PANEL);
             if (state.Turn == networkManager.Role())
             {
                 notOurTurnIndicatorFade.AddAction(Fade.FadeOut(0.5f));
                 ourTurnIndicatorFade.AddAction(Instant.Pause(0.5f));
                 ourTurnIndicatorFade.AddAction(Fade.FadeIn(0.5f));
-            }
-            else
-            {
+                if (endTurnPanel != null)
+                {
+                    endTurnPanel.transform.localScale = new Vector3(1f, 1f, 1f);
+                }
+            } else {
                 ourTurnIndicatorFade.AddAction(Fade.FadeOut(0.5f));
                 notOurTurnIndicatorFade.AddAction(Instant.Pause(0.5f));
                 notOurTurnIndicatorFade.AddAction(Fade.FadeIn(0.5f));
+                if (endTurnPanel != null)
+                {
+                    endTurnPanel.transform.localScale = new Vector3(0f, 0f, 0f);
+                }
             }
         }
+        _lastTurnTransmitTime = transmitTime;
         _lastTurn = state;
 
         // Force the canvas to re-render in order to display the new text mesh.
@@ -237,6 +249,17 @@ public class MenuTransitionHandler : MonoBehaviour
         return obj.GetComponent<Text>();
     }
 
+    Button FindButtonWithTag(string tag)
+    {
+        GameObject obj = GameObject.FindGameObjectWithTag(tag);
+        if (obj == null)
+        {
+            Debug.Log("Unable to find button with tag: " + tag);
+            return null;
+        }
+        return obj.GetComponent<Button>();
+    }
+
     // Displays the end game menu. Optionally display an explanation.
     public void DisplayEndGameMenu(string reason="")
     {
@@ -250,16 +273,16 @@ public class MenuTransitionHandler : MonoBehaviour
 
         Text reasonText = FindTextWithTag(GAME_OVER_REASON);
         reasonText.text = reason;
-        EndGame(_lastTurn);
+        EndGame(_lastTurnTransmitTime, _lastTurn);
     }
 
-    private void EndGame(Network.TurnState state)
+    private void EndGame(DateTime transmitTime, Network.TurnState state)
     {
         Canvas gameOverCanvas = FindCanvasWithTag(GAME_OVER_MENU);
         gameOverCanvas.enabled = true;
 
         Text score = FindTextWithTag(GAME_OVER_STATS);
-        score.text = state.ScoreString();
+        score.text = state.ScoreString(transmitTime);
     }
 
     // Start is called before the first frame update
@@ -268,6 +291,12 @@ public class MenuTransitionHandler : MonoBehaviour
         _currentMenuState = MenuState.NONE;
         notOurTurnIndicatorFade = new ActionQueue("NotOurTurnQueue");
         ourTurnIndicatorFade = new ActionQueue("OurTurnQueue");
+    }
+
+
+    public void TurnComplete()
+    {
+        Network.NetworkManager.TaggedInstance().TransmitTurnComplete();
     }
 
     // Update is called once per frame

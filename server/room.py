@@ -51,6 +51,9 @@ class Room(object):
     
     def handle_objective_complete(self, id, objective_complete):
         self._game_state.handle_objective_complete(id, objective_complete)
+    
+    def handle_turn_complete(self, id, turn_complete):
+        self._game_state.handle_turn_complete(id, turn_complete)
 
     def handle_packet(self, id, message):
         if message.type == message_to_server.MessageType.ACTIONS:
@@ -66,6 +69,9 @@ class Room(object):
             logging.info(
                 f'Objective Compl received. Room: {self.id()}, Text: {message.objective_complete.uuid}')
             self.handle_objective_complete(id, message.objective_complete)
+        elif message.type == message_to_server.MessageType.TURN_COMPLETE:
+            logging.info(f'Turn Complete received. Room: {self.id()}')
+            self.handle_turn_complete(id, message.turn_complete)
         elif message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
             logging.info(
                 f'Sync request recvd. Room: {self.id()}, Player: {id}')
@@ -88,6 +94,9 @@ class Room(object):
     
     def done(self):
         return self._game_state.done()
+    
+    def has_pending_messages(self):
+        return self._game_state.has_pending_messages()
 
     def desync(self, id):
         self._game_state.desync(id)
@@ -111,6 +120,18 @@ class Room(object):
 
     def state(self, actor_id=-1):
         return self._game_state.state(actor_id)
+    
+    def debug_status(self):
+        is_done = self.done()
+        game_state = self._game_state.state(-1)
+        map = self._game_state.map()
+        turn_state = self._game_state.turn_state()
+        return {
+            'is_done': str(is_done),
+            'game_state': game_state.to_json(),
+            'map': map.to_json(),
+            'turn_state': turn_state.to_json(),
+        }
 
     def drain_message(self, player_id):
         """ Returns a MessageFromServer object to send to the indicated player.
