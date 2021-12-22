@@ -297,6 +297,11 @@ public class MenuTransitionHandler : MonoBehaviour
 
     private void EndGame(DateTime transmitTime, Network.TurnState state)
     {
+        // Hide escape menu.
+        GameObject esc_menu = GameObject.FindWithTag(ESCAPE_MENU_TAG);
+        _currentMenuState = MenuState.NONE;
+        esc_menu.GetComponent<Canvas>().enabled = false;
+        
         Canvas gameOverCanvas = FindCanvasWithTag(GAME_OVER_MENU);
         gameOverCanvas.enabled = true;
 
@@ -350,6 +355,12 @@ public class MenuTransitionHandler : MonoBehaviour
         {
             if (_currentMenuState == MenuState.NONE)
             {
+                Canvas gameOverCanvas = FindCanvasWithTag(GAME_OVER_MENU);
+                if (gameOverCanvas.enabled)
+                {
+                    // Don't do anything if the end game menu is already displayed.
+                    return;
+                }
                 _currentMenuState = MenuState.ESCAPE_MENU;
                 esc_menu.GetComponent<Canvas>().enabled = true;
                 Debug.Log("Opening esc menu");
