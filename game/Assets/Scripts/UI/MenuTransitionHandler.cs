@@ -33,6 +33,8 @@ public class MenuTransitionHandler : MonoBehaviour
 
     private static readonly string END_TURN_PANEL = "END_TURN_PANEL";
 
+    private static readonly string LEADER_COMMANDS = "LEADER_COMMANDS";
+
     // We re-use ActionQueue here to animate UI transparency. It's a bit
     // overkill to have two animation queues here, but it's very obvious what's
     // happening for the reader, and that's worth it.
@@ -249,6 +251,17 @@ public class MenuTransitionHandler : MonoBehaviour
         return obj.GetComponent<Text>();
     }
 
+    TMPro.TMP_Text FindTmpTextWithTag(string tag)
+    {
+        GameObject obj = GameObject.FindGameObjectWithTag(tag);
+        if (obj == null)
+        {
+            Debug.Log("Unable to find text with tag: " + tag);
+            return null;
+        }
+        return obj.GetComponent<TMPro.TMP_Text>();
+    }
+
     Button FindButtonWithTag(string tag)
     {
         GameObject obj = GameObject.FindGameObjectWithTag(tag);
@@ -274,6 +287,12 @@ public class MenuTransitionHandler : MonoBehaviour
         Text reasonText = FindTextWithTag(GAME_OVER_REASON);
         reasonText.text = reason;
         EndGame(_lastTurnTransmitTime, _lastTurn);
+    }
+
+    public void SetLeaderCommands(string commands)
+    {
+        TMPro.TMP_Text commandsText = FindTmpTextWithTag(LEADER_COMMANDS);
+        commandsText.text = commands;
     }
 
     private void EndGame(DateTime transmitTime, Network.TurnState state)

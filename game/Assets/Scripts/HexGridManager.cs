@@ -67,6 +67,11 @@ public class HexGridManager
         int a = rows % 2;
         int r = rows / 2;
         int c = cols;
+        if (_grid.GetLength(0) <= a || _grid.GetLength(1) <= r || _grid.GetLength(2) <= c)
+        {
+            Debug.Log("HexGrid not yet initialized. Returning Vector3.zero");
+            return Vector3.zero;
+        }
         Tile center_tile = _grid[a, r, c];
         return center_tile.Cell.Center();
     }
@@ -292,7 +297,7 @@ public class HexGridManager
         if (camera != null)
         {
             Debug.Log("Updating camera position.");
-            camera.UpdateCamera();
+            camera.CenterCameraOnGrid();
         }
     }
 }

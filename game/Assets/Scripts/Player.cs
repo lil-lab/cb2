@@ -82,6 +82,11 @@ public class Player : MonoBehaviour
         // TODO(sharf): Implement this...
     }
 
+    public Vector3 Position()
+    {
+        return _actor.Position();
+    }
+
     void Update()
     {
         if (ShowHeading)
@@ -117,16 +122,22 @@ public class Player : MonoBehaviour
             (OverheadCamera != null) &&
             (DateTime.Now - _lastCameraToggle).TotalMilliseconds > 500)
         {
+            string commands = "";
             if (OverheadCamera.GetComponent<Camera>().enabled)
             {
                 OverheadCamera.GetComponent<Camera>().enabled = false;
                 AngledOverheadCamera.GetComponent<Camera>().enabled = true;
+                commands += AngledOverheadCamera.GetComponent<OverheadCamera>().CameraInstructions();
             }
             else
             {
                 OverheadCamera.GetComponent<Camera>().enabled = true;
                 AngledOverheadCamera.GetComponent<Camera>().enabled = false;
+                commands += OverheadCamera.GetComponent<OverheadCamera>().CameraInstructions();
             }
+            
+            commands += "\nEsc - Menu";
+            MenuTransitionHandler.TaggedInstance().SetLeaderCommands(commands);
             _lastCameraToggle = DateTime.Now;
         }
 

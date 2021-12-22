@@ -9,6 +9,11 @@ public class OverheadCamera : MonoBehaviour
     public float Theta = 90;
     public float ScreenMargin = 0.05f;
 
+    // If you assign a FollowPlayer instance, then the camera will center on the player with the provided distance.
+    public GameObject FollowPlayer;
+    public float FollowDistance = 10;
+    private float phi = 90;  // the X-Z plane (Y-axis) rotation around the player. Controlled by the A and D keys.
+
     public static OverheadCamera TaggedInstance()
     {
         GameObject camera = GameObject.FindGameObjectWithTag(TAG);
@@ -26,7 +31,19 @@ public class OverheadCamera : MonoBehaviour
         return gameObject.GetComponent<Camera>();
     }
 
-    public void UpdateCamera()
+    public string CameraInstructions()
+    {
+        if (FollowPlayer != null) {
+            return "Camera Instructions:\n" +
+                "W/A/S/D: Move Camera.\n" +
+                "C: Toggle between Cameras.";
+        }
+
+        return "Camera Instructions:\n" +
+            "C: Toggle between Cameras.";
+    }
+
+    public void CenterCameraOnGrid()
     {
         HexGrid grid = HexGrid.TaggedInstance();
         Vector3 center = grid.CenterPosition();
@@ -67,5 +84,39 @@ public class OverheadCamera : MonoBehaviour
             }
         }
         Debug.Log("Unable to satisfy camera constraints after 100 iterations");
+    }
+
+    public void Update()
+    {
+        if (FollowPlayer != null)
+        {
+            Player target = FollowPlayer.GetComponent<Player>();
+            Vector3 center = target.Position();
+            float thetaRadians = Theta * Mathf.Deg2Rad;
+            transform.rotation = Quaternion.Euler(Theta, phi * Mathf.Rad2Deg + 90, 0);
+            transform.position = new Vector3(
+                    center.x - FollowDistance * Mathf.Cos(thetaRadians) * Mathf.Cos(phi), 
+                    center.y + FollowDistance * Mathf.Sin(thetaRadians),
+                    center.z + FollowDistance * Mathf.Cos(thetaRadians) * Mathf.Sin(phi));
+            if (GetCamera() != null)
+            {
+                if (Input.GetKey(KeyCode.A))
+                {
+                    phi += Time.deltaTime;
+                }
+                if (Input.GetKey(KeyCode.D))
+                {
+                    phi -= Time.deltaTime;
+                }
+                if (Input.GetKey(KeyCode.W))
+                {
+                    FollowDistance -= 4 * Time.deltaTime;
+                }
+                if (Input.GetKey(KeyCode.S))
+                {
+                    FollowDistance += 4 * Time.deltaTime;
+                }
+            }
+        }
     }
 }

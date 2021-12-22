@@ -28,6 +28,7 @@ TagManager:
   - OverheadViewCam
   - END_TURN_PANEL
   - AngledViewCam
+  - LEADER_COMMANDS
   layers:
   - Default
   - TransparentFX

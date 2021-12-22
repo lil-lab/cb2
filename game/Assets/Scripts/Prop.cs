@@ -54,6 +54,9 @@ public class Prop
 
     // Returns the actor's current location (or destination, if busy).
     public HecsCoord Location() { return _actionQueue.TargetState().Coord; }
+    
+    // Returns the actor's worldspace coordinates.
+    public Vector3 Position() { return _asset.transform.position; }
 
     // Returns the actor's current heading (or destination, if rotating).
     public float HeadingDegrees() { return _actionQueue.TargetState().HeadingDegrees; }

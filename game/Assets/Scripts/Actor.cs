@@ -44,6 +44,9 @@ public class Actor
     // Returns the actor's current location (or destination, if busy).
     public HecsCoord Location() { return _prop.Location();  }
 
+    // Returns the actor's worldspace cooordinates.
+    public Vector3 Position() { return _prop.Position(); }
+
     // Returns the actor's current heading (or destination, if rotating).
     public float HeadingDegrees() { return _prop.HeadingDegrees();  }
 
