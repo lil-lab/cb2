@@ -1,16 +1,24 @@
 """ This utility streams a hardcoded map to clients. """
-from messages.map_update import MapUpdate, Tile
 from assets import AssetId
-from hex import HecsCoord, HexCell, HexBoundary
 from card import Card, Shape, Color
+from dataclasses import dataclass, field
+from dataclasses_json import dataclass_json, config, LetterCase
+from enum import Enum
+from hex import HecsCoord, HexCell, HexBoundary
+from messages.map_update import MapUpdate, Tile
+from queue import Queue
+
+import itertools
+import logging
 import random
 
-MAP_WIDTH = 12
+MAP_WIDTH = 18
 MAP_HEIGHT = 24
 
+logger = logging.getLogger()
 
 def HardcodedMap():
-    """ Creates a map of Tile objects, each with HECS coordinates and locations."""
+    """ Hardcoded map of Tile objects, each with HECS coordinates and locations."""
     map = []
     for r in range(0, MAP_HEIGHT):
         row = []
@@ -89,6 +97,161 @@ def HardcodedMap():
 
     return MapUpdate(MAP_HEIGHT, MAP_WIDTH, map_tiles, [])
 
+
+@dataclass_json
+@dataclass
+class City:
+    r: int
+    c: int
+    size: int
+
+# A point in a BFS or DFS search from a certain origin.
+@dataclass_json
+@dataclass
+class SearchPoint:
+    r: int
+    c: int
+    radius: int
+
+def place_city(map, city):
+    """ Places a city on the map."""
+    # Place the center path tile.
+    map[city.r][city.c] = PathTile()
+
+    # Place two cross streets going through city.
+    for i in range(city.size):
+        if city.c + i < MAP_WIDTH:
+            map[city.r][city.c + i] = PathTile()
+        if city.r + i < MAP_HEIGHT:
+            map[city.r + i][city.c] = PathTile()
+        if city.c - i >= 0: 
+            map[city.r][city.c - i] = PathTile()
+        if city.r - i >= 0:
+            map[city.r - i][city.c] = PathTile()
+
+    point_queue = Queue()
+    point_queue.put(SearchPoint(city.r, city.c, 0))
+    covered_points = set()
+    while not point_queue.empty():
+        point = point_queue.get()
+        covered_points.add((point.r, point.c))
+        for r, c in [(point.r - 1, point.c), (point.r + 1, point.c),
+                     (point.r, point.c - 1), (point.r, point.c + 1)]:
+            if (r, c) in covered_points:
+                continue
+            if r < 0 or r >= MAP_HEIGHT or c < 0 or c >= MAP_WIDTH:
+                continue
+            if map[r][c].asset_id == AssetId.GROUND_TILE:
+                if point.radius % 3 == 0:
+                    tile_generator = random.choice([GroundTile, GroundTileTrees, GroundTileStreetLight])
+                    map[r][c] = tile_generator(rotation_degrees = random.choice([0, 60, 120, 180, 240, 300]))
+                elif point.radius % 3 == 1:
+                    map[r][c] = PathTile()
+                elif point.radius % 3 == 2:
+                    map[r][c] = GroundTileHouse()
+            if point.radius < city.size:
+                point_queue.put(SearchPoint(r, c, point.radius + 1))
+
+@dataclass_json
+@dataclass
+class Lake:
+    r: int
+    c: int
+    size: int
+
+def place_lake(map, lake):
+    """ Places a lake on the map."""
+    # Place the center path tile.
+    map[lake.r][lake.c] = PathTile()
+
+    point_queue = Queue()
+    point_queue.put(SearchPoint(lake.r, lake.c, 0))
+    covered_points = set()
+    while not point_queue.empty():
+        point = point_queue.get()
+        covered_points.add((point.r, point.c))
+        for r, c in [(point.r - 1, point.c), (point.r + 1, point.c),
+                     (point.r, point.c - 1), (point.r, point.c + 1)]:
+            if (r, c) in covered_points:
+                continue
+            # Keep lakes away from the edge of the map.
+            if r < 2 or r >= MAP_HEIGHT - 2 or c < 2 or c >= MAP_WIDTH - 2:
+                continue
+            if map[r][c].asset_id == AssetId.GROUND_TILE:
+                if point.radius == lake.size:
+                    tile_generator = random.choice([GroundTile, GroundTileTrees, GroundTileStreetLight])
+                    map[r][c] = tile_generator(rotation_degrees = random.choice([0, 60, 120, 180, 240, 300]))
+                elif point.radius == lake.size - 1:
+                    map[r][c] = PathTile()
+                else:
+                    map[r][c] = WaterTile()
+            if point.radius < lake.size:
+                point_queue.put(SearchPoint(r, c, point.radius + 1))
+
+@dataclass_json
+@dataclass
+class Mountain:
+    r: int
+    c: int
+    size: int
+    
+def RandomMap():
+    """ Random map of Tile objects, each with HECS coordinates and locations."""
+    map = []
+    for r in range(0, MAP_HEIGHT):
+        row = []
+        for c in range(0, MAP_WIDTH):
+            tile = GroundTile()
+            row.append(tile)
+        map.append(row)
+    
+    # Generate candidates for feature centers.
+    rows = list(range(0, MAP_HEIGHT, 6))
+    cols = list(range(0, MAP_WIDTH, 3))
+    feature_center_candidates = list(itertools.product(rows, cols))
+    logger.info(f"Feature points: {len(feature_center_candidates)}")
+    random.shuffle(feature_center_candidates)
+
+    # Add a random number of cities.
+    number_of_cities = min(random.randint(2, 4), len(feature_center_candidates))
+    logger.info(f"Number of cities: {number_of_cities}")
+    city_centers = feature_center_candidates[0:number_of_cities]
+    feature_center_candidates = feature_center_candidates[number_of_cities:len(feature_center_candidates)]
+    logger.info(f"Remaining feature points: {len(feature_center_candidates)}")
+
+    cities = [City(r, c, random.randint(3, 4)) for r, c in city_centers]
+    for city in cities:
+        place_city(map, city)
+
+    # Add a random number of lakes
+    number_of_lakes = min(random.randint(2, 3), len(feature_center_candidates))
+    logger.info(f"Number of lakes: {number_of_lakes}")
+    lake_centers = feature_center_candidates[0:number_of_lakes]
+    feature_center_candidates = feature_center_candidates[number_of_lakes:len(feature_center_candidates)]
+    logger.info(f"Remaining feature points: {len(feature_center_candidates)}")
+        
+    lakes = [Lake(r, c, random.randint(3, 5)) for r, c in lake_centers] 
+    for lake in lakes:
+        place_lake(map, lake)
+    
+    # Add a random number of mountains.
+    number_of_mountains = random.randint(5, len(feature_center_candidates))
+    mountain_centers = feature_center_candidates[0:number_of_mountains]
+    feature_center_candidates = feature_center_candidates[number_of_mountains:len(feature_center_candidates)]
+
+    # Fix all the tile coordinates.
+    for r in range(0, MAP_HEIGHT):
+        for c in range(0, MAP_WIDTH):
+            map[r][c].cell.coord = HecsCoord.from_offset(r, c)
+
+    # Flatten the 2D map of tiles to a list.
+    map_tiles = [tile for row in map for tile in row]
+
+    # Recompute heights.
+    for i in range(len(map_tiles)):
+        map_tiles[i].cell.height = LayerToHeight(map_tiles[i].cell.layer)
+
+    return MapUpdate(MAP_HEIGHT, MAP_WIDTH, map_tiles, [])
 
 class CardGenerator(object):
     def __init__(self, id_assigner):
@@ -282,10 +445,21 @@ def RampToMountain(rotation_degrees=0):
         rotation_degrees
     )
 
+class MapType(Enum):
+    NONE = 0
+    RANDOM = 1
+    HARDCODED = 2
 
-class HardcodedMapProvider(object):
-    def __init__(self, id_assigner):
-        map = HardcodedMap()
+class MapProvider(object):
+    def __init__(self, map_type, id_assigner):
+        map = None
+        if map_type == MapType.RANDOM:
+            map = RandomMap()
+        elif map_type == MapType.HARDCODED:
+            map = HardcodedMap()
+        else:
+            raise ValueError("Invalid map type NONE specified.")
+        
         self._tiles = map.tiles
         self._rows = map.rows
         self._cols = map.cols
@@ -308,6 +482,7 @@ class HardcodedMapProvider(object):
             self._cards_by_location[card.location] = card
         self.add_map_boundaries()
         self.add_layer_boundaries()
+        self._spawn_points = [tile for tile in self._tiles if tile.asset_id == AssetId.GROUND_TILE_PATH]
 
     def add_map_boundaries(self):
         """ Adds boundaries to the hex map edges. """
@@ -345,6 +520,9 @@ class HardcodedMapProvider(object):
                 else:
                     del self._selected_cards[card_id]
                 break
+    
+    def spawn_points(self):
+        return self._spawn_points
 
     def selected_cards(self):
         return self._selected_cards.values()

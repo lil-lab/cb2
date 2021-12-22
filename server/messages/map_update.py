@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
-from hex import HexCell
+from hex import HexCell, HecsCoord
 from marshmallow import fields
 from typing import List
 

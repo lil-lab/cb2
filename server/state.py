@@ -1,21 +1,21 @@
-import aiohttp
-import asyncio
-import logging
-
 from messages.action import Action, ActionType
 from messages.rooms import Role
 from messages import objective, state_sync
 from hex import HecsCoord
 from queue import Queue
-from map_provider import HardcodedMapProvider
+from map_provider import MapProvider, MapType
 from card import CardSelectAction
 from util import IdAssigner
 from datetime import datetime, timedelta
 from messages.turn_state import TurnState, GameOverMessage, TurnUpdate
 
-import math
-import time
+import aiohttp
+import asyncio
 import dataclasses
+import logging
+import math
+import random
+import time
 import uuid
 
 LEADER_MOVES_PER_TURN = 5
@@ -49,7 +49,8 @@ class State(object):
 
         # Map props and actors share IDs from the same pool, so the ID assigner
         # is shared to prevent overlap.
-        self._map_provider = HardcodedMapProvider(self._id_assigner)
+        self._map_provider = MapProvider(MapType.RANDOM, self._id_assigner)
+        self._spawn_points = random.shuffle(self._map_provider.spawn_points())
         self._done = False
 
     def turn_duration(self, role):
@@ -280,7 +281,8 @@ class State(object):
         self.end_turn_if_over(force_turn_end=True)
 
     def create_actor(self, role):
-        actor = Actor(self._id_assigner.alloc(), 0, role)
+        spawn_point = self._spawn_points.pop() if self._spawn_points else HecsCoord(0, 0, 0)
+        actor = Actor(self._id_assigner.alloc(), 0, role, spawn_point)
         self._actors[actor.actor_id()] = actor
         self._action_history[actor.actor_id()] = []
         self._synced[actor.actor_id()] = False
@@ -381,11 +383,11 @@ class State(object):
 
 
 class Actor(object):
-    def __init__(self, actor_id, asset_id, role):
+    def __init__(self, actor_id, asset_id, role, spawn):
         self._actor_id = actor_id
         self._asset_id = asset_id
         self._actions = Queue()
-        self._location = HecsCoord(0, 0, 0)
+        self._location = spawn
         self._heading_degrees = 0
         self._role = role
 
