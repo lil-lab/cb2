@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class OverheadCamera : MonoBehaviour
 {
@@ -100,6 +101,12 @@ public class OverheadCamera : MonoBehaviour
                     center.z + FollowDistance * Mathf.Cos(thetaRadians) * Mathf.Sin(phi));
             if (GetCamera() != null)
             {
+                // When a UI element is selected, ignore keypresses. This prevents the
+                // camera from moving when the user is typing and hits W/A/S/D.
+                if (EventSystem.current.currentSelectedGameObject != null)
+                {
+                    return;
+                }
                 if (Input.GetKey(KeyCode.A))
                 {
                     phi += Time.deltaTime;

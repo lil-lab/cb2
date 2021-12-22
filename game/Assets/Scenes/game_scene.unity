@@ -2943,7 +2943,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 85e6b602dc9994eb1b8399bc6aff96ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Theta: 60
+  Theta: 45
   ScreenMargin: 0.05
   FollowPlayer: {fileID: 2076507383}
   FollowDistance: 10
