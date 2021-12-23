@@ -58,7 +58,7 @@ Launch the server with:
 
 ### Client
 
-The client is a Unity project developed using `Version 2020.3.19f1`. This is contained in the `game/` directory. No setup should be necessary, just open the project in Unity.
+The client is a Unity project developed using `Version 2020.3.25f1`. This is contained in the `game/` directory. No setup should be necessary, just open the project in Unity.
 
 Deploying a WebGL Client
 ------------------------
