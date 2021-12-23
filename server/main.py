@@ -158,7 +158,7 @@ async def receive_agent_updates(request, ws):
 async def PlayerEndpoint(request):
     global remote_table
     global room_manager
-    ws = web.WebSocketResponse(autoclose=True, heartbeat=1.0, autoping=1.0)
+    ws = web.WebSocketResponse(autoclose=True, heartbeat=10.0, autoping=1.0)
     await ws.prepare(request)
     logger = logging.getLogger()
     logger.info("player connected from : " + request.remote)
