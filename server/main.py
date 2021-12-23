@@ -99,6 +99,7 @@ async def stream_game_state(request, ws):
             # Sleep to give the client some time to change scenes.
             await asyncio.sleep(1)
             mupdate = room.map()
+            logger.info(f"Sending map update {mupdate} to {str(ws)}")
             msg = message_from_server.MapUpdateFromServer(mupdate)
             await transmit(ws, msg.to_json())
             client_initialized = True

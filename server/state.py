@@ -21,6 +21,7 @@ import uuid
 LEADER_MOVES_PER_TURN = 5
 FOLLOWER_MOVES_PER_TURN = 10
 
+logger = logging.getLogger()
 
 class State(object):
     def __init__(self, room_id):
@@ -50,7 +51,8 @@ class State(object):
         # Map props and actors share IDs from the same pool, so the ID assigner
         # is shared to prevent overlap.
         self._map_provider = MapProvider(MapType.RANDOM, self._id_assigner)
-        self._spawn_points = random.shuffle(self._map_provider.spawn_points())
+        self._spawn_points = self._map_provider.spawn_points()
+        random.shuffle(self._spawn_points)
         self._done = False
 
     def turn_duration(self, role):

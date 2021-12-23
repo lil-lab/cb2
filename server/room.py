@@ -141,6 +141,8 @@ class Room(object):
         if not self._game_state.is_synced(player_id):
             state_sync = self._game_state.sync_message_for_transmission(
                 player_id)
+            logging.info(
+                f'Room {self.id()} drained state sync: {state_sync} for player_id {player_id}')
             msg = message_from_server.StateSyncFromServer(state_sync)
             return msg
 

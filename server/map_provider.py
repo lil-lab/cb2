@@ -11,9 +11,10 @@ from queue import Queue
 import itertools
 import logging
 import random
+import numpy as np
 
-MAP_WIDTH = 18
-MAP_HEIGHT = 24
+MAP_WIDTH = 16
+MAP_HEIGHT = 16
 
 logger = logging.getLogger()
 
@@ -119,15 +120,23 @@ def place_city(map, city):
     map[city.r][city.c] = PathTile()
 
     # Place two cross streets going through city.
-    for i in range(city.size):
+    for i in range(city.size + 1):
         if city.c + i < MAP_WIDTH:
-            map[city.r][city.c + i] = PathTile()
+            r,c = (city.r, city.c + i)
+            if map[r][c].asset_id == AssetId.GROUND_TILE:
+                map[r][c] = PathTile()
         if city.r + i < MAP_HEIGHT:
-            map[city.r + i][city.c] = PathTile()
+            r,c = (city.r + i, city.c)
+            if map[r][c].asset_id == AssetId.GROUND_TILE:
+                map[r][c] = PathTile()
         if city.c - i >= 0: 
-            map[city.r][city.c - i] = PathTile()
+            r,c = (city.r, city.c - i)
+            if map[r][c].asset_id == AssetId.GROUND_TILE:
+                map[r][c] = PathTile()
         if city.r - i >= 0:
-            map[city.r - i][city.c] = PathTile()
+            r,c = (city.r - i, city.c)
+            if map[r][c].asset_id == AssetId.GROUND_TILE:
+                map[r][c] = PathTile()
 
     point_queue = Queue()
     point_queue.put(SearchPoint(city.r, city.c, 0))
@@ -135,20 +144,24 @@ def place_city(map, city):
     while not point_queue.empty():
         point = point_queue.get()
         covered_points.add((point.r, point.c))
-        for r, c in [(point.r - 1, point.c), (point.r + 1, point.c),
-                     (point.r, point.c - 1), (point.r, point.c + 1)]:
+        hc = HecsCoord.from_offset(point.r, point.c)
+        for neighbor in hc.neighbors():
+            r,c = neighbor.to_offset_coordinates()
             if (r, c) in covered_points:
                 continue
             if r < 0 or r >= MAP_HEIGHT or c < 0 or c >= MAP_WIDTH:
                 continue
             if map[r][c].asset_id == AssetId.GROUND_TILE:
                 if point.radius % 3 == 0:
-                    tile_generator = random.choice([GroundTile, GroundTileTrees, GroundTileStreetLight])
+                    tile_generator = np.random.choice([GroundTile, GroundTileTrees, GroundTileStreetLight], size=1, p=[0.5, 0.25, 0.25])[0]
                     map[r][c] = tile_generator(rotation_degrees = random.choice([0, 60, 120, 180, 240, 300]))
                 elif point.radius % 3 == 1:
                     map[r][c] = PathTile()
                 elif point.radius % 3 == 2:
-                    map[r][c] = GroundTileHouse()
+                    coord = HecsCoord.from_offset(r, c)
+                    center = HecsCoord.from_offset(city.r, city.c)
+                    degrees_to_center = coord.degrees_to(center)
+                    map[r][c] = GroundTileHouse(rotation_degrees=degrees_to_center)
             if point.radius < city.size:
                 point_queue.put(SearchPoint(r, c, point.radius + 1))
 
@@ -161,8 +174,8 @@ class Lake:
 
 def place_lake(map, lake):
     """ Places a lake on the map."""
-    # Place the center path tile.
-    map[lake.r][lake.c] = PathTile()
+    # Place the center tile.
+    map[lake.r][lake.c] = WaterTile()
 
     point_queue = Queue()
     point_queue.put(SearchPoint(lake.r, lake.c, 0))
@@ -170,8 +183,9 @@ def place_lake(map, lake):
     while not point_queue.empty():
         point = point_queue.get()
         covered_points.add((point.r, point.c))
-        for r, c in [(point.r - 1, point.c), (point.r + 1, point.c),
-                     (point.r, point.c - 1), (point.r, point.c + 1)]:
+        hc = HecsCoord.from_offset(point.r, point.c)
+        for neighbor in hc.neighbors():
+            r,c = neighbor.to_offset_coordinates()
             if (r, c) in covered_points:
                 continue
             # Keep lakes away from the edge of the map.
@@ -179,7 +193,7 @@ def place_lake(map, lake):
                 continue
             if map[r][c].asset_id == AssetId.GROUND_TILE:
                 if point.radius == lake.size:
-                    tile_generator = random.choice([GroundTile, GroundTileTrees, GroundTileStreetLight])
+                    tile_generator = np.random.choice([GroundTile, GroundTileTrees, GroundTileStreetLight], size=1, p=[0.5, 0.25, 0.25])[0]
                     map[r][c] = tile_generator(rotation_degrees = random.choice([0, 60, 120, 180, 240, 300]))
                 elif point.radius == lake.size - 1:
                     map[r][c] = PathTile()
@@ -206,11 +220,22 @@ def RandomMap():
         map.append(row)
     
     # Generate candidates for feature centers.
-    rows = list(range(0, MAP_HEIGHT, 6))
-    cols = list(range(0, MAP_WIDTH, 3))
+    rows = list(range(1, MAP_HEIGHT - 2, 6))
+    cols = list(range(1, MAP_WIDTH - 2, 3))
     feature_center_candidates = list(itertools.product(rows, cols))
     logger.info(f"Feature points: {len(feature_center_candidates)}")
     random.shuffle(feature_center_candidates)
+
+    # Add a random number of lakes
+    number_of_lakes = min(random.randint(2, 3), len(feature_center_candidates))
+    logger.info(f"Number of lakes: {number_of_lakes}")
+    lake_centers = feature_center_candidates[0:number_of_lakes]
+    feature_center_candidates = feature_center_candidates[number_of_lakes:len(feature_center_candidates)]
+    logger.info(f"Remaining feature points: {len(feature_center_candidates)}")
+        
+    lakes = [Lake(r, c, random.randint(2, 4)) for r, c in lake_centers] 
+    for lake in lakes:
+        place_lake(map, lake)
 
     # Add a random number of cities.
     number_of_cities = min(random.randint(2, 4), len(feature_center_candidates))
@@ -222,17 +247,6 @@ def RandomMap():
     cities = [City(r, c, random.randint(3, 4)) for r, c in city_centers]
     for city in cities:
         place_city(map, city)
-
-    # Add a random number of lakes
-    number_of_lakes = min(random.randint(2, 3), len(feature_center_candidates))
-    logger.info(f"Number of lakes: {number_of_lakes}")
-    lake_centers = feature_center_candidates[0:number_of_lakes]
-    feature_center_candidates = feature_center_candidates[number_of_lakes:len(feature_center_candidates)]
-    logger.info(f"Remaining feature points: {len(feature_center_candidates)}")
-        
-    lakes = [Lake(r, c, random.randint(3, 5)) for r, c in lake_centers] 
-    for lake in lakes:
-        place_lake(map, lake)
     
     # Add a random number of mountains.
     number_of_mountains = random.randint(5, len(feature_center_candidates))
@@ -466,23 +480,33 @@ class MapProvider(object):
         self._cards = []
         self._selected_cards = {}
         self._card_generator = CardGenerator(id_assigner)
-        shapes = [Shape.PLUS, Shape.TORUS, Shape.HEART, Shape.DIAMOND,
-                  Shape.SQUARE, Shape.STAR, Shape.TRIANGLE]
-        colors = [Color.BLACK, Color.BLUE, Color.GREEN,
-                  Color.ORANGE, Color.PINK, Color.RED, Color.YELLOW]
-        shape_idx = 0
-        self._cards.append(self._card_generator.generate_random_card_at(0, 1))
-        for i in range(11, 24, 2):
-            for j in range(0, 10):
-                self._cards.append(self._card_generator.generate_card_at(
-                    i, j + 1, shapes[(shape_idx) % len(shapes)], colors[j % len(colors)], j % 3 + 1))
-            shape_idx += 1
+        potential_spawn_tiles = [tile for tile in self._tiles if tile.asset_id in [AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH]]
+        card_spawn_weights = [self.calculate_card_spawn_weight(tile) for tile in potential_spawn_tiles]
+        card_spawn_weights = [float(weight) / sum(card_spawn_weights) for weight in card_spawn_weights]
+        number_of_tiles = len(potential_spawn_tiles)
+        number_of_cards = random.randint(int(number_of_tiles * 0.2), int(number_of_tiles * 0.4))
+        card_spawn_tiles = np.random.choice(potential_spawn_tiles, size=number_of_cards, replace=False, p=card_spawn_weights)
+
+        for tile in card_spawn_tiles:
+            (r, c) = tile.cell.coord.to_offset_coordinates()
+            self._cards.append(self._card_generator.generate_random_card_at(r, c))
+
+        # Index cards generated.
         self._cards_by_location = {}
         for card in self._cards:
             self._cards_by_location[card.location] = card
         self.add_map_boundaries()
         self.add_layer_boundaries()
-        self._spawn_points = [tile for tile in self._tiles if tile.asset_id == AssetId.GROUND_TILE_PATH]
+        self._spawn_points = [tile.cell.coord for tile in self._tiles
+                              if (tile.asset_id == AssetId.GROUND_TILE_PATH) and (tile.cell.coord not in self._cards_by_location)]
+    
+    def calculate_card_spawn_weight(self, tile):
+        if tile.asset_id == AssetId.GROUND_TILE:
+            return 1
+        elif tile.asset_id == AssetId.GROUND_TILE_PATH:
+            return 2
+        else:
+            return 0
 
     def add_map_boundaries(self):
         """ Adds boundaries to the hex map edges. """

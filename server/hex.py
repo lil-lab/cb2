@@ -1,10 +1,13 @@
 """ Utility file handling hex-related calculations. """
 
-import math
-
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json, LetterCase
 from enum import IntEnum
+
+import math
+import logging
+
+logger = logging.getLogger()
 
 # HECS-style coordinate class.
 # https://en.wikipedia.org/wiki/Hexagonal_Efficient_Coordinate_System
@@ -62,6 +65,16 @@ class HecsCoord:
             self.left(),
             self.up_left()
         ]
+        
+    
+    def degrees_to(self, other):
+        """ Returns which direction (in degrees, nearest div of 60) to go from this Hecs coordinate to another Hecs coordinate. """
+        c = self.cartesian()
+        oc = other.cartesian()
+        diff = (oc[0] - c[0], oc[1] - c[1])
+        deg = math.degrees(math.atan2(diff[1], diff[0]))
+        nearest_div_of_60 = round(deg / 60.0) * 60
+        return -nearest_div_of_60 + 120
     
     def is_adjacent_to(self, other):
         displacement = HecsCoord.sub(other, self)
