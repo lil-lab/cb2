@@ -1,7 +1,8 @@
+using Network;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Network;
+using System.Runtime.InteropServices;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -57,6 +58,33 @@ public class MenuTransitionHandler : MonoBehaviour
     public void QuitGame()
     {
         Network.NetworkManager.TaggedInstance().QuitGame();
+    }
+
+    [DllImport("__Internal")]
+    private static extern void DownloadJson(string filename, string data);
+
+    public void SaveGameData()
+    {
+        // Downloads the game's map update to a json file.
+        Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
+        IMapSource mapSource = networkManager.MapSource();
+        if (mapSource == null)
+        {
+            Debug.Log("No map source.");
+            return;
+        }
+        Network.MapUpdate mapUpdate = mapSource.RawMapUpdate();
+
+        List<TurnState> turnStateLog = new List<TurnState>();
+        turnStateLog.Add(_lastTurn);
+
+        Network.BugReport localBugReport = new Network.BugReport();
+        localBugReport.MapUpdate = mapUpdate;
+        localBugReport.TurnStateLog = turnStateLog;
+
+        string bugReportJson = JsonUtility.ToJson(localBugReport, /*prettyPrint=*/true);
+
+        DownloadJson("client_bug_report.json", bugReportJson);
     }
 
     public void BackToMenu()

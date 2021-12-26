@@ -5,7 +5,7 @@ using UnityEngine;
 
 // This class provides a fixed, built-in map for testing. The map layout is
 // defined in static function FixedMap() at the top of the class.
-public class FixedMapSource : HexGridManager.IMapSource
+public class FixedMapSource : IMapSource
 {
     // This is where the hardcoded map is defined. The rest of this class is
     // helper functions and post-processing.
@@ -247,8 +247,13 @@ public class FixedMapSource : HexGridManager.IMapSource
     // Worst case with this race, too much rendering is done, or an update
     // comes a bit late.
     public bool IsMapReady()
-
     {
         return _isMapFresh;
+    }    
+
+    public Network.MapUpdate RawMapUpdate()
+    {
+        // Not supported for fixed map sources. These are really just for testing out new features.
+        return null;
     }
 }

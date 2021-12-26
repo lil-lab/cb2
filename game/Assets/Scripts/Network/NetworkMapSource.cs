@@ -5,12 +5,13 @@ using UnityEngine;
 namespace Network
 {
     // Receives map updates from NetworkRouter and 
-    public class NetworkMapSource : HexGridManager.IMapSource
+    public class NetworkMapSource : IMapSource
     {
         private bool _networkMapReady = false;
         private int _rows = 0;
         private int _cols = 0;
         private List<HexGridManager.TileInformation> _map;
+        private Network.MapUpdate _lastMapReceived;
 
         public NetworkMapSource() { }
 
@@ -39,6 +40,7 @@ namespace Network
             }
             Debug.Log("NetworkMapSource received map update.");
             _networkMapReady = true;
+            _lastMapReceived = mapInfo;
         }
 
         // Retrieves the dimensions of the hexagon grid. Returns (rows, cols).
@@ -61,6 +63,17 @@ namespace Network
         public bool IsMapReady()
         {
             return _networkMapReady;
+        }
+
+        // Returns the raw map update datastructure. Used for bug reporting.
+        public Network.MapUpdate RawMapUpdate()
+        {
+            if (_lastMapReceived == null)
+            {
+                Debug.LogError("RawMapUpdate() called before map update received.");
+                return null;
+            }
+            return _lastMapReceived;
         }
     }
 }  // namespace Network

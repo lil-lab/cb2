@@ -25,7 +25,7 @@ namespace Network
         private Role _role = Network.Role.NONE;
         private Role _currentTurn = Network.Role.NONE;
 
-        public HexGridManager.IMapSource MapSource()
+        public IMapSource MapSource()
         {
             Scene scene = SceneManager.GetActiveScene();
             Debug.Log("[DEBUG] scene: " + scene.name);

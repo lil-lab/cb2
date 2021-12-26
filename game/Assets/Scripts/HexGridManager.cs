@@ -29,21 +29,6 @@ public class HexGridManager
         public GameObject Model;
     }
 
-    // Interface for retrieving map updates.
-    public interface IMapSource
-    {
-        // Retrieves the dimensions of the hexagon grid. Returns (rows, cols).
-        (int, int) GetMapDimensions();
-
-        // List of tiles. Each tile represents one cell in the grid. Calling 
-        // this causes IsMapReady() to return false until the next map update is
-        // available.
-        List<TileInformation> FetchTileList();
-
-        // Returns true if a new map iteration is available.
-        bool IsMapReady();
-    }
-
     private IMapSource _mapSource;
     private IAssetSource _assetSource;
 

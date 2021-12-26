@@ -64,7 +64,7 @@ public class HexGrid : MonoBehaviour
         Scene activeScene = SceneManager.GetActiveScene();
         GameObject obj = GameObject.FindWithTag(Network.NetworkManager.TAG);
         Network.NetworkManager networkManager = obj.GetComponent<Network.NetworkManager>();
-        HexGridManager.IMapSource mapSource = networkManager.MapSource();
+        IMapSource mapSource = networkManager.MapSource();
         if (networkManager.Role() == Network.Role.FOLLOWER)
         {
             // Subtract a 
@@ -75,7 +75,7 @@ public class HexGrid : MonoBehaviour
         _manager.Start();
     }
 
-    public void SetMap(HexGridManager.IMapSource map)
+    public void SetMap(IMapSource map)
     {
         _manager.SetMap(map);
     }
