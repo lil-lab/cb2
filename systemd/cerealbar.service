@@ -8,7 +8,7 @@ Type=simple
 Restart=always
 RestartSec=1
 User=lil-lab
-ExecStart=/bin/bash /home/lil-lab/projects/cb2-game-dev/service/launch.sh
+ExecStart=/bin/bash /home/lil-lab/projects/cb2-game-dev/systemd/launch.sh
 ProtectHome=off
 
 
