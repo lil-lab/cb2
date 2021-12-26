@@ -177,11 +177,11 @@ class State(object):
                 if len(shapes) == len(colors) == len(counts) == 3:
                     self._record_log.info("Unique set collected. Awarding points.")
                     added_turns = 0
-                    if self._turn_state.sets_collected == 1:
+                    if self._turn_state.sets_collected == 0:
                         added_turns = 5
-                    elif self._turn_state.sets_collected in [2, 3]:
+                    elif self._turn_state.sets_collected in [1, 2]:
                         added_turns = 4
-                    elif self._turn_state.sets_collected in [4, 5]:
+                    elif self._turn_state.sets_collected in [3, 4]:
                         added_turns = 3
                     new_turn_state = TurnUpdate(
                         self._turn_state.turn,
