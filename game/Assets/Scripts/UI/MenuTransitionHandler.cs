@@ -392,15 +392,12 @@ public class MenuTransitionHandler : MonoBehaviour
                 _currentMenuState = MenuState.ESCAPE_MENU;
                 esc_menu.GetComponent<Canvas>().enabled = true;
                 Debug.Log("Opening esc menu");
-                Cursor.visible = true;
             }
             else if (_currentMenuState == MenuState.ESCAPE_MENU)
             {
                 _currentMenuState = MenuState.NONE;
                 esc_menu.GetComponent<Canvas>().enabled = false;
                 Debug.Log("Closed esc menu");
-                //Set Cursor to not be visible
-                Cursor.visible = false;
             }
         }
     }
