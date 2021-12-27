@@ -1,5 +1,6 @@
 from assets import AssetId
 from messages.map_update import MapUpdate
+from messages.bug_report import BugReport
 from messages.prop import PropType, GenericPropInfo, CardConfig, Prop
 from card import Shape, Color
 from hex import HexBoundary, Edges
@@ -9,7 +10,7 @@ import pygame
 import sys
 
 SCREEN_SIZE = 1000
-SCALE = 20
+SCALE = 5
 
 pygame.font.init()
 GAME_FONT = pygame.font.SysFont('Helvetica', 30)
@@ -77,7 +78,13 @@ def asset_id_to_color(asset_id):
     elif asset_id == AssetId.MOUNTAIN_TILE:
         return pygame.Color("brown")
     elif asset_id == AssetId.RAMP_TO_MOUNTAIN:
+        return pygame.Color("tan4")
+    elif asset_id == AssetId.GROUND_TILE_PATH:
         return pygame.Color("tan")
+    elif asset_id == AssetId.EMPTY_TILE:
+        return pygame.Color("black")
+    elif asset_id == AssetId.WATER_TILE:
+        return pygame.Color("blue")
     else:
         print("Unknown asset ID encountered: " + str(asset_id))
         return pygame.Color("white")
@@ -203,6 +210,8 @@ class GameDisplay(object):
     def __init__(self, screen_size):
         self._screen_size = screen_size
         self._cell_width = self._cell_height = 0
+        self._map = None
+        self._game_state = None
         # Initialize pygame.
         pygame.init()
         # Create the screen
@@ -301,16 +310,16 @@ class GameDisplay(object):
         self.visualize_game_state()
 
 def main():
-    """ Reads a JSON MapUpdate from a file provided on the command line and displays it to the user. """
+    """ Reads a JSON bug report from a file provided on the command line and displays the map to the user. """
     # Check that the correct number of arguments were provided.
     if len(sys.argv) != 2:
-        print("Usage: python visualize.py <map_file>")
+        print("Usage: python visualize.py <bug_report.json>")
         quit()
 
     # Read file contents and parse them into a JSON MapUpdate.
     with open(sys.argv[1], "r") as file:
-        map_update = MapUpdate.from_json(file.read())
-        draw_map_and_wait(map_update)
+        bug_report = BugReport.from_json(file.read())
+        draw_map_and_wait(bug_report.map_update)
 
 if __name__ == "__main__":
     main()

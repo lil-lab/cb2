@@ -15,6 +15,9 @@ namespace Network
             public float RotationDegrees;
         }
 
+        // The total number of actors.
+        public int Population;
+
         // A list of actor initial states.
         public List<Actor> Actors;
 
