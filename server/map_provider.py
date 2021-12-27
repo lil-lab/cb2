@@ -120,22 +120,22 @@ def place_city(map, city):
     map[city.r][city.c] = PathTile()
 
     # Place two cross streets going through city.
-    for i in range(city.size + 1):
+    for i in range(city.size + 2):
         if city.c + i < MAP_WIDTH:
             r,c = (city.r, city.c + i)
-            if map[r][c].asset_id == AssetId.GROUND_TILE:
+            if map[r][c].asset_id == AssetId.EMPTY_TILE:
                 map[r][c] = PathTile()
         if city.r + i < MAP_HEIGHT:
             r,c = (city.r + i, city.c)
-            if map[r][c].asset_id == AssetId.GROUND_TILE:
+            if map[r][c].asset_id == AssetId.EMPTY_TILE:
                 map[r][c] = PathTile()
         if city.c - i >= 0: 
             r,c = (city.r, city.c - i)
-            if map[r][c].asset_id == AssetId.GROUND_TILE:
+            if map[r][c].asset_id == AssetId.EMPTY_TILE:
                 map[r][c] = PathTile()
         if city.r - i >= 0:
             r,c = (city.r - i, city.c)
-            if map[r][c].asset_id == AssetId.GROUND_TILE:
+            if map[r][c].asset_id == AssetId.EMPTY_TILE:
                 map[r][c] = PathTile()
 
     point_queue = Queue()
@@ -151,9 +151,9 @@ def place_city(map, city):
                 continue
             if r < 0 or r >= MAP_HEIGHT or c < 0 or c >= MAP_WIDTH:
                 continue
-            if map[r][c].asset_id == AssetId.GROUND_TILE:
+            if map[r][c].asset_id == AssetId.EMPTY_TILE:
                 if point.radius % 3 == 0:
-                    tile_generator = np.random.choice([GroundTile, GroundTileTrees, GroundTileStreetLight], size=1, p=[0.5, 0.25, 0.25])[0]
+                    tile_generator = np.random.choice([GroundTile, GroundTileTrees, GroundTileStreetLight], size=1, p=[0.6, 0.2, 0.2])[0]
                     map[r][c] = tile_generator(rotation_degrees = random.choice([0, 60, 120, 180, 240, 300]))
                 elif point.radius % 3 == 1:
                     map[r][c] = PathTile()
@@ -177,6 +177,25 @@ def place_lake(map, lake):
     # Place the center tile.
     map[lake.r][lake.c] = WaterTile()
 
+    # Place two cross streets going through city.
+    for i in range(lake.size, lake.size + 2):
+        if lake.c + i < MAP_WIDTH:
+            r,c = (lake.r, lake.c + i)
+            if map[r][c].asset_id == AssetId.EMPTY_TILE:
+                map[r][c] = PathTile()
+        if lake.r + i < MAP_HEIGHT:
+            r,c = (lake.r + i, lake.c)
+            if map[r][c].asset_id == AssetId.EMPTY_TILE:
+                map[r][c] = PathTile()
+        if lake.c - i >= 0: 
+            r,c = (lake.r, lake.c - i)
+            if map[r][c].asset_id == AssetId.EMPTY_TILE:
+                map[r][c] = PathTile()
+        if lake.r - i >= 0:
+            r,c = (lake.r - i, lake.c)
+            if map[r][c].asset_id == AssetId.EMPTY_TILE:
+                map[r][c] = PathTile()
+
     point_queue = Queue()
     point_queue.put(SearchPoint(lake.r, lake.c, 0))
     covered_points = set()
@@ -191,9 +210,9 @@ def place_lake(map, lake):
             # Keep lakes away from the edge of the map.
             if r < 2 or r >= MAP_HEIGHT - 2 or c < 2 or c >= MAP_WIDTH - 2:
                 continue
-            if map[r][c].asset_id == AssetId.GROUND_TILE:
+            if map[r][c].asset_id == AssetId.EMPTY_TILE:
                 if point.radius == lake.size:
-                    tile_generator = np.random.choice([GroundTile, GroundTileTrees, GroundTileStreetLight], size=1, p=[0.5, 0.25, 0.25])[0]
+                    tile_generator = np.random.choice([GroundTile, GroundTileTrees, GroundTileStreetLight], size=1, p=[0.6, 0.2, 0.2])[0]
                     map[r][c] = tile_generator(rotation_degrees = random.choice([0, 60, 120, 180, 240, 300]))
                 elif point.radius == lake.size - 1:
                     map[r][c] = PathTile()
@@ -215,7 +234,7 @@ def RandomMap():
     for r in range(0, MAP_HEIGHT):
         row = []
         for c in range(0, MAP_WIDTH):
-            tile = GroundTile()
+            tile = EmptyTile()
             row.append(tile)
         map.append(row)
     
@@ -253,9 +272,11 @@ def RandomMap():
     mountain_centers = feature_center_candidates[0:number_of_mountains]
     feature_center_candidates = feature_center_candidates[number_of_mountains:len(feature_center_candidates)]
 
-    # Fix all the tile coordinates.
+    # Fix all the tile coordinates and replace empty tiles with ground tiles.
     for r in range(0, MAP_HEIGHT):
         for c in range(0, MAP_WIDTH):
+            if map[r][c].asset_id == AssetId.EMPTY_TILE:
+                map[r][c] = GroundTile()
             map[r][c].cell.coord = HecsCoord.from_offset(r, c)
 
     # Flatten the 2D map of tiles to a list.
@@ -264,6 +285,8 @@ def RandomMap():
     # Recompute heights.
     for i in range(len(map_tiles)):
         map_tiles[i].cell.height = LayerToHeight(map_tiles[i].cell.layer)
+    
+
 
     return MapUpdate(MAP_HEIGHT, MAP_WIDTH, map_tiles, [])
 
@@ -315,6 +338,14 @@ def LayerToHeight(layer):
 
     return layer_to_height[layer]
 
+def EmptyTile():
+    return Tile(AssetId.EMPTY_TILE,
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0),
+                LayerToHeight(0),  # Height (float)
+                0,  # Z-Layer (int)
+                ),
+        0
+    )
 
 def GroundTile(rotation_degrees=0):
     """ Creates a single tile of ground."""
