@@ -88,9 +88,10 @@ public class Prop
             if (renderer != null)
             {
                 renderer.enabled = state.BorderRadius > 0;
-                float scale = 1.0f + (state.BorderRadius / 100);
+                float z_scale = 1.0f + (state.BorderRadius / 100);
+                float x_scale = 1.0f + (2.0f * state.BorderRadius / 100);
                 float height = _outline.transform.localScale.y;
-                _outline.transform.localScale = new Vector3(scale, height, scale);
+                _outline.transform.localScale = new Vector3(x_scale, height, z_scale);
             }
         }
 

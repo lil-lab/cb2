@@ -31,7 +31,7 @@ class Color(Enum):
     YELLOW = 7
 
 
-OUTLINE_RADIUS = 5
+OUTLINE_RADIUS = 20
 
 
 def CardSelectAction(card_id, selected):
