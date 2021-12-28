@@ -221,12 +221,101 @@ def place_lake(map, lake):
             if point.radius < lake.size:
                 point_queue.put(SearchPoint(r, c, point.radius + 1))
 
+class MountainType(Enum):
+    NONE = 0
+    SMALL = 1
+    MEDIUM = 2
+    LARGE = 3
+
 @dataclass_json
 @dataclass
 class Mountain:
     r: int
     c: int
-    size: int
+    type: MountainType
+
+def offset_coord_in_map(map, offset):
+    return (offset[0] in range(1, len(map) - 1) and
+            offset[1] in range(1, len(map[offset[0]]) - 1))
+
+def place_small_mountain(map, mountain):
+    mountain_coords = []
+    # MountainTile(rotation_degrees=0)
+    # RampToMountain(rotation_degrees=0)
+    map[mountain.r][mountain.c] = MountainTile(rotation_degrees=0)
+    start = HecsCoord.from_offset(mountain.r, mountain.c)
+    mountain_coords.append(start)
+    mountain_coords.append(start.right())
+    mountain_coords.append(start.down_left())
+    mountain_coords.append(start.down_right())
+
+    for coord in mountain_coords:
+        offset = coord.to_offset_coordinates()
+        if offset_coord_in_map(map, offset):
+            map[offset[0]][offset[1]] = MountainTile(rotation_degrees=0)
+
+    first_ramp_offset = start.left().to_offset_coordinates()
+    second_ramp_offset = start.right().down_right().to_offset_coordinates()
+    if offset_coord_in_map(map, first_ramp_offset):
+        map[first_ramp_offset[0]][first_ramp_offset[1]] = RampToMountain(rotation_degrees=00)
+    if offset_coord_in_map(map, second_ramp_offset):
+        map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=180)
+
+def place_medium_mountain(map, mountain):
+    mountain_coords = []
+    # MountainTile(rotation_degrees=0)
+    # RampToMountain(rotation_degrees=0)
+    map[mountain.r][mountain.c] = MountainTile(rotation_degrees=0)
+    start = HecsCoord.from_offset(mountain.r, mountain.c)
+    mountain_coords.append(start)
+    mountain_coords.append(start.down_right())
+    mountain_coords.append(start.down_left())
+    mountain_coords.append(start.down_right().down_right())
+    mountain_coords.append(start.down_right().down_left())
+
+    for coord in mountain_coords:
+        offset = coord.to_offset_coordinates()
+        if offset_coord_in_map(map, offset):
+            map[offset[0]][offset[1]] = MountainTile(rotation_degrees=0)
+
+    first_ramp_offset = start.left().to_offset_coordinates()
+    second_ramp_offset = start.down_right().down_right().down_left().to_offset_coordinates()
+    if offset_coord_in_map(map, first_ramp_offset):
+        map[first_ramp_offset[0]][first_ramp_offset[1]] = RampToMountain(rotation_degrees=60)
+    if offset_coord_in_map(map, second_ramp_offset):
+        map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=240)
+
+def place_large_mountain(map, mountain):
+    mountain_coords = []
+    # MountainTile(rotation_degrees=0)
+    # RampToMountain(rotation_degrees=0)
+    map[mountain.r][mountain.c] = MountainTile(rotation_degrees=0)
+    start = HecsCoord.from_offset(mountain.r, mountain.c)
+    mountain_coords.append(start)
+    for coord in start.neighbors():
+        mountain_coords.append(coord)
+
+    for coord in mountain_coords:
+        offset = coord.to_offset_coordinates()
+        if offset_coord_in_map(map, offset):
+            map[offset[0]][offset[1]] = MountainTile(rotation_degrees=0)
+
+    first_ramp_offset = start.left().left().to_offset_coordinates()
+    second_ramp_offset = start.right().right().to_offset_coordinates()
+    if offset_coord_in_map(map, first_ramp_offset):
+        map[first_ramp_offset[0]][first_ramp_offset[1]] = RampToMountain(rotation_degrees=0)
+    if offset_coord_in_map(map, second_ramp_offset):
+        map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=180)
+
+def place_mountain(map, mountain):
+    if mountain.type == MountainType.SMALL:
+        place_small_mountain(map, mountain)
+    elif mountain.type == MountainType.MEDIUM:
+        place_medium_mountain(map, mountain)
+    elif mountain.type == MountainType.LARGE:
+        place_large_mountain(map, mountain)
+    else:
+        logger.error(f"Unknown mountain type: {mountain.type}")
     
 def RandomMap():
     """ Random map of Tile objects, each with HECS coordinates and locations."""
@@ -240,10 +329,20 @@ def RandomMap():
     
     # Generate candidates for feature centers.
     rows = list(range(1, MAP_HEIGHT - 2, 6))
-    cols = list(range(1, MAP_WIDTH - 2, 3))
+    cols = list(range(1, MAP_WIDTH - 2, 6))
     feature_center_candidates = list(itertools.product(rows, cols))
     logger.info(f"Feature points: {len(feature_center_candidates)}")
     random.shuffle(feature_center_candidates)
+
+    # Add a random number of mountains.
+    number_of_mountains = min(random.randint(1, 4), len(feature_center_candidates))
+    mountain_centers = feature_center_candidates[0:number_of_mountains]
+    feature_center_candidates = feature_center_candidates[number_of_mountains:len(feature_center_candidates)]
+    logger.info(f"Remaining feature points: {len(feature_center_candidates)}")
+
+    mountains = [Mountain(r, c, random.choice([MountainType.SMALL, MountainType.MEDIUM, MountainType.LARGE])) for r, c in mountain_centers]
+    for mountain in mountains:
+        place_mountain(map, mountain)
 
     # Add a random number of lakes
     number_of_lakes = min(random.randint(2, 3), len(feature_center_candidates))
@@ -266,11 +365,6 @@ def RandomMap():
     cities = [City(r, c, random.randint(3, 4)) for r, c in city_centers]
     for city in cities:
         place_city(map, city)
-    
-    # Add a random number of mountains.
-    number_of_mountains = random.randint(5, len(feature_center_candidates))
-    mountain_centers = feature_center_candidates[0:number_of_mountains]
-    feature_center_candidates = feature_center_candidates[number_of_mountains:len(feature_center_candidates)]
 
     # Fix all the tile coordinates and replace empty tiles with ground tiles.
     for r in range(0, MAP_HEIGHT):
@@ -331,7 +425,7 @@ def LayerToHeight(layer):
     layer_to_height = {
         0: 0.05,
         1: 0.275,
-        2: 0.325,
+        2: 0.355,
     }
     if layer not in layer_to_height:
         return layer_to_height[0]
@@ -511,7 +605,7 @@ class MapProvider(object):
         self._cards = []
         self._selected_cards = {}
         self._card_generator = CardGenerator(id_assigner)
-        potential_spawn_tiles = [tile for tile in self._tiles if tile.asset_id in [AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH]]
+        potential_spawn_tiles = [tile for tile in self._tiles if tile.asset_id in [AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH, AssetId.MOUNTAIN_TILE]]
         card_spawn_weights = [self.calculate_card_spawn_weight(tile) for tile in potential_spawn_tiles]
         card_spawn_weights = [float(weight) / sum(card_spawn_weights) for weight in card_spawn_weights]
         number_of_tiles = len(potential_spawn_tiles)
@@ -535,6 +629,8 @@ class MapProvider(object):
         if tile.asset_id == AssetId.GROUND_TILE:
             return 1
         elif tile.asset_id == AssetId.GROUND_TILE_PATH:
+            return 2
+        elif tile.asset_id == AssetId.MOUNTAIN_TILE:
             return 2
         else:
             return 0
