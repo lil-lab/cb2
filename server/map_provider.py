@@ -160,8 +160,8 @@ def place_city(map, city):
                 elif point.radius % 3 == 2:
                     coord = HecsCoord.from_offset(r, c)
                     center = HecsCoord.from_offset(city.r, city.c)
-                    degrees_to_center = coord.degrees_to(center)
-                    map[r][c] = GroundTileHouse(rotation_degrees=degrees_to_center)
+                    degrees_to_center = coord.degrees_to(center) - 60
+                    map[r][c] = GroundTileHouse(rotation_degrees=degrees_to_center, type=HouseType.RANDOM)
             if point.radius < city.size:
                 point_queue.put(SearchPoint(r, c, point.radius + 1))
 
@@ -536,11 +536,45 @@ def GroundTileForest(rotation_degrees=0):
         rotation_degrees
     )
 
+class HouseType(Enum):
+    NONE = 0
+    HOUSE = 1
+    HOUSE_RED = 2
+    HOUSE_BLUE = 3
+    TRIPLE_HOUSE = 4
+    TRIPLE_HOUSE_RED = 5
+    TRIPLE_HOUSE_BLUE = 6
+    RANDOM = 7
 
-def GroundTileHouse(rotation_degrees=0):
+def AssetIdFromHouseType(type):
+    if type == HouseType.HOUSE:
+        return AssetId.GROUND_TILE_HOUSE
+    elif type == HouseType.HOUSE_RED:
+        return AssetId.GROUND_TILE_HOUSE_RED
+    elif type == HouseType.HOUSE_BLUE:
+        return AssetId.GROUND_TILE_HOUSE_BLUE
+    elif type == HouseType.TRIPLE_HOUSE:
+        return AssetId.GROUND_TILE_HOUSE_TRIPLE
+    elif type == HouseType.TRIPLE_HOUSE_RED:
+        return AssetId.GROUND_TILE_HOUSE_TRIPLE_RED
+    elif type == HouseType.TRIPLE_HOUSE_BLUE:
+        return AssetId.GROUND_TILE_HOUSE_TRIPLE_BLUE
+    elif type == HouseType.RANDOM:
+        return random.choice([AssetId.GROUND_TILE_HOUSE,
+                              AssetId.GROUND_TILE_HOUSE_RED,
+                              AssetId.GROUND_TILE_HOUSE_BLUE,
+                              AssetId.GROUND_TILE_HOUSE_TRIPLE,
+                              AssetId.GROUND_TILE_HOUSE_TRIPLE_RED,
+                              AssetId.GROUND_TILE_HOUSE_TRIPLE_BLUE])
+    else:
+        logger.error(f"Unknown house type: {type}")
+        return AssetId.HOUSE
+
+def GroundTileHouse(rotation_degrees=0, type=HouseType.HOUSE):
     """ Creates a single tile of ground with a house."""
+    asset_id = AssetIdFromHouseType(type)
     return Tile(
-        AssetId.GROUND_TILE_HOUSE,
+        asset_id,
         HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
                 LayerToHeight(0),  # Height (float)
                 0  # Z-Layer (int)

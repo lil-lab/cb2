@@ -154,6 +154,10 @@ PrefabInstance:
       propertyPath: m_LocalRotation.z
       value: -0
       objectReference: {fileID: 0}
+    - target: {fileID: 23301462043184744, guid: 86e0038a29189b44684c8adb0c7b3fe3, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: f757d8ed8577eb74e92132c5ace5b72f, type: 2}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 86e0038a29189b44684c8adb0c7b3fe3, type: 3}
 --- !u!1001 &7068824139009442957

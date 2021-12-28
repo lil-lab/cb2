@@ -74,7 +74,7 @@ class HecsCoord:
         diff = (oc[0] - c[0], oc[1] - c[1])
         deg = math.degrees(math.atan2(diff[1], diff[0]))
         nearest_div_of_60 = round(deg / 60.0) * 60
-        return -nearest_div_of_60 + 120
+        return nearest_div_of_60
     
     def is_adjacent_to(self, other):
         displacement = HecsCoord.sub(other, self)
