@@ -84,7 +84,7 @@ public class MenuTransitionHandler : MonoBehaviour
 
         string bugReportJson = JsonUtility.ToJson(localBugReport, /*prettyPrint=*/true);
 
-        DownloadJson("client_bug_report.json", bugReportJson);
+        DownloadJson("client_bug_report.json.log", bugReportJson);
     }
 
     public void BackToMenu()
