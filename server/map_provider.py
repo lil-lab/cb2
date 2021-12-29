@@ -261,6 +261,14 @@ def place_small_mountain(map, mountain):
     if offset_coord_in_map(map, second_ramp_offset):
         map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=180)
 
+    placed_coords = mountain_coords + [start.left(), start.right().down_right()]
+    for coord in placed_coords:
+        for neighbor in coord.neighbors():
+            offset = neighbor.to_offset_coordinates()
+            if offset_coord_in_map(map, offset):
+                if map[offset[0]][offset[1]].asset_id == AssetId.EMPTY_TILE:
+                    map[offset[0]][offset[1]] = GroundTile()
+
 def place_medium_mountain(map, mountain):
     mountain_coords = []
     # MountainTile(rotation_degrees=0)
@@ -285,6 +293,14 @@ def place_medium_mountain(map, mountain):
     if offset_coord_in_map(map, second_ramp_offset):
         map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=240)
 
+    placed_coords = mountain_coords + [start.left(), start.down_right().down_right().down_left()]
+    for coord in placed_coords:
+        for neighbor in coord.neighbors():
+            offset = neighbor.to_offset_coordinates()
+            if offset_coord_in_map(map, offset):
+                if map[offset[0]][offset[1]].asset_id == AssetId.EMPTY_TILE:
+                    map[offset[0]][offset[1]] = GroundTile()
+
 def place_large_mountain(map, mountain):
     mountain_coords = []
     # MountainTile(rotation_degrees=0)
@@ -306,6 +322,14 @@ def place_large_mountain(map, mountain):
         map[first_ramp_offset[0]][first_ramp_offset[1]] = RampToMountain(rotation_degrees=0)
     if offset_coord_in_map(map, second_ramp_offset):
         map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=180)
+
+    placed_coords = mountain_coords + [start.left().left(), start.right().right()]
+    for coord in placed_coords:
+        for neighbor in coord.neighbors():
+            offset = neighbor.to_offset_coordinates()
+            if offset_coord_in_map(map, offset):
+                if map[offset[0]][offset[1]].asset_id == AssetId.EMPTY_TILE:
+                    map[offset[0]][offset[1]] = GroundTile()
 
 def place_mountain(map, mountain):
     if mountain.type == MountainType.SMALL:
