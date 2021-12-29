@@ -8,6 +8,8 @@ public class OverheadCamera : MonoBehaviour
     public static readonly string OVERHEAD_TAG = "OverheadViewCam";
     public static readonly string ANGLED_TAG = "AngledViewCam";
 
+    private static readonly float OrthographicPrecalculatedDistance = 200;
+
     public float Theta = 90;
     public float ScreenMargin = 0.05f;
     private float _calculatedDistance = 0;
@@ -60,11 +62,65 @@ public class OverheadCamera : MonoBehaviour
             "C: Toggle between Cameras.";
     }
 
+    private bool IsPointClipped(Camera camera, Vector3 worldCoord, float margin, float clipMargin=1.0f)
+    {
+        Vector3 viewPortPoint = camera.WorldToViewportPoint(worldCoord);
+        return (viewPortPoint.x < margin) || (viewPortPoint.x > 1 - margin) ||
+               (viewPortPoint.y < margin) || (viewPortPoint.y > 1 - margin) || (viewPortPoint.z < (camera.nearClipPlane + clipMargin)) || (viewPortPoint.z > (camera.farClipPlane - clipMargin));
+    }
+    
+    private void AdjustDepthIfClipped(Camera camera, float clipMargin=1.0f)
+    {
+        if (camera.orthographic)
+        {
+            _calculatedDistance = OrthographicPrecalculatedDistance;
+            return;
+        }
+        HexGrid grid = HexGrid.TaggedInstance();
+        (int rows, int cols) = grid.MapDimensions();
+        if ((rows == 0) || (cols == 0))
+        {
+            Debug.Log("Grid not yet initialized. Returning.");
+            _calculatedDistance = 50;
+            return;
+        }
+        List<Vector3> corners = new List<Vector3>();
+        corners.Add(grid.Position(0, 0));
+        corners.Add(grid.Position(rows - 1, 0));
+        corners.Add(grid.Position(0, cols - 1));
+        corners.Add(grid.Position(rows - 1, cols - 1));
+        bool clipped = false;
+        foreach (Vector3 corner in corners)
+        {
+            if (IsPointClipped(GetCamera(), corner, ScreenMargin))
+            {
+                clipped = true;
+                break;
+            }
+        }
+        if (clipped)
+        {
+            _calculatedDistance += Time.deltaTime * 10f;
+        }
+    }
+
     public void CenterCameraOnGrid()
     {
+        if (GetCamera().orthographic)
+        {
+            _calculatedDistance = OrthographicPrecalculatedDistance;
+            return;
+        }
         HexGrid grid = HexGrid.TaggedInstance();
         Vector3 center = grid.CenterPosition();
         (int rows, int cols) = grid.MapDimensions();
+        Debug.Log(rows + ", " + cols);
+        if ((rows == 0) || (cols == 0))
+        {
+            Debug.Log("Grid not yet initialized. Returning.");
+            _calculatedDistance = 50;
+            return;
+        }
         transform.rotation = Quaternion.Euler(Theta, 90, 0);
         float distance = 10;
         float thetaRadians = Theta * Mathf.Deg2Rad;
@@ -72,21 +128,23 @@ public class OverheadCamera : MonoBehaviour
                 center.x - distance * Mathf.Cos(thetaRadians), 
                 center.y + distance * Mathf.Sin(thetaRadians),
                 center.z);
-        for (int i = 0; i < 100; ++i)
+        for (int i = 0; i < 200; ++i)
         {
-            Vector3 corner = grid.Position(0, 0);
-            Vector3 otherCorner = grid.Position(rows-1, cols-1);
-            Vector3 screenPoint = GetCamera().WorldToScreenPoint(corner);
-            Vector3 otherScreenPoint = GetCamera().WorldToScreenPoint(otherCorner);
-            Debug.Log(screenPoint + " " + otherScreenPoint + " " + distance);
-            float ScreenHeightMargin = Screen.height * ScreenMargin;
-            (float, float) ScreenHeightRange = (ScreenHeightMargin, Screen.height - ScreenHeightMargin);
-            float ScreenWidthMargin = Screen.width * ScreenMargin;
-            (float, float) ScreenWidthRange = (ScreenWidthMargin, Screen.width - ScreenWidthMargin);
-            if (screenPoint.x < ScreenWidthRange.Item1 ||
-                screenPoint.y < ScreenHeightRange.Item1 ||
-                otherScreenPoint.x > ScreenWidthRange.Item2 ||
-                otherScreenPoint.y > ScreenHeightRange.Item2)
+            List<Vector3> corners = new List<Vector3>();
+            corners.Add(grid.Position(0, 0));
+            corners.Add(grid.Position(rows - 1, 0));
+            corners.Add(grid.Position(0, cols - 1));
+            corners.Add(grid.Position(rows - 1, cols - 1));
+            bool clipped = false;
+            foreach (Vector3 corner in corners)
+            {
+                if (IsPointClipped(GetCamera(), corner, ScreenMargin))
+                {
+                    clipped = true;
+                    break;
+                }
+            }
+            if (clipped)
             {
                 distance += 1;
                 transform.position = new Vector3(

@@ -74,7 +74,7 @@ GameObject:
   - component: {fileID: 4757169866717081550}
   - component: {fileID: 5698793999896275820}
   - component: {fileID: 8068062754033132859}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: _M_Tile_Ground_1 Outline
   m_TagString: Untagged
   m_Icon: {fileID: 0}

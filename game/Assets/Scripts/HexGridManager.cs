@@ -64,7 +64,7 @@ public class HexGridManager
     public Vector3 Position(int i, int j)
     {
         var (rows, cols) = _mapSource.GetMapDimensions();
-        if (i < 0 || i >= rows || j < 0 || j >= cols)
+        if ((i < 0) || (i >= rows) || (j < 0) || (j >= cols))
         {
             Debug.Log("Position requested outside of map. Returning (0, 0, 0). (" + i + ", " + j + ")");
             return Vector3.zero;
@@ -78,12 +78,6 @@ public class HexGridManager
 
     public (int, int) MapDimensions()
     {
-        // Gets the dimensions of the map.
-        if (!_mapSource.IsMapReady())
-        {
-            Debug.Log("Map dimensions requested before map is ready. Returning (0, 0).");
-            return (0, 0);
-        }
         return _mapSource.GetMapDimensions();
     }
 

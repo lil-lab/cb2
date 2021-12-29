@@ -56,6 +56,8 @@ public class Player : MonoBehaviour
             _fpvCamera.enabled = false;
             OverheadCamera.GetComponent<Camera>().enabled = false;
             AngledOverheadCamera.GetComponent<Camera>().enabled = true;
+            string commands = AngledOverheadCamera.GetComponent<OverheadCamera>().CameraInstructions() + "\nEsc - Menu";
+            MenuTransitionHandler.TaggedInstance().SetLeaderCommands(commands);
         }
         _lastCameraToggle = DateTime.Now;
     }
@@ -127,13 +129,13 @@ public class Player : MonoBehaviour
             {
                 OverheadCamera.GetComponent<Camera>().enabled = false;
                 AngledOverheadCamera.GetComponent<Camera>().enabled = true;
-                commands += AngledOverheadCamera.GetComponent<OverheadCamera>().CameraInstructions();
+                commands = AngledOverheadCamera.GetComponent<OverheadCamera>().CameraInstructions();
             }
             else
             {
                 OverheadCamera.GetComponent<Camera>().enabled = true;
                 AngledOverheadCamera.GetComponent<Camera>().enabled = false;
-                commands += OverheadCamera.GetComponent<OverheadCamera>().CameraInstructions();
+                commands = OverheadCamera.GetComponent<OverheadCamera>().CameraInstructions();
             }
             
             commands += "\nEsc - Menu";
