@@ -67,7 +67,7 @@ public class HexGrid : MonoBehaviour
         IMapSource mapSource = networkManager.MapSource();
         if (networkManager.Role() == Network.Role.FOLLOWER)
         {
-            // Subtract a 
+            // Increase the gap between cells if we're a follower to reveal the grid.
             Scale += 0.04f;
         }
         Debug.Log("[DEBUG] Loading HexGrid.");

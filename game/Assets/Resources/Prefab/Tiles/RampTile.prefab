@@ -75,7 +75,7 @@ GameObject:
   - component: {fileID: 5259294055585251250}
   - component: {fileID: 5229988902012806228}
   - component: {fileID: 5240037381883338466}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: _M_Tile_Ground_1 Outline
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -235,9 +235,25 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 5654296036602018373}
     m_Modifications:
+    - target: {fileID: 1315933630978594, guid: 95eda6daa780a8442bd02fe7df79c416, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1597462880057866, guid: 95eda6daa780a8442bd02fe7df79c416, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: 1648164542056454, guid: 95eda6daa780a8442bd02fe7df79c416, type: 3}
       propertyPath: m_Name
       value: M_Mountain_StepPiece 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1948260750344594, guid: 95eda6daa780a8442bd02fe7df79c416, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1949402900388960, guid: 95eda6daa780a8442bd02fe7df79c416, type: 3}
+      propertyPath: m_Layer
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 4548396597874660, guid: 95eda6daa780a8442bd02fe7df79c416, type: 3}
       propertyPath: m_RootOrder

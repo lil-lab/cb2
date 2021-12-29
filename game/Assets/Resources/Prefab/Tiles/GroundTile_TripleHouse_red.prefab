@@ -228,7 +228,7 @@ GameObject:
   - component: {fileID: 50200986853185668}
   - component: {fileID: 57314991521010028}
   - component: {fileID: 67482253641191610}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_House_Chimney1 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -309,7 +309,7 @@ GameObject:
   - component: {fileID: 50195059099972609}
   - component: {fileID: 56988010477064417}
   - component: {fileID: 65617553276869767}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_HousePart2_Outline
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -552,7 +552,7 @@ GameObject:
   - component: {fileID: 48490386351328163}
   - component: {fileID: 55269380718486285}
   - component: {fileID: 65460111320012247}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_Roof1 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -633,7 +633,7 @@ GameObject:
   - component: {fileID: 48490385985593130}
   - component: {fileID: 55269380344330116}
   - component: {fileID: 65460110895382878}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_Roof1 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -714,7 +714,7 @@ GameObject:
   - component: {fileID: 48490385712992428}
   - component: {fileID: 55269379006380034}
   - component: {fileID: 65460110614335192}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_Roof1 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -795,7 +795,7 @@ GameObject:
   - component: {fileID: 48490385784003059}
   - component: {fileID: 55269379071095133}
   - component: {fileID: 65460110830110599}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_Roof1 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1911,7 +1911,7 @@ GameObject:
   - component: {fileID: 50531513447892419}
   - component: {fileID: 57231192925934795}
   - component: {fileID: 67231177335968779}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_HousePart1_Outline
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1992,7 +1992,7 @@ GameObject:
   - component: {fileID: 50531513322286419}
   - component: {fileID: 57231192799575131}
   - component: {fileID: 67231177194273947}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_HousePart1_Outline
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2073,7 +2073,7 @@ GameObject:
   - component: {fileID: 50531513712051133}
   - component: {fileID: 57231192678683317}
   - component: {fileID: 67231177608680053}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_HousePart1_Outline
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2154,7 +2154,7 @@ GameObject:
   - component: {fileID: 50531512703353392}
   - component: {fileID: 57231191137309496}
   - component: {fileID: 67231176738395128}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_HousePart1_Outline
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2316,7 +2316,7 @@ GameObject:
   - component: {fileID: 48455628147245342}
   - component: {fileID: 57234739913503006}
   - component: {fileID: 67525016851355176}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_Roof2 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2628,7 +2628,7 @@ GameObject:
   - component: {fileID: 4528689062777903297}
   - component: {fileID: 4517464001363100455}
   - component: {fileID: 4511969784753371537}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: _M_Tile_Ground_1 Outline
   m_TagString: Untagged
   m_Icon: {fileID: 0}

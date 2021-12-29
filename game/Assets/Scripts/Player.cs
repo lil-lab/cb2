@@ -54,8 +54,8 @@ public class Player : MonoBehaviour
         if ((OverheadCamera != null) && (_network.Role() == Network.Role.LEADER))
         {
             _fpvCamera.enabled = false;
-            OverheadCamera.GetComponent<Camera>().enabled = true;
-            AngledOverheadCamera.GetComponent<Camera>().enabled = false;
+            OverheadCamera.GetComponent<Camera>().enabled = false;
+            AngledOverheadCamera.GetComponent<Camera>().enabled = true;
         }
         _lastCameraToggle = DateTime.Now;
     }

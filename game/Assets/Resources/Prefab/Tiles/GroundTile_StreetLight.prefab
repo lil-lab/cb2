@@ -39,6 +39,42 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 5945303216405992538}
     m_Modifications:
+    - target: {fileID: 1044327916025994, guid: 0f6b6ad650a6e9648a7825f816b11de8, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1317599252275748, guid: 0f6b6ad650a6e9648a7825f816b11de8, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1326442029128160, guid: 0f6b6ad650a6e9648a7825f816b11de8, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1342399109467296, guid: 0f6b6ad650a6e9648a7825f816b11de8, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1524926404369728, guid: 0f6b6ad650a6e9648a7825f816b11de8, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1531854153904426, guid: 0f6b6ad650a6e9648a7825f816b11de8, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1609708430868030, guid: 0f6b6ad650a6e9648a7825f816b11de8, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1684061841382448, guid: 0f6b6ad650a6e9648a7825f816b11de8, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1712241029191594, guid: 0f6b6ad650a6e9648a7825f816b11de8, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: 1907926828902064, guid: 0f6b6ad650a6e9648a7825f816b11de8, type: 3}
       propertyPath: m_Name
       value: M_StreetLight2 1

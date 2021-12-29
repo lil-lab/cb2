@@ -204,7 +204,7 @@ GameObject:
   - component: {fileID: 4984434397309998}
   - component: {fileID: 33768827312966044}
   - component: {fileID: 23187028629697510}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_Mountain_0Side_Body (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -285,7 +285,7 @@ GameObject:
   - component: {fileID: 4955495042252340}
   - component: {fileID: 33873621738450198}
   - component: {fileID: 23994225044880988}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_Mountain_0Side_Grass (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}

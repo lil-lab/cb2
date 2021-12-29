@@ -101,6 +101,14 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 2546017236231622696}
     m_Modifications:
+    - target: {fileID: 5520260629496401504, guid: 3468799017ea94032a6e1a79cc384b0e, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 5520260630349374736, guid: 3468799017ea94032a6e1a79cc384b0e, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: 5521286711274970990, guid: 3468799017ea94032a6e1a79cc384b0e, type: 3}
       propertyPath: m_Name
       value: Forest

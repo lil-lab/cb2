@@ -278,11 +278,17 @@ public class HexGridManager
         {
             UpdateCellEdges(t.Cell);
         }
-        OverheadCamera camera = OverheadCamera.TaggedInstance();
+        OverheadCamera camera = OverheadCamera.TaggedOverheadInstance();
         if (camera != null)
         {
-            Debug.Log("Updating camera position.");
+            Debug.Log("Updating overhead camera position.");
             camera.CenterCameraOnGrid();
+        }
+        OverheadCamera angledCamera = OverheadCamera.TaggedAngledInstance();
+        if (angledCamera != null)
+        {
+            Debug.Log("Updating angled camera position.");
+            angledCamera.CenterCameraOnGrid();
         }
     }
 }

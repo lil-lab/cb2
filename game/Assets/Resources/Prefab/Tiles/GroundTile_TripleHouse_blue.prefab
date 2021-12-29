@@ -42,7 +42,7 @@ GameObject:
   - component: {fileID: 1262167048963385906}
   - component: {fileID: 1291544735506526676}
   - component: {fileID: 1279163126893087586}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: _M_Tile_Ground_1 Outline
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -405,7 +405,7 @@ GameObject:
   - component: {fileID: 3454675656917825872}
   - component: {fileID: 3429886658858111486}
   - component: {fileID: 3437850792664983332}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_Roof1 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -486,7 +486,7 @@ GameObject:
   - component: {fileID: 3454675656804789721}
   - component: {fileID: 3429886658770208119}
   - component: {fileID: 3437850792493069229}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_Roof1 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -567,7 +567,7 @@ GameObject:
   - component: {fileID: 3454675656470031104}
   - component: {fileID: 3429886657359610798}
   - component: {fileID: 3437850792021996916}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_Roof1 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -648,7 +648,7 @@ GameObject:
   - component: {fileID: 3454675656548901471}
   - component: {fileID: 3429886657415416561}
   - component: {fileID: 3437850792228863019}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_Roof1 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -970,7 +970,7 @@ GameObject:
   - component: {fileID: 3454090503203236471}
   - component: {fileID: 3429107546945921951}
   - component: {fileID: 3436952726441140809}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_House_Chimney1 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1187,7 +1187,7 @@ GameObject:
   - component: {fileID: 3454094513849140978}
   - component: {fileID: 3429291830385680914}
   - component: {fileID: 3437410186197839476}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_HousePart2_Outline
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1430,7 +1430,7 @@ GameObject:
   - component: {fileID: 3454571698474284013}
   - component: {fileID: 3429044965121164269}
   - component: {fileID: 3437048258023138523}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_Roof2 (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2321,7 +2321,7 @@ GameObject:
   - component: {fileID: 3453903228380454816}
   - component: {fileID: 3429051296447680168}
   - component: {fileID: 3437344847533854312}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_HousePart1_Outline
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2402,7 +2402,7 @@ GameObject:
   - component: {fileID: 3453903228255532848}
   - component: {fileID: 3429051296321414712}
   - component: {fileID: 3437344847391467256}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_HousePart1_Outline
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2483,7 +2483,7 @@ GameObject:
   - component: {fileID: 3453903228536467790}
   - component: {fileID: 3429051296023830598}
   - component: {fileID: 3437344847647400070}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_HousePart1_Outline
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2564,7 +2564,7 @@ GameObject:
   - component: {fileID: 3453903227926163651}
   - component: {fileID: 3429051294889238987}
   - component: {fileID: 3437344846915461387}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: M_HousePart1_Outline
   m_TagString: Untagged
   m_Icon: {fileID: 0}

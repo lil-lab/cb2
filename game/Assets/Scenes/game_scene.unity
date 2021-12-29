@@ -2944,10 +2944,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 85e6b602dc9994eb1b8399bc6aff96ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Theta: 45
+  Theta: 60
   ScreenMargin: 0.05
-  FollowPlayer: {fileID: 2076507383}
-  FollowDistance: 10
+  FollowPlayer: {fileID: 0}
+  FollowDistance: 0
 --- !u!114 &1045402492
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2986,12 +2986,12 @@ Camera:
   near clip plane: 0.3
   far clip plane: 1000
   field of view: 60
-  orthographic: 0
-  orthographic size: 5
+  orthographic: 1
+  orthographic size: 25
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 183
   m_RenderingPath: 3
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0

@@ -124,7 +124,7 @@ GameObject:
   - component: {fileID: 4780150234648298}
   - component: {fileID: 33944823312127244}
   - component: {fileID: 23755692555005882}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: _M_Tile_Ground_1 Outline
   m_TagString: Untagged
   m_Icon: {fileID: 0}
