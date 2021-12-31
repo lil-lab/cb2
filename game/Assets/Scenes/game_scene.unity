@@ -2925,6 +2925,7 @@ GameObject:
   - component: {fileID: 1045402493}
   - component: {fileID: 1045402492}
   - component: {fileID: 1045402491}
+  - component: {fileID: 1045402495}
   m_Layer: 0
   m_Name: AngledOverheadCamera
   m_TagString: AngledViewCam
@@ -3017,6 +3018,18 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 14
   m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
+--- !u!114 &1045402495
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1045402490}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab3624a7d28d84fc7ad1ccbd66259cd5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1088105377
 GameObject:
   m_ObjectHideFlags: 0
@@ -5281,8 +5294,9 @@ GameObject:
   - component: {fileID: 1852689589}
   - component: {fileID: 1852689587}
   - component: {fileID: 1852689586}
+  - component: {fileID: 1852689588}
   m_Layer: 0
-  m_Name: OverheadCamera
+  m_Name: FollowerOverheadViewCam
   m_TagString: OverheadViewCam
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5300,10 +5314,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 85e6b602dc9994eb1b8399bc6aff96ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Theta: 90
+  Theta: 30
   ScreenMargin: 0.05
-  FollowPlayer: {fileID: 0}
-  FollowDistance: 10
+  FollowPlayer: {fileID: 2076507383}
+  FollowDistance: 20
 --- !u!114 &1852689587
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5314,6 +5328,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 618fb298e78b64bcd9d1bde36e59af98, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1852689588
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1852689585}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab3624a7d28d84fc7ad1ccbd66259cd5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!20 &1852689589
@@ -5342,7 +5368,7 @@ Camera:
   near clip plane: 0.3
   far clip plane: 1000
   field of view: 60
-  orthographic: 1
+  orthographic: 0
   orthographic size: 30
   m_Depth: 0
   m_CullingMask:

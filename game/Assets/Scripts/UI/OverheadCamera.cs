@@ -53,7 +53,7 @@ public class OverheadCamera : MonoBehaviour
     {
         if (FollowPlayer != null) {
             return "Camera Instructions:\n" +
-                "A/D: Rotate Camera.\n" +
+                "W/A/S/D: Move Camera.\n" +
                 "C: Toggle between Cameras.";
         }
 
