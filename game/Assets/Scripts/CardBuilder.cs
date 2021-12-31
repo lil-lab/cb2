@@ -154,6 +154,10 @@ public class CardBuilder
             {
                 symbol.transform.Rotate(new Vector3(180f, 0f, 0f));
             }
+            if ((count == 2) || (count == 3)) {
+                Vector3 scale = symbol.transform.localScale;
+                symbol.transform.localScale = new Vector3(0.7f * scale.x, scale.y, 0.7f * scale.z);
+            }
 
             try
             {
