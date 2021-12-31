@@ -53,7 +53,7 @@ public class OverheadCamera : MonoBehaviour
     {
         if (FollowPlayer != null) {
             return "Camera Instructions:\n" +
-                "W/A/S/D: Move Camera.\n" +
+                "A/D: Rotate Camera.\n" +
                 "C: Toggle between Cameras.";
         }
 
@@ -208,14 +208,6 @@ public class OverheadCamera : MonoBehaviour
                 if (EventSystem.current.currentSelectedGameObject != null)
                 {
                     return;
-                }
-                if (Input.GetKey(KeyCode.W))
-                {
-                    FollowDistance -= 4 * Time.deltaTime;
-                }
-                if (Input.GetKey(KeyCode.S))
-                {
-                    FollowDistance += 4 * Time.deltaTime;
                 }
             }
         }

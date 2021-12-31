@@ -5317,7 +5317,7 @@ MonoBehaviour:
   Theta: 30
   ScreenMargin: 0.05
   FollowPlayer: {fileID: 2076507383}
-  FollowDistance: 20
+  FollowDistance: 25
 --- !u!114 &1852689587
 MonoBehaviour:
   m_ObjectHideFlags: 0
