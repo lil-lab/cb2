@@ -164,7 +164,6 @@ class State(object):
 
             selected_cards = list(self._map_provider.selected_cards())
             if len(selected_cards) >= 3:
-                logging.info("3 cards collected.")
                 # Determine if the cards are unique.
                 shapes = set()
                 colors = set()
@@ -174,7 +173,7 @@ class State(object):
                     colors.add(card.color)
                     counts.add(card.count)
 
-                if len(shapes) == len(colors) == len(counts) == 3:
+                if len(selected_cards) == len(shapes) == len(colors) == len(counts) == 3:
                     self._record_log.info("Unique set collected. Awarding points.")
                     added_turns = 0
                     if self._turn_state.sets_collected == 0:
@@ -193,12 +192,12 @@ class State(object):
                         self._turn_state.score + 1)
                     self.record_turn_state(new_turn_state)
 
-                # Clear card state.
-                logging.info("Clearing selected cards")
-                for card in selected_cards:
-                    self._map_provider.set_selected(card.id, False)
-                    card_select_action = CardSelectAction(card.id, False)
-                    self.record_action(card_select_action)
+                    # Clear card state.
+                    logging.info("Clearing selected cards")
+                    for card in selected_cards:
+                        self._map_provider.set_selected(card.id, False)
+                        card_select_action = CardSelectAction(card.id, False)
+                        self.record_action(card_select_action)
 
     def end_turn_if_over(self, force_turn_end=False):
         opposite_role = Role.LEADER if self._turn_state.turn == Role.FOLLOWER else Role.FOLLOWER
