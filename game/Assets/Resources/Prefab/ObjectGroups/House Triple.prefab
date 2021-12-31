@@ -606,6 +606,10 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 4686085061905641820}
     m_Modifications:
+    - target: {fileID: 1166082335162874, guid: 8c046347bca2d8d4c8f0aa545e8558bc, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: 1919916553521164, guid: 8c046347bca2d8d4c8f0aa545e8558bc, type: 3}
       propertyPath: m_Name
       value: M_House_Chimney1 (1)
