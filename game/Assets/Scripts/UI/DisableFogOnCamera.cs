@@ -13,7 +13,6 @@ public class DisableFogOnCamera : MonoBehaviour
     {
         revertFogState = RenderSettings.fog;
         RenderSettings.fog = false;
-        Debug.Log("HI");
     }
 
     void OnPostRender()

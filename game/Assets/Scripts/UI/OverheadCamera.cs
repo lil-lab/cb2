@@ -17,6 +17,10 @@ public class OverheadCamera : MonoBehaviour
     // If you assign a FollowPlayer instance, then the camera will center on the player with the provided distance.
     public GameObject FollowPlayer;
     public float FollowDistance = 10;
+    public bool MousePanning = false;
+    public float MousePanningSpeed = 0.01f;
+    private Vector3 _mouseDragOrigin = Vector3.zero;
+    private bool _isDraggingMouse = false;
     private float _phi = 0;  // the X-Z plane (Y-axis) rotation around the player. Controlled by the A and D keys.
 
 
@@ -165,51 +169,63 @@ public class OverheadCamera : MonoBehaviour
 
     public void Update()
     {
-        if (GetCamera() != null)
+        if (GetCamera() == null)
         {
-            // When a UI element is selected, ignore keypresses. This prevents the
-            // camera from moving when the user is typing and hits W/A/S/D.
-            if (EventSystem.current.currentSelectedGameObject != null)
-            {
-                return;
-            }
-            if (Input.GetKey(KeyCode.A))
-            {
-                _phi += Time.deltaTime;
-            }
-            if (Input.GetKey(KeyCode.D))
-            {
-                _phi -= Time.deltaTime;
-            }
-            HexGrid grid = HexGrid.TaggedInstance();
-            Vector3 center = grid.CenterPosition();
-            float thetaRadians = Theta * Mathf.Deg2Rad;
-            transform.position = new Vector3(
-                center.x - _calculatedDistance * Mathf.Cos(thetaRadians) * Mathf.Cos(_phi), 
-                center.y + _calculatedDistance * Mathf.Sin(thetaRadians),
-                center.z + _calculatedDistance * Mathf.Cos(thetaRadians) * Mathf.Sin(_phi));
-            transform.rotation = Quaternion.Euler(Theta, _phi * Mathf.Rad2Deg + 90, 0);
-            Debug.Log(_calculatedDistance);
+            Debug.LogError("Camera is null");
+            return;
         }
-        if (FollowPlayer != null)
+
+        // When a UI element is selected, ignore keypresses. This prevents the
+        // camera from moving when the user is typing and hits W/A/S/D.
+        if (EventSystem.current.currentSelectedGameObject != null)
         {
-            Player target = FollowPlayer.GetComponent<Player>();
-            Vector3 center = target.Position();
-            float thetaRadians = Theta * Mathf.Deg2Rad;
-            transform.rotation = Quaternion.Euler(Theta, _phi * Mathf.Rad2Deg + 90, 0);
-            transform.position = new Vector3(
-                    center.x - FollowDistance * Mathf.Cos(thetaRadians) * Mathf.Cos(_phi), 
-                    center.y + FollowDistance * Mathf.Sin(thetaRadians),
-                    center.z + FollowDistance * Mathf.Cos(thetaRadians) * Mathf.Sin(_phi));
-            if (GetCamera() != null)
-            {
-                // When a UI element is selected, ignore keypresses. This prevents the
-                // camera from moving when the user is typing and hits W/A/S/D.
-                if (EventSystem.current.currentSelectedGameObject != null)
-                {
-                    return;
-                }
-            }
+            return;
         }
+        // When the camera is disabled, ignore inputs and don't run camera calculations.
+        if (!GetCamera().enabled)
+        {
+            return;
+        }
+
+        if (Input.GetKey(KeyCode.A))
+        {
+            _phi += Time.deltaTime;
+        }
+        if (Input.GetKey(KeyCode.D))
+        {
+            _phi -= Time.deltaTime;
+        }
+        if (MousePanning)
+        {
+            if (Input.GetMouseButtonDown(0))
+            {
+                _mouseDragOrigin = Input.mousePosition;
+                _isDraggingMouse = true;
+            }
+            if (!Input.GetMouseButton(0) || Input.GetMouseButtonUp(0))
+            {
+                _isDraggingMouse = false;
+            }
+            if (_isDraggingMouse)
+            {
+                Vector3 delta = Input.mousePosition - _mouseDragOrigin;
+                _mouseDragOrigin = Input.mousePosition;
+                _phi += delta.x * MousePanningSpeed * Time.deltaTime;
+                Theta -= delta.y * (MousePanningSpeed * Mathf.Rad2Deg) * Time.deltaTime;
+                Theta = Mathf.Min(90, Mathf.Max(15, Theta));  // 0 <= Theta <= 90.
+            }
+        } else
+        {
+            _isDraggingMouse = false;
+        }
+        HexGrid grid = HexGrid.TaggedInstance();
+        Vector3 center = (FollowPlayer != null) ? FollowPlayer.GetComponent<Player>().Position() : grid.CenterPosition();
+        float distance = (FollowPlayer != null) ? FollowDistance : _calculatedDistance;
+        float thetaRadians = Theta * Mathf.Deg2Rad;
+        transform.position = new Vector3(
+            center.x - distance * Mathf.Cos(thetaRadians) * Mathf.Cos(_phi), 
+            center.y + distance * Mathf.Sin(thetaRadians),
+            center.z + distance * Mathf.Cos(thetaRadians) * Mathf.Sin(_phi));
+        transform.rotation = Quaternion.Euler(Theta, _phi * Mathf.Rad2Deg + 90, 0);
     }
 }

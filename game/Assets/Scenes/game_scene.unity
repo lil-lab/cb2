@@ -2949,6 +2949,8 @@ MonoBehaviour:
   ScreenMargin: 0.05
   FollowPlayer: {fileID: 0}
   FollowDistance: 0
+  MousePanning: 0
+  MousePanningSpeed: 0.5
 --- !u!114 &1045402492
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5318,6 +5320,8 @@ MonoBehaviour:
   ScreenMargin: 0.05
   FollowPlayer: {fileID: 2076507383}
   FollowDistance: 25
+  MousePanning: 1
+  MousePanningSpeed: 0.05
 --- !u!114 &1852689587
 MonoBehaviour:
   m_ObjectHideFlags: 0
