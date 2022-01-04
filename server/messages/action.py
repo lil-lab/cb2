@@ -27,6 +27,14 @@ class AnimationType(Enum):
     SKIPPING = 6
     ROTATE = 7
 
+@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass(frozen=True)
+class Color:
+    r: float
+    g: float
+    b: float
+    a: float
+
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
@@ -37,6 +45,7 @@ class Action:
     displacement: HecsCoord  # For TRANSLATE, INIT, and INSTANT actions.
     rotation: float  # For rotations. In Degrees.
     border_radius: float
+    border_color: Color
     duration_s: float
     expiration: datetime = field(
         metadata=config(

@@ -7,6 +7,7 @@ from messages.action import Action, ActionType, AnimationType
 import datetime
 
 import messages.prop
+import messages.action as action
 
 
 class Shape(Enum):
@@ -33,13 +34,12 @@ class Color(Enum):
 
 OUTLINE_RADIUS = 20
 
-
-def CardSelectAction(card_id, selected):
+def CardSelectAction(card_id, selected, color=action.Color(0, 0, 1, 1)):
     action_type = ActionType.OUTLINE
     radius = OUTLINE_RADIUS if selected else 0
     expiration = datetime.datetime.now() + datetime.timedelta(seconds=10)
     return Action(card_id, action_type, AnimationType.NONE, HecsCoord(0, 0, 0),
-                  0, radius, 0.2, expiration)
+                  0, radius, color, 0.2, expiration)
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)

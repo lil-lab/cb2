@@ -3,6 +3,21 @@ using UnityEngine;
 
 public class Outline : ActionQueue.IAction
 {
+    public static Outline Select(float radius, Network.Color borderColor, float durationS)
+    {
+        return new Outline(
+            new ActionQueue.ActionInfo()
+            {
+                Type = ActionQueue.AnimationType.NONE,
+                Displacement = HecsCoord.ORIGIN,
+                Rotation = 0,
+                BorderRadius = radius,
+                BorderColor = borderColor,
+                DurationS = durationS,
+                Expiration = DateTime.Now.AddSeconds(10),
+            }
+        );
+    }
     public static Outline Select(float radius, float durationS)
     {
         return new Outline(
@@ -12,10 +27,11 @@ public class Outline : ActionQueue.IAction
                 Displacement = HecsCoord.ORIGIN,
                 Rotation = 0,
                 BorderRadius = radius,
+                BorderColor = Network.Color.Blue,
                 DurationS = durationS,
                 Expiration = DateTime.Now.AddSeconds(10),
             }
-        ); ;
+        );
     }
 
     public static Outline Unselect(float durationS)
@@ -27,6 +43,7 @@ public class Outline : ActionQueue.IAction
                 Displacement = HecsCoord.ORIGIN,
                 Rotation = 0,
                 BorderRadius = 0,
+                BorderColor = Network.Color.Blue,
                 DurationS = durationS,
                 Expiration = DateTime.Now.AddSeconds(10),
             }
@@ -54,6 +71,7 @@ public class Outline : ActionQueue.IAction
         interp.Position = initialConditions.Vector();
         interp.HeadingDegrees = initialConditions.HeadingDegrees;
         interp.BorderRadius = Mathf.Lerp(initialConditions.BorderRadius, end.BorderRadius, progress);
+        interp.BorderColor = _info.BorderColor;  // Never interpolate colors.
         interp.Animation = _info.Type;
         return interp;
     }
@@ -61,6 +79,7 @@ public class Outline : ActionQueue.IAction
     public State.Discrete Transfer(State.Discrete s)
     {
         s.BorderRadius = _info.BorderRadius;
+        s.BorderColor = _info.BorderColor;
         return s;
     }
 
@@ -75,6 +94,7 @@ public class Outline : ActionQueue.IAction
             Rotation = _info.Rotation,
             DurationS = _info.DurationS,
             BorderRadius = _info.BorderRadius,
+            BorderColor = _info.BorderColor,
             Opacity = _info.Opacity,
             Expiration = _info.Expiration.ToString("o"),
         };

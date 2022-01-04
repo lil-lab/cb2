@@ -198,6 +198,7 @@ namespace Network
                 Rotation = networkAction.Rotation,
                 DurationS = networkAction.DurationS,
                 BorderRadius = networkAction.BorderRadius,
+                BorderColor = networkAction.BorderColor,
                 Expiration = expiration,
             };
             ActionQueue.IAction action;

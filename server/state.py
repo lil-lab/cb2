@@ -1,4 +1,4 @@
-from messages.action import Action, ActionType
+from messages.action import Action, Color, ActionType
 from messages.rooms import Role
 from messages import objective, state_sync
 from hex import HecsCoord
@@ -100,6 +100,7 @@ class State(object):
 
     async def update(self):
         last_loop = time.time()
+        current_set_invalid = False
         while not self._done:
             await asyncio.sleep(0.001)
             poll_period = time.time() - last_loop
@@ -137,24 +138,25 @@ class State(object):
             for actor_id in self._actors:
                 actor = self._actors[actor_id]
                 if actor.has_actions():
-                    logging.info(f"Actor {actor_id} has pending actions.")
-                    action = actor.peek()
+                    logger.info(f"Actor {actor_id} has pending actions.")
+                    proposed_action = actor.peek()
                     if not self._turn_state.turn == actor.role():
                         actor.drop()
                         self.desync(actor_id)
-                        logging.info(
+                        logger.info(
                             f"Actor {actor_id} is not the current role. Dropping pending action.")
                         continue
                     if self._turn_state.moves_remaining == 0:
                         actor.drop()
                         self.desync(actor_id)
-                        logging.info(
+                        logger.info(
                             f"Actor {actor_id} is out of moves. Dropping pending action.")
                         continue
-                    if self.valid_action(actor_id, action):
+                    if self.valid_action(actor_id, proposed_action):
                         actor.step()
-                        self.record_action(action)
-                        self.check_for_stepped_on_cards(actor_id, action)
+                        self.record_action(proposed_action)
+                        color = Color(0, 0, 1, 1) if not current_set_invalid else Color(1, 0, 0, 1)
+                        self.check_for_stepped_on_cards(actor_id, proposed_action, color)
                         self.end_turn_if_over()
                     else:
                         actor.drop()
@@ -175,6 +177,7 @@ class State(object):
 
                 if len(selected_cards) == len(shapes) == len(colors) == len(counts) == 3:
                     self._record_log.info("Unique set collected. Awarding points.")
+                    current_set_invalid = False
                     added_turns = 0
                     if self._turn_state.sets_collected == 0:
                         added_turns = 5
@@ -191,13 +194,27 @@ class State(object):
                         self._turn_state.sets_collected + 1,
                         self._turn_state.score + 1)
                     self.record_turn_state(new_turn_state)
-
                     # Clear card state.
                     logging.info("Clearing selected cards")
                     for card in selected_cards:
                         self._map_provider.set_selected(card.id, False)
                         card_select_action = CardSelectAction(card.id, False)
                         self.record_action(card_select_action)
+                elif (not current_set_invalid) and len(selected_cards) >= 3:
+                    logger.info(f"Indicating selected cards as invalid. CSI: {current_set_invalid}. len cards: {len(selected_cards)}")
+                    current_set_invalid = True
+                    # Indicate invalid set.
+                    for card in selected_cards:
+                        # Outline the cards in red.
+                        card_select_action = CardSelectAction(card.id, True, Color(1, 0, 0, 1))
+                        self.record_action(card_select_action)
+            elif len(selected_cards) < 3 and current_set_invalid:
+                logger.info("Marking set as clear (not invalid) because it is smaller than 3.")
+                current_set_invalid = False
+                for card in selected_cards:
+                    # Outline the cards in blue.
+                    card_select_action = CardSelectAction(card.id, True, Color(0, 0, 1, 1))
+                    self.record_action(card_select_action)
 
     def end_turn_if_over(self, force_turn_end=False):
         opposite_role = Role.LEADER if self._turn_state.turn == Role.FOLLOWER else Role.FOLLOWER
@@ -226,18 +243,18 @@ class State(object):
     def calculate_score(self):
         self._turn_state.score = self._turn_state.sets_collected * 100
 
-    def check_for_stepped_on_cards(self, actor_id, action):
+    def check_for_stepped_on_cards(self, actor_id, action, color):
         actor = self._actors[actor_id]
         stepped_on_card = self._map_provider.card_by_location(
             actor.location())
         # If the actor just moved and stepped on a card, mark it as selected.
         if (action.action_type == ActionType.TRANSLATE) and (stepped_on_card is not None):
-            logging.info(
+            logger.info(
                 f"Player {actor.actor_id()} stepped on card {str(stepped_on_card)}.")
             selected = not stepped_on_card.selected
             self._map_provider.set_selected(
                 stepped_on_card.id, selected)
-            card_select_action = CardSelectAction(stepped_on_card.id, selected)
+            card_select_action = CardSelectAction(stepped_on_card.id, selected, color)
             self.record_action(card_select_action)
 
     def handle_action(self, actor_id, action):
@@ -249,7 +266,7 @@ class State(object):
 
     def handle_objective(self, id, objective):
         if self._actors[id].role() != Role.LEADER:
-            logging.warn(
+            logger.warn(
                 f'Warning, objective received from non-leader ID: {str(id)}')
             return
         # TODO: Make UUID and non-UUID'd objectives separate message types.
@@ -261,7 +278,7 @@ class State(object):
 
     def handle_objective_complete(self, id, objective_complete):
         if self._actors[id].role() != Role.FOLLOWER:
-            logging.warn(
+            logger.warn(
                 f'Warning, obj complete received from non-follower ID: {str(id)}')
             return
         self._recvd_log.info(objective_complete)
@@ -275,7 +292,7 @@ class State(object):
     
     def handle_turn_complete(self, id, turn_complete):
         if self._actors[id].role() != self._turn_state.turn:
-            logging.warn(
+            logger.warn(
                 f"Warning, turn complete received from ID: {str(id)} when it isn't their turn!")
             return
         self._recvd_log.info(f"player_id: {id} turn_complete received.")

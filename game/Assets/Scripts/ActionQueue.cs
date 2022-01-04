@@ -32,6 +32,7 @@ public class ActionQueue
         public HecsCoord Displacement;  // Object displacement in HECS coords.
         public float Rotation;  // Heading in degrees, 0 = north, clockwise.
         public float BorderRadius;  // Radius of the object's outline, if applicable.
+        public Network.Color BorderColor;  // Color of the object's outline, if applicable.
         public float Opacity;  // Used for UI element animations.
         public float DurationS;  // Duration in seconds.
         public DateTime Expiration;  // If the action delays past this deadline, fastforward to next action.

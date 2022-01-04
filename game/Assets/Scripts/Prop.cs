@@ -92,6 +92,9 @@ public class Prop
                 float x_scale = 1.0f + (2.0f * state.BorderRadius / 100);
                 float height = _outline.transform.localScale.y;
                 _outline.transform.localScale = new Vector3(x_scale, height, z_scale);
+                Color borderColor = (state.BorderColor != null) ? state.BorderColor.ToUnity() : Color.magenta;
+                renderer.material.SetColor("_Color", borderColor);
+                renderer.material.SetColor("_EmissionColor", borderColor);
             }
         }
 
