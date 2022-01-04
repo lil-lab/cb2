@@ -14,8 +14,8 @@ RenderTexture:
   m_DownscaleFallback: 0
   m_IsAlphaChannelOptional: 0
   serializedVersion: 3
-  m_Width: 210
-  m_Height: 100
+  m_Width: 420
+  m_Height: 200
   m_AntiAliasing: 1
   m_MipCount: -1
   m_DepthFormat: 2
@@ -23,7 +23,7 @@ RenderTexture:
   m_MipMap: 0
   m_GenerateMips: 1
   m_SRGB: 0
-  m_UseDynamicScale: 0
+  m_UseDynamicScale: 1
   m_BindMS: 0
   m_EnableCompatibleFormat: 1
   m_TextureSettings:
