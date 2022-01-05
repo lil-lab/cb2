@@ -92,7 +92,7 @@ public class Player : MonoBehaviour
 
     private string Instructions()
     {
-        string commands;
+        string commands = "";
         commands += "\nT - Type Instruction";
         commands += "\nN - Next Turn";
         commands += "\nEnter - Send Instruction";
