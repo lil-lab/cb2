@@ -56,7 +56,7 @@ public class Player : MonoBehaviour
             _fpvCamera.enabled = false;
             OverheadCamera.GetComponent<Camera>().enabled = false;
             AngledOverheadCamera.GetComponent<Camera>().enabled = true;
-            string commands = AngledOverheadCamera.GetComponent<OverheadCamera>().CameraInstructions() + "\nEsc - Menu";
+            string commands = AngledOverheadCamera.GetComponent<OverheadCamera>().CameraInstructions();
             commands += Instructions();
             MenuTransitionHandler.TaggedInstance().SetLeaderCommands(commands);
         }
