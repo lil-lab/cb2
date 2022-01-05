@@ -1953,7 +1953,6 @@ GameObject:
   - component: {fileID: 1908018649}
   - component: {fileID: 1908018653}
   - component: {fileID: 1908018652}
-  - component: {fileID: 1908018651}
   - component: {fileID: 1908018650}
   - component: {fileID: 1908018654}
   m_Layer: 5
@@ -1995,20 +1994,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Delegates: []
---- !u!114 &1908018651
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1908018648}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ab85037407e343f49e442f174f651ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  onMouseOverColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  defaultColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!114 &1908018652
 MonoBehaviour:
   m_ObjectHideFlags: 0
