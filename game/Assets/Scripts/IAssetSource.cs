@@ -8,6 +8,7 @@ public interface IAssetSource
     {
         PLAYER,
         PLAYER_WITH_CAM,
+        FOLLOWER_BOT,
         GROUND_TILE,
         GROUND_TILE_ROCKY,
         GROUND_TILE_STONES,

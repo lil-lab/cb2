@@ -1979,7 +1979,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 470, y: -570}
+  m_AnchoredPosition: {x: 470, y: -470}
   m_SizeDelta: {x: 600, y: 600}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1908018650
@@ -2043,7 +2043,9 @@ MonoBehaviour:
     m_VerticalOverflow: 0
     m_LineSpacing: 1
   m_Text: "Cereal Bar is a two-player web game designed for studying language understanding
-    agents in collaborative interactions. \n\nThe source code can be found at\nhttps://github.com/lil-lab/cb2-game-dev"
+    agents in collaborative interactions. \n\nThe source code can be found at\nhttps://github.com/lil-lab/cb2-game-dev\n\n\"Cube
+    Robot - Animated\" (https://skfb.ly/6RyqL) by Berk Gedik is licensed under Creative
+    Commons Attribution (http://creativecommons.org/licenses/by/4.0/)."
 --- !u!222 &1908018653
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -2133,3 +2135,60 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 6
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &726065225464530581
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 726065225033758137, guid: a46c84b8db88540059d38b5263604240, type: 3}
+      propertyPath: m_RootOrder
+      value: 9
+      objectReference: {fileID: 0}
+    - target: {fileID: 726065225033758137, guid: a46c84b8db88540059d38b5263604240, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 41.864
+      objectReference: {fileID: 0}
+    - target: {fileID: 726065225033758137, guid: a46c84b8db88540059d38b5263604240, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 726065225033758137, guid: a46c84b8db88540059d38b5263604240, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -23.223
+      objectReference: {fileID: 0}
+    - target: {fileID: 726065225033758137, guid: a46c84b8db88540059d38b5263604240, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.97629607
+      objectReference: {fileID: 0}
+    - target: {fileID: 726065225033758137, guid: a46c84b8db88540059d38b5263604240, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 726065225033758137, guid: a46c84b8db88540059d38b5263604240, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.2164396
+      objectReference: {fileID: 0}
+    - target: {fileID: 726065225033758137, guid: a46c84b8db88540059d38b5263604240, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 726065225033758137, guid: a46c84b8db88540059d38b5263604240, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 726065225033758137, guid: a46c84b8db88540059d38b5263604240, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 25
+      objectReference: {fileID: 0}
+    - target: {fileID: 726065225033758137, guid: a46c84b8db88540059d38b5263604240, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 726065225033758142, guid: a46c84b8db88540059d38b5263604240, type: 3}
+      propertyPath: m_Name
+      value: CubeRobot
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: a46c84b8db88540059d38b5263604240, type: 3}

@@ -1,3 +1,4 @@
+from assets import AssetId
 from messages.action import Action, Color, ActionType
 from messages.rooms import Role
 from messages import objective, state_sync
@@ -300,7 +301,8 @@ class State(object):
 
     def create_actor(self, role):
         spawn_point = self._spawn_points.pop() if self._spawn_points else HecsCoord(0, 0, 0)
-        actor = Actor(self._id_assigner.alloc(), 0, role, spawn_point)
+        asset_id = AssetId.PLAYER if role == Role.LEADER else AssetId.FOLLOWER_BOT
+        actor = Actor(self._id_assigner.alloc(), asset_id, role, spawn_point)
         self._actors[actor.actor_id()] = actor
         self._action_history[actor.actor_id()] = []
         self._synced[actor.actor_id()] = False

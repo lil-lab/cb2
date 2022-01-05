@@ -9,6 +9,7 @@ public class UnityAssetSource : IAssetSource
     private static readonly string[] assetPaths = new string[]{
         "Prefab/Actors/Player",
         "Prefab/Actors/PlayerWithCam",
+        "Prefab/Actors/CubeRobot",
         "Prefab/Tiles/GroundTile_1",
         "Prefab/Tiles/GroundTile_Rocky_1",
         "Prefab/Tiles/GroundTile_Stones_1",
