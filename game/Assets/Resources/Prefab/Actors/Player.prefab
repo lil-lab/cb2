@@ -849,7 +849,7 @@ GameObject:
   m_Layer: 0
   m_Name: Follower Camera
   m_TagString: Untagged
-  m_Icon: {fileID: 0}
+  m_Icon: {fileID: 7250588514170254948, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
@@ -860,13 +860,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6034564487582540508}
-  m_LocalRotation: {x: 0.13873616, y: -0.10456228, z: 0.014732251, w: 0.98468375}
-  m_LocalPosition: {x: 0.24, y: 5.74, z: 0.3}
+  m_LocalRotation: {x: 0.13917309, y: 0, z: 0, w: 0.9902681}
+  m_LocalPosition: {x: -0.018999979, y: 5.58, z: 0.41500002}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 4993728369555167316}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 16.04, y: -12.123, z: 0}
+  m_LocalEulerAnglesHint: {x: 16, y: 0, z: 0}
 --- !u!20 &3964413482045174960
 Camera:
   m_ObjectHideFlags: 0
@@ -880,7 +880,7 @@ Camera:
   m_BackGroundColor: {r: 0.81960785, g: 0.81960785, b: 0.81960785, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
-  m_FOVAxisMode: 0
+  m_FOVAxisMode: 1
   m_SensorSize: {x: 36, y: 24}
   m_LensShift: {x: 0, y: 0}
   m_FocalLength: 50
@@ -892,7 +892,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 60
+  field of view: 72.83627
   orthographic: 0
   orthographic size: 5
   m_Depth: -1

@@ -15,8 +15,8 @@ RenderTexture:
   m_IsAlphaChannelOptional: 0
   serializedVersion: 3
   m_Width: 420
-  m_Height: 200
-  m_AntiAliasing: 1
+  m_Height: 260
+  m_AntiAliasing: 2
   m_MipCount: -1
   m_DepthFormat: 2
   m_ColorFormat: 8
