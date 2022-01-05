@@ -57,6 +57,7 @@ public class Player : MonoBehaviour
             OverheadCamera.GetComponent<Camera>().enabled = false;
             AngledOverheadCamera.GetComponent<Camera>().enabled = true;
             string commands = AngledOverheadCamera.GetComponent<OverheadCamera>().CameraInstructions() + "\nEsc - Menu";
+            commands += Instructions();
             MenuTransitionHandler.TaggedInstance().SetLeaderCommands(commands);
         }
         _lastCameraToggle = DateTime.Now;
@@ -87,6 +88,16 @@ public class Player : MonoBehaviour
     public Vector3 Position()
     {
         return _actor.Position();
+    }
+
+    private string Instructions()
+    {
+        string commands;
+        commands += "\nT - Type Instruction";
+        commands += "\nN - Next Turn";
+        commands += "\nEnter - Send Instruction";
+        commands += "\nEsc - Menu";
+        return commands;
     }
 
     void Update()
@@ -138,7 +149,7 @@ public class Player : MonoBehaviour
                 commands = OverheadCamera.GetComponent<OverheadCamera>().CameraInstructions();
             }
             
-            commands += "\nEsc - Menu";
+            commands += Instructions();
             MenuTransitionHandler.TaggedInstance().SetLeaderCommands(commands);
             _lastCameraToggle = DateTime.Now;
         }

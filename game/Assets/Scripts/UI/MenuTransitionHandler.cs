@@ -372,6 +372,18 @@ public class MenuTransitionHandler : MonoBehaviour
             SendObjective();
         }
 
+        if (Input.GetKeyDown(KeyCode.T) && !UserTypingInput())
+        {
+            GameObject textObj = GameObject.FindWithTag(INPUT_FIELD_TAG);
+            TMPro.TMP_InputField textMeshPro = textObj.GetComponent<TMPro.TMP_InputField>();
+            textMeshPro.Select();
+        }
+
+        if (Input.GetKeyDown(KeyCode.N) && !UserTypingInput())
+        {
+            TurnComplete();
+        }
+
         GameObject esc_menu = GameObject.FindWithTag(ESCAPE_MENU_TAG);
         if (esc_menu == null)
         {
@@ -400,5 +412,10 @@ public class MenuTransitionHandler : MonoBehaviour
                 Debug.Log("Closed esc menu");
             }
         }
+    }
+
+    private bool UserTypingInput()
+    {
+        return EventSystem.current.currentSelectedGameObject != null;
     }
 }
