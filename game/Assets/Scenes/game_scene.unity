@@ -2981,8 +2981,8 @@ MonoBehaviour:
   ScreenMargin: 0.05
   FollowPlayer: {fileID: 0}
   FollowDistance: 0
-  MousePanning: 0
-  MousePanningSpeed: 0.5
+  MousePanning: 1
+  MousePanningSpeed: 0.05
 --- !u!114 &1045402492
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5822,7 +5822,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 280864490}
   m_HandleRect: {fileID: 280864489}
   m_Direction: 2
-  m_Value: 1
+  m_Value: 0
   m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
