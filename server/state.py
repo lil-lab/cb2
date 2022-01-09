@@ -111,7 +111,7 @@ class State(object):
             last_loop = time.time()
 
             # Check to see if the game is out of time.
-            if self._turn_state.turns_left == 0:
+            if self._turn_state.turns_left == -1:
                 logging.info(
                     f"Game {self._room_id} is out of turns. Game over!")
                 game_over_message = GameOverMessage(

@@ -28,6 +28,7 @@ namespace Network
             DateTime turn_end = DateTime.Parse(TurnEnd, null, System.Globalization.DateTimeStyles.RoundtripKind);
             TimeSpan timeLeftInTurn = (role == Turn) ? turn_end - transmitTime : new TimeSpan(0);
             int movesRemaining = (role == Turn) ? MovesRemaining : 0;
+            int turnsLeft = Math.Max(TurnsLeft, 0);  // if -1 then game is over, display zero to be more tidy.
             return "Score: " + Score + "\tTime Left in turn: " + timeLeftInTurn.ToString(@"mm\:ss") + "\nMoves this turn: " + movesRemaining + "\tTurns Left: " + TurnsLeft;
         }
     }
