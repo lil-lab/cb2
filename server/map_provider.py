@@ -663,15 +663,16 @@ class MapProvider(object):
         self._cards = []
         self._selected_cards = {}
         self._card_generator = CardGenerator(id_assigner)
-        potential_spawn_tiles = [tile for tile in self._tiles if tile.asset_id in [AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH, AssetId.MOUNTAIN_TILE]]
-        card_spawn_weights = [self.calculate_card_spawn_weight(tile) for tile in potential_spawn_tiles]
+        self._potential_spawn_tiles = [tile 
+                                       for tile in self._tiles
+                                       if tile.asset_id in [AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH, AssetId.MOUNTAIN_TILE]]
+        card_spawn_weights = [self.calculate_card_spawn_weight(tile) for tile in self._potential_spawn_tiles]
         card_spawn_weights = [float(weight) / sum(card_spawn_weights) for weight in card_spawn_weights]
-        number_of_tiles = len(potential_spawn_tiles)
-        number_of_cards = random.randint(int(number_of_tiles * 0.2), int(number_of_tiles * 0.4))
-        card_spawn_tiles = np.random.choice(potential_spawn_tiles, size=number_of_cards, replace=False, p=card_spawn_weights)
+        number_of_cards = 21
+        card_spawn_locations = self.choose_card_spawn_locations(number_of_cards)
 
-        for tile in card_spawn_tiles:
-            (r, c) = tile.cell.coord.to_offset_coordinates()
+        for loc in card_spawn_locations:
+            (r, c) = loc
             self._cards.append(self._card_generator.generate_random_card_at(r, c))
 
         # Index cards generated.
@@ -682,6 +683,24 @@ class MapProvider(object):
         self.add_layer_boundaries()
         self._spawn_points = [tile.cell.coord for tile in self._tiles
                               if (tile.asset_id == AssetId.GROUND_TILE_PATH) and (tile.cell.coord not in self._cards_by_location)]
+
+    def choose_card_spawn_locations(self, n):
+        """ Returns a list of size n of spawn locations for cards. Does not return a location that is actively occupied by an existing card."""
+        card_spawn_weights = [self.calculate_card_spawn_weight(tile) for tile in self._potential_spawn_tiles]
+        potential_spawn_locations = [tile.cell.coord.to_offset_coordinates() for tile in self._potential_spawn_tiles]
+        
+        # Prevents double-placing of a card (spawning a card on top of an existing card)
+        # Yes this is computationally slower than it could be (O(n) instead of ammortized O(c)), but this doesn't happen often.
+        card_locations = set([card.location.to_offset_coordinates() for card in self._cards])
+        for i, tile_weight in enumerate(zip(self._potential_spawn_tiles, card_spawn_weights)):
+            if tile_weight[0].cell.coord.to_offset_coordinates() in card_locations:
+                card_spawn_weights[i] = 0
+        
+        # Normalize card spawn weights so that they sum to 1.
+        card_spawn_weights = [float(weight) / sum(card_spawn_weights) for weight in card_spawn_weights]
+
+        spawn_tiles = np.random.choice(self._potential_spawn_tiles, size=n, replace=False, p=card_spawn_weights)
+        return [tile.cell.coord.to_offset_coordinates() for tile in spawn_tiles]
     
     def calculate_card_spawn_weight(self, tile):
         if tile.asset_id == AssetId.GROUND_TILE:
@@ -716,7 +735,7 @@ class MapProvider(object):
                 if abs(it.cell.layer - jt.cell.layer) > 1:
                     self._tiles[i].cell.boundary.set_edge_between(iloc, jloc)
 
-    def get_cards(self):
+    def cards(self):
         return self._cards
 
     def set_selected(self, card_id, selected):
@@ -729,6 +748,16 @@ class MapProvider(object):
                 else:
                     del self._selected_cards[card_id]
                 break
+    
+    def remove_card(self, card_id):
+        self._cards = [card for card in self._cards if card.id != card_id]
+    
+    def add_random_cards(self, number_of_cards):
+        card_spawn_locations = self.choose_card_spawn_locations(number_of_cards)
+
+        for loc in card_spawn_locations:
+            (r, c) = loc
+            self._cards.append(self._card_generator.generate_random_card_at(r, c))
     
     def spawn_points(self):
         return self._spawn_points

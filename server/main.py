@@ -90,18 +90,14 @@ async def stream_game_state(request, ws):
             continue
 
         if not client_initialized:
-            # Notify the user that they've joined a room, then send the map.
+            # Notify the user that they've joined a room.
             join_notification = RoomManagementResponse(
                 RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, role), None)
             room_response = message_from_server.RoomResponseFromServer(
                 join_notification)
             await transmit(ws, room_response.to_json())
             # Sleep to give the client some time to change scenes.
-            await asyncio.sleep(1)
-            mupdate = room.map()
-            logger.info(f"Sending map update {mupdate} to {str(ws)}")
-            msg = message_from_server.MapUpdateFromServer(mupdate)
-            await transmit(ws, msg.to_json())
+            await asyncio.sleep(0.5)
             client_initialized = True
             continue
 

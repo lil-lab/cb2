@@ -1,3 +1,4 @@
+from dataclasses_json.cfg import T
 from assets import AssetId
 from messages.action import Action, Color, ActionType
 from messages.rooms import Role
@@ -27,19 +28,30 @@ logger = logging.getLogger()
 class State(object):
     def __init__(self, room_id):
         self._room_id = room_id
+        self._id_assigner = IdAssigner()
+
+        # Logging init.
         self._recvd_log = logging.getLogger(f'room_{room_id}.recv')
         self._record_log = logging.getLogger(f'room_{room_id}.log')
         self._sent_log = logging.getLogger(f'room_{room_id}.sent')
         self._recvd_log.info("State created.")
         self._record_log.info("State created.")
         self._sent_log.info("State created.")
+
+        # Maps from actor_id (prop id) to actor object (see definition below).
         self._actors = {}
+
+        # Map props and actors share IDs from the same pool, so the ID assigner
+        # is shared to prevent overlap.
+        self._map_provider = MapProvider(MapType.RANDOM, self._id_assigner)
         
         self._objectives = []
-        self._objectives_stale = {}  # Maps from player_id -> whether or not their objective list is up to date.
+        self._objectives_stale = {}  # Maps from player_id -> bool if their objective list is stale.
+
+        self._map_update = self._map_provider.map()
+        self._map_stale = {} # Maps from player_id -> bool if their map is stale.
 
         self._synced = {}
-        self._id_assigner = IdAssigner()
         self._action_history = {}
         self._last_tick = datetime.now() # Used to time 1s ticks for turn state updates.
         initial_turn = TurnUpdate(
@@ -49,9 +61,6 @@ class State(object):
         self._turn_history = {}
         self.record_turn_state(initial_turn)
 
-        # Map props and actors share IDs from the same pool, so the ID assigner
-        # is shared to prevent overlap.
-        self._map_provider = MapProvider(MapType.RANDOM, self._id_assigner)
         self._spawn_points = self._map_provider.spawn_points()
         random.shuffle(self._spawn_points)
         self._done = False
@@ -94,7 +103,7 @@ class State(object):
         return self._map_provider.map()
 
     def cards(self):
-        self._map_provider.get_cards()
+        self._map_provider.cards()
     
     def done(self):
         return self._done
@@ -195,12 +204,18 @@ class State(object):
                         self._turn_state.sets_collected + 1,
                         self._turn_state.score + 1)
                     self.record_turn_state(new_turn_state)
-                    # Clear card state.
+                    # Clear card state and remove the cards in the winning set.
                     logging.info("Clearing selected cards")
                     for card in selected_cards:
                         self._map_provider.set_selected(card.id, False)
                         card_select_action = CardSelectAction(card.id, False)
                         self.record_action(card_select_action)
+                        self._map_provider.remove_card(card.id)
+                    self._map_provider.add_random_cards(3)
+                    # We've removed cards from the map, so we need to mark the map as stale for all players.
+                    self._map_update = self._map_provider.map()
+                    for actor_id in self._actors:
+                        self._map_stale[actor_id] = True
                 elif (not current_set_invalid) and len(selected_cards) >= 3:
                     logger.info(f"Indicating selected cards as invalid. CSI: {current_set_invalid}. len cards: {len(selected_cards)}")
                     current_set_invalid = True
@@ -370,6 +385,19 @@ class State(object):
         self._objectives_stale[actor_id] = False
         self._sent_log.info(f"to: {actor_id} objectives: {self._objectives}")
         return self._objectives
+    
+    def drain_map_update(self, actor_id):
+        if not actor_id in self._map_stale:
+            self._map_stale[actor_id] = True
+        
+        if not self._map_stale[actor_id]:
+            return None
+        
+        # Send the latest map and mark as fresh for this player.
+        self._map_stale[actor_id] = False
+        self._sent_log.info(f"to: {actor_id} map: {self._map_update}")
+        return self._map_update
+
 
     # Returns the current state of the game.
     def state(self, actor_id=-1):

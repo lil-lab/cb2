@@ -112,12 +112,6 @@ class Room(object):
         """ Returns True if the room is empty. """
         return len(self._players) == 0
 
-    def map(self):
-        return self._game_state.map()
-
-    def cards(self):
-        return self._game_state.cards()
-
     def state(self, actor_id=-1):
         return self._game_state.state(actor_id)
     
@@ -138,6 +132,12 @@ class Room(object):
 
             If no message is available, returns None.
         """
+        map_update = self._game_state.drain_map_update(player_id)
+        if map_update is not None:
+            logging.info(
+                f'Room {self.id()} drained map update {map_update} for player_id {player_id}')
+            return message_from_server.MapUpdateFromServer(map_update)
+
         if not self._game_state.is_synced(player_id):
             state_sync = self._game_state.sync_message_for_transmission(
                 player_id)
