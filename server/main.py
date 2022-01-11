@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 import os
+import pathlib
 import pygame
 import sys
 import time
@@ -20,15 +21,13 @@ from messages.rooms import JoinResponse
 from messages.rooms import Role
 from messages.rooms import RoomManagementResponse
 from messages.rooms import RoomResponseType
+from remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTable
 from room_manager import RoomManager
 from map_tools import visualize
 
 from datetime import datetime
 
 routes = web.RouteTableDef()
-
-# A table of active websocket connections. Maps from ID to info.
-remote_table = {}
 
 # Keeps track of game state.
 room_manager = RoomManager()
@@ -39,12 +38,12 @@ SCREEN_SIZE = 1000
 logger = logging.getLogger()
 
 async def transmit(ws, message):
-    global remote_table
-    if ws not in remote_table:
+    remote = GetRemote(ws)
+    if remote is None:
         return ValueError("Agent ID not found in remote table")
 
-    remote_table[ws]["bytes_down"] += len(message)
-    remote_table[ws]["last_message_down"] = time.time()
+    remote.bytes_down += len(message)
+    remote.last_message_down = time.time()
 
     await ws.send_str(message)
 
@@ -52,8 +51,8 @@ async def transmit(ws, message):
 @routes.get('/status')
 async def Index(request):
     global assets_map
-    global remote_table
     global room_manager
+    remote_table = GetRemoteTable()
     player_queue = {str(x):remote_table[x] for x in room_manager.player_queue()}
 
     server_state = {
@@ -70,7 +69,6 @@ async def Index(request):
 
 
 async def stream_game_state(request, ws):
-    global remote_table
     global room_manager
 
     client_initialized = False
@@ -108,7 +106,6 @@ async def stream_game_state(request, ws):
 
 
 async def receive_agent_updates(request, ws):
-    global remote_table
     global room_manager
     async for msg in ws:
         await asyncio.sleep(0.001)
@@ -123,8 +120,9 @@ async def receive_agent_updates(request, ws):
         if msg.type != aiohttp.WSMsgType.TEXT:
             continue
 
-        remote_table[ws]["last_message_up"] = time.time()
-        remote_table[ws]["bytes_up"] += len(msg.data)
+        remote = GetRemote(ws)
+        remote.last_message_up = time.time()
+        remote.bytes_up += len(msg.data)
 
         if msg.data == 'close':
             closed = True
@@ -149,25 +147,21 @@ async def receive_agent_updates(request, ws):
             room.handle_packet(player_id, message)
 
 
-
 @routes.get('/player_endpoint')
 async def PlayerEndpoint(request):
-    global remote_table
     global room_manager
     ws = web.WebSocketResponse(autoclose=True, heartbeat=10.0, autoping=1.0)
     await ws.prepare(request)
     logger = logging.getLogger()
     logger.info("player connected from : " + request.remote)
-    remote_table[ws] = {"last_message_up": time.time(), "last_message_down": time.time(
-    ), "ip": request.remote, "id": 0, "bytes_up": 0, "bytes_down": 0}
+    AddRemote(ws, Remote(request.remote, 0, 0, time.time(), time.time(), request, ws))
     try:
         await asyncio.gather(receive_agent_updates(request, ws), stream_game_state(request, ws))
     finally:
         logger.info("player disconnected from : " + request.remote)
         await room_manager.disconnect_socket(ws)
-        del remote_table[ws]
+        DeleteRemote(ws)
     return ws
-
 
 def HashCollectAssets(assets_directory):
     assets_map = {}
@@ -175,7 +169,6 @@ def HashCollectAssets(assets_directory):
         assets_map[hashlib.md5(item.encode()).hexdigest()
                    ] = os.path.join(assets_directory, item)
     return assets_map
-
 
 # A dictionary from md5sum to asset filename.
 assets_map = {}
@@ -262,16 +255,45 @@ async def draw_gui():
                 return
 
 
-def setup_logging():
+def InitServerLogging():
+    """  Server logging intended for debugging a server crash.
+    
+    The server log includes the following, interlaced:
+    - Events from each game room.
+    - HTTP connection, error & debug information from aiohttp.
+    - Misc other server logs (calls to logger.info()).
+    - Exception stack traces."""
     log_format = "[%(asctime)s] %(name)s %(levelname)s [%(module)s:%(funcName)s:%(lineno)d] %(message)s"
     logging.basicConfig(level=logging.INFO, format=log_format)
     logging.getLogger("asyncio").setLevel(logging.INFO)
 
 
-def main(assets_directory="assets/", gui=False):
+def InitGameLogging(log_directory):
+    """ Game logging allows us to record and later playback individual games.
+
+    Each game is given a game id. Logs for a single game are stored in a
+    directory with a name of the form: 
+
+    log_directory/<datetime>_<game_id>/...
+
+    where <datetime> is in iso8601 format."""
+    log_base_dir = pathlib.Path(log_directory)
+
+    # Create the directory if it doesn't exist.
+    log_base_dir.mkdir(parents=False, exist_ok=True)
+
+    # Register the logging directory with the room manager.
+    room_manager.register_game_logging_directory(log_base_dir)
+
+
+def main(log_directory="logs/", assets_directory="assets/", gui=False):
     global assets_map
     global room_manager
-    setup_logging()
+
+    # Initialize server & game logging.
+    InitServerLogging()
+    InitGameLogging(log_directory)
+
     assets_map = HashCollectAssets(assets_directory)
     tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), debug_print(), serve())
     # If map visualization command line flag is enabled, run with the visualize task.

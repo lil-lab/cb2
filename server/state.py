@@ -2,6 +2,8 @@ from dataclasses_json.cfg import T
 from assets import AssetId
 from messages.action import Action, Color, ActionType
 from messages.rooms import Role
+from messages import message_from_server
+from messages import message_to_server
 from messages import objective, state_sync
 from hex import HecsCoord
 from queue import Queue
@@ -273,6 +275,30 @@ class State(object):
             card_select_action = CardSelectAction(stepped_on_card.id, selected, color)
             self.record_action(card_select_action)
 
+    def handle_packet(self, id, message):
+        if message.type == message_to_server.MessageType.ACTIONS:
+            logger.info(f'Actions received. Room: {self._room_id}')
+            for action in message.actions:
+                logger.info(f'{action.id}:{action.displacement}')
+                self.handle_action(id, action)
+        elif message.type == message_to_server.MessageType.OBJECTIVE:
+            logger.info(
+                f'Objective received. Room: {self._room_id}, Text: {message.objective.text}')
+            self.handle_objective(id, message.objective)
+        elif message.type == message_to_server.MessageType.OBJECTIVE_COMPLETED:
+            logger.info(
+                f'Objective Compl received. Room: {self._room_id}, Text: {message.objective_complete.uuid}')
+            self.handle_objective_complete(id, message.objective_complete)
+        elif message.type == message_to_server.MessageType.TURN_COMPLETE:
+            logger.info(f'Turn Complete received. Room: {self._room_id}')
+            self.handle_turn_complete(id, message.turn_complete)
+        elif message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
+            logger.info(
+                f'Sync request recvd. Room: {self._room_id}, Player: {id}')
+            self.desync(id)
+        else:
+            logger.warn(f'Received unknown packet type: {message.type}')
+
     def handle_action(self, actor_id, action):
         if (action.id != actor_id):
             self.desync(actor_id)
@@ -363,6 +389,48 @@ class State(object):
             if not self._turn_history[actor_id].empty():
                 return True
         return False
+
+    def drain_message(self, player_id):
+        """ Returns a MessageFromServer object to send to the indicated player.
+
+            If no message is available, returns None.
+        """
+        map_update = self.drain_map_update(player_id)
+        if map_update is not None:
+            logger.info(
+                f'Room {self._room_id} drained map update {map_update} for player_id {player_id}')
+            return message_from_server.MapUpdateFromServer(map_update)
+
+        if not self.is_synced(player_id):
+            state_sync = self.sync_message_for_transmission(player_id)
+            logger.info(
+                f'Room {self._room_id} drained state sync: {state_sync} for player_id {player_id}')
+            msg = message_from_server.StateSyncFromServer(state_sync)
+            return msg
+
+        actions = self.drain_actions(player_id)
+        if len(actions) > 0:
+            logger.info(
+                f'Room {self._room_id} drained {len(actions)} actions for player_id {player_id}')
+            msg = message_from_server.ActionsFromServer(actions)
+            return msg
+
+        objectives = self.drain_objectives(player_id)
+        if len(objectives) > 0:
+            logger.info(
+                f'Room {self._room_id} drained {len(objectives)} texts for player_id {player_id}')
+            msg = message_from_server.ObjectivesFromServer(objectives)
+            return msg
+        
+        turn_state = self.drain_turn_state(player_id)
+        if not turn_state is None:
+            logger.info(
+                f'Room {self._room_id} drained ts {turn_state} for player_id {player_id}')
+            msg = message_from_server.GameStateFromServer(turn_state)
+            return msg
+
+        # Nothing to send.
+        return None
 
     def drain_actions(self, actor_id):
         if not actor_id in self._action_history:

@@ -17,7 +17,6 @@ namespace Network
         private readonly NetworkManager _networkManager;
         private EntityManager _entityManager;
         private Player _player;
-        private int _activeActorId = -1;
 
         public NetworkRouter(ClientConnection client, NetworkMapSource mapSource, NetworkManager networkManager, EntityManager entityManager, Player player)
         {
@@ -53,7 +52,7 @@ namespace Network
                 foreach (Network.Action networkAction in message.Actions)
                 {
                     ActionQueue.IAction action = ActionFromNetwork(networkAction);
-                    if (networkAction.Id == _activeActorId)
+                    if (networkAction.Id == _player.PlayerId())
                     {
                         _player.ValidateHistory(action);
                         continue;
@@ -68,12 +67,12 @@ namespace Network
                     Debug.LogError("Player or entity manager not set, yet received state sync.");
                     return;
                 }
-                _activeActorId = message.State.PlayerId;
+                _player.SetPlayerId(message.State.PlayerId);
                 _entityManager.DestroyActors();
                 _player.FlushActionQueue();
                 foreach (Network.StateSync.Actor actor in message.State.Actors)
                 {
-                    if (actor.ActorId == _activeActorId)
+                    if (actor.ActorId == _player.PlayerId())
                     {
                         ActionQueue.IAction action = TeleportToStartState(actor);
                         _player.AddAction(action);
@@ -161,17 +160,21 @@ namespace Network
 
         public void TransmitAction(ActionQueue.IAction action)
         {
-            if (_activeActorId == -1)
+            if (_player == null)
+            {
+                Debug.Log("Can't send action to server; Player object null.");
+                return;
+            }
+            if (_player.PlayerId() == -1)
             {
                 Debug.Log("Can't send action to server; Player ID unknown.");
                 return;
             }
-
             MessageToServer toServer = new MessageToServer();
             toServer.TransmitTime = DateTime.Now.ToString("o");
             toServer.Type = MessageToServer.MessageType.ACTIONS;
             toServer.Actions = new List<Action>();
-            toServer.Actions.Add(action.Packet(_activeActorId));
+            toServer.Actions.Add(action.Packet(_player.PlayerId()));
             _client.TransmitMessage(toServer);
         }
 

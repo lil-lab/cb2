@@ -750,6 +750,9 @@ class MapProvider(object):
                 break
     
     def remove_card(self, card_id):
+        for card in self._cards:
+            if card.id == card_id:
+                del self._cards_by_location[card.location]
         self._cards = [card for card in self._cards if card.id != card_id]
     
     def add_random_cards(self, number_of_cards):
@@ -758,6 +761,7 @@ class MapProvider(object):
         for loc in card_spawn_locations:
             (r, c) = loc
             self._cards.append(self._card_generator.generate_random_card_at(r, c))
+            self._cards_by_location[self._cards[-1].location] = self._cards[-1]
     
     def spawn_points(self):
         return self._spawn_points

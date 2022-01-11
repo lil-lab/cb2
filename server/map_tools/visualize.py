@@ -9,8 +9,9 @@ import math
 import pygame
 import sys
 
-SCREEN_SIZE = 1000
+SCREEN_SIZE = 800
 SCALE = 5
+BORDER = 0
 
 pygame.font.init()
 GAME_FONT = pygame.font.SysFont('Helvetica', 30)
@@ -219,12 +220,14 @@ class GameDisplay(object):
                                                 self._screen_size))
         pygame.display.set_caption("Game Visualizer")
     
+    def screen(self):
+        return self._screen
+    
     def set_map(self, map):
         self._map = map
-        border = 100
-        screen_size = self._screen_size - 2 * border
-        self._cell_height = (screen_size / self._map.rows) * 1.5
-        self._cell_width = (screen_size / self._map.cols) * math.sqrt(3)
+        screen_size = self._screen_size - 2 * BORDER
+        self._cell_height = (screen_size / self._map.rows)
+        self._cell_width = (screen_size / self._map.cols)
         # Determine which cell dimension is smaller. Recalculate the other dimension
         # to maintain the aspect ratio.
         if self._cell_width > self._cell_height:
@@ -243,10 +246,10 @@ class GameDisplay(object):
         (x, y) = coords
         x_scale = self._cell_width * 0.9
         y_scale = self._cell_height * 0.9
-        x *= x_scale
-        x += x_scale * 0.8
-        y *= y_scale
-        y += y_scale * 0.8
+        x = (x + 1) * x_scale
+        x += BORDER
+        y = (y + 1) * y_scale
+        y += BORDER
         return (x, y)
     
     def visualize_map(self):

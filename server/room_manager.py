@@ -4,6 +4,7 @@ from dataclasses import dataclass, field, astuple
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from messages import message_from_server
+from messages.logs import GameInfo
 from messages.rooms import Role
 from messages.rooms import JoinResponse
 from messages.rooms import LeaveRoomNotice
@@ -12,6 +13,7 @@ from messages.rooms import RoomManagementRequest
 from messages.rooms import RoomRequestType
 from messages.rooms import RoomManagementResponse
 from messages.rooms import RoomResponseType
+from remote_table import GetRemote 
 from room import Room
 from util import IdAssigner, SafePasswordCompare
 
@@ -19,6 +21,7 @@ import aiohttp
 import asyncio
 import logging
 import messages.rooms
+import pathlib
 import random
 
 logger = logging.getLogger()
@@ -40,6 +43,10 @@ class RoomManager(object):
         self._remotes = {}  # {ws: SocketInfo}
         self._is_done = False
         self._player_queue = deque()
+        self._base_log_directory = pathlib.Path("/dev/null")
+    
+    def register_game_logging_directory(self, dir):
+        self._base_log_directory = dir
     
     def player_queue(self):
         return self._player_queue
@@ -91,9 +98,8 @@ class RoomManager(object):
             room.stop()
         self._is_done = True
 
-    def create_room(self):
-        id = self._room_id_assigner.alloc()
-        self._rooms[id] = Room("Room #" + str(id), 2, id, None)
+    def create_room(self, id, log_directory):
+        self._rooms[id] = Room("Room #" + str(id), 2, id, log_directory)
         self._rooms[id].start()
         return self._rooms[id]
 
@@ -133,12 +139,29 @@ class RoomManager(object):
             if (leader is None) or (follower is None):
                 continue
             logger.info(f"Creating room for {leader} and {follower}. Queue size: {len(self._player_queue)}")
-            room = self.create_room()
+
+            # Setup room log directory.
+            game_id = self._room_id_assigner.alloc()
+            game_name = f"{datetime.now().isoformat()}_{game_id}"
+            log_directory = pathlib.Path(self._base_log_directory, game_name)
+            log_directory.mkdir(parents=False, exist_ok=False)
+
+            # Create room.
+            room = self.create_room(game_id, log_directory)
             print("Creating new game " + room.name())
-            self._remotes[leader] = SocketInfo(
-                room.id(), room.add_player(leader, Role.LEADER), Role.LEADER)
-            self._remotes[follower] = SocketInfo(
-                room.id(), room.add_player(follower, Role.FOLLOWER), Role.FOLLOWER)
+            leader_id = room.add_player(leader, Role.LEADER)
+            follower_id = room.add_player(follower, Role.FOLLOWER)
+            self._remotes[leader] = SocketInfo(room.id(), leader_id, Role.LEADER)
+            self._remotes[follower] = SocketInfo(room.id(), follower_id, Role.FOLLOWER)
+
+            leader_remote = GetRemote(leader)
+            follower_remote = GetRemote(follower)
+
+            game_info_path = pathlib.Path(log_directory, "game_info.jsonl.log")
+            game_info_log = game_info_path.open("w")
+            game_info = GameInfo(datetime.now(), game_id, game_name, [leader_remote, follower_remote], [Role.LEADER, Role.FOLLOWER], [leader_id, follower_id])
+            game_info_log.write(game_info.to_json() + "\n")
+            game_info_log.close()
 
     def get_leader_follower_match(self):
         """ Returns a pair of leader, follower.

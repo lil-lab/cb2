@@ -1,26 +1,54 @@
+from datetime import datetime
+from map_tools import visualize
 from messages import message_from_server
 from messages import message_to_server
 from messages.rooms import Role
 from messages import objective
+from messages.logs import LogEntryFromIncomingMessage, LogEntryFromOutgoingMessage
 from state import State
 
 import asyncio
 import logging
+import os
+import pathlib
 from datetime import datetime
 
+# The below imports are used to import pygame in a headless setup, to render map
+# updates as images for game recordings.
+import os, sys
+# set SDL to use the dummy NULL video driver, 
+#   so it doesn't need a windowing system.
+os.environ["SDL_VIDEODRIVER"] = "dummy"
+import pygame.transform
+if 1:
+    #some platforms might need to init the display for some parts of pygame.
+    import pygame.display
+    pygame.display.init()
+    screen = pygame.display.set_mode((1,1))
+
+logger = logging.getLogger()
 
 class Room(object):
     """ Represents a game room. """
 
-    def __init__(self, name, max_players, game_id, password=None):
+    def __init__(self, name: str, max_players: int, game_id: int, log_directory: pathlib.Path):
         self._name = name
         self._max_players = max_players
         self._players = []
         self._player_endpoints = []
         self._id = game_id
         self._game_state = State(self._id)
-        self._password = password
         self._update_loop = None
+        if not os.path.exists(log_directory):
+            logger.warning('Provided log directory does not exist. Game will not be recorded.')
+            return
+        self._log_directory = log_directory
+        messages_from_server_path = pathlib.Path(self._log_directory, 'messages_from_server.jsonl.log')
+        self._messages_from_server_log = messages_from_server_path.open('w')
+        messages_to_server_path = pathlib.Path(self._log_directory, 'messages_to_server.jsonl.log')
+        self._messages_to_server_log = messages_to_server_path.open('w')
+
+        self._map_update_count = 0
 
     def add_player(self, ws, role):
         """ Adds a player to the room. """
@@ -43,41 +71,9 @@ class Room(object):
     def number_of_players(self):
         return len(self._players)
 
-    def handle_action(self, id, action):
-        self._game_state.handle_action(id, action)
-
-    def handle_objective(self, id, objective):
-        self._game_state.handle_objective(id, objective)
-    
-    def handle_objective_complete(self, id, objective_complete):
-        self._game_state.handle_objective_complete(id, objective_complete)
-    
-    def handle_turn_complete(self, id, turn_complete):
-        self._game_state.handle_turn_complete(id, turn_complete)
-
     def handle_packet(self, id, message):
-        if message.type == message_to_server.MessageType.ACTIONS:
-            logging.info(f'Actions received. Room: {self.id()}')
-            for action in message.actions:
-                logging.info(f'{action.id}:{action.displacement}')
-                self.handle_action(id, action)
-        elif message.type == message_to_server.MessageType.OBJECTIVE:
-            logging.info(
-                f'Objective received. Room: {self.id()}, Text: {message.objective.text}')
-            self.handle_objective(id, message.objective)
-        elif message.type == message_to_server.MessageType.OBJECTIVE_COMPLETED:
-            logging.info(
-                f'Objective Compl received. Room: {self.id()}, Text: {message.objective_complete.uuid}')
-            self.handle_objective_complete(id, message.objective_complete)
-        elif message.type == message_to_server.MessageType.TURN_COMPLETE:
-            logging.info(f'Turn Complete received. Room: {self.id()}')
-            self.handle_turn_complete(id, message.turn_complete)
-        elif message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
-            logging.info(
-                f'Sync request recvd. Room: {self.id()}, Player: {id}')
-            self.desync(id)
-        else:
-            logging.warn(f'Received unknown packet type: {message.type}')
+        self._messages_to_server_log.write(LogEntryFromIncomingMessage(id, message).to_json() + "\n")
+        self._game_state.handle_packet(id, message)
 
     def start(self):
         if self._update_loop is not None:
@@ -91,6 +87,10 @@ class Room(object):
             return RuntimeError("stopped Room that is not running.")
         logging.info(f"Room {self.id()} ending game.")
         self._game_state.end_game()
+        if not os.path.exists(self._log_directory):
+            return
+        self._messages_from_server_log.close()
+        self._messages_to_server_log.close()
     
     def done(self):
         return self._game_state.done()
@@ -132,43 +132,25 @@ class Room(object):
 
             If no message is available, returns None.
         """
-        map_update = self._game_state.drain_map_update(player_id)
-        if map_update is not None:
-            logging.info(
-                f'Room {self.id()} drained map update {map_update} for player_id {player_id}')
-            return message_from_server.MapUpdateFromServer(map_update)
+        message = self._game_state.drain_message(player_id)
+        if message is None:
+            return
 
-        if not self._game_state.is_synced(player_id):
-            state_sync = self._game_state.sync_message_for_transmission(
-                player_id)
-            logging.info(
-                f'Room {self.id()} drained state sync: {state_sync} for player_id {player_id}')
-            msg = message_from_server.StateSyncFromServer(state_sync)
-            return msg
+        self._messages_from_server_log.write(LogEntryFromOutgoingMessage(player_id, message).to_json() + "\n")
 
-        actions = self._game_state.drain_actions(player_id)
-        if len(actions) > 0:
-            logging.info(
-                f'Room {self.id()} drained {len(actions)} actions for player_id {player_id}')
-            msg = message_from_server.ActionsFromServer(actions)
-            return msg
+        # Render map updates to a PNG.
+        if message.type == message_from_server.MessageType.MAP_UPDATE:
+            self._map_update_count += 1
+            map_path = pathlib.Path(self._log_directory, f"map_update_{self._map_update_count}_player_{player_id}.png")
+            map_update_file = map_path.open('w')
+            display = visualize.GameDisplay(600)
+            display.set_map(message.map_update)
+            display.set_game_state(self._game_state.state())
+            display.draw()
+            pygame.display.flip()
+            pygame.image.save(display.screen(), map_path)
 
-        objectives = self._game_state.drain_objectives(player_id)
-        if len(objectives) > 0:
-            logging.info(
-                f'Room {self.id()} drained {len(objectives)} texts for player_id {player_id}')
-            msg = message_from_server.ObjectivesFromServer(objectives)
-            return msg
-        
-        turn_state = self._game_state.drain_turn_state(player_id)
-        if not turn_state is None:
-            logging.info(
-                f'Room {self.id()} drained ts {turn_state} for player_id {player_id}')
-            msg = message_from_server.GameStateFromServer(turn_state)
-            return msg
-
-        # Nothing to send.
-        return None
+        return message
 
     def id(self):
         """ Returns the room id. """

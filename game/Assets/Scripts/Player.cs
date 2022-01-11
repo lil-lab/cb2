@@ -26,6 +26,8 @@ public class Player : MonoBehaviour
     private DateTime _lastCameraToggle;
     private Network.TurnState _currentTurn;
 
+    private int _playerId = -1;
+
     public void Awake()
     {
         UnityAssetSource assets = new UnityAssetSource();
@@ -99,6 +101,9 @@ public class Player : MonoBehaviour
         commands += "\nEsc - Menu";
         return commands;
     }
+
+    public void SetPlayerId(int playerId) { _playerId = playerId; }
+    public int PlayerId() { return _playerId; }
 
     void Update()
     {
