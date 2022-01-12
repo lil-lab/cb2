@@ -37,6 +37,9 @@ public interface IAssetSource
         PLUS,
         HEART,
         DIAMOND,
+        // Used for indicating a location on the ground (in tutorials).
+        GROUND_PULSE_INDICATOR_YELLOW,
+        TUTORIAL_INDICATOR,
     }
 
     public enum MaterialId

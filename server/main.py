@@ -53,14 +53,15 @@ async def Index(request):
     global assets_map
     global room_manager
     remote_table = GetRemoteTable()
-    player_queue = {str(x):remote_table[x] for x in room_manager.player_queue()}
+    player_queue = {str(x):str(remote_table[x]) for x in room_manager.player_queue()}
 
     server_state = {
         "assets": assets_map,
         "number_rooms": len(room_manager.room_ids()),
-        "remotes": [remote_table[ws] for ws in remote_table],
+        "remotes": [str(remote_table[ws]) for ws in remote_table],
         "room_manager_remotes":[str(room_manager.socket_info(ws)) for ws in remote_table],
         "rooms": [room_manager.get_room(room_id).state().to_json() for room_id in room_manager.room_ids()],
+        "room_selected_cards": [str(room_manager.get_room(room_id).selected_cards()) for room_id in room_manager.room_ids()],
         "player_queue": player_queue,
         "room_debug_info": [room_manager.get_room(room_id).debug_status() for room_id in room_manager.room_ids()],
     }
@@ -71,32 +72,36 @@ async def Index(request):
 async def stream_game_state(request, ws):
     global room_manager
 
-    client_initialized = False
+    was_in_room = False
     while not ws.closed:
+        await asyncio.sleep(0.001)
+        # If not in a room, drain messages from the room manager.
+        message = room_manager.drain_message(ws)
+        if message is not None:
+            await transmit(ws, message.to_json())
+
         if not room_manager.socket_in_room(ws):
-            await asyncio.sleep(0.001)
-            client_initialized = False
+            if was_in_room:
+                logger.info(f"Socket has disappeared after initialization. Ending connection.")
+                await ws.close()
+                return
             continue
 
         (room_id, player_id, role) = astuple(room_manager.socket_info(ws))
         room = room_manager.get_room(room_id)
 
         if room is None:
-            logger.warn("room_manager.socket_in_room() returned true but room lookup failed.")
-            await asyncio.sleep(0.001)
-            client_initialized = False
+            logger.warn(f"Room does not exist but room_manager.socket_in_room(ws) returned true.")
             continue
 
-        if not client_initialized:
-            # Notify the user that they've joined a room.
-            join_notification = RoomManagementResponse(
-                RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, role), None)
-            room_response = message_from_server.RoomResponseFromServer(
-                join_notification)
-            await transmit(ws, room_response.to_json())
-            # Sleep to give the client some time to change scenes.
+        if not was_in_room:
+            was_in_room = True
+            # Make sure we drain pending room manager commands here with sleeps to ensure the client has time to switch scenes.
+            await asyncio.sleep(0.5)
+            message = room_manager.drain_message(ws)
+            if message is not None:
+                await transmit(ws, message.to_json())
             await asyncio.sleep(1.0)
-            client_initialized = True
             continue
 
         msg_from_server = room.drain_message(player_id)
@@ -133,18 +138,18 @@ async def receive_agent_updates(request, ws):
         message = message_to_server.MessageToServer.from_json(msg.data)
 
         if message.type == message_to_server.MessageType.ROOM_MANAGEMENT:
-            response = await room_manager.handle_request(message.room_request, ws)
-            if response is not None:
-                msg = message_from_server.RoomResponseFromServer(response)
-                await transmit(ws, msg.to_json())
+            room_manager.handle_request(message, ws)
             continue
 
-        # Only handle in-game actions if we're in a room.
         if room_manager.socket_in_room(ws):
+            # Only handle in-game actions if we're in a room.
             (room_id, player_id, _) = astuple(room_manager.socket_info(
                 ws))
             room = room_manager.get_room(room_id)
             room.handle_packet(player_id, message)
+        else:
+            # Room manager handles out-of-game requests.
+            room_manager.handle_request(message, ws)
 
 
 @routes.get('/player_endpoint')
@@ -159,7 +164,7 @@ async def PlayerEndpoint(request):
         await asyncio.gather(receive_agent_updates(request, ws), stream_game_state(request, ws))
     finally:
         logger.info("player disconnected from : " + request.remote)
-        await room_manager.disconnect_socket(ws)
+        room_manager.disconnect_socket(ws)
         DeleteRemote(ws)
     return ws
 

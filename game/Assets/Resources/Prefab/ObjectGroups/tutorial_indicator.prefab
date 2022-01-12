@@ -42,7 +42,7 @@ GameObject:
   - component: {fileID: 7535782187330716637}
   - component: {fileID: 6397423762676425791}
   - component: {fileID: 2947678561310892643}
-  m_Layer: 8
+  m_Layer: 0
   m_Name: GroundPulse_yellow
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4903,7 +4903,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1012003418234453453}
   m_Layer: 0
-  m_Name: GroundPulse_yellow
+  m_Name: tutorial_indicator
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

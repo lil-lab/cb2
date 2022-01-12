@@ -5,6 +5,7 @@ from messages.action import Action
 from messages.rooms import RoomManagementRequest
 from messages.objective import ObjectiveMessage, ObjectiveCompleteMessage
 from messages.turn_state import TurnComplete
+from messages.tutorials import TutorialRequest, TutorialRequestType
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
@@ -23,6 +24,7 @@ class MessageType(Enum):
     OBJECTIVE = 3
     OBJECTIVE_COMPLETED = 4
     TURN_COMPLETE = 5
+    TUTORIAL_REQUEST = 6
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
@@ -40,3 +42,4 @@ class MessageToServer:
     objective: Optional[ObjectiveMessage] = ObjectiveMessage("")
     objective_complete: Optional[ObjectiveCompleteMessage] = ObjectiveCompleteMessage("")
     turn_complete: Optional[TurnComplete] = TurnComplete()
+    tutorial_request: Optional[TutorialRequest] = TutorialRequest(TutorialRequestType.NONE, "")

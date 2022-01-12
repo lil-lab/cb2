@@ -20,7 +20,8 @@ namespace Network
             OBJECTIVE,
             // Used by the follower to signal that an objective has been completed.
             OBJECTIVE_COMPLETE,
-            TURN_COMPLETE
+            TURN_COMPLETE,
+            TUTORIAL_REQUEST,
         }
 
         // These fields are populated for every packet.
@@ -34,6 +35,7 @@ namespace Network
         public ObjectiveMessage Objective;
         public ObjectiveCompleteMessage ObjectiveComplete;
         public TurnComplete TurnComplete;
+        public TutorialRequest TutorialRequest;
     }
 
 }  // namespace Network

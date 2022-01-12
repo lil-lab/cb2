@@ -29,6 +29,12 @@ TagManager:
   - END_TURN_PANEL
   - AngledViewCam
   - LEADER_COMMANDS
+  - TutorialManager
+  - HIGHLIGHT_BOX
+  - TUTORIAL_TOOLTIP
+  - TOOLTIP_CANVAS
+  - INSTRUCTIONS
+  - SCORE
   layers:
   - Default
   - TransparentFX

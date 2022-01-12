@@ -108,12 +108,12 @@ public class Prop
         else if (state.Animation == ActionQueue.AnimationType.IDLE)
         {
             // Fade into idle, to remove artifacts if we're in the middle of another animation.
-            animation.CrossFade("Armature|Idle", 0.3f);
+            // animation.CrossFade("Armature|Idle", 0.3f);
         }
         else
         {
             // All other animations default to idle.
-            animation.CrossFade("Armature|Idle", 0.3f);
+            // animation.CrossFade("Armature|Idle", 0.3f);
         }
     }
 

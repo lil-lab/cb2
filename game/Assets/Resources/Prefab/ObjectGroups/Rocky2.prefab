@@ -40,6 +40,10 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 495736234125553299}
     m_Modifications:
+    - target: {fileID: 1070181092273220, guid: 77cc95df86e4a5c48a7f62704e32bea1, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: 1588767936964488, guid: 77cc95df86e4a5c48a7f62704e32bea1, type: 3}
       propertyPath: m_Name
       value: M_Rock3 (3)
@@ -84,8 +88,7 @@ PrefabInstance:
   m_SourcePrefab: {fileID: 100100000, guid: 77cc95df86e4a5c48a7f62704e32bea1, type: 3}
 --- !u!4 &1079557087776284802 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 4427706772954930, guid: 77cc95df86e4a5c48a7f62704e32bea1,
-    type: 3}
+  m_CorrespondingSourceObject: {fileID: 4427706772954930, guid: 77cc95df86e4a5c48a7f62704e32bea1, type: 3}
   m_PrefabInstance: {fileID: 1077734194927779760}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1077734195094178710
@@ -98,6 +101,10 @@ PrefabInstance:
     - target: {fileID: 1376773429951222, guid: 10ca4ad362ab8174684569a7920f83b6, type: 3}
       propertyPath: m_Name
       value: M_Rock2 (3)
+      objectReference: {fileID: 0}
+    - target: {fileID: 1482822608248902, guid: 10ca4ad362ab8174684569a7920f83b6, type: 3}
+      propertyPath: m_Layer
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 4717407917992762, guid: 10ca4ad362ab8174684569a7920f83b6, type: 3}
       propertyPath: m_RootOrder
@@ -147,8 +154,7 @@ PrefabInstance:
   m_SourcePrefab: {fileID: 100100000, guid: 10ca4ad362ab8174684569a7920f83b6, type: 3}
 --- !u!4 &1073022190617043116 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 4717407917992762, guid: 10ca4ad362ab8174684569a7920f83b6,
-    type: 3}
+  m_CorrespondingSourceObject: {fileID: 4717407917992762, guid: 10ca4ad362ab8174684569a7920f83b6, type: 3}
   m_PrefabInstance: {fileID: 1077734195094178710}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1077734195161333638
@@ -158,6 +164,10 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 495736234125553299}
     m_Modifications:
+    - target: {fileID: 1468172555438006, guid: 2e66fa7fafb54fe4cacd665313dd1071, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: 1994324565152708, guid: 2e66fa7fafb54fe4cacd665313dd1071, type: 3}
       propertyPath: m_Name
       value: M_Rock1 (3)
@@ -210,7 +220,6 @@ PrefabInstance:
   m_SourcePrefab: {fileID: 100100000, guid: 2e66fa7fafb54fe4cacd665313dd1071, type: 3}
 --- !u!4 &1079705687350033182 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 4225493995242648, guid: 2e66fa7fafb54fe4cacd665313dd1071,
-    type: 3}
+  m_CorrespondingSourceObject: {fileID: 4225493995242648, guid: 2e66fa7fafb54fe4cacd665313dd1071, type: 3}
   m_PrefabInstance: {fileID: 1077734195161333638}
   m_PrefabAsset: {fileID: 0}

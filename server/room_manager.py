@@ -4,6 +4,7 @@ from dataclasses import dataclass, field, astuple
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from messages import message_from_server
+from messages import message_to_server
 from messages.logs import GameInfo
 from messages.rooms import Role
 from messages.rooms import JoinResponse
@@ -13,8 +14,10 @@ from messages.rooms import RoomManagementRequest
 from messages.rooms import RoomRequestType
 from messages.rooms import RoomManagementResponse
 from messages.rooms import RoomResponseType
+from messages.tutorials import RoleFromTutorialName, TutorialRequestType, TutorialResponse, TutorialResponseType
+from queue import Queue
 from remote_table import GetRemote 
-from room import Room
+from room import Room, RoomType
 from util import IdAssigner, SafePasswordCompare
 
 import aiohttp
@@ -44,6 +47,8 @@ class RoomManager(object):
         self._is_done = False
         self._player_queue = deque()
         self._base_log_directory = pathlib.Path("/dev/null")
+        self._pending_room_management_responses = {}  # {ws: room_management_response}
+        self._pending_tutorial_messages = {}  # {ws: tutorial_response}
     
     def register_game_logging_directory(self, dir):
         self._base_log_directory = dir
@@ -51,7 +56,7 @@ class RoomManager(object):
     def player_queue(self):
         return self._player_queue
 
-    async def disconnect_socket(self, ws):
+    def disconnect_socket(self, ws):
         """ This socket terminated its connection. End the game that the person was in."""
         self.remove_socket_from_queue(ws)
         if not ws in self._remotes:
@@ -64,15 +69,14 @@ class RoomManager(object):
             return
         self._rooms[room_id].remove_player(player_id, ws)
         # If a player leaves, the game ends for everyone in the room. Send them leave notices and end the game.
-        self._rooms[room_id].stop()
         for socket in self._rooms[room_id].player_endpoints():
             if not socket.closed:
                 leave_notice = LeaveRoomNotice(
                     "Other player disconnected, game ending.")
-                msg = message_from_server.RoomResponseFromServer(RoomManagementResponse(
-                    RoomResponseType.LEAVE_NOTICE, None, None, leave_notice))
-                await socket.send_str(msg.to_json())
+                self._pending_room_management_responses[socket].put(
+                    RoomManagementResponse(RoomResponseType.LEAVE_NOTICE, None, None, leave_notice))
                 del self._remotes[socket]
+        self._rooms[room_id].stop()
         del self._remotes[ws]
         del self._rooms[room_id]
 
@@ -98,8 +102,18 @@ class RoomManager(object):
             room.stop()
         self._is_done = True
 
-    def create_room(self, id, log_directory):
-        self._rooms[id] = Room("Room #" + str(id), 2, id, log_directory)
+    def create_room(self, id, log_directory, type: RoomType = RoomType.GAME, tutorial_name: str = ""):
+        self._rooms[id] = Room(
+            # Room name.
+            "Room #" + str(id) + ("(TUTORIAL)" if type == RoomType.TUTORIAL else ""),
+            # Max number of players.
+            2,
+            # Room ID.
+            id,
+            # Log directory.
+            log_directory,
+            type,
+            tutorial_name)
         self._rooms[id].start()
         return self._rooms[id]
 
@@ -129,6 +143,32 @@ class RoomManager(object):
         while not self._is_done:
             await asyncio.sleep(0.001)
             self.delete_unused_rooms()
+    
+    def create_tutorial(self, player, tutorial_name):
+        logger.info(f"Creating tutorial room for {player}.")
+
+        # Setup room log directory.
+        game_id = self._room_id_assigner.alloc()
+        game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
+        game_name = f"{game_time}_{game_id}_TUTORIAL"
+        log_directory = pathlib.Path(self._base_log_directory, game_name)
+        log_directory.mkdir(parents=False, exist_ok=False)
+
+        # Create room.
+        room = self.create_room(game_id, log_directory, RoomType.TUTORIAL, tutorial_name)
+        print("Creating new tutorial room " + room.name())
+        role = RoleFromTutorialName(tutorial_name)
+        player_id = room.add_player(player, role)
+        self._remotes[player] = SocketInfo(room.id(), player_id, role)
+
+        player_remote = GetRemote(player)
+
+        game_info_path = pathlib.Path(log_directory, "game_info.jsonl.log")
+        game_info_log = game_info_path.open("w")
+        game_info = GameInfo(datetime.now(), game_id, game_name, [player_remote], [role], [player_id])
+        game_info_log.write(game_info.to_json() + "\n")
+        game_info_log.close()
+        return room
 
     async def matchmake(self):
         """ Runs asyncronously, creating rooms for pending followers and
@@ -142,7 +182,8 @@ class RoomManager(object):
 
             # Setup room log directory.
             game_id = self._room_id_assigner.alloc()
-            game_name = f"{datetime.now().isoformat()}_{game_id}"
+            game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
+            game_name = f"{game_time}_{game_id}_GAME"
             log_directory = pathlib.Path(self._base_log_directory, game_name)
             log_directory.mkdir(parents=False, exist_ok=False)
 
@@ -163,6 +204,11 @@ class RoomManager(object):
             game_info_log.write(game_info.to_json() + "\n")
             game_info_log.close()
 
+            self._pending_room_management_responses[leader].put(
+                RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.LEADER), None))
+            self._pending_room_management_responses[follower].put(
+                RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.FOLLOWER), None))
+
     def get_leader_follower_match(self):
         """ Returns a pair of leader, follower.
 
@@ -174,28 +220,41 @@ class RoomManager(object):
         leader = self._player_queue.popleft()
         follower = self._player_queue.popleft()
         return leader, follower
+    
+    def handle_tutorial_request(self, tutorial_request, ws):
+        if ws not in self._pending_tutorial_messages:
+            self._pending_tutorial_messages[ws] = Queue()
+        if tutorial_request.type == TutorialRequestType.START_TUTORIAL:
+            room = self.create_tutorial(ws, tutorial_request.tutorial_name)
+            self._pending_tutorial_messages[ws].put(
+                TutorialResponse(TutorialResponseType.STARTED, tutorial_request.tutorial_name, None, None))
+        else:
+            logger.warning(f'Room manager received incorrect tutorial request type {tutorial_request.type}.')
 
-    async def handle_join_request(self, request, ws):
+    def handle_join_request(self, request, ws):
         # Assign a role depending on which role queue is smaller.
         logger.info(f"Received join request from : {str(ws)}. Queue size: {len(self._player_queue)}")
         if ws in self._player_queue:
             logger.info(f"Join request is from socket which is already in the wait queue. Ignoring.")
             return
         self._player_queue.append(ws)
-        return RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, len(self._player_queue), Role.NONE), None)
+        self._pending_room_management_responses[ws].put(
+            RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, len(self._player_queue), Role.NONE), None))
 
-    async def handle_leave_request(self, request, ws):
+    def handle_leave_request(self, request, ws):
         if not ws in self._remotes:
             return RoomManagementResponse(RoomResponseType.ERROR, None, None, None, "You are not in a room.")
         room_id, player_id, _ = astuple(self._remotes[ws])
-        await self.disconnect_socket(ws)
-        return RoomManagementResponse(RoomResponseType.LEAVE_NOTICE, None, None, LeaveRoomNotice("Player requested leave."))
+        self.disconnect_socket(ws)
+        self._pending_room_management_responses[ws].put(
+            RoomManagementResponse(RoomResponseType.LEAVE_NOTICE, None, None, LeaveRoomNotice("Player requested leave.")))
 
-    async def handle_stats_request(self, request, ws):
+    def handle_stats_request(self, request, ws):
         total_players = sum(
             [room.number_of_players() for room in self._rooms.values()])
         stats = StatsResponse(len(self._rooms), total_players, len(self._player_queue))
-        return RoomManagementResponse(RoomResponseType.STATS, stats, None, None)
+        self._pending_room_management_responses[ws].put(
+            RoomManagementResponse(RoomResponseType.STATS, stats, None, None))
 
     def remove_socket_from_queue(self, ws):
         player_queue = deque()
@@ -212,20 +271,46 @@ class RoomManager(object):
             logger.warning("Socket not found in queue!")
         self._player_queue = player_queue
 
-    async def handle_cancel_request(self, request, ws):
+    def handle_cancel_request(self, request, ws):
         # Iterate through the queue of followers and leaders,
         # removing the given socket.
         print("Received queue cancel request from : " + str(ws))
         self.remove_socket_from_queue(ws)
+    
+    def handle_request(self, request, ws):
+        if request.type == message_to_server.MessageType.ROOM_MANAGEMENT:
+            self.handle_room_request(request.room_request, ws)
+        if request.type == message_to_server.MessageType.TUTORIAL_REQUEST:
+            self.handle_tutorial_request(request.tutorial_request, ws)
 
-    async def handle_request(self, request, ws):
+    def handle_room_request(self, request, ws):
+        if not ws in self._pending_room_management_responses:
+            self._pending_room_management_responses[ws] = Queue()
+
         if request.type == RoomRequestType.JOIN:
-            return await self.handle_join_request(request, ws)
+            self.handle_join_request(request, ws)
         elif request.type == RoomRequestType.LEAVE:
-            return await self.handle_leave_request(request, ws)
+            self.handle_leave_request(request, ws)
         elif request.type == RoomRequestType.STATS:
-            return await self.handle_stats_request(request, ws)
+            self.handle_stats_request(request, ws)
         elif request.type == RoomRequestType.CANCEL:
-            return await self.handle_cancel_request(request, ws)
+            self.handle_cancel_request(request, ws)
         else:
-            return RoomManagementResponse(RoomResponseType.ERROR, "Unknown request type.")
+            logger.WARN("Unknown request type.")
+
+    def drain_message(self, ws):
+        if ws not in self._pending_room_management_responses:
+            self._pending_room_management_responses[ws] = Queue()
+        if not self._pending_room_management_responses[ws].empty():
+            management_response = self._pending_room_management_responses[ws].get()
+            logger.info(f"Drained Room Management message type {management_response.type} for {ws}.")
+            return message_from_server.RoomResponseFromServer(management_response)
+        
+        if ws not in self._pending_tutorial_messages:
+            self._pending_tutorial_messages[ws] = Queue()
+        if not self._pending_tutorial_messages[ws].empty():
+            tutorial_response = self._pending_tutorial_messages[ws].get()
+            logger.info(f"Drained tutorial response type {tutorial_response.type} for {ws}.")
+            return message_from_server.TutorialResponseFromServer(tutorial_response)
+        
+        return None

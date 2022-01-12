@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from map_tools import visualize
 from messages import message_from_server
 from messages import message_to_server
@@ -6,6 +7,7 @@ from messages.rooms import Role
 from messages import objective
 from messages.logs import LogEntryFromIncomingMessage, LogEntryFromOutgoingMessage
 from state import State
+from tutorial_state import TutorialGameState
 
 import asyncio
 import logging
@@ -28,16 +30,27 @@ if 1:
 
 logger = logging.getLogger()
 
+class RoomType(Enum):
+    NONE = 0
+    TUTORIAL = 1
+    GAME = 2
+
 class Room(object):
     """ Represents a game room. """
-
-    def __init__(self, name: str, max_players: int, game_id: int, log_directory: pathlib.Path):
+    def __init__(self, name: str, max_players: int, game_id: int, log_directory: pathlib.Path, type: RoomType = RoomType.GAME, tutorial_name: str = ""):
         self._name = name
         self._max_players = max_players
         self._players = []
         self._player_endpoints = []
         self._id = game_id
-        self._game_state = State(self._id)
+        self._room_type = type
+        if self._room_type == RoomType.GAME:
+            self._game_state = State(self._id)
+        elif self._room_type == RoomType.TUTORIAL:
+            self._game_state = TutorialGameState(self._id, tutorial_name)
+        else:
+            self._game_state = None
+            logger.error("Room started with invalid type NONE.")
         self._update_loop = None
         if not os.path.exists(log_directory):
             logger.warning('Provided log directory does not exist. Game will not be recorded.')
@@ -114,6 +127,9 @@ class Room(object):
 
     def state(self, actor_id=-1):
         return self._game_state.state(actor_id)
+    
+    def selected_cards(self):
+        return self._game_state.selected_cards()
     
     def debug_status(self):
         is_done = self.done()

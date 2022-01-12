@@ -15,6 +15,7 @@ namespace Network
             ROOM_MANAGEMENT,
             OBJECTIVE,
             TURN_STATE,
+            TUTORIAL_RESPONSE,
         }
 
         // These fields are always provided with any packet.
@@ -30,5 +31,6 @@ namespace Network
         public RoomManagementResponse RoomManagementResponse;
         public List<ObjectiveMessage> Objectives;
         public TurnState TurnState;
+        public TutorialResponse TutorialResponse;
     }
 }  // namespace Network

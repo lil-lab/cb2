@@ -37,6 +37,8 @@ public class UnityAssetSource : IAssetSource
         "Prefab/Cards/Shapes/Plus",
         "Prefab/Cards/Shapes/Heart",
         "Prefab/Cards/Shapes/Diamond",
+        "Prefab/ObjectGroups/GroundPulse_yellow",
+        "Prefab/ObjectGroups/tutorial_indicator",
     };
 
     // Maps IAssetSource.MaterialId to resource paths in Unity.

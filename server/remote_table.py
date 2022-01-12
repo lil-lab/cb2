@@ -32,3 +32,6 @@ class Remote:
     last_message_up: float
     request: aiohttp.web.BaseRequest
     response: aiohttp.web.WebSocketResponse
+
+    def __str__(self):
+        return f"ip: {self.ip}, bytes (up/down): {self.bytes_up}/{self.bytes_down}, last message (up/down): {self.last_message_up}/{self.last_message_down}"

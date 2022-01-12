@@ -24,4 +24,4 @@ class AssetId(IntEnum):
     CARD_BASE_1 = 20
     CARD_BASE_2 = 21
     CARD_BASE_3 = 22
-    EMPTY_TILE = 23 # Used for map gen, should never appear in network protocol.
+    EMPTY_TILE = 100 # Used for map gen, should never appear in network protocol.

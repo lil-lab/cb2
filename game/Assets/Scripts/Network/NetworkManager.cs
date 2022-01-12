@@ -108,6 +108,39 @@ namespace Network
             _client.TransmitMessage(msg);
         }
 
+        public void StartLeaderTutorial()
+        {
+            StartTutorial(TutorialRequest.LEADER_TUTORIAL);
+        }
+
+        public void StartFollowerTutorial()
+        {
+            StartTutorial(TutorialRequest.FOLLOWER_TUTORIAL);
+        }
+
+        public void StartTutorial(string tutorialName)
+        {
+            MessageToServer msg = new MessageToServer();
+            msg.TransmitTime = DateTime.Now.ToString("o");
+            msg.Type = MessageToServer.MessageType.TUTORIAL_REQUEST;
+            msg.TutorialRequest = new TutorialRequest();
+            msg.TutorialRequest.Type = TutorialRequestType.START_TUTORIAL;
+            msg.TutorialRequest.TutorialName = tutorialName;
+            Debug.Log("[DEBUG]Joining tutorial...");
+            _client.TransmitMessage(msg);
+        }
+
+        public void NextTutorialStep()
+        {
+            MessageToServer msg = new MessageToServer();
+            msg.TransmitTime = DateTime.Now.ToString("o");
+            msg.Type = MessageToServer.MessageType.TUTORIAL_REQUEST;
+            msg.TutorialRequest = new TutorialRequest();
+            msg.TutorialRequest.Type = Network.TutorialRequestType.REQUEST_NEXT_STEP;
+            Debug.Log("[DEBUG]Requesting next tutorial step...");
+            _client.TransmitMessage(msg);            
+        }
+
         // Pulls the player out of the wait queue to join a new game.
         public void CancelGameQueue()
         {
@@ -238,6 +271,26 @@ namespace Network
             _client.OnApplicationQuit();
         }
 
+        public void HandleTutorialResponse(TutorialResponse tutorialResponse)
+        {
+            if (tutorialResponse.Type == TutorialResponseType.STARTED)
+            {
+                Debug.Log("[DEBUG]Tutorial started.");
+                SceneManager.LoadScene("tutorial_scene");
+                _role = tutorialResponse.Role();
+            }
+            else if (tutorialResponse.Type == TutorialResponseType.COMPLETED)
+            {
+                Debug.Log("[DEBUG]Tutorial completed.");
+                DisplayGameOverMenu("Tutorial completed. Your participation has been recorded.");
+            }
+            else if (tutorialResponse.Type == TutorialResponseType.STEP)
+            {
+                Debug.Log("[DEBUG]Tutorial next step received.");
+                TutorialManager.TaggedInstance().HandleTutorialStep(tutorialResponse.Step);
+            }
+        }
+
         public void HandleRoomManagement(RoomManagementResponse response)
         {
             if (response.Type == RoomResponseType.JOIN_RESPONSE)
@@ -256,7 +309,12 @@ namespace Network
             else if (response.Type == RoomResponseType.LEAVE_NOTICE)
             {
                 Debug.Log("Game ended. Reason: " + response.LeaveNotice.Reason);
-                DisplayGameOverMenu("Game ended. Reason: " + response.LeaveNotice.Reason);
+                Scene scene = SceneManager.GetActiveScene();
+                Debug.Log("[DEBUG] scene: " + scene.name);
+                if (scene.name != "menu_scene")
+                {
+                    DisplayGameOverMenu("Game ended. Reason: " + response.LeaveNotice.Reason);
+                }
             }
             else if (response.Type == RoomResponseType.STATS)
             {

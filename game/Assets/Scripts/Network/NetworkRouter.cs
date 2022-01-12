@@ -156,6 +156,10 @@ namespace Network
                 _networkManager.HandleTurnState(state);
                 _player.HandleTurnState(state);
             }
+            if (message.Type == MessageFromServer.MessageType.TUTORIAL_RESPONSE)
+            {
+                _networkManager.HandleTutorialResponse(message.TutorialResponse);
+            }
         }
 
         public void TransmitAction(ActionQueue.IAction action)
