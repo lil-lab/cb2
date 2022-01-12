@@ -95,7 +95,7 @@ async def stream_game_state(request, ws):
                 join_notification)
             await transmit(ws, room_response.to_json())
             # Sleep to give the client some time to change scenes.
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(1.0)
             client_initialized = True
             continue
 
