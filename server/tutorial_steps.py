@@ -152,7 +152,7 @@ FOLLOWER_TUTORIAL_STEPS = [
     TutorialStep(
         Indicator(HecsCoord(0, 1, 1)),
         Tooltip("",
-                "To move arrow, use the arrow keys. Try moving to the indicator on the screen.",
+                "To move around, use the arrow keys. Try moving to the indicator on the screen.",
                 TooltipType.UNTIL_INDICATOR_REACHED),
         None,
     ),

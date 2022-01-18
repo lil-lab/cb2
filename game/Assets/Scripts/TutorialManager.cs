@@ -53,15 +53,15 @@ public class TutorialManager : MonoBehaviour
         }
     }
 
-    public void CopyRectangleProperties(RectTransform rectTo, RectTransform rectFrom)
+    public void OverlayRectangle(RectTransform overlay, RectTransform uiElement)
     {
-        rectTo.anchorMin = rectFrom.anchorMin;
-        rectTo.anchorMax = rectFrom.anchorMax;
-        rectTo.anchoredPosition = rectFrom.anchoredPosition;
-        rectTo.offsetMin = rectFrom.offsetMin;
-        rectTo.offsetMax = rectFrom.offsetMax;
-        rectTo.sizeDelta = rectFrom.sizeDelta;
-        rectTo.pivot = rectFrom.pivot;
+        Vector3[] corners = new Vector3[4];
+        uiElement.GetWorldCorners(corners);
+        // Lower left and upper right coordinates in overlay space.
+        Vector3 ll = overlay.worldToLocalMatrix * corners[0];
+        Vector3 ur = overlay.worldToLocalMatrix * corners[2];
+        overlay.anchorMax = ur;
+        overlay.anchorMin = ll;
     }
 
     public void SetTooltip(string text, string highlightedComponentTag)
@@ -78,11 +78,8 @@ public class TutorialManager : MonoBehaviour
         }
         GameObject highlightedComponent = GameObject.FindGameObjectWithTag(highlightedComponentTag);
         RectTransform highlightedComponentRect = highlightedComponent.GetComponent<RectTransform>();
-        Vector3[] corners = new Vector3[4];
-        highlightedComponentRect.GetWorldCorners(corners);
-        CopyRectangleProperties(HighlightBox.GetComponent<RectTransform>(), highlightedComponentRect);
-        HighlightBox.GetComponent<RectTransform>().SetPositionAndRotation(highlightedComponentRect.position + (new Vector3(-5f, 5f, 0)), highlightedComponentRect.rotation);
-        HighlightBox.GetComponent<RectTransform>().sizeDelta = new Vector2(corners[2].x - corners[0].x, corners[2].y - corners[0].y);
+
+        OverlayRectangle(HighlightBox.GetComponent<RectTransform>(), highlightedComponentRect);
         HighlightBox.GetComponent<RectTransform>().ForceUpdateRectTransforms();
     }
 
