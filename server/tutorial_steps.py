@@ -232,7 +232,7 @@ FOLLOWER_TUTORIAL_STEPS = [
         Tooltip("SCORE",
                 "Look at that! You collected a set of 3 cards! Each is unique in "
                 "color, shape, and quantity. You've been rewarded 1 point. Your "
-                "score is displayed in the bottom left window.",
+                "score is displayed in the bottom left window (Shift to continue).",
                 TooltipType.UNTIL_DISMISSED),
         None,
     ),
