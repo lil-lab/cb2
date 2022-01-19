@@ -40,3 +40,12 @@ https://github.com/jilleJr/Newtonsoft.Json-for-Unity/wiki/Installation-via-UPM
 Unity has built-in JSON parsing, but it's limited and doesn't support nested
 objects.
 
+- Decided to use an ORM for SQL so that I don't need to generate my own SQL
+  queries (seems brittle and like a security target). In particular being able
+to see the DB schema defined in the code as an object model is really nice.
+Here's a good performance benchmark of different python ORMs:
+
+https://github.com/tortoise/orm-benchmarks
+
+I'm thinking of choosing Peewee because it's simple and the performance isn't
+too bad compared to others.
