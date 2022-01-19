@@ -35,6 +35,7 @@ TagManager:
   - TOOLTIP_CANVAS
   - INSTRUCTIONS
   - SCORE
+  - FOLLOWER_COMMANDS
   layers:
   - Default
   - TransparentFX
