@@ -117,23 +117,27 @@ public class CardBuilder
         GameObject cardSlot = new GameObject("CardSlot");
         GameObject card = LoadCard(_shape, _color, _count);
         card.transform.SetParent(cardSlot.transform);
-        Prop prop = new Prop(cardSlot);
+        Prop prop = new Prop(cardSlot, BaseAssetId(_count));
         prop.AddAction(Init.InitAt(_location, _rotationDegrees));
         GameObject outline = card.transform.Find("outline").gameObject;
         prop.SetOutline(outline);
         return prop;
+    }
+    private IAssetSource.AssetId BaseAssetId(int count)
+    {
+        IAssetSource.AssetId cardAsset = IAssetSource.AssetId.CARD_BASE_1;
+        if (count == 2)
+            cardAsset = IAssetSource.AssetId.CARD_BASE_2;
+        if (count == 3)
+            cardAsset = IAssetSource.AssetId.CARD_BASE_3;
+        return cardAsset;
     }
 
     private GameObject LoadCard(Shape shape, Color color, int count)
     {
         // Generates a card. Each card displays 1-3 symbols of a given shape and color.
         UnityAssetSource assets = new UnityAssetSource();
-        IAssetSource.AssetId cardAsset = IAssetSource.AssetId.CARD_BASE_1;
-        if (count == 2)
-            cardAsset = IAssetSource.AssetId.CARD_BASE_2;
-        if (count == 3)
-            cardAsset = IAssetSource.AssetId.CARD_BASE_3;
-        GameObject card = GameObject.Instantiate(assets.Load(cardAsset));
+        GameObject card = GameObject.Instantiate(assets.Load(BaseAssetId(count)));
         // The card base prefab has some empty children objects.  Each empty child has 
         // a Transform component. The component specifies where a symbol should go.
         var symbolLocations = card.GetComponentsInChildren<Transform>();

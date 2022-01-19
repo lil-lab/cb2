@@ -15,7 +15,7 @@ public class Actor
     {
         UnityAssetSource assetLoader = new UnityAssetSource();
         GameObject asset = assetLoader.Load((IAssetSource.AssetId)netActor.AssetId);
-        Actor actor = new Actor(asset);
+        Actor actor = new Actor(asset, (IAssetSource.AssetId)netActor.AssetId);
         // Instantly move the actor to its starting location.
         actor.AddAction(new Init(new ActionQueue.ActionInfo()
         {
@@ -28,9 +28,9 @@ public class Actor
         return actor;
     }
 
-    public Actor(GameObject prefab)
+    public Actor(GameObject prefab, IAssetSource.AssetId assetId)
     {
-        _prop = new Prop(prefab);
+        _prop = new Prop(prefab, assetId);
         _debuggingEnabled = false;
     }
 

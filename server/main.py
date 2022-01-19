@@ -47,6 +47,10 @@ async def transmit(ws, message):
 
     await ws.send_str(message)
 
+@routes.get('/')
+async def Index(request):
+    return web.FileResponse("www/WebGL/index.html")
+
 @routes.get('/status')
 async def Status(request):
     global assets_map
@@ -161,7 +165,7 @@ async def PlayerEndpoint(request):
         hit_id = request.query.getone("hitId", "")
         submit_to_url = request.query.getone("turkSubmitTo", "")
         worker_id = request.query.getone("workerId", "")
-        worker = Worker(worker_id)
+        worker = Worker(hashlib.md5(worker_id).digest())  # Worker ID is PII, so only save the hash.
         assignment = Assignment(assignment_id, hit_id, worker, submit_to_url)
     ws = web.WebSocketResponse(autoclose=True, heartbeat=10.0, autoping=1.0)
     await ws.prepare(request)

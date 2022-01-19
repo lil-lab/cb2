@@ -40,8 +40,9 @@ public class TutorialManager : MonoBehaviour
             _indicator.Destroy();
         }
         UnityAssetSource assetSource = new UnityAssetSource();
-        GameObject groundPulse = assetSource.Load(IAssetSource.AssetId.TUTORIAL_INDICATOR);
-        _indicator = new Prop(groundPulse);
+        IAssetSource.AssetId assetId = IAssetSource.AssetId.TUTORIAL_INDICATOR;
+        GameObject groundPulse = assetSource.Load(assetId);
+        _indicator = new Prop(groundPulse, assetId);
         _indicator.AddAction(Init.InitAt(location, 0));
     }
 

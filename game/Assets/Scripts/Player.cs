@@ -32,16 +32,20 @@ public class Player : MonoBehaviour
     public void SetAssetId(int id)
     {
         UnityAssetSource assets = new UnityAssetSource();
-        Actor actor = new Actor(assets.Load((IAssetSource.AssetId)id));
+        IAssetSource.AssetId assetId = (IAssetSource.AssetId)id;
+        Actor actor = new Actor(assets.Load(assetId), assetId);
         if (_actor != null)
         {
             actor.AddAction(Init.InitAt(_actor.Location(), 0));
-            _fpvCamera.enabled = false;
             _actor.Destroy();
         }
         _actor = actor;
         _actor.SetParent(gameObject);
-        _fpvCamera = _actor.Find("Parent/Main Camera").GetComponent<Camera>();
+        GameObject cameraObj = _actor.Find("Parent/Main Camera");
+        if (cameraObj != null)
+        {
+            _fpvCamera = cameraObj.GetComponent<Camera>();
+        }
         InitCamera();
     }
 
@@ -49,7 +53,8 @@ public class Player : MonoBehaviour
     public void Awake()
     {
         UnityAssetSource assets = new UnityAssetSource();
-        _actor = new Actor(assets.Load((IAssetSource.AssetId.PLAYER_WITH_CAM)));
+        IAssetSource.AssetId assetId = IAssetSource.AssetId.PLAYER_WITH_CAM;
+        _actor = new Actor(assets.Load(assetId), assetId);
         _actor.SetParent(gameObject);
 
         GameObject obj = GameObject.FindGameObjectWithTag(Network.NetworkManager.TAG);
@@ -63,10 +68,14 @@ public class Player : MonoBehaviour
 
     void InitCamera()
     {
-        _fpvCamera = _actor.Find("Parent/Main Camera").GetComponent<Camera>();
+        GameObject cameraObj = _actor.Find("Parent/Main Camera");
+        if (cameraObj != null)
+        {
+            _fpvCamera = cameraObj.GetComponent<Camera>();
+        }
         if ((OverheadCamera != null) && (_network.Role() == Network.Role.LEADER))
         {
-            _fpvCamera.enabled = false;
+            if (_fpvCamera != null) _fpvCamera.enabled = false;
             OverheadCamera.GetComponent<Camera>().enabled = false;
             AngledOverheadCamera.GetComponent<Camera>().enabled = true;
             string commands = AngledOverheadCamera.GetComponent<OverheadCamera>().CameraInstructions();

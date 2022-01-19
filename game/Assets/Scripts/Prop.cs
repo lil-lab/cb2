@@ -5,6 +5,7 @@ public class Prop
 {
     private ActionQueue _actionQueue;
     private GameObject _asset;
+    private IAssetSource.AssetId _assetId;
 
     // If set (see SetOutline()), contains a reference to the outline geometry for this prop.
     // The outline geometry is only renderered if the State's BorderRadius is non-zero.
@@ -19,14 +20,16 @@ public class Prop
         }
         UnityAssetSource assetSource = new UnityAssetSource();
         GameObject obj = assetSource.Load((IAssetSource.AssetId)netProp.SimpleInit.AssetId);
-        Prop prop = new Prop(obj);
+        IAssetSource.AssetId assetId = (IAssetSource.AssetId)netProp.SimpleInit.AssetId;
+        Prop prop = new Prop(obj, assetId);
         prop.AddAction(Init.InitAt(netProp.PropInfo.Location, netProp.PropInfo.RotationDegrees));
         return prop;
     }
 
-    public Prop(GameObject obj)
+    public Prop(GameObject obj, IAssetSource.AssetId assetId)
     {
         _actionQueue = new ActionQueue();
+        _assetId = assetId;
         // If the GameObject we've been provided with is a prefab,
         // instantiate it in the game world.
         if (obj.scene.name == null)
@@ -41,7 +44,9 @@ public class Prop
 
     public GameObject Find(string path)
     {
-        return _asset.transform.Find(path).gameObject;
+        Transform transform = _asset.transform.Find(path);
+        if (transform == null) return null;
+        return transform.gameObject;
     }
 
     public void SetOutline(GameObject outline)
@@ -101,6 +106,12 @@ public class Prop
         Animation animation = _asset.GetComponentInChildren<Animation>();
         if (animation == null)
             return;
+        if (_assetId == IAssetSource.AssetId.FOLLOWER_BOT)
+        {
+            // The follower bot animation is always default set to hover. Don't
+            // bother adjusting the animation.
+            return;
+        }
         if (state.Animation == ActionQueue.AnimationType.WALKING)
         {
             animation.Play("Armature|Walking");
@@ -108,12 +119,12 @@ public class Prop
         else if (state.Animation == ActionQueue.AnimationType.IDLE)
         {
             // Fade into idle, to remove artifacts if we're in the middle of another animation.
-            // animation.CrossFade("Armature|Idle", 0.3f);
+            animation.CrossFade("Armature|Idle", 0.3f);
         }
         else
         {
             // All other animations default to idle.
-            // animation.CrossFade("Armature|Idle", 0.3f);
+            animation.CrossFade("Armature|Idle", 0.3f);
         }
     }
 
