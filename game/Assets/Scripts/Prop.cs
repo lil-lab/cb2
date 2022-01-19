@@ -121,6 +121,7 @@ public class Prop
     public void Destroy()
     {
         GameObject.Destroy(_asset);
+        _asset = null;
     }
 
     // Flushes actions in flight.

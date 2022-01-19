@@ -74,6 +74,8 @@ namespace Network
                 {
                     if (actor.ActorId == _player.PlayerId())
                     {
+                        Debug.Log("SETTING player asset id to " + actor.AssetId);
+                        _player.SetAssetId(actor.AssetId);
                         ActionQueue.IAction action = TeleportToStartState(actor);
                         _player.AddAction(action);
                         continue;

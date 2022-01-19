@@ -28,10 +28,28 @@ public class Player : MonoBehaviour
 
     private int _playerId = -1;
 
+
+    public void SetAssetId(int id)
+    {
+        UnityAssetSource assets = new UnityAssetSource();
+        Actor actor = new Actor(assets.Load((IAssetSource.AssetId)id));
+        if (_actor != null)
+        {
+            actor.AddAction(Init.InitAt(_actor.Location(), 0));
+            _fpvCamera.enabled = false;
+            _actor.Destroy();
+        }
+        _actor = actor;
+        _actor.SetParent(gameObject);
+        _fpvCamera = _actor.Find("Parent/Main Camera").GetComponent<Camera>();
+        InitCamera();
+    }
+
+
     public void Awake()
     {
         UnityAssetSource assets = new UnityAssetSource();
-        _actor = new Actor(assets.Load(IAssetSource.AssetId.PLAYER_WITH_CAM));
+        _actor = new Actor(assets.Load((IAssetSource.AssetId.PLAYER_WITH_CAM)));
         _actor.SetParent(gameObject);
 
         GameObject obj = GameObject.FindGameObjectWithTag(Network.NetworkManager.TAG);
@@ -41,7 +59,21 @@ public class Player : MonoBehaviour
         {
             Debug.Log("Error: No overhead camera provided.");
         }
+    }
+
+    void InitCamera()
+    {
         _fpvCamera = _actor.Find("Parent/Main Camera").GetComponent<Camera>();
+        if ((OverheadCamera != null) && (_network.Role() == Network.Role.LEADER))
+        {
+            _fpvCamera.enabled = false;
+            OverheadCamera.GetComponent<Camera>().enabled = false;
+            AngledOverheadCamera.GetComponent<Camera>().enabled = true;
+            string commands = AngledOverheadCamera.GetComponent<OverheadCamera>().CameraInstructions();
+            commands += Instructions();
+            MenuTransitionHandler.TaggedInstance().SetLeaderCommands(commands);
+        }
+        _lastCameraToggle = DateTime.Now;
     }
 
     void Start()
@@ -53,16 +85,7 @@ public class Player : MonoBehaviour
                     HecsCoord.FromOffsetCoordinates(StartingRow,
                                                     StartingCol), 0));
         }
-        if ((OverheadCamera != null) && (_network.Role() == Network.Role.LEADER))
-        {
-            _fpvCamera.enabled = false;
-            OverheadCamera.GetComponent<Camera>().enabled = false;
-            AngledOverheadCamera.GetComponent<Camera>().enabled = true;
-            string commands = AngledOverheadCamera.GetComponent<OverheadCamera>().CameraInstructions();
-            commands += Instructions();
-            MenuTransitionHandler.TaggedInstance().SetLeaderCommands(commands);
-        }
-        _lastCameraToggle = DateTime.Now;
+        InitCamera();
     }
 
     public void FlushActionQueue()

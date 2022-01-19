@@ -26,7 +26,10 @@ def DeleteRemote(web_socket_response):
 @dataclass_json
 @dataclass
 class Worker:
-    worker_id: str
+    hashed_id: str
+
+    def __str__(self):
+        return f"hashed_id: {self.hashed_id}"
 
 PREVIEW_ASSIGNMENT_ID = "ASSIGNMENT_ID_NOT_AVAILABLE"
 
@@ -42,7 +45,7 @@ class Assignment:
         return self.assignment_id == PREVIEW_ASSIGNMENT_ID
     
     def __str__(self):
-        return f"assignment: {self.assignment_id}, hit: {self.hit_id}, submit_to_url: {self.submit_to_url}, worker: {self.worker_id}"
+        return f"assignment: {self.assignment_id}, hit: {self.hit_id}, submit_to_url: {self.submit_to_url}, worker: {{{self.worker}}}"
 
 @dataclass_json
 @dataclass
