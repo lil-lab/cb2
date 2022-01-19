@@ -12,4 +12,17 @@ public class UIObjectiveInfo : MonoBehaviour
         complete.Uuid = Objective.Uuid;
         MenuTransitionHandler.TaggedInstance().OnCompleteObjective(complete);
     }
+
+    public void Update()
+    {
+        Network.NetworkManager network = Network.NetworkManager.TaggedInstance();
+        if (network == null)
+            return;
+        if (network.CurrentTurn() != Network.Role.FOLLOWER) return;
+        if (network.Role() != Network.Role.FOLLOWER) return;
+        if (Input.GetKeyDown(KeyCode.D))
+        {
+            OnCompleteObjective();
+        }
+    }
 }
