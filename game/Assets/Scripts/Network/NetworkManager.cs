@@ -1,9 +1,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Web;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using System.Linq;
 
 
 namespace Network
@@ -48,6 +51,22 @@ namespace Network
                 return null;
             return obj.GetComponent<Network.NetworkManager>();
         }
+
+        public static Dictionary<string, string> UrlParameters()
+        {
+            // We can figure out the server's address based on Unity's API.
+            Uri servedUrl = new Uri(Application.absoluteURL);
+            string query = servedUrl.Query;
+            // Remove the initial ?.
+            if (query.Length > 0 && query[0] == '?')
+            {
+                query = query.Substring(1);
+            }
+            NameValueCollection urlParameters = HttpUtility.ParseQueryString(query);
+            // Convert the NameValueCollection to a Dictionary<string, string>.
+            return urlParameters.AllKeys.ToDictionary(t => t, t => urlParameters[t]);
+        }
+
 
         public Role Role()
         {
@@ -235,6 +254,10 @@ namespace Network
                 UriBuilder endpointUrlBuilder =
                     new UriBuilder("ws", servedUrl.Host, servedUrl.Port,
                                    "/player_endpoint");
+                if (servedUrl.Query.Length > 0)
+                {
+                    endpointUrlBuilder.Query = servedUrl.Query.Substring(1);  // Remove leading '?'
+                }
                 url = endpointUrlBuilder.Uri.AbsoluteUri;
             }
             Debug.Log("Using url: " + url);

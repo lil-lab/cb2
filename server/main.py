@@ -21,7 +21,7 @@ from messages.rooms import JoinResponse
 from messages.rooms import Role
 from messages.rooms import RoomManagementResponse
 from messages.rooms import RoomResponseType
-from remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTable
+from remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTable, Assignment, Worker
 from room_manager import RoomManager
 from map_tools import visualize
 
@@ -47,9 +47,8 @@ async def transmit(ws, message):
 
     await ws.send_str(message)
 
-
 @routes.get('/status')
-async def Index(request):
+async def Status(request):
     global assets_map
     global room_manager
     remote_table = GetRemoteTable()
@@ -155,11 +154,20 @@ async def receive_agent_updates(request, ws):
 @routes.get('/player_endpoint')
 async def PlayerEndpoint(request):
     global room_manager
+    assignment = None
+    if "assignmentId" in request.query:
+        # If this is an mturk task, log assignment into to the remote table.
+        assignment_id = request.query.getone("assignmentId", "")
+        hit_id = request.query.getone("hitId", "")
+        submit_to_url = request.query.getone("turkSubmitTo", "")
+        worker_id = request.query.getone("workerId", "")
+        worker = Worker(worker_id)
+        assignment = Assignment(assignment_id, hit_id, worker, submit_to_url)
     ws = web.WebSocketResponse(autoclose=True, heartbeat=10.0, autoping=1.0)
     await ws.prepare(request)
     logger = logging.getLogger()
     logger.info("player connected from : " + request.remote)
-    AddRemote(ws, Remote(request.remote, 0, 0, time.time(), time.time(), request, ws))
+    AddRemote(ws, Remote(request.remote, 0, 0, time.time(), time.time(), request, ws, assignment))
     try:
         await asyncio.gather(receive_agent_updates(request, ws), stream_game_state(request, ws))
     finally:
@@ -194,7 +202,7 @@ async def serve():
     app = web.Application()
 
     # Add a route for serving web frontend files on /.
-    routes.static('/', './www/')
+    routes.static('/', './www/WebGL')
 
     app.add_routes(routes)
     runner = runner = aiohttp.web.AppRunner(app)
