@@ -58,9 +58,10 @@ public class HexGridManager
             return Vector3.zero;
         }
         Tile center_tile = _grid[a, r, c];
+        // This part could be improved. Figure out better way of calculating the center of a hex grid.
         float apothem = center_tile.Cell.Apothem();
-        float halfTileOffsetX = rows % 2 == 0 ? -apothem : 0;
-        float halfTileOffsetZ = cols % 2 == 0 ? -apothem : 0;
+        float halfTileOffsetX = rows % 2 == 0 ? -apothem * Mathf.Sin(Mathf.PI/6) : 0;
+        float halfTileOffsetZ = cols % 2 == 0 ? apothem * Mathf.Cos(Mathf.PI/6): 0;
         Vector3 halfTileOffset = new Vector3(halfTileOffsetX, 0, halfTileOffsetZ);
         return center_tile.Cell.Center() + halfTileOffset;
     }
