@@ -52,12 +52,12 @@ public class HexCell
         return grid.Scale;
     }
 
-    private float Apothem()
+    public float Apothem()
     {
         return Scale() / 2.0f;
     }
 
-    private float Radius()
+    public float Radius()
     {
         return 2.0f * Apothem() / Mathf.Sqrt(3);
     }

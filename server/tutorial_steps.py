@@ -70,7 +70,7 @@ LEADER_TUTORIAL_STEPS = [
     TutorialStep(
         Indicator(HecsCoord(0, 1, 3)),
         Tooltip("",
-                "To move the Leader, use the arrow keys! Walk to the 1 red star card on the hill nearby and pick it up.",
+                "To move the Leader, use the arrow keys! Walk to the 1 orange star card on the hill nearby and pick it up.",
                 TooltipType.UNTIL_INDICATOR_REACHED),
         None
     ),
@@ -176,7 +176,7 @@ FOLLOWER_TUTORIAL_STEPS = [
         Tooltip("INSTRUCTIONS",
                 "You've received your first instruction. Follow it, then click \"Done\" in the top left.",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
-        Instruction("Pick up the red star on the hill next to you."),
+        Instruction("Pick up the orange star on the hill next to you."),
     ),
     TutorialStep(
         None,

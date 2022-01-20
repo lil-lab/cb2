@@ -58,7 +58,11 @@ public class HexGridManager
             return Vector3.zero;
         }
         Tile center_tile = _grid[a, r, c];
-        return center_tile.Cell.Center();
+        float apothem = center_tile.Cell.Apothem();
+        float halfTileOffsetX = rows % 2 == 0 ? -apothem : 0;
+        float halfTileOffsetZ = cols % 2 == 0 ? -apothem : 0;
+        Vector3 halfTileOffset = new Vector3(halfTileOffsetX, 0, halfTileOffsetZ);
+        return center_tile.Cell.Center() + halfTileOffset;
     }
 
     public Vector3 Position(int i, int j)

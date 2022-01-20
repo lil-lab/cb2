@@ -124,19 +124,19 @@ MonoBehaviour:
   volumeTrigger: {fileID: 2471041068834824810}
   volumeLayer:
     serializedVersion: 2
-    m_Bits: 2
+    m_Bits: 8
   stopNaNPropagation: 1
   finalBlitToCameraTarget: 0
-  antialiasingMode: 0
+  antialiasingMode: 3
   temporalAntialiasing:
-    jitterSpread: 0.75
-    sharpness: 0.25
-    stationaryBlending: 0.95
-    motionBlending: 0.85
+    jitterSpread: 1
+    sharpness: 0.2
+    stationaryBlending: 0.7
+    motionBlending: 0.2
   subpixelMorphologicalAntialiasing:
     quality: 2
   fastApproximateAntialiasing:
-    fastMode: 0
+    fastMode: 1
     keepAlpha: 0
   fog:
     enabled: 1
@@ -275,12 +275,12 @@ MonoBehaviour:
     m_Bits: 2
   stopNaNPropagation: 1
   finalBlitToCameraTarget: 0
-  antialiasingMode: 0
+  antialiasingMode: 3
   temporalAntialiasing:
-    jitterSpread: 0.75
-    sharpness: 0.25
-    stationaryBlending: 0.95
-    motionBlending: 0.85
+    jitterSpread: 1
+    sharpness: 0.2
+    stationaryBlending: 0.7
+    motionBlending: 0.2
   subpixelMorphologicalAntialiasing:
     quality: 2
   fastApproximateAntialiasing:
