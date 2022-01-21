@@ -1,0 +1,4 @@
+{
+    "_comment": "Used for running the server from aws",
+    "data_prefix": "/mnt/efs/fs1/cb2-game-data/"
+}

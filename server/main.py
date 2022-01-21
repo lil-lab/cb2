@@ -6,13 +6,18 @@ import json
 import logging
 import os
 import pathlib
+import peewee
 import pygame
 import sys
 import time
 
+import schemas.defaults
+
 from aiohttp import web
+from config.config import Config
 from dataclasses import astuple
 from hex import HecsCoord, HexBoundary, HexCell
+from map_tools import visualize
 from messages import map_update
 from messages import message_from_server
 from messages import message_to_server
@@ -23,7 +28,7 @@ from messages.rooms import RoomManagementResponse
 from messages.rooms import RoomResponseType
 from remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTable, Assignment, Worker
 from room_manager import RoomManager
-from map_tools import visualize
+from schemas import base
 
 from datetime import datetime
 
@@ -182,6 +187,7 @@ async def PlayerEndpoint(request):
 
 def HashCollectAssets(assets_directory):
     assets_map = {}
+    assets_directory.mkdir(parents=False, exist_ok=True)
     for item in os.listdir(assets_directory):
         assets_map[hashlib.md5(item.encode()).hexdigest()
                    ] = os.path.join(assets_directory, item)
@@ -192,7 +198,6 @@ assets_map = {}
 
 # Serves assets obfuscated by md5suming the filename.
 # This is used to prevent asset discovery.
-
 
 @routes.get('/assets/{asset_id}')
 async def asset(request):
@@ -272,7 +277,7 @@ async def draw_gui():
                 return
 
 
-def InitServerLogging():
+def InitPythonLogging():
     """  Server logging intended for debugging a server crash.
     
     The server log includes the following, interlaced:
@@ -285,33 +290,65 @@ def InitServerLogging():
     logging.getLogger("asyncio").setLevel(logging.INFO)
 
 
-def InitGameLogging(log_directory):
-    """ Game logging allows us to record and later playback individual games.
+def InitGameRecording(config):
+    """ Game recording allows us to record and later playback individual games.
 
+    Games are saved both in a directory with easily human-readable images and in
+    an sqlite3 database.
+    
     Each game is given a game id. Logs for a single game are stored in a
     directory with a name of the form: 
 
-    log_directory/<datetime>_<game_id>/...
+    game_records/<datetime>_<game_id>_<game_type>/...
 
-    where <datetime> is in iso8601 format."""
-    log_base_dir = pathlib.Path(log_directory)
+    where <datetime> is in iso8601 format.
+    <game_id> can be used to lookup the game in the database.
+    <game_type> is GAME or TUTORIAL."""
+    record_base_dir = pathlib.Path(config.record_directory())
 
     # Create the directory if it doesn't exist.
-    log_base_dir.mkdir(parents=False, exist_ok=True)
+    record_base_dir.mkdir(parents=False, exist_ok=True)
 
     # Register the logging directory with the room manager.
-    room_manager.register_game_logging_directory(log_base_dir)
+    room_manager.register_game_logging_directory(record_base_dir)
 
+    # Setup the sqlite database used to record game actions.
+    base.SetDatabase(config.database_path())
+    base.ConnectDatabase()
+    base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
+    
 
-def main(log_directory="logs/", assets_directory="assets/", gui=False):
+# Attempts to parse the config file. If there's any parsing or file errors,
+# doesn't handle the exceptions.
+def ReadConfigOrDie(config_path):
+    with open(config_path, 'r') as cfg_file:
+        config = Config.from_json(cfg_file.read())
+        return config
+
+def CreateDataDirectory(config):
+    data_prefix = pathlib.Path(config.data_prefix).expanduser()
+
+    # Create the directory if it doesn't exist.
+    data_prefix.mkdir(parents=False, exist_ok=True)
+
+def main(config_file="config/server-config.json"):
     global assets_map
     global room_manager
 
-    # Initialize server & game logging.
-    InitServerLogging()
-    InitGameLogging(log_directory)
+    InitPythonLogging()
 
-    assets_map = HashCollectAssets(assets_directory)
+    config = ReadConfigOrDie(config_file)
+
+    logger.info(f"Config file parsed.");
+    logger.info(f"data prefix: {config.data_prefix}")
+    logger.info(f"Log directory: {config.record_directory()}")
+    logger.info(f"Assets directory: {config.assets_directory()}")
+    logger.info(f"Database path: {config.database_path()}")
+
+    CreateDataDirectory(config)
+    InitGameRecording(config)
+
+    assets_map = HashCollectAssets(config.assets_directory())
     tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), debug_print(), serve())
     # If map visualization command line flag is enabled, run with the visualize task.
     # if gui:
