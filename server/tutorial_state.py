@@ -1,3 +1,4 @@
+from numpy import select
 from actor import Actor
 from assets import AssetId
 from messages.action import Action, Color, ActionType
@@ -25,17 +26,29 @@ import random
 import time
 import uuid
 
+import schemas.game
+import schemas.map
+import schemas.cards
+
 LEADER_MOVES_PER_TURN = -1
 FOLLOWER_MOVES_PER_TURN = -1
 
 logger = logging.getLogger()
 
 class TutorialGameState(object):
-    def __init__(self, room_id, tutorial_name):
+    def __init__(self, room_id, tutorial_name, tutorial_record):
         self._room_id = room_id
         self._id_assigner = IdAssigner()
 
         self._player_role = RoleFromTutorialName(tutorial_name)
+
+        self._tutorial_record = tutorial_record
+        self._tutorial_record.world_seed = repr(random.getstate())
+        self._tutorial_record.score = 0
+        self._tutorial_record.valid = True
+        self._tutorial_record.who_is_agent = ""
+
+        self._last_move = None
 
         # Logging init.
         self._recvd_log = logging.getLogger(f'room_{room_id}.recv')
@@ -58,12 +71,14 @@ class TutorialGameState(object):
         # Map props and actors share IDs from the same pool, so the ID assigner
         # is shared to prevent overlap.
         self._map_provider = MapProvider(MapType.HARDCODED, self._id_assigner)
+        self._tutorial_record.number_cards = len(self._map_provider.cards())
         
         self._objectives = []
         self._objectives_stale = {}  # Maps from player_id -> bool if their objective list is stale.
 
         self._map_update = self._map_provider.map()
         self._map_stale = {} # Maps from player_id -> bool if their map is stale.
+        self._map_update_count = 0
 
         self._synced = {}
         self._action_history = {}
@@ -71,9 +86,14 @@ class TutorialGameState(object):
         initial_turn = TurnUpdate(
             self._player_role, LEADER_MOVES_PER_TURN, 6,
             datetime.now() + self.turn_duration(self._player_role),
-            datetime.now(), 0, 0)
+            datetime.now(), 0, 0, 0)
         self._turn_history = {}
         self.record_turn_state(initial_turn)
+
+        self._tutorial_record.save()
+        for card in self._map_provider.cards():
+            card_record = self.get_or_create_card_record(card)
+            card_record.save()
 
         self._spawn_points = [HecsCoord(1, 1, 0), HecsCoord(1, 2, 2)]
         self._done = False
@@ -117,6 +137,62 @@ class TutorialGameState(object):
         for id in self._actors:
             actor = self._actors[id]
             self._action_history[actor.actor_id()].append(action)
+    
+    def record_objective(self, objective):
+        instruction = schemas.game.Instruction()
+        instruction.game = self._tutorial_record
+        instruction.worker = self._tutorial_record.leader
+        instruction.uuid = objective.uuid
+        instruction.text = objective.text
+        instruction.instruction_number = len(self._objectives) + 1
+        instruction.turn_issued = self._turn_state.turn_number
+        instruction.save()
+
+
+    def record_move(self, actor, proposed_action):
+        move = schemas.game.Move()
+        move.game = self._tutorial_record
+        if actor.role() == Role.FOLLOWER:
+            last_objective = None
+            for objective in self._objectives:
+                if not objective.completed:
+                    last_objective = objective
+            if last_objective is not None:
+                last_obj_record = schemas.game.Instruction.select().where(
+                    schemas.game.Instruction.uuid == last_objective.uuid).get()
+                move.instruction = last_obj_record
+        move.character_role = actor.role()
+        if actor.role == Role.LEADER:
+            print(self._tutorial_record.leader.hashed_id)
+            move.worker = self._tutorial_record.leader
+        if actor.role == Role.FOLLOWER:
+            print(self._tutorial_record.leader.hashed_id)
+            move.worker = self._tutorial_record.follower
+        move.action = proposed_action
+        move.position_before = actor.location()
+        move.turn_number = self._turn_state.turn_number
+        move.game_time = datetime.now() - self._tutorial_record.start_time
+        move.server_time = datetime.now()
+        move_code = ""
+        forward_location = actor.location().neighbor_at_heading(actor.heading_degrees())
+        backward_location = actor.location().neighbor_at_heading(actor.heading_degrees() + 180)
+        new_location = HecsCoord.add(actor.location(), proposed_action.displacement)
+        if new_location == forward_location:
+            move_code = "MF"
+        elif new_location == backward_location:
+            move_code = "MB"
+        elif new_location == actor.location():
+            if proposed_action.rotation == 60:
+                move_code = "TR"
+            elif proposed_action.rotation == -60:
+                move_code = "TL"
+            else:
+                move_code = "INVALID"
+        else:
+            move_code = "INVALID"
+        move.action_code = move_code
+        move.save()
+        self._last_move = move
 
     def map(self):
         return self._map_provider.map()
@@ -143,7 +219,10 @@ class TutorialGameState(object):
                 logging.info(
                     f"Game {self._room_id} is out of turns. Game over!")
                 game_over_message = GameOverMessage(
-                    self._turn_state.game_start, self._turn_state.sets_collected, self._turn_state.score)
+                    self._turn_state.game_start,
+                    self._turn_state.sets_collected,
+                    self._turn_state.score,
+                    self._turn_state.turn_number)
                 self.record_turn_state(game_over_message)
                 self.end_game()
                 continue
@@ -167,6 +246,7 @@ class TutorialGameState(object):
                             f"Actor {actor_id} is out of moves. Dropping pending action.")
                         continue
                     if self.valid_action(actor_id, proposed_action):
+                        self.record_move(actor, proposed_action)
                         actor.step()
                         self.record_action(proposed_action)
                         color = Color(0, 0, 1, 1) if not current_set_invalid else Color(1, 0, 0, 1)
@@ -244,8 +324,18 @@ class TutorialGameState(object):
                     self._turn_state.turn_end,
                     self._turn_state.game_start,
                     self._turn_state.sets_collected + 1,
-                    self._turn_state.score + 1)
+                    self._turn_state.score + 1,
+                    self._turn_state.turn_number)
                 self.record_turn_state(new_turn_state)
+                set_record = schemas.cards.CardSets()
+                set_record.game = self._tutorial_record
+                set_record.move = self._last_move
+                set_record.score = new_turn_state.score
+                set_record.save()
+                for card in selected_cards: 
+                    card_record = self.get_or_create_card_record(card)
+                    card_record.set = set_record
+                    card_record.save()
                 # Clear card state and remove the cards in the winning set.
                 logging.info("Clearing selected cards")
                 for card in selected_cards:
@@ -279,6 +369,11 @@ class TutorialGameState(object):
     def selected_cards(self):
         return list(self._map_provider.selected_cards())
 
+    def get_or_create_card_record(self, card):
+        record, created = schemas.cards.Card.get_or_create(game=self._tutorial_record, count=card.count,color=str(card.color),shape=str(card.shape),
+                                                location=card.location, defaults={"turn_created": self._turn_state.turn_number})
+        return record
+
     def check_for_stepped_on_cards(self, actor_id, action, color):
         actor = self._actors[actor_id]
         stepped_on_card = self._map_provider.card_by_location(
@@ -292,6 +387,13 @@ class TutorialGameState(object):
                 stepped_on_card.id, selected)
             card_select_action = CardSelectAction(stepped_on_card.id, selected, color)
             self.record_action(card_select_action)
+            selection_record = schemas.cards.CardSelections()
+            selection_record.game = self._tutorial_record
+            selection_record.move = self._last_move
+            selection_record.type = "select" if selected else "unselect"
+            card_record = self.get_or_create_card_record(stepped_on_card)
+            selection_record.card = card_record
+            selection_record.save()
 
     def handle_packet(self, id, message):
         if message.type == message_to_server.MessageType.ACTIONS:
@@ -338,6 +440,7 @@ class TutorialGameState(object):
         self._objectives.append(objective)
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True
+        self.record_objective(objective)
         # Check to see if the current step can be dismissed by a sent message.
         if self._tutorial_step_index > 0:
             current_step = self._tutorial_steps[self._tutorial_step_index - 1]
@@ -358,6 +461,9 @@ class TutorialGameState(object):
                 break
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True
+        instruction = schemas.game.Instruction.select().where(
+            schemas.game.Instruction.uuid==objective_complete.uuid).get()
+        instruction.turn_completed = self._turn_state.turn_number
     
     def handle_tutorial_request(self, id, tutorial):
         if tutorial.type == TutorialRequestType.REQUEST_NEXT_STEP:
@@ -380,6 +486,9 @@ class TutorialGameState(object):
     
     def send_next_tutorial_step(self):
         if self._tutorial_step_index >= len(self._tutorial_steps):
+            self._tutorial_record.completed = True
+            self._tutorial_record.end_time = datetime.now()
+            self._tutorial_record.save()
             self._tutorial_responses.put(TutorialCompletedResponse(self._tutorial_name))
             self.end_game()
             return
@@ -393,6 +502,7 @@ class TutorialGameState(object):
             objective.completed = False
             objective.uuid = uuid.uuid4().hex
             self._objectives.append(objective)
+            self.record_objective(objective)
             for actor_id in self._actors:
                 self._objectives_stale[actor_id] = True
         if next_step.indicator is not None:
@@ -417,7 +527,7 @@ class TutorialGameState(object):
                                     datetime.now() + timedelta(minutes=1),
                                     self._turn_state.game_start,
                                     self._turn_state.sets_collected,
-                                    self._turn_state.score)
+                                    self._turn_state.score, 0)
         self.record_turn_state(turn_update)
 
         return actor.actor_id()
@@ -549,6 +659,16 @@ class TutorialGameState(object):
         
         if not self._map_stale[actor_id]:
             return None
+
+        self._map_update_count += 1
+
+        # Record the map update to the database.
+        map_record = schemas.map.MapUpdate()
+        map_record.world_seed = ""
+        map_record.map_data = self._map_update
+        map_record.game = self._tutorial_record
+        map_record.map_update_number = self._map_update_count
+        map_record.save()
         
         # Send the latest map and mark as fresh for this player.
         self._map_stale[actor_id] = False

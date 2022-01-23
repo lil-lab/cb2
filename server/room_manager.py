@@ -165,6 +165,7 @@ class RoomManager(object):
 
         game_info_path = pathlib.Path(log_directory, "game_info.jsonl.log")
         game_info_log = game_info_path.open("w")
+        print(player_remote)
         game_info = GameInfo(datetime.now(), game_id, game_name, [player_remote], [role], [player_id])
         game_info_log.write(game_info.to_json() + "\n")
         game_info_log.close()

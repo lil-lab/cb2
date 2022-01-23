@@ -22,15 +22,28 @@ import random
 import time
 import uuid
 
+import schemas.game
+import schemas.map
+import schemas.cards
+
 LEADER_MOVES_PER_TURN = 5
 FOLLOWER_MOVES_PER_TURN = 10
 
 logger = logging.getLogger()
 
 class State(object):
-    def __init__(self, room_id):
+    def __init__(self, room_id, game_record):
         self._room_id = room_id
         self._id_assigner = IdAssigner()
+
+        # Create an entry in the Game database table.
+        self._game_record = game_record
+        self._game_record.world_seed = repr(random.getstate())
+        self._game_record.score = 0
+        self._game_record.valid = True
+        self._game_record.who_is_agent = ""
+
+        self._last_move = None
 
         # Logging init.
         self._recvd_log = logging.getLogger(f'room_{room_id}.recv')
@@ -46,12 +59,14 @@ class State(object):
         # Map props and actors share IDs from the same pool, so the ID assigner
         # is shared to prevent overlap.
         self._map_provider = MapProvider(MapType.RANDOM, self._id_assigner)
+        self._game_record.number_cards = len(self._map_provider.cards())
         
         self._objectives = []
         self._objectives_stale = {}  # Maps from player_id -> bool if their objective list is stale.
 
         self._map_update = self._map_provider.map()
         self._map_stale = {} # Maps from player_id -> bool if their map is stale.
+        self._map_update_count = 0
 
         self._synced = {}
         self._action_history = {}
@@ -59,13 +74,19 @@ class State(object):
         initial_turn = TurnUpdate(
             Role.LEADER, LEADER_MOVES_PER_TURN, 6,
             datetime.now() + self.turn_duration(Role.LEADER),
-            datetime.now(), 0, 0)
+            datetime.now(), 0, 0, 0)
         self._turn_history = {}
         self.record_turn_state(initial_turn)
+
+        self._game_record.save()
+        for card in self._map_provider.cards():
+            card_record = self.get_or_create_card_record(card)
+            card_record.save()
 
         self._spawn_points = self._map_provider.spawn_points()
         random.shuffle(self._spawn_points)
         self._done = False
+        self._game_record.save()
 
     def turn_duration(self, role):
         return timedelta(seconds=60) if role == Role.LEADER else timedelta(seconds=45)
@@ -122,12 +143,19 @@ class State(object):
             last_loop = time.time()
 
             # Check to see if the game is out of time.
-            if self._turn_state.turns_left == -1:
+            if self._turn_state.turns_left <= -1:
                 logging.info(
                     f"Game {self._room_id} is out of turns. Game over!")
                 game_over_message = GameOverMessage(
-                    self._turn_state.game_start, self._turn_state.sets_collected, self._turn_state.score)
+                    self._turn_state.game_start,
+                    self._turn_state.sets_collected,
+                    self._turn_state.score,
+                    self._turn_state.turn_number)
                 self.record_turn_state(game_over_message)
+                self._game_record.completed = True
+                self._game_record.end_time = datetime.now()
+                self._game_record.score = self._turn_state.score
+                self._game_record.save()
                 self.end_game()
                 continue
 
@@ -140,11 +168,12 @@ class State(object):
                                          self._turn_state.turn_end,
                                          self._turn_state.game_start,
                                          self._turn_state.sets_collected,
-                                         self._turn_state.score)
+                                         self._turn_state.score,
+                                         self._turn_state.turn_number)
                 self.record_turn_state(turn_update)
             
             if datetime.now() >= self._turn_state.turn_end:
-                self.end_turn_if_over()
+                self.update_turn()
 
             # Handle actor actions.
             for actor_id in self._actors:
@@ -165,11 +194,13 @@ class State(object):
                             f"Actor {actor_id} is out of moves. Dropping pending action.")
                         continue
                     if self.valid_action(actor_id, proposed_action):
+                        logger.info("AAAAAAAAAA")
+                        self.record_move(actor, proposed_action)
                         actor.step()
                         self.record_action(proposed_action)
                         color = Color(0, 0, 1, 1) if not current_set_invalid else Color(1, 0, 0, 1)
                         self.check_for_stepped_on_cards(actor_id, proposed_action, color)
-                        self.end_turn_if_over()
+                        self.update_turn()
                     else:
                         actor.drop()
                         self.desync(actor_id)
@@ -215,8 +246,20 @@ class State(object):
                     self._turn_state.turn_end,
                     self._turn_state.game_start,
                     self._turn_state.sets_collected + 1,
-                    self._turn_state.score + 1)
+                    self._turn_state.score + 1,
+                    self._turn_state.turn_number)
                 self.record_turn_state(new_turn_state)
+                set_record = schemas.cards.CardSets()
+                set_record.game = self._game_record
+                set_record.move = self._last_move
+                set_record.score = new_turn_state.score
+                set_record.save()
+                for card in selected_cards: 
+                    card_record = self.get_or_create_card_record(card)
+                    card_record.set = set_record
+                    card_record.save()
+                self._game_record.score = new_turn_state.score
+                self._game_record.save()
                 # Clear card state and remove the cards in the winning set.
                 logging.info("Clearing selected cards")
                 for card in selected_cards:
@@ -231,15 +274,103 @@ class State(object):
                 self._map_update = self._map_provider.map()
                 for actor_id in self._actors:
                     self._map_stale[actor_id] = True
+    
+    def record_objective(self, objective):
+        instruction = schemas.game.Instruction()
+        instruction.game = self._game_record
+        instruction.worker = self._game_record.leader
+        instruction.uuid = objective.uuid
+        instruction.text = objective.text
+        instruction.instruction_number = len(self._objectives) + 1
+        instruction.turn_issued = self._turn_state.turn_number
+        instruction.save()
 
-    def end_turn_if_over(self, force_turn_end=False):
+    def record_move(self, actor, proposed_action: Action):
+        move = schemas.game.Move()
+        move.game = self._game_record
+        if actor.role() == Role.FOLLOWER:
+            last_objective = None
+            for objective in self._objectives:
+                if not objective.completed:
+                    last_objective = objective
+            if last_objective is not None:
+                last_obj_record = schemas.game.Instruction.select().where(
+                    schemas.game.Instruction.uuid == last_objective.uuid).get()
+                move.instruction = last_obj_record
+        move.character_role = actor.role()
+        if actor.role == Role.LEADER:
+            print(self._tutorial_record.leader.hashed_id)
+            move.worker = self._tutorial_record.leader
+        if actor.role == Role.FOLLOWER:
+            print(self._tutorial_record.leader.hashed_id)
+            move.worker = self._tutorial_record.follower
+        move.action = proposed_action
+        move.position_before = actor.location()
+        move.turn_number = self._turn_state.turn_number
+        move.game_time = datetime.now() - self._game_record.start_time
+        move.server_time = datetime.now()
+        move_code = ""
+        forward_location = actor.location().neighbor_at_heading(actor.heading_degrees())
+        backward_location = actor.location().neighbor_at_heading(actor.heading_degrees() + 180)
+        new_location = HecsCoord.add(actor.location(), proposed_action.displacement)
+        if new_location == forward_location:
+            move_code = "MF"
+        elif new_location == backward_location:
+            move_code = "MB"
+        elif new_location == actor.location():
+            if proposed_action.rotation == 60:
+                move_code = "TR"
+            elif proposed_action.rotation == -60:
+                move_code = "TL"
+            else:
+                move_code = "INVALID"
+        else:
+            move_code = "INVALID"
+        move.action_code = move_code
+        logger.info(f"========== MOVE CODE: {move_code}")
+        self._last_move = move
+        move.save()
+
+    def has_instructions_todo(self):
+        for objective in self._objectives:
+            if not objective.completed:
+                return True
+        return False
+
+    def update_turn(self, force_turn_end=False):
         opposite_role = Role.LEADER if self._turn_state.turn == Role.FOLLOWER else Role.FOLLOWER
         end_of_turn = (datetime.now() >= self._turn_state.turn_end) or force_turn_end
         next_role = opposite_role if end_of_turn else self._turn_state.turn
+        # Force the leader to act if there's no uncompleted instructions.
+        turn_repeated = False
+        if next_role == Role.FOLLOWER and not self.has_instructions_todo():
+            next_role = Role.LEADER
+            turn_repeated = True
         moves_remaining = self.moves_per_turn(
             next_role) if end_of_turn else max(self._turn_state.moves_remaining - 1, 0)
         turns_left = self._turn_state.turns_left - 1 if end_of_turn else self._turn_state.turns_left
         turn_end = datetime.now() + self.turn_duration(next_role) if end_of_turn else self._turn_state.turn_end
+        turn_number = self._turn_state.turn_number
+
+        # Record the turn end to DB.
+        if end_of_turn:
+            turn_number += 1
+            turn = schemas.game.Turn()
+            turn.game = self._game_record
+            turn.role = str(self._turn_state.turn)
+            turn.turn_number = self._turn_state.turn_number
+            end_method = "UserPrompted" if force_turn_end else "RanOutOfTime"
+            turn.end_method = end_method
+            notes = []
+            if turn_repeated:
+                notes.append("RepeatedTurnNoInstructionsTodo")
+            if self._turn_state.moves_remaining == 0:
+                notes.append("UsedAllMoves")
+            if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
+                notes.append("FinishedAllCommands")
+            turn.notes = ",".join(notes)
+            turn.save()
+
         turn_update = TurnUpdate(
             next_role,
             moves_remaining,
@@ -247,7 +378,8 @@ class State(object):
             turn_end,
             self._turn_state.game_start,
             self._turn_state.sets_collected,
-            self._turn_state.score)
+            self._turn_state.score,
+            turn_number)
         self.record_turn_state(turn_update)
 
     def moves_per_turn(self, role):
@@ -261,7 +393,12 @@ class State(object):
     
     def selected_cards(self):
         return list(self._map_provider.selected_cards())
-
+    
+    def get_or_create_card_record(self, card):
+        record, created = schemas.cards.Card.get_or_create(game=self._game_record, count=card.count,color=str(card.color),shape=str(card.shape),
+                                                location=card.location, defaults={'turn_created': self._turn_state.turn_number})
+        return record
+        
     def check_for_stepped_on_cards(self, actor_id, action, color):
         actor = self._actors[actor_id]
         stepped_on_card = self._map_provider.card_by_location(
@@ -275,6 +412,13 @@ class State(object):
                 stepped_on_card.id, selected)
             card_select_action = CardSelectAction(stepped_on_card.id, selected, color)
             self.record_action(card_select_action)
+            selection_record = schemas.cards.CardSelections()
+            selection_record.game = self._game_record
+            selection_record.move = self._last_move
+            selection_record.type = "select" if selected else "unselect"
+            card_record = self.get_or_create_card_record(stepped_on_card)
+            selection_record.card = card_record
+            selection_record.save()
 
     def handle_packet(self, id, message):
         if message.type == message_to_server.MessageType.ACTIONS:
@@ -314,6 +458,7 @@ class State(object):
             return
         # TODO: Make UUID and non-UUID'd objectives separate message types.
         objective.uuid = uuid.uuid4().hex
+        self.record_objective(objective)
         self._recvd_log.info(objective)
         self._objectives.append(objective)
         for actor_id in self._actors:
@@ -332,6 +477,9 @@ class State(object):
                 break
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True
+        instruction = schemas.game.Instruction.select().where(
+            schemas.game.Instruction.uuid==objective_complete.uuid).get()
+        instruction.turn_completed = self._turn_state.turn_number
     
     def handle_turn_complete(self, id, turn_complete):
         if self._actors[id].role() != self._turn_state.turn:
@@ -339,7 +487,7 @@ class State(object):
                 f"Warning, turn complete received from ID: {str(id)} when it isn't their turn!")
             return
         self._recvd_log.info(f"player_id: {id} turn_complete received.")
-        self.end_turn_if_over(force_turn_end=True)
+        self.update_turn(force_turn_end=True)
 
     def create_actor(self, role):
         spawn_point = self._spawn_points.pop() if self._spawn_points else HecsCoord(0, 0, 0)
@@ -468,6 +616,16 @@ class State(object):
         if not self._map_stale[actor_id]:
             return None
         
+        self._map_update_count += 1
+        
+        # Record the map update to the database.
+        map_record = schemas.map.MapUpdate()
+        map_record.world_seed = self._game_record.world_seed
+        map_record.map_data = self._map_update
+        map_record.game = self._game_record
+        map_record.map_update_number = self._map_update_count
+        map_record.save()
+
         # Send the latest map and mark as fresh for this player.
         self._map_stale[actor_id] = False
         self._sent_log.info(f"to: {actor_id} map: {self._map_update}")

@@ -12,6 +12,8 @@ import sys
 import time
 
 import schemas.defaults
+import schemas.clients
+import schemas.mturk
 
 from aiohttp import web
 from config.config import Config
@@ -26,7 +28,7 @@ from messages.rooms import JoinResponse
 from messages.rooms import Role
 from messages.rooms import RoomManagementResponse
 from messages.rooms import RoomResponseType
-from remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTable, Assignment, Worker
+from remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTable, LogConnectionEvent
 from room_manager import RoomManager
 from schemas import base
 
@@ -159,7 +161,6 @@ async def receive_agent_updates(request, ws):
             # Room manager handles out-of-game requests.
             room_manager.handle_request(message, ws)
 
-
 @routes.get('/player_endpoint')
 async def PlayerEndpoint(request):
     global room_manager
@@ -170,17 +171,33 @@ async def PlayerEndpoint(request):
         hit_id = request.query.getone("hitId", "")
         submit_to_url = request.query.getone("turkSubmitTo", "")
         worker_id = request.query.getone("workerId", "")
-        worker = Worker(hashlib.md5(worker_id).digest())  # Worker ID is PII, so only save the hash.
-        assignment = Assignment(assignment_id, hit_id, worker, submit_to_url)
+        worker, _ = schemas.mturk.Worker.get_or_create(
+            hashed_id = hashlib.md5(worker_id.encode('utf-8')).hexdigest(), # Worker ID is PII, so only save the hash.
+        )
+        assignment, _ = schemas.mturk.Assignment.get_or_create(
+            assignment_id=assignment_id,
+            worker=worker,
+            hit_id=hit_id,
+            submit_to_url=submit_to_url
+        )
+
     ws = web.WebSocketResponse(autoclose=True, heartbeat=10.0, autoping=1.0)
     await ws.prepare(request)
     logger = logging.getLogger()
     logger.info("player connected from : " + request.remote)
-    AddRemote(ws, Remote(request.remote, 0, 0, time.time(), time.time(), request, ws, assignment))
+    hashed_ip = hashlib.md5(request.remote.encode('utf-8')).hexdigest()
+    peername = request.transport.get_extra_info('peername')
+    port = 0
+    if peername is not None:
+        port = peername[1]
+    remote = Remote(hashed_ip, port, 0, 0, time.time(), time.time(), request, ws)
+    AddRemote(ws, remote, assignment)
+    LogConnectionEvent(remote, "Connected to Server.")
     try:
         await asyncio.gather(receive_agent_updates(request, ws), stream_game_state(request, ws))
     finally:
         logger.info("player disconnected from : " + request.remote)
+        LogConnectionEvent(remote, "Disconnected from Server.")
         room_manager.disconnect_socket(ws)
         DeleteRemote(ws)
     return ws

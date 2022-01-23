@@ -10,15 +10,17 @@ class CardSets(BaseModel):
     score = IntegerField()
 
 class Card(BaseModel):
+    game = ForeignKeyField(Game, backref='cards')
     count = IntegerField()
     color = TextField()
     shape = TextField()
     location = HecsCoordField()
-    result = TextField()
-    sets = ForeignKeyField(CardSets, backref='cards')
+    set = ForeignKeyField(CardSets, backref='cards', null=True)
+    turn_created = IntegerField()
 
 class CardSelections(BaseModel):
     game = ForeignKeyField(Game, backref='card_selections')
     move = ForeignKeyField(Move, backref='card_selections')
     card = ForeignKeyField(Card, backref='card_selections')
-    game_time = DateTimeField()
+    type = TextField() # "select" or "unselect"
+    game_time = DateTimeField(default=datetime.datetime.now)

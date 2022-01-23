@@ -5,7 +5,9 @@ from messages import message_from_server
 from messages import message_to_server
 from messages.rooms import Role
 from messages import objective
+from remote_table import GetRemote
 from messages.logs import LogEntryFromIncomingMessage, LogEntryFromOutgoingMessage
+from messages.tutorials import RoleFromTutorialName
 from state import State
 from tutorial_state import TutorialGameState
 
@@ -14,6 +16,8 @@ import logging
 import os
 import pathlib
 from datetime import datetime
+
+import schemas.game
 
 # The below imports are used to import pygame in a headless setup, to render map
 # updates as images for game recordings.
@@ -37,20 +41,29 @@ class RoomType(Enum):
 
 class Room(object):
     """ Represents a game room. """
-    def __init__(self, name: str, max_players: int, game_id: int, log_directory: pathlib.Path, type: RoomType = RoomType.GAME, tutorial_name: str = ""):
+    def __init__(self, name: str, max_players: int, game_id: int, log_directory:
+                 pathlib.Path, type: RoomType = RoomType.GAME,
+                 tutorial_name: str = ""):
         self._name = name
         self._max_players = max_players
         self._players = []
         self._player_endpoints = []
         self._id = game_id
         self._room_type = type
+        self._game_record = schemas.game.Game()
         if self._room_type == RoomType.GAME:
-            self._game_state = State(self._id)
+            self._game_record.type = 'game'
+            self._game_state = State(self._id, self._game_record)
         elif self._room_type == RoomType.TUTORIAL:
-            self._game_state = TutorialGameState(self._id, tutorial_name)
+            if RoleFromTutorialName(tutorial_name) == Role.LEADER:
+                self._game_record.type = 'lead_tutorial'
+            else:
+                self._game_record.type = 'follow_tutorial'
+            self._game_state = TutorialGameState(self._id, tutorial_name, self._game_record)
         else:
             self._game_state = None
             logger.error("Room started with invalid type NONE.")
+        self._game_record.save()
         self._update_loop = None
         if not os.path.exists(log_directory):
             logger.warning('Provided log directory does not exist. Game will not be recorded.')
@@ -68,6 +81,23 @@ class Room(object):
         if self.is_full():
             raise ValueError("Room is full.")
         id = self._game_state.create_actor(role)
+        remote = GetRemote(ws)
+        remote_record = schemas.clients.Remote.select().where(
+            schemas.clients.Remote.hashed_ip==remote.hashed_ip, 
+            schemas.clients.Remote.remote_port==remote.client_port).get()
+        if remote_record is None:
+            logger.error(f"Added player with unrecognized remote IP(md5 hash)/Port: {remote.hashed_ip}/{remote.client_port}")
+        if role == Role.LEADER:
+            self._game_record.lead_remote = remote_record
+            if (remote_record is not None) and (remote_record.assignment is not None):
+                self._game_record.lead_assignment = remote_record.assignment
+                self._game_record.leader = remote_record.worker
+        else:
+            self._game_record.follow_remote = remote_record
+            if (remote_record is not None) and remote_record.assignment is not None:
+                self._game_record.follow_assignment = remote_record.assignment
+                self._game_record.follower = remote_record.worker
+        self._game_record.save()
         self._players.append(id)
         self._player_endpoints.append(ws)
         return id
@@ -98,7 +128,7 @@ class Room(object):
     def stop(self):
         if self._update_loop is None:
             return RuntimeError("stopped Room that is not running.")
-        logging.info(f"Room {self.id()} ending game.")
+        logging.info(f"Room /{self.id()} ending game.")
         self._game_state.end_game()
         if not os.path.exists(self._log_directory):
             return
