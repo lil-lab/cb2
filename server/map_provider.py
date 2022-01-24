@@ -1,10 +1,10 @@
 """ This utility streams a hardcoded map to clients. """
 from assets import AssetId
-from card import Card, Shape, Color
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from enum import Enum
 from hex import HecsCoord, HexCell, HexBoundary
+from map_utils import *
 from messages.map_update import MapUpdate, Tile
 from queue import Queue
 
@@ -12,137 +12,14 @@ import dataclasses
 import itertools
 import logging
 import random
+import card
 import numpy as np
+import tutorial_map_data
 
 MAP_WIDTH = 16
 MAP_HEIGHT = 16
 
 logger = logging.getLogger()
-
-HARDCODED_CARDS = [Card(id=0, location=HecsCoord(a=1, r=3, c=4),
-    rotation_degrees=0, shape=Shape.PLUS, color=Color.RED, count=1,
-    selected=0), Card(id=1, location=HecsCoord(a=1, r=2, c=6),
-    rotation_degrees=0,
-    shape=Shape.DIAMOND, color=Color.PINK, count=1, selected=0),
-    Card(id=2, location=HecsCoord(a=1, r=0, c=6), rotation_degrees=0,
-    shape=Shape.TORUS, color=Color.PINK, count=1, selected=0), Card(id=3,
-    location=HecsCoord(a=1, r=2, c=1), rotation_degrees=0, shape=Shape.TRIANGLE
-    , color=Color.PINK, count=3, selected=0), Card(id=4,
-    location=HecsCoord(a=0, r=1, c=3), rotation_degrees=0, shape=Shape.STAR,
-    color=Color.ORANGE, count=1, selected=0), Card(id=5,
-    location=HecsCoord(a=1, r=3, c=9), rotation_degrees=0, shape=Shape.TRIANGLE, color=Color.RED, count=2, selected=0), Card(id=6,
-    location=HecsCoord(a=0, r=2, c=0), rotation_degrees=0, shape=Shape.SQUARE,
-    color=Color.GREEN, count=1, selected=0), Card(id=7, location=HecsCoord(a=0,
-    r=1, c=5), rotation_degrees=0, shape=Shape.DIAMOND, color=Color.PINK,
-    count=1, selected=0), Card(id=8, location=HecsCoord(a=1, r=2, c=9),
-    rotation_degrees=0, shape=Shape.DIAMOND, color=Color.PINK, count=2,
-    selected=0), Card(id=9, location=HecsCoord(a=0, r=3, c=2), rotation_degrees=0,
-    shape=Shape.DIAMOND, color=Color.BLUE, count=3, selected=0),
-    Card(id=10, location=HecsCoord(a=0, r=2, c=2), rotation_degrees=0,
-    shape=Shape.PLUS, color=Color.BLUE, count=2, selected=0), Card(id=11,
-    location=HecsCoord(a=1, r=0, c=1), rotation_degrees=0, shape=Shape.DIAMOND,
-    color=Color.BLACK, count=2, selected=0), Card(id=12,
-    location=HecsCoord(a=1, r=4, c=8), rotation_degrees=0, shape=Shape.SQUARE,
-    color=Color.YELLOW, count=1, selected=0), Card(id=13,
-    location=HecsCoord(a=1, r=1, c=3), rotation_degrees=0, shape=Shape.TRIANGLE
-    , color=Color.PINK, count=2, selected=0), Card(id=14,
-    location=HecsCoord(a=1, r=4, c=6), rotation_degrees=0, shape=Shape.DIAMOND,
-    color=Color.GREEN, count=1, selected=0), Card(id=15,
-    location=HecsCoord(a=0, r=3, c=6), rotation_degrees=0, shape=Shape.DIAMOND,
-    color=Color.ORANGE, count=3, selected=0), Card(id=16,
-    location=HecsCoord(a=1, r=4, c=0), rotation_degrees=0, shape=Shape.TORUS,
-    color=Color.BLACK, count=1, selected=0), Card(id=17,
-    location=HecsCoord(a=0, r=2, c=6), rotation_degrees=0, shape=Shape.TRIANGLE
-    , color=Color.PINK, count=1, selected=0), Card(id=18,
-    location=HecsCoord(a=0, r=0, c=6), rotation_degrees=0, shape=Shape.SQUARE,
-    color=Color.BLACK, count=1, selected=0), Card(id=19,
-    location=HecsCoord(a=0, r=1, c=7), rotation_degrees=0, shape=Shape.PLUS,
-    color=Color.BLACK, count=2, selected=0), Card(id=20,
-    location=HecsCoord(a=0, r=0, c=3), rotation_degrees=0, shape=Shape.SQUARE,
-    color=Color.YELLOW, count=3, selected=0)]
-
-HARDCODED_MAP_WIDTH = 10
-HARDCODED_MAP_HEIGHT = 10
-def HardcodedMap():
-    """ Hardcoded map of Tile objects, each with HECS coordinates and locations."""
-    map = []
-    for r in range(0, HARDCODED_MAP_HEIGHT):
-        row = []
-        for c in range(0, HARDCODED_MAP_WIDTH):
-            tile = GroundTile()
-            row.append(tile)
-        map.append(row)
-
-    #Pathway around some water at the start.
-    map[0][0] = PathTile()
-    map[0][1] = PathTile()
-    map[0][2] = PathTile()
-    map[0][3] = PathTile()
-    map[0][4] = PathTile()
-    map[0][5] = PathTile()
-    map[0][6] = PathTile()
-    map[1][0] = PathTile()
-    map[1][1] = PathTile()
-    map[1][2] = WaterTile()
-    map[1][3] = WaterTile()
-    map[1][4] = WaterTile()
-    map[1][5] = WaterTile()
-    map[1][6] = PathTile()
-
-    # Single ramp at start
-    map[2][2] = RampToMountain()
-    map[2][3] = MountainTile()
-    map[2][4] = MountainTile()
-    map[2][5] = MountainTile()
-    map[2][6] = RampToMountain(180)
-    map[3][5] = RampToMountain(240)
-
-    # Add trees
-    map[5][5] = GroundTileTrees()
-    map[5][7] = GroundTileTrees(60)
-    map[6][5] = GroundTileTrees(120)
-    map[6][7] = GroundTileTrees(180)
-
-    # Add rocks
-    map[4][4] = GroundTileRocky(60)
-    map[4][8] = GroundTileRocky(180)
-    map[2][9] = GroundTileRocky(240)
-    map[5][8] = GroundTileRocky(300)
-    map[6][4] = GroundTileRocky()
-
-    # Add a house.
-    map[7][7] = GroundTileHouse()
-
-    # Add mountains.
-    map[8][5] = MountainTile()
-    map[8][6] = MountainTile()
-    map[8][7] = MountainTile()
-    map[8][8] = MountainTile()
-    map[9][5] = MountainTile()
-    map[9][6] = MountainTile()
-    map[9][7] = RampToMountain(180)
-
-    # Add a street light.
-    map[5][3] = GroundTileStreetLight()
-
-    # Add ramps to mountain.
-    map[8][4] = RampToMountain()
-    map[9][4] = RampToMountain()
-
-    # Fix all the tile coordinates.
-    for r in range(0, HARDCODED_MAP_HEIGHT):
-        for c in range(0, HARDCODED_MAP_WIDTH):
-            map[r][c].cell.coord = HecsCoord.from_offset(r, c)
-
-    # Flatten the 2D map of tiles to a list.
-    map_tiles = [tile for row in map for tile in row]
-
-    # Recompute heights.
-    for i in range(len(map_tiles)):
-        map_tiles[i].cell.height = LayerToHeight(map_tiles[i].cell.layer)
-
-    return MapUpdate(HARDCODED_MAP_HEIGHT, HARDCODED_MAP_WIDTH, map_tiles, [])
-
 
 @dataclass_json
 @dataclass
@@ -448,8 +325,6 @@ def RandomMap():
     # Recompute heights.
     for i in range(len(map_tiles)):
         map_tiles[i].cell.height = LayerToHeight(map_tiles[i].cell.layer)
-    
-
 
     return MapUpdate(MAP_HEIGHT, MAP_WIDTH, map_tiles, [])
 
@@ -458,234 +333,50 @@ class CardGenerator(object):
         self._id_assigner = id_assigner
 
     def generate_card_at(self, r, c, shape, color, count):
-        return Card(self._id_assigner.alloc(),
-                    HecsCoord.from_offset(r, c),
-                    0,
-                    shape,
-                    color,
-                    count,
-                    0)
+        return card.Card(
+            self._id_assigner.alloc(),
+            HecsCoord.from_offset(r, c),
+            0,
+            shape,
+            color,
+            count,
+            0)
 
     def generate_random_card_at(self, r, c):
-        return Card(self._id_assigner.alloc(),
-                    HecsCoord.from_offset(r, c),
-                    0,
-                    self.random_shape(),
-                    self.random_color(),
-                    self.random_count(),
-                    0)
+        return card.Card(
+            self._id_assigner.alloc(),
+            HecsCoord.from_offset(r, c),
+            0,
+            self.random_shape(),
+            self.random_color(),
+            self.random_count(),
+            0)
 
     def random_shape(self):
-        shapes = [Shape.PLUS, Shape.TORUS, Shape.HEART, Shape.DIAMOND,
-                  Shape.SQUARE, Shape.STAR, Shape.TRIANGLE]
+        shapes = [
+            card.Shape.PLUS,
+            card.Shape.TORUS,
+            card.Shape.HEART,
+            card.Shape.DIAMOND,
+            card.Shape.SQUARE,
+            card.Shape.STAR,
+            card.Shape.TRIANGLE
+        ]
         return random.choice(shapes)
 
     def random_color(self):
-        colors = [Color.BLACK, Color.BLUE, Color.GREEN, Color.ORANGE,
-                  Color.PINK, Color.RED, Color.YELLOW]
+        colors = [card.Color.BLACK,
+                  card.Color.BLUE,
+                  card.Color.GREEN,
+                  card.Color.ORANGE,
+                  card.Color.PINK,
+                  card.Color.RED,
+                  card.Color.YELLOW]
         return random.choice(colors)
 
     def random_count(self):
         return random.randint(1, 3)
 
-
-def LayerToHeight(layer):
-    """ Converts a layer to a height."""
-    layer_to_height = {
-        0: 0.05,
-        1: 0.275,
-        2: 0.355,
-    }
-    if layer not in layer_to_height:
-        return layer_to_height[0]
-
-    return layer_to_height[layer]
-
-def EmptyTile():
-    return Tile(AssetId.EMPTY_TILE,
-        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0),
-                LayerToHeight(0),  # Height (float)
-                0,  # Z-Layer (int)
-                ),
-        0
-    )
-
-def GroundTile(rotation_degrees=0):
-    """ Creates a single tile of ground."""
-    return Tile(
-        AssetId.GROUND_TILE,
-        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0),
-                LayerToHeight(0),  # Height (float)
-                0,  # Z-Layer (int)
-                ),
-        rotation_degrees
-    )
-
-
-def WaterTile(rotation_degrees=0):
-    """ Creates a single tile of Water."""
-    return Tile(
-        AssetId.WATER_TILE,
-        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
-                LayerToHeight(0),  # Height (float)
-                0,  # Z-Layer (int)
-                ),
-        rotation_degrees
-    )
-
-
-def PathTile(rotation_degrees=0):
-    """ Creates a single tile of Path."""
-    return Tile(
-        AssetId.GROUND_TILE_PATH,
-        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0),
-                LayerToHeight(0),  # Height (float)
-                0,  # Z-Layer (int)
-                ),
-        rotation_degrees
-    )
-
-
-def GroundTileRocky(rotation_degrees=0):
-    """ Creates a single tile of rocky ground."""
-    return Tile(
-        AssetId.GROUND_TILE_ROCKY,
-        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
-                LayerToHeight(0),  # Height (float)
-                0  # Z-Layer (int)
-                ),
-        rotation_degrees
-    )
-
-
-def GroundTileStones(rotation_degrees=0):
-    """ Creates a single tile of ground with stones."""
-    return Tile(
-        AssetId.GROUND_TILE_STONES,
-        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
-                LayerToHeight(0),  # Height (float)
-                0  # Z-Layer (int)
-                ),
-        rotation_degrees
-    )
-
-
-def GroundTileTrees(rotation_degrees=0):
-    """ Creates a single tile of ground with several trees. """
-    return Tile(
-        AssetId.GROUND_TILE_TREES,
-        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
-                LayerToHeight(0),  # Height (float)
-                0  # Z-Layer (int)
-                ),
-        rotation_degrees
-    )
-
-
-def GroundTileSingleTree(rotation_degrees=0):
-    """ Creates a single tile of ground with a tree."""
-    return Tile(
-        AssetId.GROUND_TILE_TREES_2,
-        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
-                LayerToHeight(0),  # Height (float)
-                0  # Z-Layer (int)
-                ),
-        rotation_degrees
-    )
-
-
-def GroundTileForest(rotation_degrees=0):
-    """ Creates a single tile of ground with a forest."""
-    return Tile(
-        AssetId.GROUND_TILE_FOREST,
-        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
-                LayerToHeight(0),  # Height (float)
-                0  # Z-Layer (int)
-                ),
-        rotation_degrees
-    )
-
-class HouseType(Enum):
-    NONE = 0
-    HOUSE = 1
-    HOUSE_RED = 2
-    HOUSE_BLUE = 3
-    TRIPLE_HOUSE = 4
-    TRIPLE_HOUSE_RED = 5
-    TRIPLE_HOUSE_BLUE = 6
-    RANDOM = 7
-
-def AssetIdFromHouseType(type):
-    if type == HouseType.HOUSE:
-        return AssetId.GROUND_TILE_HOUSE
-    elif type == HouseType.HOUSE_RED:
-        return AssetId.GROUND_TILE_HOUSE_RED
-    elif type == HouseType.HOUSE_BLUE:
-        return AssetId.GROUND_TILE_HOUSE_BLUE
-    elif type == HouseType.TRIPLE_HOUSE:
-        return AssetId.GROUND_TILE_HOUSE_TRIPLE
-    elif type == HouseType.TRIPLE_HOUSE_RED:
-        return AssetId.GROUND_TILE_HOUSE_TRIPLE_RED
-    elif type == HouseType.TRIPLE_HOUSE_BLUE:
-        return AssetId.GROUND_TILE_HOUSE_TRIPLE_BLUE
-    elif type == HouseType.RANDOM:
-        return random.choice([AssetId.GROUND_TILE_HOUSE,
-                              AssetId.GROUND_TILE_HOUSE_RED,
-                              AssetId.GROUND_TILE_HOUSE_BLUE,
-                              AssetId.GROUND_TILE_HOUSE_TRIPLE,
-                              AssetId.GROUND_TILE_HOUSE_TRIPLE_RED,
-                              AssetId.GROUND_TILE_HOUSE_TRIPLE_BLUE])
-    else:
-        logger.error(f"Unknown house type: {type}")
-        return AssetId.HOUSE
-
-def GroundTileHouse(rotation_degrees=0, type=HouseType.HOUSE):
-    """ Creates a single tile of ground with a house."""
-    asset_id = AssetIdFromHouseType(type)
-    return Tile(
-        asset_id,
-        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
-                LayerToHeight(0),  # Height (float)
-                0  # Z-Layer (int)
-                ),
-        rotation_degrees
-    )
-
-
-def GroundTileStreetLight(rotation_degrees=0):
-    """ Creates a single tile of ground with a street light."""
-    return Tile(
-        AssetId.GROUND_TILE_STREETLIGHT,
-        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
-                LayerToHeight(0),  # Height (float)
-                0  # Z-Layer (int)
-                ),
-        rotation_degrees
-    )
-
-
-def MountainTile(rotation_degrees=0):
-    """ Creates a single tile of mountain."""
-    return Tile(
-        AssetId.MOUNTAIN_TILE,
-        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0),
-                LayerToHeight(2),  # Height (float)
-                2  # Z-Layer (int)
-                ),
-        rotation_degrees
-    )
-
-
-def RampToMountain(rotation_degrees=0):
-    """ Creates a single tile of ramp."""
-    return Tile(
-        AssetId.RAMP_TO_MOUNTAIN,
-        HexCell(HecsCoord.from_offset(0, 0), HexBoundary.rotate_cw(HexBoundary(0b101101), rotation_degrees),
-                LayerToHeight(1),  # Height (float)
-                1  # Z-Layer (int)
-                ),
-        rotation_degrees
-    )
 
 class MapType(Enum):
     NONE = 0
@@ -698,7 +389,7 @@ class MapProvider(object):
         if map_type == MapType.RANDOM:
             map = RandomMap()
         elif map_type == MapType.HARDCODED:
-            map = HardcodedMap()
+            map = tutorial_map_data.HardcodedMap()
         else:
             raise ValueError("Invalid map type NONE specified.")
         
@@ -708,10 +399,12 @@ class MapProvider(object):
         self._cards = []
         self._selected_cards = {}
         self._card_generator = CardGenerator(id_assigner)
+        self.add_map_boundaries()
+        self.add_layer_boundaries()
         if map_type == MapType.HARDCODED:
             self._cards = []
-            list(HARDCODED_CARDS)
-            for card in HARDCODED_CARDS:
+            list(tutorial_map_data.CARDS)
+            for card in tutorial_map_data.CARDS:
                 # This line creates a copy of the hardcoded card. Otherwise
                 # state persists between instances (very bad! this took a while
                 # to debug)
@@ -719,11 +412,20 @@ class MapProvider(object):
                 card_copy.id = id_assigner.alloc()
                 self._cards.append(card_copy)
         else: 
+            # Sort through the potential spawn tiles via floodfill and find
+            # partitions (regions which are blocked off by walls or edges).
+            # Then, remove all spaces which aren't in the largest partition as
+            # spawn tiles.            
+            spaces = FloodFillPartitionTiles(self._tiles)
+            sorted_spaces = sorted(spaces, key=len, reverse=True)
+            # Only spawn cards in the largest contiguous region.
+            logger.info(f"NUMBER OF PARTITIONS: {len(sorted_spaces)}")
+            self._potential_spawn_tiles = sorted_spaces[0]
+
             self._potential_spawn_tiles = [tile 
-                                        for tile in self._tiles
+                                        for tile in self._potential_spawn_tiles
                                         if tile.asset_id in [AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH, AssetId.MOUNTAIN_TILE]]
-            card_spawn_weights = [self.calculate_card_spawn_weight(tile) for tile in self._potential_spawn_tiles]
-            card_spawn_weights = [float(weight) / sum(card_spawn_weights) for weight in card_spawn_weights]
+
             number_of_cards = 21
             card_spawn_locations = self.choose_card_spawn_locations(number_of_cards)
 
@@ -735,15 +437,12 @@ class MapProvider(object):
         self._cards_by_location = {}
         for card in self._cards:
             self._cards_by_location[card.location] = card
-        self.add_map_boundaries()
-        self.add_layer_boundaries()
         self._spawn_points = [tile.cell.coord for tile in self._tiles
                               if (tile.asset_id == AssetId.GROUND_TILE_PATH) and (tile.cell.coord not in self._cards_by_location)]
 
     def choose_card_spawn_locations(self, n):
         """ Returns a list of size n of spawn locations for cards. Does not return a location that is actively occupied by an existing card."""
         card_spawn_weights = [self.calculate_card_spawn_weight(tile) for tile in self._potential_spawn_tiles]
-        potential_spawn_locations = [tile.cell.coord.to_offset_coordinates() for tile in self._potential_spawn_tiles]
         
         # Prevents double-placing of a card (spawning a card on top of an existing card)
         # Yes this is computationally slower than it could be (O(n) instead of ammortized O(c)), but this doesn't happen often.
@@ -844,3 +543,9 @@ class MapProvider(object):
 
     def map(self):
         return MapUpdate(self._rows, self._cols, self._tiles, [card.prop() for card in self._cards])
+    
+    def coord_in_map(self, coord):
+        offset_coords = coord.to_offset_coordinates()
+        return (offset_coords[0] in range(0, self._rows) and offset_coords[1] in range(0, self._cols))
+
+

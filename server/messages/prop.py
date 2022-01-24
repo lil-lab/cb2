@@ -1,11 +1,12 @@
 from enum import Enum
 from hex import HecsCoord
-from card import Shape, Color
+import card
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from marshmallow import fields
+from typing import Optional
 
 import dateutil.parser
 
@@ -28,8 +29,8 @@ class GenericPropInfo:
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
 class CardConfig:
-    color: Color
-    shape: Shape
+    color: card.Color
+    shape: card.Shape
     count: int
     selected: bool
 
@@ -48,5 +49,5 @@ class Prop:
     prop_info: GenericPropInfo
 
     # Only one of these is populated, depending on this prop's prop_type.
-    card_init: CardConfig  # Only used for Card props.
-    simple_init: SimpleConfig  # Only used for Simple props.
+    card_init: Optional[CardConfig]  # Only used for Card props.
+    simple_init: Optional[SimpleConfig]  # Only used for Simple props.

@@ -112,7 +112,7 @@ class Edges(IntEnum):
     UPPER_LEFT = 5
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
-@dataclass
+@dataclass(unsafe_hash=True)
 class HexBoundary:
     edges: int
 
@@ -157,9 +157,18 @@ class HexBoundary:
         displacement = HecsCoord.sub(b, a)
         edge = HexBoundary.DIR_TO_EDGE[displacement]
         self.set_edge(edge)
+    
+    def get_edge_between(self, a, b):
+        """ Checks the edge between two HECS coordinates, if this cell is at location a and the neighbor is at location b. """
+        if not a.is_adjacent_to(b):
+            raise ValueError("HecsCoords passed to set_edge_between are not adjacent.")
+        displacement = HecsCoord.sub(b, a)
+        edge = HexBoundary.DIR_TO_EDGE[displacement]
+        return self.get_edge(edge)
+
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
-@dataclass
+@dataclass(unsafe_hash=True)
 class HexCell:
     coord: HecsCoord
     boundary: HexBoundary
