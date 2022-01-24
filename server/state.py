@@ -179,6 +179,9 @@ class State(object):
             if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
                 self.update_turn(force_turn_end=True, end_reason="FollowerFinishedInstructions")
 
+            if self._turn_state.turn == Role.FOLLOWER and self._turn_state.moves_remaining <= 0:
+                self.update_turn(force_turn_end=True, end_reason="FollowerOutOfMoves")
+
             # Handle actor actions.
             for actor_id in self._actors:
                 actor = self._actors[actor_id]
@@ -368,7 +371,7 @@ class State(object):
             notes = []
             if turn_repeated:
                 notes.append("RepeatedTurnNoInstructionsTodo")
-            if self._turn_state.moves_remaining == 0:
+            if self._turn_state.moves_remaining <= 0:
                 notes.append("UsedAllMoves")
             if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
                 notes.append("FinishedAllCommands")
