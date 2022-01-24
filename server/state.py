@@ -175,6 +175,10 @@ class State(object):
             if datetime.now() >= self._turn_state.turn_end:
                 self.update_turn()
 
+            # If the follower currently has no instructions, end their turn.
+            if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
+                self.update_turn(force_turn_end=True, end_reason="FollowerFinishedInstructions")
+
             # Handle actor actions.
             for actor_id in self._actors:
                 actor = self._actors[actor_id]
@@ -337,7 +341,7 @@ class State(object):
                 return True
         return False
 
-    def update_turn(self, force_turn_end=False):
+    def update_turn(self, force_turn_end=False, end_reason=""):
         opposite_role = Role.LEADER if self._turn_state.turn == Role.FOLLOWER else Role.FOLLOWER
         end_of_turn = (datetime.now() >= self._turn_state.turn_end) or force_turn_end
         next_role = opposite_role if end_of_turn else self._turn_state.turn
@@ -359,7 +363,7 @@ class State(object):
             turn.game = self._game_record
             turn.role = str(self._turn_state.turn)
             turn.turn_number = self._turn_state.turn_number
-            end_method = "UserPrompted" if force_turn_end else "RanOutOfTime"
+            end_method = end_reason if force_turn_end else "RanOutOfTime"
             turn.end_method = end_method
             notes = []
             if turn_repeated:
@@ -491,7 +495,7 @@ class State(object):
                 logger.warn(f"Warning, turn complete received from ID: {str(id)} when it isn't their turn!")
                 return
         self._recvd_log.info(f"player_id: {id} turn_complete received.")
-        self.update_turn(force_turn_end=True)
+        self.update_turn(force_turn_end=True, end_reason="UserPrompted")
 
     def create_actor(self, role):
         spawn_point = self._spawn_points.pop() if self._spawn_points else HecsCoord(0, 0, 0)
