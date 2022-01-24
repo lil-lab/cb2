@@ -43,7 +43,7 @@ public class EntityManager : MonoBehaviour
             _props[id].AddAction(action);
             return;
         }
-        Debug.Log("Warning, invalid actor id received: " + _actors.Count);
+        Debug.Log("Warning, invalid actor id received: " + id);
     }
 
     public void RegisterProp(int id, Prop prop)

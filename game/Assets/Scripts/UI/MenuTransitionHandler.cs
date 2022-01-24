@@ -47,6 +47,8 @@ public class MenuTransitionHandler : MonoBehaviour
     private DateTime _lastTurnTransmitTime;
     private TurnState _lastTurn = new TurnState();
 
+    List<Network.ObjectiveMessage> _lastObjectivesList = new List<Network.ObjectiveMessage>();
+
     public static MenuTransitionHandler TaggedInstance()
     {
         GameObject obj = GameObject.FindGameObjectWithTag(MenuTransitionHandler.TAG);
@@ -92,9 +94,15 @@ public class MenuTransitionHandler : MonoBehaviour
         Network.NetworkManager.TaggedInstance().ReturnToMenu();
     }
 
+    public List<Network.ObjectiveMessage> ObjectiveList()
+    {
+        return _lastObjectivesList;
+    }
+
 
     public void RenderObjectiveList(List<Network.ObjectiveMessage> objectives)
     {
+        _lastObjectivesList = objectives;
         GameObject objectivesPanel = GameObject.FindGameObjectWithTag(MenuTransitionHandler.OBJECTIVE_LIST);
         if (objectivesPanel == null)
         {

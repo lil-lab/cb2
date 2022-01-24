@@ -486,6 +486,10 @@ class State(object):
             logger.warn(
                 f"Warning, turn complete received from ID: {str(id)} when it isn't their turn!")
             return
+        if self._actors[id].role() == Role.LEADER:
+            if not self.has_instructions_todo():
+                logger.warn(f"Warning, turn complete received from ID: {str(id)} when it isn't their turn!")
+                return
         self._recvd_log.info(f"player_id: {id} turn_complete received.")
         self.update_turn(force_turn_end=True)
 
