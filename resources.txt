@@ -55,4 +55,6 @@ to others.
 
 https://github.com/kou-yeung/WebGLInput
 
+- Colorblind safe colors:
 
+https://personal.sron.nl/~pault/
