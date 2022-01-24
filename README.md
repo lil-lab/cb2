@@ -33,7 +33,7 @@ install and use `git lfs clone` to clone this repository.
 
 ### Download Submodules
 
-This repository contains a submodule. As such, you need to run this step to
+This repository contains submodules. As such, you need to run this step to
 fetch submodules after cloning:
 
 ```

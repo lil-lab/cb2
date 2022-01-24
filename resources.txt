@@ -47,5 +47,12 @@ Here's a good performance benchmark of different python ORMs:
 
 https://github.com/tortoise/orm-benchmarks
 
-I'm thinking of choosing Peewee because it's simple and the performance isn't
-too bad compared to others.
+I chose Peewee because it's simple and the performance isn't too bad compared
+to others.
+
+- It seems that Unity's InputFields don't work well in WebGL. To fix it I added
+  this:
+
+https://github.com/kou-yeung/WebGLInput
+
+
