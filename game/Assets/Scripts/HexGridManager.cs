@@ -232,8 +232,15 @@ public class HexGridManager
     {
         if (_mapSource == null)
         {
-            Debug.Log("Null map source.");
-            return;
+            // Attempt to re-fetch the map source.
+            _mapSource = Network.NetworkManager.TaggedInstance().MapSource();
+            if (_mapSource != null)
+            {
+                Debug.Log("Map source re-acquired.");
+            } else {
+                Debug.LogError("Map source is null!");
+                return;
+            }
         }
         if (!_mapSource.IsMapReady())
         {

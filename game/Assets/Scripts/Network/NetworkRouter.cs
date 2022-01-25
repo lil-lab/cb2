@@ -19,6 +19,7 @@ namespace Network
         private Player _player;
 
         private StateSync _pendingStateSync;
+        private MapUpdate _pendingMapUpdate;
 
         public NetworkRouter(ClientConnection client, NetworkMapSource mapSource, NetworkManager networkManager, EntityManager entityManager, Player player)
         {
@@ -37,7 +38,13 @@ namespace Network
             _entityManager = entityManager;
             if (_pendingStateSync != null)
             {
+                Debug.Log("EntityManager receiving pending state sync.");
                 ApplyStateSyncToEntityManager(_pendingStateSync);
+            }
+            if (_pendingMapUpdate != null)
+            {
+                Debug.Log("EntityManager receiving pending map update.");
+                ApplyMapUpdateToEntityManager(_pendingMapUpdate);
             }
         }
 
@@ -46,6 +53,7 @@ namespace Network
             _player = player;
             if (_pendingStateSync != null)
             {
+                Debug.Log("Player receiving pending state sync.");
                 ApplyStateSyncToPlayer(_pendingStateSync);
             }
         }
@@ -80,6 +88,32 @@ namespace Network
             return true;
         }
 
+        public bool ApplyMapUpdateToEntityManager(MapUpdate mapUpdate)
+        {
+            if (_entityManager == null) return false;
+            _entityManager.DestroyProps();
+            foreach (Network.Prop netProp in mapUpdate.Props)
+            {
+                if (netProp.PropType == PropType.CARD)
+                {
+                    CardBuilder cardBuilder = CardBuilder.FromNetwork(netProp);
+                    _entityManager.RegisterProp(netProp.Id, cardBuilder.Build());
+                    if (netProp.CardInit.Selected)
+                    {
+                        _entityManager.AddAction(netProp.Id, Outline.Select(netProp.PropInfo.BorderRadius, 0.1f));
+                    }
+                    continue;
+                }
+                if (netProp.PropType == PropType.SIMPLE)
+                {
+                    global::Prop prop = global::Prop.FromNetwork(netProp);
+                    _entityManager.RegisterProp(netProp.Id, prop);
+                    continue;
+                }
+                Debug.LogWarning("Unknown proptype encountered.");
+            }
+            return true;
+        }
         public void HandleMessage(MessageFromServer message)
         {
             Debug.Log("Received message of type: " + message.Type);
@@ -105,48 +139,27 @@ namespace Network
             {
                 if (!ApplyStateSyncToPlayer(message.State))
                 {
-                    Debug.LogError("Player not set, yet received state sync.");
+                    Debug.Log("Player not set, yet received state sync.");
                     _pendingStateSync = message.State;
                 }
                 if (!ApplyStateSyncToEntityManager(message.State))
                 {
-                    Debug.LogError("Entity manager not set, yet received state sync.");
+                    Debug.Log("Entity manager not set, yet received state sync.");
                     _pendingStateSync = message.State;
                 }
             }
             if (message.Type == MessageFromServer.MessageType.MAP_UPDATE)
             {
-                if (_entityManager == null)
-                {
-                    Debug.LogError("Entity manager not set, yet received state sync.");
-                    return;
-                }
                 if (_mapSource == null)
                 {
                     Debug.Log("Network Router received map update but no map source to forward it to.");
                     return;
                 }
                 _mapSource.ReceiveMapUpdate(message.MapUpdate);
-                _entityManager.DestroyProps();
-                foreach (Network.Prop netProp in message.MapUpdate.Props)
+                if(!ApplyMapUpdateToEntityManager(message.MapUpdate))
                 {
-                    if (netProp.PropType == PropType.CARD)
-                    {
-                        CardBuilder cardBuilder = CardBuilder.FromNetwork(netProp);
-                        _entityManager.RegisterProp(netProp.Id, cardBuilder.Build());
-                        if (netProp.CardInit.Selected)
-                        {
-                            _entityManager.AddAction(netProp.Id, Outline.Select(netProp.PropInfo.BorderRadius, 0.1f));
-                        }
-                        continue;
-                    }
-                    if (netProp.PropType == PropType.SIMPLE)
-                    {
-                        global::Prop prop = global::Prop.FromNetwork(netProp);
-                        _entityManager.RegisterProp(netProp.Id, prop);
-                        continue;
-                    }
-                    Debug.LogWarning("Unknown proptype encountered.");
+                    Debug.Log("Unable to apply map update to entity manager... Saved for later.");
+                    _pendingMapUpdate = message.MapUpdate;
                 }
             }
             if (message.Type == MessageFromServer.MessageType.ROOM_MANAGEMENT)
