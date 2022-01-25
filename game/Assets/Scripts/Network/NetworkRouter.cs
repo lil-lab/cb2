@@ -37,6 +37,7 @@ namespace Network
             _entityManager = entityManager;
             if (_pendingStateSync != null)
             {
+                ApplyStateSyncToEntityManager(_pendingStateSync);
             }
         }
 
@@ -45,7 +46,7 @@ namespace Network
             _player = player;
             if (_pendingStateSync != null)
             {
-                _player.SetPlayerId(_pendingStateSync.PlayerId);
+                ApplyStateSyncToPlayer(_pendingStateSync);
             }
         }
 
@@ -102,34 +103,15 @@ namespace Network
             }
             if (message.Type == MessageFromServer.MessageType.STATE_SYNC)
             {
-                if (_player == null || _entityManager == null)
-                {
-                    Debug.LogError("Player or entity manager not set, yet received state sync.");
-                    _pendingStateSync = message.State;
-                    return;
-                }
                 if (!ApplyStateSyncToPlayer(message.State))
                 {
-
+                    Debug.LogError("Player not set, yet received state sync.");
+                    _pendingStateSync = message.State;
                 }
                 if (!ApplyStateSyncToEntityManager(message.State))
                 {
-
-                }
-                _player.SetPlayerId(message.State.PlayerId);
-                _entityManager.DestroyActors();
-                _player.FlushActionQueue();
-                foreach (Network.StateSync.Actor actor in message.State.Actors)
-                {
-                    if (actor.ActorId == _player.PlayerId())
-                    {
-                        Debug.Log("SETTING player asset id to " + actor.AssetId);
-                        _player.SetAssetId(actor.AssetId);
-                        ActionQueue.IAction action = TeleportToStartState(actor);
-                        _player.AddAction(action);
-                        continue;
-                    }
-                    _entityManager.RegisterActor(actor.ActorId, Actor.FromStateSync(actor));
+                    Debug.LogError("Entity manager not set, yet received state sync.");
+                    _pendingStateSync = message.State;
                 }
             }
             if (message.Type == MessageFromServer.MessageType.MAP_UPDATE)
