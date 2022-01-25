@@ -61,7 +61,6 @@ public class HexGrid : MonoBehaviour
 
     void Start()
     {
-        Scene activeScene = SceneManager.GetActiveScene();
         GameObject obj = GameObject.FindWithTag(Network.NetworkManager.TAG);
         Network.NetworkManager networkManager = obj.GetComponent<Network.NetworkManager>();
         IMapSource mapSource = networkManager.MapSource();

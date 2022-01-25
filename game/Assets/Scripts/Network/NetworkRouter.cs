@@ -18,6 +18,8 @@ namespace Network
         private EntityManager _entityManager;
         private Player _player;
 
+        private StateSync _pendingStateSync;
+
         public NetworkRouter(ClientConnection client, NetworkMapSource mapSource, NetworkManager networkManager, EntityManager entityManager, Player player)
         {
             _client = client;
@@ -25,6 +27,7 @@ namespace Network
             _networkManager = networkManager;
             _entityManager = entityManager;
             _player = player;
+            _pendingStateSync = null;
 
             _client.RegisterHandler(this);
         }
@@ -32,11 +35,49 @@ namespace Network
         public void SetEntityManager(EntityManager entityManager)
         {
             _entityManager = entityManager;
+            if (_pendingStateSync != null)
+            {
+                ApplyStateSyncToEntityManager(_pendingStateSync);
+            }
         }
 
         public void SetPlayer(Player player)
         {
             _player = player;
+            if (_pendingStateSync != null)
+            {
+                ApplyStateSyncToPlayer(_pendingStateSync);
+            }
+        }
+
+        public bool ApplyStateSyncToPlayer(StateSync stateSync)
+        {
+            if (_player == null) return false;
+            _player.SetPlayerId(stateSync.PlayerId);
+            _player.FlushActionQueue();
+            foreach (Network.StateSync.Actor actor in stateSync.Actors)
+            {
+                if (actor.ActorId == _player.PlayerId())
+                {
+                    Debug.Log("SETTING player asset id to " + actor.AssetId);
+                    _player.SetAssetId(actor.AssetId);
+                    ActionQueue.IAction action = TeleportToStartState(actor);
+                    _player.AddAction(action);
+                    continue;
+                }
+            }
+            return true;
+        }
+        public bool ApplyStateSyncToEntityManager(StateSync stateSync)
+        {
+            if (_entityManager == null) return false;
+            _entityManager.DestroyActors();
+            foreach (Network.StateSync.Actor actor in stateSync.Actors)
+            {
+                if (actor.ActorId == stateSync.PlayerId) continue;
+                _entityManager.RegisterActor(actor.ActorId, Actor.FromStateSync(actor));
+            }
+            return true;
         }
 
         public void HandleMessage(MessageFromServer message)
@@ -62,25 +103,15 @@ namespace Network
             }
             if (message.Type == MessageFromServer.MessageType.STATE_SYNC)
             {
-                if (_player == null || _entityManager == null)
+                if (!ApplyStateSyncToPlayer(message.State))
                 {
-                    Debug.LogError("Player or entity manager not set, yet received state sync.");
-                    return;
+                    Debug.LogError("Player not set, yet received state sync.");
+                    _pendingStateSync = message.State;
                 }
-                _player.SetPlayerId(message.State.PlayerId);
-                _entityManager.DestroyActors();
-                _player.FlushActionQueue();
-                foreach (Network.StateSync.Actor actor in message.State.Actors)
+                if (!ApplyStateSyncToEntityManager(message.State))
                 {
-                    if (actor.ActorId == _player.PlayerId())
-                    {
-                        Debug.Log("SETTING player asset id to " + actor.AssetId);
-                        _player.SetAssetId(actor.AssetId);
-                        ActionQueue.IAction action = TeleportToStartState(actor);
-                        _player.AddAction(action);
-                        continue;
-                    }
-                    _entityManager.RegisterActor(actor.ActorId, Actor.FromStateSync(actor));
+                    Debug.LogError("Entity manager not set, yet received state sync.");
+                    _pendingStateSync = message.State;
                 }
             }
             if (message.Type == MessageFromServer.MessageType.MAP_UPDATE)
