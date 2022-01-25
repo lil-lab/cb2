@@ -267,6 +267,10 @@ class State(object):
                     card_record.save()
                 self._game_record.score = new_turn_state.score
                 self._game_record.save()
+                # Add 3 new cards before clearing selected cards. This prevents
+                # us from accidentally spawning cards in the same location as
+                # the previous 3, which is confusing to the user.
+                self._map_provider.add_random_cards(3)
                 # Clear card state and remove the cards in the winning set.
                 logging.info("Clearing selected cards")
                 for card in selected_cards:
@@ -274,7 +278,6 @@ class State(object):
                     card_select_action = CardSelectAction(card.id, False)
                     self.record_action(card_select_action)
                     self._map_provider.remove_card(card.id)
-                self._map_provider.add_random_cards(3)
 
             if cards_changed:
                 # We've changed cards, so we need to mark the map as stale for all players.
