@@ -18,6 +18,8 @@ namespace Network
         private EntityManager _entityManager;
         private Player _player;
 
+        private StateSync _pendingStateSync;
+
         public NetworkRouter(ClientConnection client, NetworkMapSource mapSource, NetworkManager networkManager, EntityManager entityManager, Player player)
         {
             _client = client;
@@ -25,6 +27,7 @@ namespace Network
             _networkManager = networkManager;
             _entityManager = entityManager;
             _player = player;
+            _pendingStateSync = null;
 
             _client.RegisterHandler(this);
         }
@@ -32,11 +35,48 @@ namespace Network
         public void SetEntityManager(EntityManager entityManager)
         {
             _entityManager = entityManager;
+            if (_pendingStateSync != null)
+            {
+            }
         }
 
         public void SetPlayer(Player player)
         {
             _player = player;
+            if (_pendingStateSync != null)
+            {
+                _player.SetPlayerId(_pendingStateSync.PlayerId);
+            }
+        }
+
+        public bool ApplyStateSyncToPlayer(StateSync stateSync)
+        {
+            if (_player == null) return false;
+            _player.SetPlayerId(stateSync.PlayerId);
+            _player.FlushActionQueue();
+            foreach (Network.StateSync.Actor actor in stateSync.Actors)
+            {
+                if (actor.ActorId == _player.PlayerId())
+                {
+                    Debug.Log("SETTING player asset id to " + actor.AssetId);
+                    _player.SetAssetId(actor.AssetId);
+                    ActionQueue.IAction action = TeleportToStartState(actor);
+                    _player.AddAction(action);
+                    continue;
+                }
+            }
+            return true;
+        }
+        public bool ApplyStateSyncToEntityManager(StateSync stateSync)
+        {
+            if (_entityManager == null) return false;
+            _entityManager.DestroyActors();
+            foreach (Network.StateSync.Actor actor in stateSync.Actors)
+            {
+                if (actor.ActorId == stateSync.PlayerId) continue;
+                _entityManager.RegisterActor(actor.ActorId, Actor.FromStateSync(actor));
+            }
+            return true;
         }
 
         public void HandleMessage(MessageFromServer message)
@@ -65,7 +105,16 @@ namespace Network
                 if (_player == null || _entityManager == null)
                 {
                     Debug.LogError("Player or entity manager not set, yet received state sync.");
+                    _pendingStateSync = message.State;
                     return;
+                }
+                if (!ApplyStateSyncToPlayer(message.State))
+                {
+
+                }
+                if (!ApplyStateSyncToEntityManager(message.State))
+                {
+
                 }
                 _player.SetPlayerId(message.State.PlayerId);
                 _entityManager.DestroyActors();

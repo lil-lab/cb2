@@ -107,11 +107,11 @@ async def stream_game_state(request, ws):
         if not was_in_room:
             was_in_room = True
             # Make sure we drain pending room manager commands here with sleeps to ensure the client has time to switch scenes.
-            await asyncio.sleep(0.5)
+            # await asyncio.sleep(0.5)
             message = room_manager.drain_message(ws)
             if message is not None:
                 await transmit(ws, message.to_json())
-            await asyncio.sleep(1.0)
+            # await asyncio.sleep(1.0)
             continue
 
         msg_from_server = room.drain_message(player_id)
