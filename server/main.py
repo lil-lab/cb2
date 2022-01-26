@@ -224,7 +224,7 @@ async def asset(request):
     return web.FileResponse(assets_map[asset_id])
 
 
-async def serve():
+async def serve(config):
     app = web.Application()
 
     # Add a route for serving web frontend files on /.
@@ -233,7 +233,7 @@ async def serve():
     app.add_routes(routes)
     runner = runner = aiohttp.web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, None, 8080)
+    site = web.TCPSite(runner, None, config.http_port)
     await site.start()
 
     print("======= Serving on {site.name} ======".format(site=site))
@@ -366,7 +366,7 @@ def main(config_file="config/server-config.json"):
     InitGameRecording(config)
 
     assets_map = HashCollectAssets(config.assets_directory())
-    tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), debug_print(), serve())
+    tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), debug_print(), serve(config))
     # If map visualization command line flag is enabled, run with the visualize task.
     # if gui:
     #   tasks = asyncio.gather(tasks, draw_gui())

@@ -24,5 +24,7 @@ class Config:
     def database_path(self):
         return pathlib.Path(self.data_prefix, self.database_path_suffix).expanduser()
 
+    http_port: int = 8080
+
     # Optional feature configurations.
     gui: bool = False
