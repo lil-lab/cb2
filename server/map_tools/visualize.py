@@ -21,11 +21,9 @@ def wait_for_key():
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
+                return
             if event.type == pygame.KEYDOWN:
-                pygame.quit()
-                quit()  
+                return
 
 def PygameColorFromCardColor(card_color):
     """ Matches an instance of card.Color to a pygame color object."""

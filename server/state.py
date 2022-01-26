@@ -93,7 +93,7 @@ class State(object):
 
     def record_turn_state(self, turn_state):
         # Record a copy of the current turn state.
-        self._record_log.info(turn_state)
+        self._record_log.debug(turn_state)
         self._turn_state = turn_state
         for actor_id in self._actors:
             if not actor_id in self._turn_history:
@@ -107,7 +107,7 @@ class State(object):
         if self._turn_history[actor_id].empty():
             return None
         turn = self._turn_history[actor_id].get()
-        self._sent_log.info(f"to: {actor_id} turn_state: {turn}")
+        self._sent_log.debug(f"to: {actor_id} turn_state: {turn}")
         return turn
 
     def end_game(self):
@@ -201,7 +201,6 @@ class State(object):
                             f"Actor {actor_id} is out of moves. Dropping pending action.")
                         continue
                     if self.valid_action(actor_id, proposed_action):
-                        logger.info("AAAAAAAAAA")
                         self.record_move(actor, proposed_action)
                         actor.step()
                         self.record_action(proposed_action)
@@ -224,6 +223,7 @@ class State(object):
                 for card in selected_cards:
                     # Outline the cards in red.
                     card_select_action = CardSelectAction(card.id, True, Color(1, 0, 0, 1))
+                    self._map_provider.set_color(card.id, Color(1, 0, 0, 1))
                     self.record_action(card_select_action)
             
             if not self._map_provider.selected_cards_collide() and current_set_invalid:
@@ -233,6 +233,7 @@ class State(object):
                 for card in selected_cards:
                     # Outline the cards in blue.
                     card_select_action = CardSelectAction(card.id, True, Color(0, 0, 1, 1))
+                    self._map_provider.set_color(card.id, Color(0, 0, 1, 1))
                     self.record_action(card_select_action)
 
             if self._map_provider.selected_valid_set():
@@ -419,8 +420,8 @@ class State(object):
             logger.info(
                 f"Player {actor.actor_id()} stepped on card {str(stepped_on_card)}.")
             selected = not stepped_on_card.selected
-            self._map_provider.set_selected(
-                stepped_on_card.id, selected)
+            self._map_provider.set_selected(stepped_on_card.id, selected)
+            self._map_provider.set_color(stepped_on_card.id, color)
             card_select_action = CardSelectAction(stepped_on_card.id, selected, color)
             self.record_action(card_select_action)
             selection_record = schemas.cards.CardSelections()
@@ -567,34 +568,34 @@ class State(object):
         """
         actions = self.drain_actions(player_id)
         if len(actions) > 0:
-            logger.info(
+            logger.debug(
                 f'Room {self._room_id} drained {len(actions)} actions for player_id {player_id}')
             msg = message_from_server.ActionsFromServer(actions)
             return msg
 
         map_update = self.drain_map_update(player_id)
         if map_update is not None:
-            logger.info(
+            logger.debug(
                 f'Room {self._room_id} drained map update {map_update} for player_id {player_id}')
             return message_from_server.MapUpdateFromServer(map_update)
 
         if not self.is_synced(player_id):
             state_sync = self.sync_message_for_transmission(player_id)
-            logger.info(
+            logger.debug(
                 f'Room {self._room_id} drained state sync: {state_sync} for player_id {player_id}')
             msg = message_from_server.StateSyncFromServer(state_sync)
             return msg
 
         objectives = self.drain_objectives(player_id)
         if len(objectives) > 0:
-            logger.info(
+            logger.debug(
                 f'Room {self._room_id} drained {len(objectives)} texts for player_id {player_id}')
             msg = message_from_server.ObjectivesFromServer(objectives)
             return msg
         
         turn_state = self.drain_turn_state(player_id)
         if not turn_state is None:
-            logger.info(
+            logger.debug(
                 f'Room {self._room_id} drained ts {turn_state} for player_id {player_id}')
             msg = message_from_server.GameStateFromServer(turn_state)
             return msg
@@ -608,7 +609,7 @@ class State(object):
         action_history = self._action_history[actor_id]
         # Log actions sent to client.
         for action in action_history:
-            self._sent_log.info(f"to: {actor_id} action: {action}")
+            self._sent_log.debug(f"to: {actor_id} action: {action}")
         self._action_history[actor_id] = []
         return action_history
 
@@ -643,7 +644,7 @@ class State(object):
 
         # Send the latest map and mark as fresh for this player.
         self._map_stale[actor_id] = False
-        self._sent_log.info(f"to: {actor_id} map: {self._map_update}")
+        self._sent_log.debug(f"to: {actor_id} map: {self._map_update}")
         return self._map_update
 
 

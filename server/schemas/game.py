@@ -8,8 +8,9 @@ import datetime
 
 class Game(BaseModel):
     id = AutoField()
-    type = TextField() # 'game', 'lead_tutorial', or 'follow_tutorial'
-    world_seed = TextField()
+    type = TextField(null=True) # 'game', 'lead_tutorial', or 'follow_tutorial'
+    log_directory = TextField(null=True) # Directory where logs are stored.
+    world_seed = TextField(null=True)
     leader = ForeignKeyField(Worker, backref='lead_games', null=True)
     follower = ForeignKeyField(Worker, backref='follow_games', null=True)
     number_cards = IntegerField(default=0)

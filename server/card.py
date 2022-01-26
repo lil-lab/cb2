@@ -32,7 +32,6 @@ class Color(Enum):
     RED = 6
     YELLOW = 7
 
-
 OUTLINE_RADIUS = 30
 
 # Returns a list of actions to animate card completion. First selects the cards
@@ -70,12 +69,13 @@ class Card:
     color: Color
     count: int
     selected: bool
+    border_color: action.Color = action.Color(0, 0, 1, 1)
 
     def prop(self):
         return messages.prop.Prop(self.id,
                                   messages.prop.PropType.CARD,
                                   messages.prop.GenericPropInfo(
-                                      self.location, self.rotation_degrees, False, OUTLINE_RADIUS),
+                                      self.location, self.rotation_degrees, False, OUTLINE_RADIUS, self.border_color),
                                   messages.prop.CardConfig(
                                       self.color,
                                       self.shape,

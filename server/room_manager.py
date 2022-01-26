@@ -26,6 +26,7 @@ import logging
 import messages.rooms
 import pathlib
 import random
+import schemas.game
 
 logger = logging.getLogger()
 
@@ -102,7 +103,8 @@ class RoomManager(object):
             room.stop()
         self._is_done = True
 
-    def create_room(self, id, log_directory, type: RoomType = RoomType.GAME, tutorial_name: str = ""):
+    def create_room(self, id, game_record: schemas.game.Game,
+                    type: RoomType = RoomType.GAME, tutorial_name: str = ""):
         self._rooms[id] = Room(
             # Room name.
             "Room #" + str(id) + ("(TUTORIAL)" if type == RoomType.TUTORIAL else ""),
@@ -110,8 +112,7 @@ class RoomManager(object):
             2,
             # Room ID.
             id,
-            # Log directory.
-            log_directory,
+            game_record,
             type,
             tutorial_name)
         self._rooms[id].start()
@@ -148,14 +149,17 @@ class RoomManager(object):
         logger.info(f"Creating tutorial room for {player}.")
 
         # Setup room log directory.
-        game_id = self._room_id_assigner.alloc()
+        game_record = schemas.game.Game()
+        game_record.save()
+        game_id = game_record.id
         game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
         game_name = f"{game_time}_{game_id}_TUTORIAL"
         log_directory = pathlib.Path(self._base_log_directory, game_name)
         log_directory.mkdir(parents=False, exist_ok=False)
+        game_record.log_directory = str(log_directory)
 
         # Create room.
-        room = self.create_room(game_id, log_directory, RoomType.TUTORIAL, tutorial_name)
+        room = self.create_room(game_id, game_record, RoomType.TUTORIAL, tutorial_name)
         print("Creating new tutorial room " + room.name())
         role = RoleFromTutorialName(tutorial_name)
         player_id = room.add_player(player, role)
@@ -182,14 +186,17 @@ class RoomManager(object):
             logger.info(f"Creating room for {leader} and {follower}. Queue size: {len(self._player_queue)}")
 
             # Setup room log directory.
-            game_id = self._room_id_assigner.alloc()
+            game_record = schemas.game.Game()
+            game_record.save()
+            game_id = game_record.id
             game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
             game_name = f"{game_time}_{game_id}_GAME"
             log_directory = pathlib.Path(self._base_log_directory, game_name)
             log_directory.mkdir(parents=False, exist_ok=False)
+            game_record.log_directory = str(log_directory)
 
             # Create room.
-            room = self.create_room(game_id, log_directory)
+            room = self.create_room(game_id, game_record)
             print("Creating new game " + room.name())
             leader_id = room.add_player(leader, Role.LEADER)
             follower_id = room.add_player(follower, Role.FOLLOWER)

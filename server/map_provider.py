@@ -504,6 +504,12 @@ class MapProvider(object):
                     del self._selected_cards[card_id]
                 break
     
+    def set_color(self, card_id, color):
+        for idx, card in enumerate(self._cards):
+            if card.id == card_id:
+                self._cards[idx].border_color = color
+                break
+    
     def remove_card(self, card_id):
         for card in self._cards:
             if card.id == card_id:

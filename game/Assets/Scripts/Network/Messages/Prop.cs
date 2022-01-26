@@ -8,6 +8,7 @@ namespace Network
         public int RotationDegrees;  // Even multiples of 60.
         public bool Collide;  // Whether actors can collide with the prop.
         public int BorderRadius;  // The radius of the prop's outline.
+        public Network.Color BorderColor;
     }
 
     [Serializable]

@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from marshmallow import fields
+from messages import action
 from typing import Optional
 
 import dateutil.parser
@@ -24,6 +25,7 @@ class GenericPropInfo:
     rotation_degrees: int
     collide: bool
     border_radius: int
+    border_color: action.Color = action.Color(0, 0, 1, 1)
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)

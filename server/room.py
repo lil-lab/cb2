@@ -41,16 +41,15 @@ class RoomType(Enum):
 
 class Room(object):
     """ Represents a game room. """
-    def __init__(self, name: str, max_players: int, game_id: int, log_directory:
-                 pathlib.Path, type: RoomType = RoomType.GAME,
-                 tutorial_name: str = ""):
+    def __init__(self, name: str, max_players: int, game_id: int, game_record,
+                 type: RoomType = RoomType.GAME, tutorial_name: str = ""):
         self._name = name
         self._max_players = max_players
         self._players = []
         self._player_endpoints = []
         self._id = game_id
         self._room_type = type
-        self._game_record = schemas.game.Game()
+        self._game_record = game_record
         if self._room_type == RoomType.GAME:
             self._game_record.type = 'game'
             self._game_state = State(self._id, self._game_record)
@@ -65,6 +64,7 @@ class Room(object):
             logger.error("Room started with invalid type NONE.")
         self._game_record.save()
         self._update_loop = None
+        log_directory = pathlib.Path(game_record.log_directory)
         if not os.path.exists(log_directory):
             logger.warning('Provided log directory does not exist. Game will not be recorded.')
             return
@@ -75,6 +75,9 @@ class Room(object):
         self._messages_to_server_log = messages_to_server_path.open('w')
 
         self._map_update_count = 0
+    
+    def game_record(self):
+        return self._game_record
 
     def add_player(self, ws, role):
         """ Adds a player to the room. """
