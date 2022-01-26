@@ -8,14 +8,13 @@ from marshmallow import fields
 
 import dateutil.parser
 
-
 class ActionType(Enum):
     INIT = 0
     INSTANT = 1
     ROTATE = 2
     TRANSLATE = 3
     OUTLINE = 4
-
+    DEATH = 5
 
 class AnimationType(Enum):
     NONE = 0

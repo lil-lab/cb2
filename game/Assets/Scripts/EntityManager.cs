@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -14,11 +15,13 @@ public class EntityManager : MonoBehaviour
 
     private Dictionary<int, Actor> _actors;
     private Dictionary<int, Prop> _props;
+    private List<Prop> _graveyard;
 
     public EntityManager()
     {
         _actors = new Dictionary<int, Actor>();
         _props = new Dictionary<int, Prop>();
+        _graveyard = new List<Prop>();
     }
 
     public int NumberOfActors()
@@ -108,6 +111,20 @@ public class EntityManager : MonoBehaviour
         _props = new Dictionary<int, Prop>();
     }
 
+    // Queue all current props to eventually self-destruct. Move them to a separate graveyard collection until then.
+    public void QueueDestroyProps()
+    {
+        foreach (var kvPair in _props)
+        {
+            int propId = kvPair.Key;
+            Prop prop = _props[propId];
+            prop.AddAction(Death.DieImmediately());
+            _graveyard.Add(prop);
+        }
+        _props = new Dictionary<int, Prop>();
+        Debug.Log("Queued " + _graveyard.Count + " props for destruction.");
+    }
+
     public void Update()
     {
         foreach (var kvPair in _actors)
@@ -120,5 +137,13 @@ public class EntityManager : MonoBehaviour
             int propId = kvPair.Key;
             _props[propId].Update();
         }
+        // Remove destroyed props.
+        _props = _props.Where(x => !x.Value.IsDestroyed()).ToDictionary(x => x.Key, x => x.Value);
+        foreach (var prop in _graveyard)
+        {
+            prop.Update();
+        }
+        // Remove destroyed props from graveyard.
+        _graveyard.RemoveAll(x => x.IsDestroyed());
     }
 }

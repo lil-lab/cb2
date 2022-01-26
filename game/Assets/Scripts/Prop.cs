@@ -81,6 +81,15 @@ public class Prop
         UnityAssetSource assetSource = new UnityAssetSource();
         _actionQueue.Update();
 
+        State.Discrete discrete = _actionQueue.State();
+        if (discrete.EndOfLife)
+        {
+            Debug.Log("EOL for object. Killing...");
+            if (!IsDestroyed()) Destroy();
+            return;
+        }
+        if (IsDestroyed()) return;
+
         State.Continuous state = _actionQueue.ContinuousState();
         // Update current location, orientation, and animation based on action queue.
         _asset.transform.position = Scale() * state.Position;
@@ -128,11 +137,20 @@ public class Prop
         }
     }
 
+    // A prop could self-deallocate if a Death action is sent to it. This allows
+    // the user to retrieve the prop's state.
+    public bool IsDestroyed() { return _asset == null; }
+
     // Flushes actions and deallocates the assets for this object.
     public void Destroy()
     {
         GameObject.Destroy(_asset);
         _asset = null;
+        if (_outline != null)
+        {
+            GameObject.Destroy(_outline);
+            _outline = null;
+        }
     }
 
     // Flushes actions in flight.

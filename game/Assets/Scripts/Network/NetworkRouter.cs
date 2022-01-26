@@ -91,7 +91,7 @@ namespace Network
         public bool ApplyMapUpdateToEntityManager(MapUpdate mapUpdate)
         {
             if (_entityManager == null) return false;
-            _entityManager.DestroyProps();
+            _entityManager.QueueDestroyProps();
             foreach (Network.Prop netProp in mapUpdate.Props)
             {
                 if (netProp.PropType == PropType.CARD)

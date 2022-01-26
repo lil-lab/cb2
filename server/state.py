@@ -8,7 +8,7 @@ from messages import objective, state_sync
 from hex import HecsCoord
 from queue import Queue
 from map_provider import MapProvider, MapType
-from card import CardSelectAction
+from card import CardSelectAction, SetCompletionActions
 from util import IdAssigner
 from datetime import datetime, timedelta
 from messages.turn_state import TurnState, GameOverMessage, TurnUpdate
@@ -275,8 +275,9 @@ class State(object):
                 logging.info("Clearing selected cards")
                 for card in selected_cards:
                     self._map_provider.set_selected(card.id, False)
-                    card_select_action = CardSelectAction(card.id, False)
-                    self.record_action(card_select_action)
+                    actions = SetCompletionActions(card.id)
+                    for action in actions:
+                        self.record_action(action)
                     self._map_provider.remove_card(card.id)
 
             if cards_changed:
@@ -564,6 +565,13 @@ class State(object):
 
             If no message is available, returns None.
         """
+        actions = self.drain_actions(player_id)
+        if len(actions) > 0:
+            logger.info(
+                f'Room {self._room_id} drained {len(actions)} actions for player_id {player_id}')
+            msg = message_from_server.ActionsFromServer(actions)
+            return msg
+
         map_update = self.drain_map_update(player_id)
         if map_update is not None:
             logger.info(
@@ -575,13 +583,6 @@ class State(object):
             logger.info(
                 f'Room {self._room_id} drained state sync: {state_sync} for player_id {player_id}')
             msg = message_from_server.StateSyncFromServer(state_sync)
-            return msg
-
-        actions = self.drain_actions(player_id)
-        if len(actions) > 0:
-            logger.info(
-                f'Room {self._room_id} drained {len(actions)} actions for player_id {player_id}')
-            msg = message_from_server.ActionsFromServer(actions)
             return msg
 
         objectives = self.drain_objectives(player_id)

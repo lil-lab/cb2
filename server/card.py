@@ -8,6 +8,7 @@ import datetime
 
 import messages.prop
 import messages.action as action
+from schemas.cards import CardSelections
 
 
 class Shape(Enum):
@@ -34,12 +35,29 @@ class Color(Enum):
 
 OUTLINE_RADIUS = 30
 
-def CardSelectAction(card_id, selected, color=action.Color(0, 0, 1, 1)):
+# Returns a list of actions to animate card completion. First selects the cards
+# in green, then triggers a blink animation.
+def SetCompletionActions(card_id):
+    actions = []
+    green_color = action.Color(0, 1, 0, 1)
+    return CardBlink(card_id, 3, 2, green_color)
+
+def CardBlink(card_id, number_blinks, duration_s, color):
+    blink_duration = duration_s / number_blinks
+    blink_duty_cycle = 0.7
+    blink_duration_on = blink_duration * blink_duty_cycle
+    blink_duration_off = blink_duration - blink_duration_on
+    return (number_blinks * [
+        CardSelectAction(card_id, True, color, blink_duration_on),
+        CardSelectAction(card_id, False, color, blink_duration_off),
+    ])
+
+def CardSelectAction(card_id, selected, color=action.Color(0, 0, 1, 1), duration_s=0.2):
     action_type = ActionType.OUTLINE
     radius = OUTLINE_RADIUS if selected else 0
     expiration = datetime.datetime.now() + datetime.timedelta(seconds=10)
     return Action(card_id, action_type, AnimationType.NONE, HecsCoord(0, 0, 0),
-                  0, radius, color, 0.2, expiration)
+                  0, radius, color, duration_s, expiration)
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)

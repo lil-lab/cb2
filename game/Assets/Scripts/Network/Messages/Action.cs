@@ -11,6 +11,7 @@ namespace Network
         ROTATE,
         TRANSLATE,
         OUTLINE,
+        DEATH,
     }
 
     [Serializable]
