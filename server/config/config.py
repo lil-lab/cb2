@@ -15,6 +15,7 @@ class Config:
     record_directory_suffix: str = "game_records/" # Where to store game recordings.
     assets_directory_suffix: str = "assets/"  # Where to store asset resources.
     database_path_suffix: str = "game_data.db"  # Where to store the sqlite3 record database.
+    backup_db_path_suffix: str = "game_data.bk.db"
 
     # Data path accessors that add the requisite data_prefix.
     def record_directory(self):
@@ -23,6 +24,8 @@ class Config:
         return pathlib.Path(self.data_prefix, self.assets_directory_suffix).expanduser()
     def database_path(self):
         return pathlib.Path(self.data_prefix, self.database_path_suffix).expanduser()
+    def backup_database_path(self):
+        return pathlib.Path(self.data_prefix, self.backup_db_path_suffix).expanduser()
 
     http_port: int = 8080
 

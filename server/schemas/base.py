@@ -1,6 +1,7 @@
 from peewee import *
+from playhouse.sqlite_ext import CSqliteExtDatabase
 
-database = SqliteDatabase(None)  # Create a proxy for our db.
+database = CSqliteExtDatabase(None)
 
 class BaseModel(Model):
     class Meta:
@@ -8,7 +9,13 @@ class BaseModel(Model):
 
 def SetDatabase(db_path):
     # Configure our proxy to use the db we specified in config.
-    database.init(db_path, pragmas = [('foreign_keys', 'on')])
+    database.init(
+        db_path, 
+        pragmas =
+            [ ('cache_size', -1024 * 64),  # 64MB page-cache.
+              ('journal_mode', 'wal'),  # Use WAL-mode (you should always use this!).
+              ('foreign_keys', 1)]
+    )
 
 def ConnectDatabase():
     database.connect()
