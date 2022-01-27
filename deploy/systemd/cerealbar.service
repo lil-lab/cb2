@@ -7,8 +7,8 @@ StartLimitIntervalSec=0
 Type=simple
 Restart=always
 RestartSec=1
-User=lil-lab
-ExecStart=/bin/bash /home/lil-lab/projects/cb2-game-dev/server/systemd/launch.sh
+User=ubuntu
+ExecStart=/bin/bash /home/ubuntu/projects/cb2-game-dev/deploy/systemd/launch.sh
 ProtectHome=off
 
 
