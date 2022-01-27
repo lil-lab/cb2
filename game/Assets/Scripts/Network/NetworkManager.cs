@@ -251,8 +251,9 @@ namespace Network
             {
                 // We can figure out the server's address based on Unity's API.
                 Uri servedUrl = new Uri(Application.absoluteURL);
+                string websocketScheme = servedUrl.Scheme == "https" ? "wss" : "ws";
                 UriBuilder endpointUrlBuilder =
-                    new UriBuilder("ws", servedUrl.Host, servedUrl.Port,
+                    new UriBuilder(websocketScheme, servedUrl.Host, servedUrl.Port,
                                    "/player_endpoint");
                 if (servedUrl.Query.Length > 0)
                 {
