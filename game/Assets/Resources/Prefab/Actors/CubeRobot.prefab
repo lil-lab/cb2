@@ -127,7 +127,7 @@ MonoBehaviour:
     m_Bits: 8
   stopNaNPropagation: 1
   finalBlitToCameraTarget: 0
-  antialiasingMode: 3
+  antialiasingMode: 1
   temporalAntialiasing:
     jitterSpread: 1
     sharpness: 0.2
@@ -136,7 +136,7 @@ MonoBehaviour:
   subpixelMorphologicalAntialiasing:
     quality: 2
   fastApproximateAntialiasing:
-    fastMode: 1
+    fastMode: 0
     keepAlpha: 0
   fog:
     enabled: 1
@@ -275,7 +275,7 @@ MonoBehaviour:
     m_Bits: 2
   stopNaNPropagation: 1
   finalBlitToCameraTarget: 0
-  antialiasingMode: 3
+  antialiasingMode: 1
   temporalAntialiasing:
     jitterSpread: 1
     sharpness: 0.2

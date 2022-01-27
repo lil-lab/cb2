@@ -401,72 +401,6 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
---- !u!1 &227175186
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 227175189}
-  - component: {fileID: 227175188}
-  - component: {fileID: 227175187}
-  m_Layer: 3
-  m_Name: Global Post Processing
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &227175187
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 227175186}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8b9a305e18de0c04dbd257a21cd47087, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  sharedProfile: {fileID: 11400000, guid: 5710f4545fcc6488cbde4938e87fcff8, type: 2}
-  isGlobal: 1
-  blendDistance: 0
-  weight: 1
-  priority: 0
---- !u!114 &227175188
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 227175186}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  isGlobal: 1
-  priority: 0
-  blendDistance: 0
-  weight: 1
-  sharedProfile: {fileID: 0}
---- !u!4 &227175189
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 227175186}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 17
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &244780552
 GameObject:
   m_ObjectHideFlags: 0
@@ -3281,7 +3215,7 @@ MonoBehaviour:
     m_Bits: 8
   stopNaNPropagation: 1
   finalBlitToCameraTarget: 0
-  antialiasingMode: 3
+  antialiasingMode: 1
   temporalAntialiasing:
     jitterSpread: 1
     sharpness: 0.2
@@ -3290,7 +3224,7 @@ MonoBehaviour:
   subpixelMorphologicalAntialiasing:
     quality: 2
   fastApproximateAntialiasing:
-    fastMode: 1
+    fastMode: 0
     keepAlpha: 0
   fog:
     enabled: 1
@@ -4379,7 +4313,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Scale: 3.46
-  DebugEdges: 1
+  DebugEdges: 0
 --- !u!1 &1384840084
 GameObject:
   m_ObjectHideFlags: 0
@@ -5812,7 +5746,7 @@ MonoBehaviour:
     m_Bits: 8
   stopNaNPropagation: 1
   finalBlitToCameraTarget: 0
-  antialiasingMode: 3
+  antialiasingMode: 1
   temporalAntialiasing:
     jitterSpread: 1
     sharpness: 0.2
@@ -5821,7 +5755,7 @@ MonoBehaviour:
   subpixelMorphologicalAntialiasing:
     quality: 2
   fastApproximateAntialiasing:
-    fastMode: 1
+    fastMode: 0
     keepAlpha: 0
   fog:
     enabled: 1

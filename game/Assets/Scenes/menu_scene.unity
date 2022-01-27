@@ -739,10 +739,10 @@ MonoBehaviour:
   volumeTrigger: {fileID: 265957271}
   volumeLayer:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 8
   stopNaNPropagation: 1
   finalBlitToCameraTarget: 0
-  antialiasingMode: 3
+  antialiasingMode: 1
   temporalAntialiasing:
     jitterSpread: 0.75
     sharpness: 0.25
@@ -751,10 +751,10 @@ MonoBehaviour:
   subpixelMorphologicalAntialiasing:
     quality: 2
   fastApproximateAntialiasing:
-    fastMode: 1
-    keepAlpha: 1
+    fastMode: 0
+    keepAlpha: 0
   fog:
-    enabled: 0
+    enabled: 1
     excludeSkybox: 1
   debugLayer:
     lightMeter:
@@ -784,6 +784,54 @@ MonoBehaviour:
   m_BeforeTransparentBundles: []
   m_BeforeStackBundles: []
   m_AfterStackBundles: []
+--- !u!1 &344321367
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 344321369}
+  - component: {fileID: 344321368}
+  m_Layer: 3
+  m_Name: PostProcessing
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &344321368
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 344321367}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b9a305e18de0c04dbd257a21cd47087, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sharedProfile: {fileID: 0}
+  isGlobal: 1
+  blendDistance: 0
+  weight: 1
+  priority: 0
+--- !u!4 &344321369
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 344321367}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 759.49994, y: 374.13123, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 12
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &391069443
 GameObject:
   m_ObjectHideFlags: 0
@@ -2482,7 +2530,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Scale: 3.47
-  DebugEdges: 1
+  DebugEdges: 0
 --- !u!4 &1508406246
 Transform:
   m_ObjectHideFlags: 0

@@ -3110,7 +3110,7 @@ MonoBehaviour:
     m_Bits: 8
   stopNaNPropagation: 1
   finalBlitToCameraTarget: 0
-  antialiasingMode: 3
+  antialiasingMode: 1
   temporalAntialiasing:
     jitterSpread: 1
     sharpness: 0.2
@@ -3119,7 +3119,7 @@ MonoBehaviour:
   subpixelMorphologicalAntialiasing:
     quality: 2
   fastApproximateAntialiasing:
-    fastMode: 1
+    fastMode: 0
     keepAlpha: 0
   fog:
     enabled: 1
@@ -4301,7 +4301,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Scale: 3.46
-  DebugEdges: 1
+  DebugEdges: 0
 --- !u!1 &1372918143
 GameObject:
   m_ObjectHideFlags: 0
@@ -6039,7 +6039,7 @@ MonoBehaviour:
     m_Bits: 8
   stopNaNPropagation: 1
   finalBlitToCameraTarget: 0
-  antialiasingMode: 3
+  antialiasingMode: 1
   temporalAntialiasing:
     jitterSpread: 1
     sharpness: 0.2
@@ -6048,7 +6048,7 @@ MonoBehaviour:
   subpixelMorphologicalAntialiasing:
     quality: 2
   fastApproximateAntialiasing:
-    fastMode: 1
+    fastMode: 0
     keepAlpha: 0
   fog:
     enabled: 1
