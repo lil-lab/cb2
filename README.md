@@ -70,7 +70,7 @@ Deploying a WebGL Client
 For development purposes, the server may be run locally and the client run directly in the Unity editor. For deployment, the game is compiled to Web Assembly and WebGL is used for efficient graphics in the browser. You can deploy a new version of the client by running:
 
 ```
-./build_and_deploy.sh # Unity must be closed when running this.
+./build_client.sh # Unity must be closed when running this.
 ```
 
 This launches a headless version of Unity which builds a WebGL client and moves it to the appropriate directory (`server/www/WebGL`) in the server.
