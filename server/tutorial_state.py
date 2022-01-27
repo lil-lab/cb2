@@ -10,7 +10,7 @@ from messages.objective import ObjectiveMessage
 from hex import HecsCoord
 from queue import Queue
 from map_provider import MapProvider, MapType
-from card import CardSelectAction
+from card import CardSelectAction, SetCompletionActions
 from util import IdAssigner
 from datetime import datetime, timedelta
 from messages.turn_state import TurnState, GameOverMessage, TurnUpdate
@@ -295,6 +295,7 @@ class TutorialGameState(object):
                 for card in selected_cards:
                     # Outline the cards in red.
                     card_select_action = CardSelectAction(card.id, True, Color(1, 0, 0, 1))
+                    self._map_provider.set_color(card.id, Color(1, 0, 0, 1))
                     self.record_action(card_select_action)
             
             if not self._map_provider.selected_cards_collide() and current_set_invalid:
@@ -304,6 +305,7 @@ class TutorialGameState(object):
                 for card in selected_cards:
                     # Outline the cards in blue.
                     card_select_action = CardSelectAction(card.id, True, Color(0, 0, 1, 1))
+                    self._map_provider.set_color(card.id, Color(0, 0, 1, 1))
                     self.record_action(card_select_action)
 
             if self._map_provider.selected_valid_set():
@@ -340,8 +342,9 @@ class TutorialGameState(object):
                 logging.info("Clearing selected cards")
                 for card in selected_cards:
                     self._map_provider.set_selected(card.id, False)
-                    card_select_action = CardSelectAction(card.id, False)
-                    self.record_action(card_select_action)
+                    actions = SetCompletionActions(card.id)
+                    for action in actions:
+                        self.record_action(action)
                     self._map_provider.remove_card(card.id)
                 # If the tutorial was waiting for a set, advance the tutorial.
                 if self._tutorial_step_index > 0:
@@ -383,8 +386,8 @@ class TutorialGameState(object):
             logger.info(
                 f"Player {actor.actor_id()} stepped on card {str(stepped_on_card)}.")
             selected = not stepped_on_card.selected
-            self._map_provider.set_selected(
-                stepped_on_card.id, selected)
+            self._map_provider.set_selected(stepped_on_card.id, selected)
+            self._map_provider.set_color(stepped_on_card.id, color)
             card_select_action = CardSelectAction(stepped_on_card.id, selected, color)
             self.record_action(card_select_action)
             selection_record = schemas.cards.CardSelections()
@@ -587,6 +590,13 @@ class TutorialGameState(object):
 
             If no message is available, returns None.
         """
+        actions = self.drain_actions(player_id)
+        if len(actions) > 0:
+            logger.info(
+                f'Room {self._room_id} drained {len(actions)} actions for player_id {player_id}')
+            msg = message_from_server.ActionsFromServer(actions)
+            return msg
+
         map_update = self.drain_map_update(player_id)
         if map_update is not None:
             logger.info(
@@ -598,13 +608,6 @@ class TutorialGameState(object):
             logger.info(
                 f'Room {self._room_id} drained state sync: {state_sync} for player_id {player_id}')
             msg = message_from_server.StateSyncFromServer(state_sync)
-            return msg
-
-        actions = self.drain_actions(player_id)
-        if len(actions) > 0:
-            logger.info(
-                f'Room {self._room_id} drained {len(actions)} actions for player_id {player_id}')
-            msg = message_from_server.ActionsFromServer(actions)
             return msg
 
         objectives = self.drain_objectives(player_id)
