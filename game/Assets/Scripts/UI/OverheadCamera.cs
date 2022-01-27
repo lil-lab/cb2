@@ -53,19 +53,6 @@ public class OverheadCamera : MonoBehaviour
         return gameObject.GetComponent<Camera>();
     }
 
-    public string CameraInstructions()
-    {
-        if (FollowPlayer != null) {
-            return "Camera Instructions:\n" +
-                "A/D: Rotate Camera.\n" +
-                "C: Toggle between Cameras.";
-        }
-
-        return "Camera Instructions:\n" +
-            "A/D: Rotate Camera.\n" +
-            "C: Toggle between Cameras.";
-    }
-
     private bool IsPointClipped(Camera camera, Vector3 worldCoord, float margin, float clipMargin=1.0f)
     {
         Vector3 viewPortPoint = camera.WorldToViewportPoint(worldCoord);

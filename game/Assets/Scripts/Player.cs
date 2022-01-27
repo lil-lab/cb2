@@ -78,9 +78,6 @@ public class Player : MonoBehaviour
             if (_fpvCamera != null) _fpvCamera.enabled = false;
             OverheadCamera.GetComponent<Camera>().enabled = false;
             AngledOverheadCamera.GetComponent<Camera>().enabled = true;
-            string commands = AngledOverheadCamera.GetComponent<OverheadCamera>().CameraInstructions();
-            commands += Instructions();
-            MenuTransitionHandler.TaggedInstance().SetLeaderCommands(commands);
         }
         _lastCameraToggle = DateTime.Now;
     }
@@ -124,16 +121,6 @@ public class Player : MonoBehaviour
         return _actor.Position();
     }
 
-    private string Instructions()
-    {
-        string commands = "";
-        commands += "\nT - Type Instruction";
-        commands += "\nN - Next Turn";
-        commands += "\nEnter - Send Instruction";
-        commands += "\nEsc - Menu";
-        return commands;
-    }
-
     public void SetPlayerId(int playerId) { _playerId = playerId; }
     public int PlayerId() { return _playerId; }
 
@@ -172,22 +159,17 @@ public class Player : MonoBehaviour
             (OverheadCamera != null) &&
             (DateTime.Now - _lastCameraToggle).TotalMilliseconds > 500)
         {
-            string commands = "";
             if (OverheadCamera.GetComponent<Camera>().enabled)
             {
                 OverheadCamera.GetComponent<Camera>().enabled = false;
                 AngledOverheadCamera.GetComponent<Camera>().enabled = true;
-                commands = AngledOverheadCamera.GetComponent<OverheadCamera>().CameraInstructions();
             }
             else
             {
                 OverheadCamera.GetComponent<Camera>().enabled = true;
                 AngledOverheadCamera.GetComponent<Camera>().enabled = false;
-                commands = OverheadCamera.GetComponent<OverheadCamera>().CameraInstructions();
             }
             
-            commands += Instructions();
-            MenuTransitionHandler.TaggedInstance().SetLeaderCommands(commands);
             _lastCameraToggle = DateTime.Now;
         }
 
