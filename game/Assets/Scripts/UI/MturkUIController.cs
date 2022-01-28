@@ -6,6 +6,7 @@ public class MturkUIController : MonoBehaviour
 {
     public GameObject mturk_ui;
     public GameObject main_menu_ui;
+    public GameObject queue_ui;
     private const string SKIP_TO_TASK_PARAM = "skipToTask";
     private const string JOIN_QUEUE_TASK = "joinGameQueue";
     private const string LEADER_TUTORIAL_TASK = "leaderTutorial";
@@ -35,14 +36,21 @@ public class MturkUIController : MonoBehaviour
             switch(taskName)
             {
                 case JOIN_QUEUE_TASK:
+                    mturk_ui.SetActive(false);
+                    queue_ui.SetActive(true);
                     Debug.Log("[DEBUG] MTURK: Jumping to JoinGameQueue task.");
                     Network.NetworkManager.TaggedInstance().JoinGame();
                     break;
                 case LEADER_TUTORIAL_TASK:
+                    mturk_ui.SetActive(false);
                     Network.NetworkManager.TaggedInstance().StartLeaderTutorial();
                     break;
                 case FOLLOWER_TUTORIAL_TASK:
+                    mturk_ui.SetActive(false);
                     Network.NetworkManager.TaggedInstance().StartFollowerTutorial();
+                    break;
+                default:
+                    Debug.LogError("[ERROR] MTURK: Unknown task name: " + taskName);
                     break;
             }
         }
