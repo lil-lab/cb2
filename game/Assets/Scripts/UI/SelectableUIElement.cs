@@ -11,11 +11,29 @@ public class SelectableUIElement : MonoBehaviour, IPointerEnterHandler, IPointer
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        gameObject.GetComponent<Text>().color = onMouseOverColor;
+        Text t = gameObject.GetComponent<Text>();
+        if (t != null)
+        {
+            t.color = onMouseOverColor;
+        }
+        TMPro.TMP_Text tmpro = gameObject.GetComponent<TMPro.TMP_Text>();
+        if (tmpro != null)
+        {
+            tmpro.color = onMouseOverColor;
+        }
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        gameObject.GetComponent<Text>().color = defaultColor;
+        Text t = gameObject.GetComponent<Text>();
+        if (t != null)
+        {
+            t.color = defaultColor;
+        }
+        TMPro.TMP_Text tmpro = gameObject.GetComponent<TMPro.TMP_Text>();
+        if (tmpro != null)
+        {
+            tmpro.color = defaultColor;
+        }
     }
 }
