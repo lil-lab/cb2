@@ -39,7 +39,7 @@ OUTLINE_RADIUS = 30
 def SetCompletionActions(card_id):
     actions = []
     green_color = action.Color(0, 1, 0, 1)
-    return CardBlink(card_id, 3, 2, green_color)
+    return CardBlink(card_id, 2, 1, green_color)
 
 def CardBlink(card_id, number_blinks, duration_s, color):
     blink_duration = duration_s / number_blinks
