@@ -165,7 +165,8 @@
             function renderForm(params) {
                 var htmlForm = document.getElementById('qual-form');
                 Formio.createForm(htmlForm, form_data).then(function(form) {
-                    form.action = params.get('turkSubmitTo') + "/mturk/externalSubmit";
+                    htmlForm.action = params.get('turkSubmitTo') + "/mturk/externalSubmit";
+                    console.log(htmlForm.action);
 
                     // Silently append the assignment ID to the form.
                     var assignmentIdInput = document.createElement("input");
@@ -173,6 +174,7 @@
                     assignmentIdInput.setAttribute("name", "assignmentId");
                     assignmentIdInput.setAttribute("value", params.get('assignmentId'));
                     htmlForm.appendChild(assignmentIdInput);
+                    console.log("Appended assignmentId element: " + assignmentIdInput);
                 });
             }
 
