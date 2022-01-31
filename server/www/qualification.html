@@ -162,9 +162,18 @@
                 return true;
             }
 
-            function renderForm() {
-                var form = document.getElementById('qual-form');
-                Formio.createForm(form, form_data);
+            function renderForm(params) {
+                var htmlForm = document.getElementById('qual-form');
+                Formio.createForm(htmlForm, form_data).then(function(form) {
+                    form.action = params.get('turkSubmitTo') + "/mturk/externalSubmit";
+
+                    // Silently append the assignment ID to the form.
+                    var assignmentIdInput = document.createElement("input");
+                    assignmentIdInput.setAttribute("type", "hidden");
+                    assignmentIdInput.setAttribute("name", "assignmentId");
+                    assignmentIdInput.setAttribute("value", params.get('assignmentId'));
+                    htmlForm.appendChild(assignmentIdInput);
+                });
             }
 
             window.onload = function() {
@@ -174,8 +183,7 @@
                     statusElement.innerHTML = 'Valid Amazon MTurk parameters. Proceed to task.';
                     statusElement.style.backgroundColor = 'green';
                     var form = document.getElementById('qual-form');
-                    form.action = params.get('turkSubmitTo');
-                    renderForm();
+                    renderForm(params);
                 } else if (validPreviewParams(params)) {
                         statusElement.innerHTML = 'MTurk PREVIEW. You can preview the form, but you cannot submit it.';
                         statusElement.style.backgroundColor = 'yellow';
