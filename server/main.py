@@ -58,6 +58,10 @@ async def transmit(ws, message):
 async def Index(request):
     return web.FileResponse("www/WebGL/index.html")
 
+@routes.get('/qualification')
+async def Index(request):
+    return web.FileResponse("www/qualification.html")
+
 @routes.get('/status')
 async def Status(request):
     global assets_map

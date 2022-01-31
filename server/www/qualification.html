@@ -1,0 +1,220 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Qualification Task</title>
+        <link rel='stylesheet' href='https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css'>
+        <link rel='stylesheet' href='https://cdn.form.io/formiojs/formio.full.min.css'>
+        <script src='https://cdn.form.io/formiojs/formio.full.min.js'></script>
+    </head>
+    <body>
+        <script type="text/javascript">
+            var form_data = {
+                "display": "form",
+                "settings": {
+                    "pdf": {
+                        "id": "1ec0f8ee-6685-5d98-a847-26f67b67d6f0",
+                        "src": "https://files.form.io/pdf/5692b91fd1028f01000407e3/file/1ec0f8ee-6685-5d98-a847-26f67b67d6f0"
+                    }
+                },
+                "components": [
+                    {
+                        "label": "Follower Survey, True/False",
+                        "description": "This is specifically for the follower role.",
+                        "tableView": false,
+                        "questions": [
+                            {
+                                "label": "My priority is to follow the leader's instructions",
+                                "value": "myPriorityIsToFollowTheLeadersInstructions",
+                                "tooltip": ""
+                            },
+                            {
+                                "label": "If an instruction is unclear, I should do my best and hope for clarification in the next instruction.",
+                                "value": "ifAnInstructionIsUnclearIShouldDoMyBestAndHopeForClarificationInTheNextInstruction",
+                                "tooltip": ""
+                            },
+                            {
+                                "label": "If the leader missed something obvious, I should ignore the leader's instructions because I know better",
+                                "value": "ifTheLeaderMissedSomethingObviousIShouldIgnoreTheLeadersInstructionsBecauseIKnowBetter",
+                                "tooltip": ""
+                            },
+                            {
+                                "label": "The game ends when we run out of turns",
+                                "value": "theGameEndsWhenWeRunOutOfTurns",
+                                "tooltip": ""
+                            },
+                            {
+                                "label": "If I run out of moves, my turn ends instantly",
+                                "value": "ifIRunOutOfMovesMyTurnEndsInstantly",
+                                "tooltip": ""
+                            }
+                        ],
+                        "values": [
+                            {
+                                "label": "True",
+                                "value": "true",
+                                "tooltip": ""
+                            },
+                            {
+                                "label": "False",
+                                "value": "false",
+                                "tooltip": ""
+                            }
+                        ],
+                        "key": "followerSurveyTrueFalse",
+                        "type": "survey",
+                        "input": true
+                    },
+                    {
+                        "label": "Leader Survey, True/False",
+                        "description": "Answer these questions for the leader role.",
+                        "tableView": false,
+                        "questions": [
+                            {
+                                "label": "My primary goal is to give instructions to the follower and move around to collect a set of 3 unique cards.",
+                                "value": "myPrimaryGoalIsToGiveInstructionsToTheFollowerAndMoveAroundToCollectASetOf3UniqueCards",
+                                "tooltip": ""
+                            },
+                            {
+                                "label": "If I do not leave an instruction for the follower, their turn will be skipped when my turn runs out of time.",
+                                "value": "ifIDoNotLeaveAnInstructionForTheFollowerTheirTurnWillBeSkippedWhenMyTurnRunsOutOfTime",
+                                "tooltip": ""
+                            },
+                            {
+                                "label": "If the follower misunderstands an instruction, I should get impatient and angry at them.",
+                                "value": "ifTheFollowerMisunderstandsAnInstructionIShouldGetImpatientAndAngryAtThem",
+                                "tooltip": ""
+                            },
+                            {
+                                "label": "If the follower misunderstands an instruction, I should politely explain and clarify in the next instruction.",
+                                "value": "ifTheFollowerMisunderstandsAnInstructionIShouldPolitelyExplainAndClarifyInTheNextInstruction",
+                                "tooltip": ""
+                            },
+                            {
+                                "label": "My turn is over once I run out of moves.",
+                                "value": "myTurnIsOverOnceIRunOutOfMoves",
+                                "tooltip": "Note! This is different from the follower as you also need to leave a message for the follower."
+                            },
+                            {
+                                "label": "My turn is over once I run out of time.",
+                                "value": "myTurnIsOverOnceIRunOutOfTime",
+                                "tooltip": ""
+                            },
+                            {
+                                "label": "The game is over when we run out of turns.",
+                                "value": "theGameIsOverWhenWeRunOutOfTurns",
+                                "tooltip": ""
+                            }
+                        ],
+                        "values": [
+                            {
+                                "label": "True",
+                                "value": "true",
+                                "tooltip": ""
+                            },
+                            {
+                                "label": "False",
+                                "value": "false",
+                                "tooltip": ""
+                            }
+                        ],
+                        "key": "leaderSurveyTrueFalse",
+                        "type": "survey",
+                        "input": true
+                    },
+                    {
+                        "type": "button",
+                        "label": "Submit",
+                        "key": "submit",
+                        "disableOnInvalid": true,
+                        "input": true,
+                        "tableView": false
+                    }
+                ]
+            };
+        </script>
+        <script type="text/javascript">
+            function validWorkerParams(params) {
+                if (!params.has('workerId')) {
+                    console.log('Missing workerId parameter.');
+                    return false;
+                }
+                if (!params.has('assignmentId')) {
+                    console.log('Missing assignmentId parameter.');
+                    return false;
+                }
+                if (!params.has('submitTo'))
+                {
+                    console.log('Missing submitTo parameter.');
+                    return false;
+                }
+
+                return true;
+            }
+
+            function renderForm() {
+                var form = document.getElementById('qual-form');
+                Formio.createForm(form, form_data);
+            }
+
+            window.onload = function() {
+                var params = new URLSearchParams(window.location.search);
+                var statusElement = document.getElementById('status');
+                if (!validWorkerParams(params)) {
+                    statusElement.innerHTML = 'Missing Amazon mturk parameters. Did you access this page through mechanical turk?';
+                    statusElement.style.backgroundColor = 'red';
+                } else {
+                    if (params.get('assignmentId') == 'ASSIGNMENT_ID_NOT_AVAILABLE') {
+                        statusElement.innerHTML = 'You have not been assigned a task. Please contact the requester.';
+                        statusElement.style.backgroundColor = 'yellow';
+                    } else {
+                        statusElement.innerHTML = 'Valid Amazon mturk parameters. Proceed to task.';
+                        statusElement.style.backgroundColor = 'green';
+                        var form = document.getElementById('qual-form');
+                        form.action = params.get('submitTo');
+                        renderForm();
+                    }
+                }
+            }
+
+            function openInNewWindowForwardParams(url) {
+                var mturkParameters = new URLSearchParams(window.location.search);
+                var win = window.open(url + "&" + mturkParameters.toString(), '_blank');
+                win.focus();
+            }
+
+            function openLeaderTutorial() {
+                openInNewWindowForwardParams("https://cerealbar2.com/?skipToTask=leaderTutorial");
+            }
+
+            function openFollowerTutorial() {
+                openInNewWindowForwardParams("https://cerealbar2.com/?skipToTask=followerTutorial");
+            }
+        </script>
+        <div>
+            <h1>Qualification Task</h1>
+            <h2 id="status"></h2>
+            <p>
+                This is the Cerealbar2 Qualification Task. Follow the steps on
+                this page completely and read carefully to get qualified to play
+                Cerealbar 2 games on mturk.</p>
+            <p>
+                Further, you are <b>strongly</b> encouraged to join the discord
+                (<a href="https://discord.gg/RErZXMzN6G">invite link</a>) for
+                support, updates and notifications of new assignments.
+            </p>
+            <p>
+                The Qualification task consists of the following steps. Please follow them in order.
+            </p>
+            <ol>
+                <li><a id="follower-link" href="#" onclick="openFollowerTutorial()">The follower tutorial</a></li>
+                <li><a href="leader-link" href="#" onclick="openLeaderTutorial()">The leader tutorial</a></li>
+                <li>The qualification test (below)</li>
+            </ol>
+            <h2>
+                Qualification Test
+            </h2>
+            <form id="qual-form" method="post"></form>
+            
+    </body>
+</html>
