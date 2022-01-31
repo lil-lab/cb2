@@ -143,9 +143,9 @@
                     console.log('Missing assignmentId parameter.');
                     return false;
                 }
-                if (!params.has('submitTo'))
+                if (!params.has('turkSubmitTo'))
                 {
-                    console.log('Missing submitTo parameter.');
+                    console.log('Missing turkSubmitTo parameter.');
                     return false;
                 }
 
@@ -171,7 +171,7 @@
                         statusElement.innerHTML = 'Valid Amazon mturk parameters. Proceed to task.';
                         statusElement.style.backgroundColor = 'green';
                         var form = document.getElementById('qual-form');
-                        form.action = params.get('submitTo');
+                        form.action = params.get('turkSubmitTo');
                         renderForm();
                     }
                 }
