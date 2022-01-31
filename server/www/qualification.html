@@ -134,6 +134,22 @@
             };
         </script>
         <script type="text/javascript">
+            function validPreviewParams(params) {
+                if (!params.has('assignmentId')) {
+                    console.log('Missing assignmentId parameter.');
+                    return false;
+                }
+                if (!params.has('turkSubmitTo'))
+                {
+                    console.log('Missing turkSubmitTo parameter.');
+                    return false;
+                }
+                if (params.get('assignmentId') != 'ASSIGNMENT_ID_NOT_AVAILABLE') {
+                    console.log('Not in preview mode.');
+                    return false;
+                }
+                return true;
+            }
             function validWorkerParams(params) {
                 if (!params.has('workerId')) {
                     console.log('Missing workerId parameter.');
@@ -148,7 +164,6 @@
                     console.log('Missing turkSubmitTo parameter.');
                     return false;
                 }
-
                 return true;
             }
 
@@ -160,20 +175,18 @@
             window.onload = function() {
                 var params = new URLSearchParams(window.location.search);
                 var statusElement = document.getElementById('status');
-                if (!validWorkerParams(params)) {
-                    statusElement.innerHTML = 'Missing Amazon mturk parameters. Did you access this page through mechanical turk?';
-                    statusElement.style.backgroundColor = 'red';
-                } else {
-                    if (params.get('assignmentId') == 'ASSIGNMENT_ID_NOT_AVAILABLE') {
-                        statusElement.innerHTML = 'You have not been assigned a task. Please contact the requester.';
+                if (validWorkerParams(params)) {
+                    statusElement.innerHTML = 'Valid Amazon MTurk parameters. Proceed to task.';
+                    statusElement.style.backgroundColor = 'green';
+                    var form = document.getElementById('qual-form');
+                    form.action = params.get('turkSubmitTo');
+                    renderForm();
+                } else if (validPreviewParams(params)) {
+                        statusElement.innerHTML = 'MTurk PREVIEW. You can preview the form, but you cannot submit it.';
                         statusElement.style.backgroundColor = 'yellow';
-                    } else {
-                        statusElement.innerHTML = 'Valid Amazon mturk parameters. Proceed to task.';
-                        statusElement.style.backgroundColor = 'green';
-                        var form = document.getElementById('qual-form');
-                        form.action = params.get('turkSubmitTo');
-                        renderForm();
-                    }
+                } else {
+                    statusElement.innerHTML = 'Missing Amazon MTurk parameters. Did you access this page through mechanical turk?';
+                    statusElement.style.backgroundColor = 'red';
                 }
             }
 
