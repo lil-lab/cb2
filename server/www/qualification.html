@@ -139,11 +139,6 @@
                     console.log('Missing assignmentId parameter.');
                     return false;
                 }
-                if (!params.has('turkSubmitTo'))
-                {
-                    console.log('Missing turkSubmitTo parameter.');
-                    return false;
-                }
                 if (params.get('assignmentId') != 'ASSIGNMENT_ID_NOT_AVAILABLE') {
                     console.log('Not in preview mode.');
                     return false;
