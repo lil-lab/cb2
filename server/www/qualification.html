@@ -9,6 +9,278 @@
     </head>
     <body>
         <script type="text/javascript">
+            function generateSetCompletionQuestion(question_name, question_key, incomplete_set_url, option_a_url, option_b_url, option_c_url, option_d_url) {
+                return {
+                    "title": question_name,
+                    "theme": "primary",
+                    "tooltip": "Select which card completes the set shown below.",
+                    "collapsible": false,
+                    "key": question_key,
+                    "type": "panel",
+                    "label": "Panel",
+                    "input": false,
+                    "tableView": false,
+                    "components": [
+                        {
+                            "label": "Set",
+                            "tag": "img",
+                            "attrs": [
+                                {
+                                    "attr": "src",
+                                    "value": incomplete_set_url
+                                },
+                                {
+                                    "attr": "alt",
+                                    "value": "Set Completion Question"
+                                },
+                                {
+                                    "attr": "width",
+                                    "value": "200"
+                                },
+                                {
+                                    "attr": "height",
+                                    "value": "200"
+                                }
+                            ],
+                            "refreshOnChange": false,
+                            "key": "set",
+                            "type": "htmlelement",
+                            "input": false,
+                            "tableView": false
+                        },
+                        {
+                            "label": "AnswerTable",
+                            "numRows": 1,
+                            "numCols": 4,
+                            "cellAlignment": "center",
+                            "bordered": true,
+                            "key": "answer-table",
+                            "type": "table",
+                            "input": false,
+                            "tableView": false,
+                            "rows": [
+                                [
+                                    {
+                                        "components": [
+                                            {
+                                                "label": "option A",
+                                                "tag": "img",
+                                                "attrs": [
+                                                    {
+                                                        "attr": "src",
+                                                        "value": option_a_url
+                                                    },
+                                                    {
+                                                        "attr": "alt",
+                                                        "value": "first option"
+                                                    },
+                                                    {
+                                                        "attr": "width",
+                                                        "value": "100"
+                                                    },
+                                                    {
+                                                        "attr": "height",
+                                                        "value": "100"
+                                                    }
+                                                ],
+                                                "refreshOnChange": false,
+                                                "key": "optionA",
+                                                "type": "htmlelement",
+                                                "input": false,
+                                                "tableView": false
+                                            },
+                                            {
+                                                "label": "HTML",
+                                                "attrs": [
+                                                    {
+                                                        "attr": "style",
+                                                        "value": "text-align:center"
+                                                    }
+                                                ],
+                                                "content": "Option A",
+                                                "refreshOnChange": false,
+                                                "key": "html3",
+                                                "type": "htmlelement",
+                                                "input": false,
+                                                "tableView": false
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "components": [
+                                            {
+                                                "label": "HTML",
+                                                "tag": "img",
+                                                "attrs": [
+                                                    {
+                                                        "attr": "src",
+                                                        "value": option_b_url
+                                                    },
+                                                    {
+                                                        "attr": "alt",
+                                                        "value": "option 2"
+                                                    },
+                                                    {
+                                                        "attr": "height",
+                                                        "value": "100"
+                                                    },
+                                                    {
+                                                        "attr": "width",
+                                                        "value": "100"
+                                                    }
+                                                ],
+                                                "refreshOnChange": false,
+                                                "key": "html",
+                                                "type": "htmlelement",
+                                                "input": false,
+                                                "tableView": false
+                                            },
+                                            {
+                                                "label": "HTML",
+                                                "attrs": [
+                                                    {
+                                                        "attr": "style",
+                                                        "value": "text-align:center"
+                                                    }
+                                                ],
+                                                "content": "Option B",
+                                                "refreshOnChange": false,
+                                                "key": "html4",
+                                                "type": "htmlelement",
+                                                "input": false,
+                                                "tableView": false
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "components": [
+                                            {
+                                                "label": "HTML",
+                                                "tag": "img",
+                                                "attrs": [
+                                                    {
+                                                        "attr": "src",
+                                                        "value": option_c_url
+                                                    },
+                                                    {
+                                                        "attr": "alt",
+                                                        "value": "option 3"
+                                                    },
+                                                    {
+                                                        "attr": "height",
+                                                        "value": "100"
+                                                    },
+                                                    {
+                                                        "attr": "width",
+                                                        "value": "100"
+                                                    }
+                                                ],
+                                                "refreshOnChange": false,
+                                                "key": "html1",
+                                                "type": "htmlelement",
+                                                "input": false,
+                                                "tableView": false
+                                            },
+                                            {
+                                                "label": "HTML",
+                                                "attrs": [
+                                                    {
+                                                        "attr": "style",
+                                                        "value": "text-align:center"
+                                                    }
+                                                ],
+                                                "content": "Option C",
+                                                "refreshOnChange": false,
+                                                "key": "html5",
+                                                "type": "htmlelement",
+                                                "input": false,
+                                                "tableView": false
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "components": [
+                                            {
+                                                "label": "HTML",
+                                                "tag": "img",
+                                                "attrs": [
+                                                    {
+                                                        "attr": "src",
+                                                        "value": option_d_url
+                                                    },
+                                                    {
+                                                        "attr": "alt",
+                                                        "value": "option 4"
+                                                    },
+                                                    {
+                                                        "attr": "height",
+                                                        "value": "100"
+                                                    },
+                                                    {
+                                                        "attr": "width",
+                                                        "value": "100"
+                                                    }
+                                                ],
+                                                "refreshOnChange": false,
+                                                "key": "html2",
+                                                "type": "htmlelement",
+                                                "input": false,
+                                                "tableView": false
+                                            },
+                                            {
+                                                "label": "HTML",
+                                                "attrs": [
+                                                    {
+                                                        "attr": "style",
+                                                        "value": "text-align:center"
+                                                    }
+                                                ],
+                                                "content": "Option D",
+                                                "refreshOnChange": false,
+                                                "key": "html6",
+                                                "type": "htmlelement",
+                                                "input": false,
+                                                "tableView": false
+                                            }
+                                        ]
+                                    }
+                                ]
+                            ]
+                        },
+                        {
+                            "label": "Answer",
+                            "optionsLabelPosition": "right",
+                            "inline": false,
+                            "tableView": false,
+                            "values": [
+                                {
+                                    "label": "Option A",
+                                    "value": "optionA",
+                                    "shortcut": ""
+                                },
+                                {
+                                    "label": "Option B",
+                                    "value": "optionB",
+                                    "shortcut": ""
+                                },
+                                {
+                                    "label": "Option C",
+                                    "value": "optionC",
+                                    "shortcut": ""
+                                },
+                                {
+                                    "label": "Option D",
+                                    "value": "optionD",
+                                    "shortcut": ""
+                                }
+                            ],
+                            "key": question_key + "-answer",
+                            "type": "radio",
+                            "input": true
+                        }
+                    ]
+                };
+            }
             var form_data = {
                 "display": "form",
                 "settings": {
@@ -122,6 +394,11 @@
                         "type": "survey",
                         "input": true
                     },
+                    generateSetCompletionQuestion("Set Completion Question 1: Select the card that creates a unique set.", "setCompletionQuestion1", "/images/question-1.png", "/images/question-1-option-a.png", "/images/question-1-option-b.png", "/images/question-1-option-c.png", "/images/question-1-option-d.png"),
+                    generateSetCompletionQuestion("Set Completion Question 2: Select the card that creates a unique set.", "setCompletionQuestion2", "/images/question-2.png", "/images/question-2-option-a.png", "/images/question-2-option-b.png", "/images/question-2-option-c.png", "/images/question-2-option-d.png"),
+                    generateSetCompletionQuestion("Set Completion Question 3: Select the card that creates a unique set.", "setCompletionQuestion3", "/images/question-3.png", "/images/question-3-option-a.png", "/images/question-3-option-b.png", "/images/question-3-option-c.png", "/images/question-3-option-d.png"),
+                    generateSetCompletionQuestion("Set Completion Question 4: Select the card that creates a unique set.", "setCompletionQuestion4", "/images/question-4.png", "/images/question-4-option-a.png", "/images/question-4-option-b.png", "/images/question-4-option-c.png", "/images/question-4-option-d.png"),
+                    generateSetCompletionQuestion("Set Completion Question 5: Select the card that creates a unique set.", "setCompletionQuestion5", "/images/question-5.png", "/images/question-5-option-a.png", "/images/question-5-option-b.png", "/images/question-5-option-c.png", "/images/question-5-option-d.png"),
                     {
                         "type": "button",
                         "label": "Submit",
@@ -202,7 +479,7 @@
                 var statusElement = document.getElementById('status');
                 if (validWorkerParams(params)) {
                     statusElement.innerHTML = 'Valid Amazon MTurk parameters. Proceed to task.';
-                    statusElement.style.backgroundColor = 'green';
+                    statusElement.style.backgroundColor = '#7FFFD4';
                     var form = document.getElementById('qual-form');
                     renderForm(params);
                 } else if (validPreviewParams(params)) {
@@ -231,23 +508,19 @@
         <div>
             <h1>Qualification Task</h1>
             <h2 id="status"></h2>
-            <p>
-                This is the Cerealbar2 Qualification Task. Follow the steps on
-                this page completely and read carefully to get qualified to play
-                Cerealbar 2 games on mturk.</p>
-            <p>
-                Further, you are <b>strongly</b> encouraged to join the discord
-                (<a href="https://discord.gg/RErZXMzN6G">invite link</a>) for
-                support, updates and notifications of new assignments.
-            </p>
-            <p>
-                The Qualification task consists of the following steps. Please follow them in order.
-            </p>
+            <h2>
+                Qualification Steps
+            </h2>
             <ol>
-                <li><a id="follower-link" href="#" onclick="openFollowerTutorial()">The follower tutorial</a></li>
-                <li><a id="leader-link" href="#" onclick="openLeaderTutorial()">The leader tutorial</a></li>
-                <li>The qualification test (below)</li>
+                <li><a id="follower-link" href="#" onclick="openFollowerTutorial()">Click here</a> to take the follower tutorial.</li>
+                <li><a id="leader-link" href="#" onclick="openLeaderTutorial()">Click here</a> to take the leader tutorial.</li>
+                <li>Take the qualification test (below)</li>
             </ol>
+            <p style="background-color: rgb(255, 255, 170); font-size: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center; width: 60%;">
+                You are <b>strongly</b> encouraged to 
+                <a href="https://discord.gg/RErZXMzN6G">join the discord</a> for
+                support, updates and <b>notifications of new assignments</b>.
+            </p>
             <h2>
                 Qualification Test
             </h2>

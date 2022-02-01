@@ -62,6 +62,12 @@ async def Index(request):
 async def Index(request):
     return web.FileResponse("www/qualification.html")
 
+@routes.get('/images/{filename}')
+async def Index(request):
+    if not request.match_info.get('filename'):
+        return web.HTTPNotFound()
+    return web.FileResponse(f"www/images/{request.match_info['filename']}")
+
 @routes.get('/status')
 async def Status(request):
     global assets_map
