@@ -198,8 +198,6 @@ public class OverheadCamera : MonoBehaviour
                 Vector3 delta = Input.mousePosition - _mouseDragOrigin;
                 _mouseDragOrigin = Input.mousePosition;
                 _phi += delta.x * MousePanningSpeed * Time.deltaTime;
-                Theta -= delta.y * (MousePanningSpeed * Mathf.Rad2Deg) * Time.deltaTime;
-                Theta = Mathf.Min(90, Mathf.Max(15, Theta));  // 0 <= Theta <= 90.
             }
         } else
         {
