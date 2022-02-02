@@ -268,7 +268,7 @@ GameObject:
   - component: {fileID: 123634002}
   m_Layer: 5
   m_Name: Mturk Confirmation
-  m_TagString: GAME_OVER_REASON
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -366,7 +366,7 @@ MonoBehaviour:
     m_BestFit: 0
     m_MinSize: 0
     m_MaxSize: 40
-    m_Alignment: 4
+    m_Alignment: 3
     m_AlignByGeometry: 0
     m_RichText: 1
     m_HorizontalOverflow: 0
@@ -4197,7 +4197,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3537242115555592361, guid: 53b83fda8da4a486f888d51dccca5a7c, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 0
+      value: 149.17
       objectReference: {fileID: 0}
     - target: {fileID: 3537242115555592361, guid: 53b83fda8da4a486f888d51dccca5a7c, type: 3}
       propertyPath: m_SizeDelta.y
@@ -4205,7 +4205,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3537242115555592361, guid: 53b83fda8da4a486f888d51dccca5a7c, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 0
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 3537242115555592361, guid: 53b83fda8da4a486f888d51dccca5a7c, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -4313,7 +4313,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3537242116698563961, guid: 53b83fda8da4a486f888d51dccca5a7c, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 0
+      value: 160.6
       objectReference: {fileID: 0}
     - target: {fileID: 3537242116698563961, guid: 53b83fda8da4a486f888d51dccca5a7c, type: 3}
       propertyPath: m_SizeDelta.y
@@ -4321,7 +4321,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3537242116698563961, guid: 53b83fda8da4a486f888d51dccca5a7c, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 0
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 3537242116698563961, guid: 53b83fda8da4a486f888d51dccca5a7c, type: 3}
       propertyPath: m_AnchoredPosition.y

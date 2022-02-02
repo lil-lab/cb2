@@ -5176,7 +5176,7 @@ GameObject:
   - component: {fileID: 1387821329}
   m_Layer: 5
   m_Name: Mturk Confirmation
-  m_TagString: GAME_OVER_REASON
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -5274,13 +5274,13 @@ MonoBehaviour:
     m_BestFit: 0
     m_MinSize: 0
     m_MaxSize: 40
-    m_Alignment: 4
+    m_Alignment: 3
     m_AlignByGeometry: 0
     m_RichText: 1
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Mturk task completed
+  m_Text: Mturk task completed. You can return to the previous page now.
 --- !u!222 &1387821333
 CanvasRenderer:
   m_ObjectHideFlags: 0
