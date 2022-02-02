@@ -372,7 +372,8 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Mturk task completed
+  m_Text: Mturk tutorial completed. Please close this window and return to the qual
+    task.
 --- !u!222 &123634006
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -4196,7 +4197,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3537242115555592361, guid: 53b83fda8da4a486f888d51dccca5a7c, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 149.17
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3537242115555592361, guid: 53b83fda8da4a486f888d51dccca5a7c, type: 3}
       propertyPath: m_SizeDelta.y
@@ -4204,7 +4205,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3537242115555592361, guid: 53b83fda8da4a486f888d51dccca5a7c, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3537242115555592361, guid: 53b83fda8da4a486f888d51dccca5a7c, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -4312,7 +4313,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3537242116698563961, guid: 53b83fda8da4a486f888d51dccca5a7c, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 160.6
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3537242116698563961, guid: 53b83fda8da4a486f888d51dccca5a7c, type: 3}
       propertyPath: m_SizeDelta.y
@@ -4320,7 +4321,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3537242116698563961, guid: 53b83fda8da4a486f888d51dccca5a7c, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3537242116698563961, guid: 53b83fda8da4a486f888d51dccca5a7c, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -4889,6 +4890,7 @@ GameObject:
   - component: {fileID: 1471997266}
   - component: {fileID: 1471997265}
   - component: {fileID: 1471997270}
+  - component: {fileID: 1471997271}
   m_Layer: 5
   m_Name: Quit Game
   m_TagString: Untagged
@@ -5067,6 +5069,18 @@ MonoBehaviour:
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
+--- !u!114 &1471997271
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1471997263}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5df0a5dab9d694f9e8405e035f4f50c6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1484114756
 GameObject:
   m_ObjectHideFlags: 0
