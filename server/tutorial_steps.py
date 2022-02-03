@@ -104,7 +104,7 @@ LEADER_TUTORIAL_STEPS = [
         None,
         Tooltip("",
                 "Uh oh, looks like we picked up a bad set! Each card in a set"
-                " must have a different color, shape, and number of items. If you"
+                " must have a unique color, shape, and number of items. If you"
                 " violate this rule, the cards turn red! (Shift to continue).",
                 TooltipType.UNTIL_DISMISSED),
         None
@@ -153,6 +153,47 @@ LEADER_TUTORIAL_STEPS = [
                 TooltipType.UNTIL_SET_COLLECTED),
         None
     ),
+    TutorialStep(
+        None,
+        Tooltip("",
+                "Nice!!! You've completed the tutorial! Here are some parting words (Shift to continue).",
+                TooltipType.UNTIL_DISMISSED),
+        None
+    ),
+    TutorialStep(
+        None,
+        Tooltip("",
+                "Remember to leave useful instructions for the follower. You can "
+                "see the whole board, but the follower gets twice as many moves "
+                "per turn. By working together, you can get a higher score! "
+                "(Shift to continue).", TooltipType.UNTIL_DISMISSED),
+        None
+    ),
+    TutorialStep(
+        None,
+        Tooltip("",
+                "Once you've exhausted your moves, you have the rest of your "
+                "turn to leave instructions for the follower. (Shift to "
+                "continue).", TooltipType.UNTIL_DISMISSED),
+        None
+    ),
+    TutorialStep(
+        None,
+        Tooltip("",
+                "If you haven't left any instructions for the follower, their "
+                "turn will be skipped. Make sure to leave instructions before the "
+                "time for your turn runs out! As the leader, you have a minute "
+                "per turn. " "(Shift to continue).",
+                TooltipType.UNTIL_DISMISSED),
+        None
+    ),
+    TutorialStep(
+        None,
+        Tooltip("",
+                "Good luck out there! (Shift to continue).",
+                TooltipType.UNTIL_DISMISSED),
+        None
+    ),
 ]
 
 FOLLOWER_TUTORIAL_STEPS = [
@@ -194,7 +235,7 @@ FOLLOWER_TUTORIAL_STEPS = [
                 "You've received your first instruction. Follow it, then click"
                 " \"Done\" in the top left.",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
-        Instruction("Pick up the orange star on the hill next to you."),
+        Instruction("Move onto the orange star on the hill next to you."),
     ),
     TutorialStep(
         None,
@@ -216,7 +257,7 @@ FOLLOWER_TUTORIAL_STEPS = [
         Tooltip("INSTRUCTIONS",
                 "Follow the instructions...",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
-        Instruction("Turn around and go back down the mountain. Pick up the two"
+        Instruction("Turn around and go back down the mountain. Move onto the two"
                     " diamonds on the right at the base of the mountain.") ),
     TutorialStep(
         Indicator(HecsCoord(0, 2, 2)),
@@ -260,11 +301,38 @@ FOLLOWER_TUTORIAL_STEPS = [
     TutorialStep(
         None,
         Tooltip("SCORE",
-                "In a real game, you only have a certain number of movements per"
-                " turn, use them wisely! Your remaining moves are shown in the"
-                " bottom left. (Shift to continue).",
+                "In a real game, you only have a certain number of movements per "
+                "turn, use them wisely! Your remaining moves are shown in the "
+                "bottom left. (Shift to continue).",
                 TooltipType.UNTIL_DISMISSED),
         None,
+    ),
+    TutorialStep(
+        None,
+        Tooltip("",
+                "By the way, if you're not sure what to do, try your best to "
+                "follow the instructions. If you're really not sure, mark the "
+                "instruction as done and let the leader clarify on the next "
+                "turn. (Shift to continue).",
+                TooltipType.UNTIL_DISMISSED),
+        None,
+    ),
+    TutorialStep(
+        None,
+        Tooltip("",
+                "As the follower, if you run out of moves or instructions, your "
+                "turn will end immediately (Shift to continue).",
+                TooltipType.UNTIL_DISMISSED),
+        None,
+    ),
+    TutorialStep(
+        None,
+        Tooltip("",
+                "Remember, follow the instructions. Don't go off on your own! "
+                "The leader can see the entire board, but you can only see what's "
+                "around you. As the follower, you can move twice as far as the "
+                "leader per turn. Work together to succeed! (Shift to continue).",
+                TooltipType.UNTIL_DISMISSED), None,
     ),
     TutorialStep(
         None,
