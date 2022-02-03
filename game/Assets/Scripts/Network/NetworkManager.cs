@@ -83,6 +83,15 @@ namespace Network
             _router.TransmitAction(action);
         }
 
+        public void RespondToPing()
+        {
+            MessageToServer toServer = new MessageToServer();
+            toServer.TransmitTime = DateTime.Now.ToString("o");
+            toServer.Type = MessageToServer.MessageType.PONG;
+            toServer.Pong = new Pong{PingReceiveTime = DateTime.Now.ToString("o")};
+            _client.TransmitMessage(toServer);
+        }
+
         public void TransmitObjective(ObjectiveMessage objective)
         {
             MessageToServer toServer = new MessageToServer();

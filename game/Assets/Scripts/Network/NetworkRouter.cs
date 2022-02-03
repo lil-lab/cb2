@@ -121,6 +121,12 @@ namespace Network
         public void HandleMessage(MessageFromServer message)
         {
             Debug.Log("Received message of type: " + message.Type);
+            if (message.Type == MessageFromServer.MessageType.PING)
+            {
+                Debug.Log("Received ping.");
+                _networkManager.RespondToPing();
+                return;
+            }
             if (message.Type == MessageFromServer.MessageType.ACTIONS)
             {
                 if (_player == null || _entityManager == null)

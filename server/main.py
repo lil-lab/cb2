@@ -18,6 +18,7 @@ import schemas.mturk
 from aiohttp import web
 from config.config import Config
 from dataclasses import astuple
+from dateutil import parser
 from hex import HecsCoord, HexBoundary, HexCell
 from map_tools import visualize
 from messages import map_update
@@ -32,7 +33,7 @@ from remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTa
 from room_manager import RoomManager
 from schemas import base
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 routes = web.RouteTableDef()
 
@@ -93,6 +94,8 @@ async def stream_game_state(request, ws):
     global room_manager
 
     was_in_room = False
+    remote = GetRemote(ws)
+    remote.last_ping = datetime.now(timezone.utc)
     while not ws.closed:
         await asyncio.sleep(0.001)
         # If not in a room, drain messages from the room manager.
@@ -123,6 +126,12 @@ async def stream_game_state(request, ws):
                 await transmit(ws, message.to_json())
             # await asyncio.sleep(1.0)
             continue
+        
+        # If it's been a second, send a ping.
+        if (datetime.now(timezone.utc) - remote.last_ping).total_seconds() > 5.0:
+            logger.info("SENDING PING")
+            remote.last_ping = datetime.now(timezone.utc)
+            await transmit(ws, message_from_server.PingMessageFromServer().to_json())
 
         msg_from_server = room.drain_message(player_id)
         if msg_from_server is not None:
@@ -160,6 +169,22 @@ async def receive_agent_updates(request, ws):
         if message.type == message_to_server.MessageType.ROOM_MANAGEMENT:
             room_manager.handle_request(message, ws)
             continue
+            
+        if message.type == message_to_server.MessageType.PONG:
+            # Calculate the time offset.
+            t0 = remote.last_ping
+            t1 = parser.isoparse(message.pong.ping_receive_time)
+            t2 = message.transmit_time
+            t3 = datetime.now(timezone.utc)
+            logger.info(t0)
+            logger.info(t1)
+            logger.info(t2)
+            logger.info(t3)
+            # Calculate clock offset and latency.
+            remote.time_offset = ((t1 - t0).total_seconds() + (t2 - t3).total_seconds()) / 2
+            remote.latency = ((t3 - t0).total_seconds() - (t2 - t1).total_seconds()) / 2
+            continue
+
 
         if room_manager.socket_in_room(ws):
             # Only handle in-game actions if we're in a room.
@@ -191,7 +216,7 @@ async def PlayerEndpoint(request):
             submit_to_url=submit_to_url
         )
 
-    ws = web.WebSocketResponse(autoclose=True, heartbeat=10.0, autoping=1.0)
+    ws = web.WebSocketResponse(autoclose=True, heartbeat=10.0, autoping=True)
     await ws.prepare(request)
     logger = logging.getLogger()
     logger.info("player connected from : " + request.remote)

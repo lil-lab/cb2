@@ -22,6 +22,7 @@ namespace Network
             OBJECTIVE_COMPLETE,
             TURN_COMPLETE,
             TUTORIAL_REQUEST,
+            PONG,
         }
 
         // These fields are populated for every packet.
@@ -36,6 +37,7 @@ namespace Network
         public ObjectiveCompleteMessage ObjectiveComplete;
         public TurnComplete TurnComplete;
         public TutorialRequest TutorialRequest;
+        public Pong Pong;  
     }
 
 }  // namespace Network

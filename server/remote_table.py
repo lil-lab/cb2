@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
-from datetime import datetime
+from datetime import datetime, timedelta
 from marshmallow import fields
 from typing import List, Optional
+import dateutil
 
 import aiohttp
 
@@ -49,6 +50,14 @@ class Remote:
     last_message_up: float
     request: aiohttp.web.BaseRequest
     response: aiohttp.web.WebSocketResponse
+    last_ping: datetime = field(
+        metadata=config(
+            encoder=datetime.isoformat,
+            decoder=dateutil.parser.isoparse,
+            mm_field=fields.DateTime(format='iso')
+        ), default=datetime.min)
+    time_offset: timedelta = field(metadata=config(encoder=str), default=timedelta(seconds=0))
+    latency: timedelta = field(metadata=config(encoder=str), default=timedelta(seconds=0))
 
     def __str__(self):
-        return f"m5sum hashed ip: {self.hashed_ip}, bytes (up/down): {self.bytes_up}/{self.bytes_down}, last message (up/down): {self.last_message_up}/{self.last_message_down}"
+        return f"m5sum hashed ip: {self.hashed_ip}, bytes (up/down): {self.bytes_up}/{self.bytes_down}, last message (up/down): {self.last_message_up}/{self.last_message_down}, time_offset: {self.time_offset}, latency: {self.latency}"

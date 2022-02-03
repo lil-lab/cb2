@@ -27,6 +27,7 @@ class MessageType(Enum):
     OBJECTIVE = 4
     GAME_STATE = 5
     TUTORIAL_RESPONSE = 6
+    PING = 7
 
 
 def ActionsFromServer(actions):
@@ -54,6 +55,9 @@ def GameStateFromServer(game_state):
 
 def TutorialResponseFromServer(tutorial_response):
     return MessageFromServer(datetime.now(), MessageType.TUTORIAL_RESPONSE, None, None, None, None, None, None, tutorial_response)
+
+def PingMessageFromServer():
+    return MessageFromServer(datetime.now(), MessageType.PING, None, None, None, None, None, None, None)
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)

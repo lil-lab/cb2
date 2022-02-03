@@ -16,6 +16,7 @@ namespace Network
             OBJECTIVE,
             TURN_STATE,
             TUTORIAL_RESPONSE,
+            PING,
         }
 
         // These fields are always provided with any packet.
