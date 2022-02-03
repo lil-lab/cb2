@@ -63,6 +63,10 @@ async def Index(request):
 async def Index(request):
     return web.FileResponse("www/qualification.html")
 
+@routes.get('/rules')
+async def Index(request):
+    return web.FileResponse("www/rules.html")
+
 @routes.get('/images/{filename}')
 async def Index(request):
     if not request.match_info.get('filename'):
