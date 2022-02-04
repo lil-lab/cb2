@@ -2,8 +2,42 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Qualification Task</title>
+        <title>Rules - CerealBar2</title>
         <link rel='stylesheet' href='https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css'>
+        <style type="text/css">
+          .hint {
+            color: grey;
+            font-style: italic;
+            position: relative;
+            left: 30px;
+          }
+          .side-image {
+            margin-right: 5px;
+            margin-top: 5px;
+            width: 100px;
+            height: 100px;
+            display: inline-block;
+          }
+          #example {
+            margin-left: auto;
+            margin-right: auto;
+            padding: 0;
+            width: 90%;
+          }
+          #example-images {
+            display: inline-block;
+            margin-top: 0;
+            vertical-align: middle;
+          }
+          #example-text {
+            width: 45%;
+            display: inline-block;
+            vertical-align: middle;
+          }
+          p {
+            margin-left: 30px;
+          }
+        </style>
     </head>
     <body>
         <h1>Cerealbar 2 Rules.</h1>
@@ -13,9 +47,25 @@
         possible. Note: this isn't a competition!! The follower and the
         leader work together.</p>
         <h2>Unique Sets</h2>
-        <img src="/images/question-1-option-d.png" width="100px" height="100px" alt="image-of-card" />
-        <img src="/images/question-2-option-b.png" width="100px" height="100px" alt="image-of-card" />
-        <img src="/images/question-2-option-c.png" width="100px" height="100px" alt="image-of-card" />
+        <h3 style="margin-left: 30px;">Example</h3>
+        <div id="example">
+          <div id="example-images">
+            <img class="side-image" src="/images/question-1-option-d.png"
+            alt="image-of-card" /><!--
+            --><img class="side-image" src="/images/question-2-option-b.png"
+            alt="image-of-card" /><!--
+            --><img class="side-image" src="/images/question-2-option-c.png" alt="image-of-card" />
+          </div>
+          <div id="example-text">
+            <p class="hint"> This unique set contains:</p>
+            <ul class="hint">
+              <li>1 yellow circle.</li>
+              <li>3 green squares.</li>
+              <li>2 pink plusses.</li>
+            </ul>
+          </div>
+        </div>
+        <h3 style="margin-left: 30px;">Explanation</h3>
         <p>Each card has a color, a shape, and a number (1-3) of occurences of
         that shape. A unique set is one in which each card is unique in all 3
         attributes. When a unique set is collected, the 3 cards disappear from
@@ -54,7 +104,7 @@
         twice as far, but the follower's view is clouded with fog and only
         first-person. Cooperate to get a higher score!</p>
         <h2>Payout</h2>
-        <em style="color:grey;">(Mechanical turk workers only)</em>
+        <em class="hint">(Mechanical turk workers only)</em>
         <ul>
             <li>For each game you play, you'll receive a <em>base pay</em> as well as a <em>bonus pay</em> for each point you and your partner earn throughout the game.</li>
             <li>Our base pay is <strong>$0.15</strong>.</li>
