@@ -11,6 +11,7 @@ from queue import Queue
 import dataclasses
 import itertools
 import logging
+import math
 import random
 import card
 import numpy as np
@@ -404,11 +405,11 @@ class MapProvider(object):
         if map_type == MapType.HARDCODED:
             self._cards = []
             list(tutorial_map_data.CARDS)
-            for card in tutorial_map_data.CARDS:
+            for tutorial_card in tutorial_map_data.CARDS:
                 # This line creates a copy of the hardcoded card. Otherwise
                 # state persists between instances (very bad! this took a while
                 # to debug)
-                card_copy = dataclasses.replace(card)
+                card_copy = dataclasses.replace(tutorial_card)
                 card_copy.id = id_assigner.alloc()
                 self._cards.append(card_copy)
         else: 
@@ -427,16 +428,20 @@ class MapProvider(object):
                                         if tile.asset_id in [AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH, AssetId.MOUNTAIN_TILE]]
 
             number_of_cards = 21
-            card_spawn_locations = self.choose_card_spawn_locations(number_of_cards)
+            number_of_sets = math.ceil(number_of_cards / 3)
+            card_spawn_locations = self.choose_card_spawn_locations(number_of_sets * 3)
 
-            for loc in card_spawn_locations:
-                (r, c) = loc
-                self._cards.append(self._card_generator.generate_random_card_at(r, c))
+            for _ in range(number_of_sets):
+                card_configs = card.RandomUniqueSet()
+                for config in card_configs:
+                    (r, c) = card_spawn_locations.pop()
+                    (shape, color, count) = config
+                    self._cards.append(self._card_generator.generate_card_at(r, c, shape, color, count))
 
         # Index cards generated.
         self._cards_by_location = {}
-        for card in self._cards:
-            self._cards_by_location[card.location] = card
+        for generated_card in self._cards:
+            self._cards_by_location[generated_card.location] = generated_card
         self._spawn_points = [tile.cell.coord for tile in self._tiles
                               if (tile.asset_id == AssetId.GROUND_TILE_PATH) and (tile.cell.coord not in self._cards_by_location)]
 
@@ -523,6 +528,18 @@ class MapProvider(object):
             (r, c) = loc
             self._cards.append(self._card_generator.generate_random_card_at(r, c))
             self._cards_by_location[self._cards[-1].location] = self._cards[-1]
+    
+    def add_random_unique_set(self):
+        card_spawn_locations = self.choose_card_spawn_locations(3)
+
+        unique_set = card.RandomUniqueSet()
+
+        for i, loc in enumerate(card_spawn_locations):
+            (shape, color, count) = unique_set[i]
+            (r, c) = loc
+            self._cards.append(self._card_generator.generate_card_at(r, c, shape, color, count))
+            self._cards_by_location[self._cards[-1].location] = self._cards[-1]
+
     
     def spawn_points(self):
         return self._spawn_points

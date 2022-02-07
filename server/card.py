@@ -5,6 +5,7 @@ from dataclasses_json import dataclass_json, config, LetterCase
 from messages.action import Action, ActionType, AnimationType
 
 import datetime
+import random
 
 import messages.prop
 import messages.action as action
@@ -33,6 +34,16 @@ class Color(Enum):
     YELLOW = 7
 
 OUTLINE_RADIUS = 30
+
+# Returns a list of 3 tuples of (shape, color, count) that make up a unique sert of cards.
+def RandomUniqueSet():
+    shapes = [Shape.PLUS, Shape.TORUS, Shape.HEART, Shape.DIAMOND, Shape.SQUARE, Shape.STAR, Shape.TRIANGLE]
+    colors = [Color.BLACK, Color.BLUE, Color.GREEN, Color.ORANGE, Color.PINK, Color.RED, Color.YELLOW]
+    counts = [1, 2, 3]
+    selected_shapes = random.sample(shapes, 3)
+    selected_colors = random.sample(colors, 3)
+    selected_counts = random.sample(counts, 3)
+    return list(zip(selected_shapes, selected_colors, selected_counts))
 
 # Returns a list of actions to animate card completion. First selects the cards
 # in green, then triggers a blink animation.

@@ -271,7 +271,7 @@ class State(object):
                 # Add 3 new cards before clearing selected cards. This prevents
                 # us from accidentally spawning cards in the same location as
                 # the previous 3, which is confusing to the user.
-                self._map_provider.add_random_cards(3)
+                self._map_provider.add_random_unique_set()
                 # Clear card state and remove the cards in the winning set.
                 logging.info("Clearing selected cards")
                 for card in selected_cards:
