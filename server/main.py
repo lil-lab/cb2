@@ -133,7 +133,6 @@ async def stream_game_state(request, ws):
         
         # If it's been a second, send a ping.
         if (datetime.now(timezone.utc) - remote.last_ping).total_seconds() > 5.0:
-            logger.info("SENDING PING")
             remote.last_ping = datetime.now(timezone.utc)
             await transmit(ws, message_from_server.PingMessageFromServer().to_json())
 
@@ -180,10 +179,6 @@ async def receive_agent_updates(request, ws):
             t1 = parser.isoparse(message.pong.ping_receive_time)
             t2 = message.transmit_time
             t3 = datetime.now(timezone.utc)
-            logger.info(t0)
-            logger.info(t1)
-            logger.info(t2)
-            logger.info(t3)
             # Calculate clock offset and latency.
             remote.time_offset = ((t1 - t0).total_seconds() + (t2 - t3).total_seconds()) / 2
             remote.latency = ((t3 - t0).total_seconds() - (t2 - t1).total_seconds()) / 2
