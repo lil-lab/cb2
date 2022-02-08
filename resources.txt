@@ -62,3 +62,7 @@ https://personal.sron.nl/~pault/
 - Testing poor network conditions on osx:
 
 https://spin.atomicobject.com/2016/01/05/simulating-poor-network-connectivity-mac-osx/
+
+- Better WebGL HTML template:
+
+https://github.com/greggman/better-unity-webgl-template
