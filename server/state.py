@@ -242,11 +242,15 @@ class State(object):
                 added_turns = 0
                 cards_changed = True
                 if self._turn_state.sets_collected == 0:
-                    added_turns = 5
+                    added_turns = 10
                 elif self._turn_state.sets_collected in [1, 2]:
+                    added_turns = 8
+                elif self._turn_state.sets_collected in [3, 4]:
+                    added_turns = 6
+                elif self._turn_state.sets_collected in [5, 6]:
                     added_turns = 4
                 elif self._turn_state.sets_collected in [3, 4]:
-                    added_turns = 3
+                    added_turns = 2
                 new_turn_state = TurnUpdate(
                     self._turn_state.turn,
                     self._turn_state.moves_remaining,
@@ -358,19 +362,22 @@ class State(object):
         if next_role == Role.FOLLOWER and not self.has_instructions_todo():
             next_role = Role.LEADER
             turn_repeated = True
-        moves_remaining = self.moves_per_turn(
-            next_role) if end_of_turn else max(self._turn_state.moves_remaining - 1, 0)
-        turns_left = self._turn_state.turns_left - 1 if end_of_turn else self._turn_state.turns_left
-        turn_end = datetime.now() + self.turn_duration(next_role) if end_of_turn else self._turn_state.turn_end
+        moves_remaining = max(self._turn_state.moves_remaining - 1, 0)
+        turns_left = self._turn_state.turns_left
+        turn_end = self._turn_state.turn_end
         turn_number = self._turn_state.turn_number
-
-        # Record the turn end to DB.
         if end_of_turn:
+            moves_remaining = self.moves_per_turn(next_role)
+            if next_role == Role.LEADER:
+                turns_left -= 1
+            turn_end = datetime.now() + self.turn_duration(next_role)
             turn_number += 1
+
+            # Record the turn end to DB.
             turn = schemas.game.Turn()
             turn.game = self._game_record
             turn.role = str(self._turn_state.turn)
-            turn.turn_number = self._turn_state.turn_number
+            turn.turn_number = self._turn_state.turn_number + 1
             end_method = end_reason if force_turn_end else "RanOutOfTime"
             turn.end_method = end_method
             notes = []
