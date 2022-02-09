@@ -117,8 +117,8 @@ async def DataDump(request):
             zip_file.writestr("database.db", db_file.read())
         with open(game_archive, "rb") as game_file:
             zip_file.writestr("game_record.zip", game_file.read())
-        # Delete the game archive now that we've read it into memory and added it to the zip file.
-        os.remove(game_archive)
+    # Delete the game archive now that we've read it into memory and added it to the zip file.
+    os.remove(game_archive)
     return web.Response(body=zip_buffer.getvalue(), content_type="application/zip")
 
 async def stream_game_state(request, ws):
