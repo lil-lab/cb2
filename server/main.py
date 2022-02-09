@@ -2,14 +2,18 @@ import aiohttp
 import asyncio
 import fire
 import hashlib
+import io
 import json
 import logging
 import os
 import pathlib
 import peewee
 import pygame
+import shutil
 import sys
+import tempfile
 import time
+import zipfile
 
 import schemas.defaults
 import schemas.clients
@@ -29,9 +33,11 @@ from messages.rooms import JoinResponse
 from messages.rooms import Role
 from messages.rooms import RoomManagementResponse
 from messages.rooms import RoomResponseType
+from playhouse.sqlite_ext import CSqliteExtDatabase
 from remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTable, LogConnectionEvent
 from room_manager import RoomManager
 from schemas import base
+from db_tools import backup
 
 from datetime import datetime, timezone
 
@@ -39,6 +45,8 @@ routes = web.RouteTableDef()
 
 # Keeps track of game state.
 room_manager = RoomManager()
+
+g_config = None
 
 # Used if run with GUI enabled.
 SCREEN_SIZE = 1000
@@ -93,10 +101,28 @@ async def Status(request):
     pretty_dumper = lambda x: json.dumps(x, indent=4, sort_keys=True)
     return web.json_response(server_state, dumps=pretty_dumper)
 
+@routes.get('/data_download')
+async def DataDump(request):
+    global g_config
+    database = CSqliteExtDatabase(g_config.database_path(), pragmas =
+            [ ('cache_size', -1024 * 64),  # 64MB page-cache.
+              ('journal_mode', 'wal'),  # Use WAL-mode (you should always use this!).
+              ('foreign_keys', 1)])
+    database.backup_to_file(g_config.backup_database_path())
+    time_string = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
+    game_archive = shutil.make_archive(f"{g_config.record_directory()}-{time_string}", 'zip', g_config.record_directory())
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "a", False) as zip_file:
+        with open(g_config.backup_database_path(), "rb") as db_file:
+            zip_file.writestr("database.db", db_file.read())
+        with open(game_archive, "rb") as game_file:
+            zip_file.writestr("game_record.zip", game_file.read())
+        # Delete the game archive now that we've read it into memory and added it to the zip file.
+        os.remove(game_archive)
+    return web.Response(body=zip_buffer.getvalue(), content_type="application/zip")
 
 async def stream_game_state(request, ws):
     global room_manager
-
     was_in_room = False
     remote = GetRemote(ws)
     remote.last_ping = datetime.now(timezone.utc)
@@ -385,10 +411,12 @@ def CreateDataDirectory(config):
 def main(config_file="config/server-config.json"):
     global assets_map
     global room_manager
+    global g_config
 
     InitPythonLogging()
 
     config = ReadConfigOrDie(config_file)
+    g_config = config
 
     logger.info(f"Config file parsed.");
     logger.info(f"data prefix: {config.data_prefix}")
