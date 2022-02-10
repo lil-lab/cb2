@@ -101,7 +101,7 @@ async def Status(request):
     pretty_dumper = lambda x: json.dumps(x, indent=4, sort_keys=True)
     return web.json_response(server_state, dumps=pretty_dumper)
 
-@routes.get('/data_download')
+@routes.get('/data/download')
 async def DataDump(request):
     global g_config
     database = CSqliteExtDatabase(g_config.database_path(), pragmas =
@@ -120,6 +120,83 @@ async def DataDump(request):
     # Delete the game archive now that we've read it into memory and added it to the zip file.
     os.remove(game_archive)
     return web.Response(body=zip_buffer.getvalue(), content_type="application/zip")
+
+@routes.get('/data/game-list')
+async def GameList(request):
+    games = schemas.game.Game.select().order_by(schemas.game.Game.id.desc())
+    response = []
+    for game in games:
+        response.append({
+            "id": game.id,
+            "type": game.type,
+            "leader": game.leader.get().hashed_id if game.leader else None,
+            "follower": game.follower.get().hashed_id if game.follower else None,
+            "score": game.score,
+            "turns": game.number_turns,
+            "start_time": str(game.start_time),
+            "duration": str(game.end_time - game.start_time),
+            "completed": game.completed,
+        })
+    return web.json_response(response)
+
+@routes.get('/view/games')
+async def GamesViewer(request):
+    return web.FileResponse("www/games_viewer.html")
+
+@routes.get('/view/game/{game_id}')
+async def GameViewer(request):
+    # Extract the game_id from the request.
+    return web.FileResponse("www/game_viewer.html")
+
+@routes.get('/data/turns/{game_id}')
+async def GameData(request):
+    game_id = request.match_info.get('game_id')
+    game = schemas.game.Game.select().where(schemas.game.Game.id == game_id).get()
+    turns = []
+    for turn in game.turns:
+        turns.append({
+            "id": turn.id,
+            "number": turn.turn_number,
+            "time": str(turn.time),
+            "notes": turn.notes,
+            "end_method": turn.end_method,
+        })
+    return web.json_response(turns)
+
+@routes.get('/data/instructions/{turn_id}')
+async def GameData(request):
+    turn_id = request.match_info.get('turn_id')
+    turn = schemas.game.Turn.select().where(schemas.game.Turn.id == turn_id).get()
+    game = turn.game.get()
+    instructions = schemas.game.Instruction.select().where(schemas.game.Instruction.turn_issued == turn.turn_number).order_by(schemas.game.Instruction.turn_issued)
+    json_instructions = []
+    for instruction in instructions:
+        json_instructions.append({
+            "instruction_number": instruction.instruction_number,
+            "turn_issued": instruction.turn_issued,
+            "time": str(turn.time),
+            "turn_completed": instruction.turn_completed,
+            "text": instruction.text
+        })
+    return web.json_response(json_instructions)
+
+@routes.get('/data/moves/{turn_id}')
+async def GameData(request):
+    turn_id = request.match_info.get('turn_id')
+    turn = schemas.game.Turn.select().where(schemas.game.Turn.id == turn_id).get()
+    game = turn.game.get()
+    moves = schemas.game.Move.select().where(schemas.game.Move.turn_number == turn.turn_number).order_by(schemas.game.Move.game_time)
+    json_moves = []
+    for move in moves:
+        json_moves.append({
+            "character_role": move.character_role,
+            "action_code": move.action_code,
+            "game_time": move.game_time,
+            "position_before": str(move.position_before),
+            "instruction": move.instruction.get().text if move.instruction else "",
+        })
+    return web.json_response(json_moves)
+
 
 async def stream_game_state(request, ws):
     global room_manager

@@ -63,6 +63,7 @@ class State(object):
         
         self._objectives = []
         self._objectives_stale = {}  # Maps from player_id -> bool if their objective list is stale.
+        self._last_objective = None
 
         self._map_update = self._map_provider.map()
         self._map_stale = {} # Maps from player_id -> bool if their map is stale.
@@ -290,6 +291,9 @@ class State(object):
                 self._map_update = self._map_provider.map()
                 for actor_id in self._actors:
                     self._map_stale[actor_id] = True
+        # Make sure to mark the game's end time.
+        self._game_record.end_time = datetime.now()
+        self._game_record.save()
     
     def record_objective(self, objective):
         instruction = schemas.game.Instruction()
@@ -305,13 +309,9 @@ class State(object):
         move = schemas.game.Move()
         move.game = self._game_record
         if actor.role() == Role.FOLLOWER:
-            last_objective = None
-            for objective in self._objectives:
-                if not objective.completed:
-                    last_objective = objective
-            if last_objective is not None:
+            if self._last_objective is not None:
                 last_obj_record = schemas.game.Instruction.select().where(
-                    schemas.game.Instruction.uuid == last_objective.uuid).get()
+                    schemas.game.Instruction.uuid == self._last_objective.uuid).get()
                 move.instruction = last_obj_record
         move.character_role = actor.role()
         if actor.role == Role.LEADER:
@@ -374,6 +374,8 @@ class State(object):
             turn_number += 1
 
             # Record the turn end to DB.
+            self._game_record.number_turns = turn_number
+            self._game_record.save()
             turn = schemas.game.Turn()
             turn.game = self._game_record
             turn.role = str(self._turn_state.turn)
@@ -480,6 +482,7 @@ class State(object):
         self.record_objective(objective)
         self._recvd_log.info(objective)
         self._objectives.append(objective)
+        self._last_objective = objective
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True
 

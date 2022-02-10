@@ -357,6 +357,9 @@ class TutorialGameState(object):
                 self._map_update = self._map_provider.map()
                 for actor_id in self._actors:
                     self._map_stale[actor_id] = True
+        # Make sure to mark the game's end time.
+        self._game_record.end_time = datetime.now()
+        self._game_record.save()
         # Before quitting, sleep for a bit to ensure that all messages have been sent.
         await asyncio.sleep(1)
 

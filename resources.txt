@@ -66,3 +66,8 @@ https://spin.atomicobject.com/2016/01/05/simulating-poor-network-connectivity-ma
 - Better WebGL HTML template:
 
 https://github.com/greggman/better-unity-webgl-template
+
+- For data browsing UIs, I wanted to do as little front-end HTML as possible so I used
+  w2ui:
+
+https://w2ui.com/web/get-started/legacy

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="http://w2ui.com/src/w2ui-1.5.min.css" />
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/3.5.0/jquery.min.js"></script>
+<script type="text/javascript" src="http://w2ui.com/src/w2ui-1.5.min.js"></script>
+</head>
+<body>
+  <div id="grid" style="width: 100%; height: 250px;"></div>
+</body>
+<script>
+$(function () {
+    $('#grid').w2grid({
+        name: 'grid',
+        header: 'List of Games',
+        columns: [
+          { field: 'id', text: 'Game ID', size: '30%' },
+          { field: 'type', text: 'Game Type', size: '30%' },
+          { field: 'leader', text: 'Leader ID (hashed)', size: '40%' },
+          { field: 'follower', text: 'Follower ID (hashed)', size: '40%' },
+          { field: 'score', text: 'Score', size: '40%' },
+          { field: 'turns', text: 'Number of Turns', size: '40%' },
+          { field: 'start_time', text: 'Start Time', size: '120px' },
+          { field: 'duration', text: 'Duration', size: '120px' },
+          { field: 'completed', text: 'Game Finished?', size: '120px' },
+          { field: 'link', text: 'Link', size: '120px', render: function(rec, extra) {
+              return '<a href="/view/game/' + rec.id + '">Link</a>';
+            } 
+          }
+        ],
+        url: "/data/game-list",
+    });
+});
+</script>
+</html>

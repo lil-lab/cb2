@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="http://w2ui.com/src/w2ui-1.5.min.css" />
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/3.5.0/jquery.min.js"></script>
+<script type="text/javascript" src="http://w2ui.com/src/w2ui-1.5.min.js"></script>
+</head>
+<body>
+<div id="turn-grid" style="width: 100%; height: 250px;"></div>
+<div id="instruction-grid" style="width: 100%; height: 250px;"></div>
+<div id="move-grid" style="width: 100%; height: 250px;"></div>
+</body>
+<script>
+$(function () {
+    var path = window.location.pathname
+    var game_id = parseInt(window.location.pathname.split("/").at(-1));
+    $('#turn-grid').w2grid({
+        name: 'turn-grid',
+        header: 'Game Turns',
+        columns: [
+          { field: 'id', text: 'Turn ID (Uniq)', size: '30%' },
+          { field: 'number', text: 'Turn No', size: '30%' },
+          { field: 'time', text: 'Time', size: '40%' },
+          { field: 'notes', text: 'Notes', size: '40%' },
+          { field: 'end_method', text: 'End Cause', size: '40%' }
+        ],
+        url: "/data/turns/" + game_id,
+        onClick: function(event) {
+          w2ui['instruction-grid'].clear();
+          w2ui['move-grid'].clear();
+          var record = this.get(event.recid);
+          w2ui['instruction-grid'].load('/data/instructions/' + record.id);
+          w2ui['move-grid'].load('/data/moves/' + record.id);
+        }
+    });
+    $('#instruction-grid').w2grid({
+      name: 'instruction-grid',
+      header: "Turn Instructions",
+      columns: [
+          { field: 'instruction_number', text: 'Instruction No', size: '30%' },
+          { field: 'turn_issued', text: 'Turn Issued', size: '30%' },
+          { field: 'time', text: 'Time', size: '40%' },
+          { field: 'turn_completed', text: 'Turn Completed', size: '40%' },
+          { field: 'text', text: 'Instruction Text', size: '40%' }
+      ],
+    });
+    $('#move-grid').w2grid({
+      name: 'move-grid',
+      header: "Turn Instructions",
+      columns: [
+          { field: 'character_role', text: 'Role', size: '30%' },
+          { field: 'action_code', text: 'Action Code', size: '30%' },
+          { field: 'game_time', text: 'Time', size: '40%' },
+          { field: 'position_before', text: 'Position Before', size: '40%' },
+          { field: 'instruction', text: 'Instruction Text', size: '40%' }
+      ]
+    });
+});
+</script>
+</html>
