@@ -338,6 +338,8 @@ class TutorialGameState(object):
                     card_record = self.get_or_create_card_record(card)
                     card_record.set = set_record
                     card_record.save()
+                self._tutorial_record.score = new_turn_state.score
+                self._tutorial_record.save()
                 # Clear card state and remove the cards in the winning set.
                 logging.info("Clearing selected cards")
                 for card in selected_cards:
