@@ -1,3 +1,4 @@
+from ast import Global
 from threading import local
 import aiohttp
 import asyncio
@@ -28,7 +29,7 @@ import leaderboard
 import db_tools.db_utils as db_utils
 
 from aiohttp import web
-from config.config import Config
+from config.config import Config, InitGlobalConfig, GlobalConfig
 from dataclasses import astuple
 from dateutil import parser
 from dateutil import tz
@@ -44,6 +45,7 @@ from messages.rooms import JoinResponse
 from messages.rooms import Role
 from messages.rooms import RoomManagementResponse
 from messages.rooms import RoomResponseType
+from messages.logs import GameLog, GameInfo, LogEntry
 from playhouse.sqlite_ext import CSqliteExtDatabase
 from remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTable, LogConnectionEvent
 from room_manager import RoomManager
@@ -56,8 +58,6 @@ routes = web.RouteTableDef()
 
 # Keeps track of game state.
 room_manager = RoomManager()
-
-g_config = None
 
 # Used if run with GUI enabled.
 SCREEN_SIZE = 1000
@@ -142,8 +142,57 @@ async def Status(request):
     return web.json_response(server_state, dumps=pretty_dumper)
 
 def FindGameDirectory(game_id):
-    global g_config
-    record_base_dir = pathlib.Path(g_config.record_directory())
+    record_base_dir = pathlib.Path(GlobalConfig().record_directory())
+    games = os.listdir(record_base_dir)
+    for game in games:
+        id = game.split("_")[1]
+        if game_id == id:
+            return record_base_dir / game
+    return None
+
+
+@routes.get('/data/messages_from_server/{game_id}')
+async def MessagesFromServer(request):
+    if not request.match_info.get('game_id'):
+        return web.HTTPNotFound()
+    game_dir = FindGameDirectory(request.match_info['game_id'])
+    if not game_dir:
+        return web.HTTPNotFound()
+    return web.FileResponse(game_dir / "messages_from_server.json")
+
+@routes.get('/data/messages_to_server/{game_id}')
+async def MessagesToServer(request):
+    if not request.match_info.get('game_id'):
+        return web.HTTPNotFound()
+    game_dir = FindGameDirectory(request.match_info['game_id'])
+    if not game_dir:
+        return web.HTTPNotFound()
+    return web.FileResponse(game_dir / "messages_to_server.json")
+
+@routes.get('/data/game_logs/{game_id}')
+async def GameLogs(request):
+    if not request.match_info.get('game_id'):
+        return web.HTTPNotFound()
+    game_dir = FindGameDirectory(request.match_info['game_id'])
+    if not game_dir:
+        return web.HTTPNotFound()
+    game_log = GameLog(GameInfo(datetime.min, 0, "", [], []), [])
+    with open(game_dir / "messages_from_server.jsonl.log", "r") as f:
+        for line in f:
+            log_entry_obj = orjson.loads(line)
+            game_log.log_entries.append(LogEntry.from_dict(log_entry_obj))
+    with open(game_dir / "game_info.jsonl.log", "r") as f:
+        line = f.readline()
+        game_log.game_info = GameInfo.from_json(line)
+    if (game_dir / "config.json").exists():
+        with open(game_dir / "config.json", "r") as f:
+            game_log.config = orjson.loads(f.read())
+    return web.json_response(json.loads(game_log.to_json()))
+
+
+@routes.get('/data/download')
+async def DataDump(request):
+    record_base_dir = pathlib.Path(GlobalConfig().record_directory())
     games = os.listdir(record_base_dir)
     for game in games:
         id = game.split("_")[1]
@@ -229,7 +278,6 @@ async def DataDownloader(room_manager):
     global download_contents
     global download_requested
     global download_status
-    global g_config
     NYC = tz.gettz('America/New_York')
     timestamp =  lambda : datetime.now(NYC).strftime("%Y-%m-%d %H:%M:%S")
     log_entry = lambda x: download_status["log"].append(f"{timestamp()}: {x}")
@@ -246,22 +294,22 @@ async def DataDownloader(room_manager):
             await asyncio.sleep(10)
             continue
 
-        database = CSqliteExtDatabase(g_config.database_path(), pragmas =
+        database = CSqliteExtDatabase(GlobalConfig().database_path(), pragmas =
                 [ ('cache_size', -1024 * 64),  # 64MB page-cache.
                 ('journal_mode', 'wal'),  # Use WAL-mode (you should always use this!).
                 ('foreign_keys', 1)])
         log_entry(f"Starting...") 
         download_status["status"] = "preparing"
-        database.backup_to_file(g_config.backup_database_path())
+        database.backup_to_file(GlobalConfig().backup_database_path())
         log_entry(f"DB backed up.")
         await asyncio.sleep(0.5)
         time_string = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
-        game_archive = shutil.make_archive(f"{g_config.record_directory()}-{time_string}", 'zip', g_config.record_directory())
+        game_archive = shutil.make_archive(f"{GlobalConfig().record_directory()}-{time_string}", 'zip', GlobalConfig().record_directory())
         log_entry("Game files archived.")
         await asyncio.sleep(0.5)
         download_contents = io.BytesIO()
         with zipfile.ZipFile(download_contents, "a", False) as zip_file:
-            with open(g_config.backup_database_path(), "rb") as db_file:
+            with open(GlobalConfig().backup_database_path(), "rb") as db_file:
                 zip_file.writestr("game_data.db", db_file.read())
                 log_entry(f"DB file added to download ZIP.")
                 await asyncio.sleep(0.5)
@@ -333,9 +381,8 @@ async def GameViewer(request):
 
 @routes.get('/data/config')
 async def GetConfig(request):
-    global g_config
     pretty_dumper = lambda x: orjson.dumps(x, option=orjson.OPT_NAIVE_UTC | orjson.OPT_INDENT_2).decode('utf-8')
-    return web.json_response(g_config, dumps=pretty_dumper)
+    return web.json_response(GlobalConfig(), dumps=pretty_dumper)
 
 @routes.get('/view/stats')
 async def Stats(request):
@@ -395,10 +442,9 @@ async def GameData(request):
 
 @routes.get('/data/stats')
 async def stats(request):
-    global g_config
     games = db_utils.ListResearchGames()
-    if len(g_config.analysis_game_id_ranges) > 0:
-        valid_ids = set(itertools.chain(*[range(x, y) for x,y in g_config.analysis_game_id_ranges]))
+    if len(GlobalConfig().analysis_game_id_ranges) > 0:
+        valid_ids = set(itertools.chain(*[range(x, y) for x,y in GlobalConfig().analysis_game_id_ranges]))
         print(f"Filtered to {valid_ids}")
         print(f"Number of valid IDs: {len(valid_ids)}")
         games = [game for game in games if game.id in valid_ids]
@@ -760,26 +806,25 @@ async def profiler():
 def main(config_filepath="config/server-config.json"):
     global assets_map
     global room_manager
-    global g_config
 
     InitPythonLogging()
 
-    g_config = ReadConfigOrDie(config_filepath)
+    InitGlobalConfig(config_filepath)
 
     logger.info(f"Config file parsed.");
-    logger.info(f"data prefix: {g_config.data_prefix}")
-    logger.info(f"Log directory: {g_config.record_directory()}")
-    logger.info(f"Assets directory: {g_config.assets_directory()}")
-    logger.info(f"Database path: {g_config.database_path()}")
+    logger.info(f"data prefix: {GlobalConfig().data_prefix}")
+    logger.info(f"Log directory: {GlobalConfig().record_directory()}")
+    logger.info(f"Assets directory: {GlobalConfig().assets_directory()}")
+    logger.info(f"Database path: {GlobalConfig().database_path()}")
 
-    CreateDataDirectory(g_config)
-    InitGameRecording(g_config)
+    CreateDataDirectory(GlobalConfig())
+    InitGameRecording(GlobalConfig())
 
     # yappi.set_clock_type("cpu") # Use set_clock_type("wall") for wall time
     # yappi.start()
 
-    assets_map = HashCollectAssets(g_config.assets_directory())
-    tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), serve(g_config), MapGenerationTask(room_manager, g_config), DataDownloader(room_manager))
+    assets_map = HashCollectAssets(GlobalConfig().assets_directory())
+    tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), serve(GlobalConfig()), MapGenerationTask(room_manager, GlobalConfig()), DataDownloader(room_manager))
     # If map visualization command line flag is enabled, run with the visualize task.
     # if gui:
     #   tasks = asyncio.gather(tasks, draw_gui())

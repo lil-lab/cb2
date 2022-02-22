@@ -26,7 +26,7 @@ class AnimationType(Enum):
     SKIPPING = 6
     ROTATE = 7
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class Color:
     r: float
@@ -48,7 +48,7 @@ def CensorActionForFollower(action, follower):
         print(f"Censored action {action} for follower {follower}")
     return action
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class Action:
     id: int

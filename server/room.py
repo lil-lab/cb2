@@ -1,3 +1,4 @@
+from ast import Global
 from datetime import datetime
 from enum import Enum
 from map_tools import visualize
@@ -10,6 +11,7 @@ from messages.logs import LogEntryFromIncomingMessage, LogEntryFromOutgoingMessa
 from messages.tutorials import RoleFromTutorialName
 from state import State
 from tutorial_state import TutorialGameState
+from config.config import GlobalConfig
 
 import asyncio
 import logging
@@ -75,6 +77,12 @@ class Room(object):
         self._messages_from_server_log = messages_from_server_path.open('w')
         messages_to_server_path = pathlib.Path(self._log_directory, 'messages_to_server.jsonl.log')
         self._messages_to_server_log = messages_to_server_path.open('w')
+
+        # Write the current server config to the log_directory as config.json.
+        with open(pathlib.Path(self._log_directory, 'config.json'), 'w') as f:
+            server_config = GlobalConfig()
+            if server_config is not None:
+                f.write(orjson.dumps(server_config).decode('utf-8'))
 
         self._map_update_count = 0
     

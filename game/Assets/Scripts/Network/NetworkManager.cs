@@ -10,7 +10,6 @@ using UnityEngine.Networking;
 using System.Linq;
 using Newtonsoft.Json;
 
-
 namespace Network
 {
     public class NetworkManager : MonoBehaviour
@@ -28,8 +27,10 @@ namespace Network
         private Player _player;
         private DateTime _lastStatsPoll;
         private Network.Config _serverConfig;
+        private Network.Config _replayConfig;
         private DateTime _lastServerConfigPoll = DateTime.MinValue;
         private Role _role = Network.Role.NONE;
+        private Role _replayRole = Network.Role.NONE;
         private Role _currentTurn = Network.Role.NONE;
 
         private Logger _logger;
@@ -37,7 +38,6 @@ namespace Network
         public IMapSource MapSource()
         {
             Scene scene = SceneManager.GetActiveScene();
-            Debug.Log("[DEBUG] scene: " + scene.name);
             if (scene.name == "menu_scene")
             {
                 Debug.Log("Loading menu map");
@@ -49,6 +49,12 @@ namespace Network
             }
             return _networkMapSource;
         }
+
+        public NetworkMapSource NetworkMapSource()
+        {
+            return _networkMapSource;
+        }
+
         public static NetworkManager TaggedInstance()
         {
             GameObject obj = GameObject.FindGameObjectWithTag(Network.NetworkManager.TAG);
@@ -78,10 +84,6 @@ namespace Network
                 }
                 UriBuilder endpointUrlBuilder =
                     new UriBuilder(scheme, servedUrl.Host, servedUrl.Port);
-                if (servedUrl.Query.Length > 0)
-                {
-                    endpointUrlBuilder.Query = servedUrl.Query.Substring(1);  // Remove leading '?'
-                }
                 url = endpointUrlBuilder.Uri.AbsoluteUri;
             }
             return url;
@@ -108,6 +110,9 @@ namespace Network
 
         public Network.Config ServerConfig()
         {
+            if (IsReplay()) {
+                return _replayConfig;
+            }
             if (_serverConfig == null)
             {
                 _logger.Info("Retrieved server config before it was initialized.");
@@ -115,8 +120,37 @@ namespace Network
             return _serverConfig;
         }
 
+        public bool IsReplay()
+        {
+            return SceneManager.GetActiveScene().name == "replay_scene";
+        }
+
+        public void InjectReplayRole(Role role)
+        {
+            if (IsReplay())
+            {
+                _replayRole = role;
+            } else {
+                Debug.LogWarning("Attempted to inject replay role when not in replay scene.");
+            }            
+        }
+
+        public void InjectReplayConfig(Network.Config config)
+        {
+            if (IsReplay())
+            {
+                _replayConfig = config;
+            } else {
+                Debug.LogWarning("Attempted to inject replay config when not in replay scene.");
+            }
+        }
+
         public Role Role()
         {
+            if (IsReplay())
+            {
+                return _replayRole;
+            }
             return _role;
         }
 
@@ -178,6 +212,7 @@ namespace Network
         public void Awake()
         {
             gameObject.tag = TAG;
+            _logger = Logger.GetOrCreateTrackedLogger("NetworkManager");
         }
 
         // Called when a user clicks the "Join Game" menu button. Enters the game queue.
@@ -262,59 +297,55 @@ namespace Network
         // Display the Game Over screen, with an optional explanation.
         public void DisplayGameOverMenu(string reason="")
         {
-            MenuTransitionHandler.TaggedInstance().DisplayEndGameMenu(reason);
+            MenuTransitionHandler menu = MenuTransitionHandler.TaggedInstance();
+            if (menu != null)
+            {
+                menu.DisplayEndGameMenu(reason);
+            }
+        }
+
+        public Util.Status InitializeEntityManager()
+        {
+            GameObject obj = GameObject.FindGameObjectWithTag(EntityManager.TAG);
+            if (obj == null)
+                return Util.Status.NotFound("Could not find tag: " + EntityManager.TAG);
+            _entityManager = obj.GetComponent<EntityManager>();
+            if (_entityManager == null)
+                return Util.Status.NotFound("Could not find component: " + EntityManager.TAG);
+            _router.SetEntityManager(_entityManager);
+            return Util.Status.OkStatus();
+        }
+
+        public Util.Status InitializePlayer()
+        {
+            GameObject playerObj = GameObject.FindGameObjectWithTag(Player.TAG);
+            if (playerObj == null)
+                return Util.Status.NotFound("Could not find tag: " + Player.TAG);
+            _player = playerObj.GetComponent<Player>();
+            if (_player == null)
+                return Util.Status.NotFound("Could not find component: " + Player.TAG);
+            _router.SetPlayer(_player);
+            return Util.Status.OkStatus();
         }
 
         public Util.Status InitializeTaggedObjects()
         {
-            GameObject obj = GameObject.FindGameObjectWithTag(EntityManager.TAG);
             Util.Status result = Util.Status.OkStatus();
-            if (obj != null)
-            {
-                _entityManager = obj.GetComponent<EntityManager>();
-            } else {
-                _entityManager = null;
-                result.Chain(Util.Status.NotFound("Could not find tag: " + EntityManager.TAG));
-            }
-            if (_entityManager != null)
-            {
-                _router.SetEntityManager(_entityManager);
-            } else {
-                return Util.Status.NotFound("Could not find component: " + EntityManager.TAG);
-            }
-
-            GameObject playerObj = GameObject.FindGameObjectWithTag(Player.TAG);
-            if (playerObj != null)
-            {
-                _player = playerObj.GetComponent<Player>();
-            } else {
-                _player = null;
-                result.Chain(Util.Status.NotFound("Could not find tag: " + Player.TAG));
-            }
-            if (_player != null)
-            {
-                _router.SetPlayer(_player);
-            } else {
-                result.Chain(Util.Status.NotFound("Could not find component: " + Player.TAG));
-            }
+            result.Chain(InitializeEntityManager());
+            result.Chain(InitializePlayer());
             return result;
         }
 
         // Start is called before the first frame update
         private void Start()
         {
-            _logger = Logger.GetTrackedLogger("NetworkManager");
-            if (_logger == null)
-            {
-                _logger = Logger.CreateTrackedLogger("NetworkManager");
-            }
             if (Instance == null)
             {
                 Instance = this;
                 DontDestroyOnLoad(this);  // Persist network connection between scene changes.
             } else if (Instance != this) {
                 _logger.Warn("Tried to create duplicate network manager. Self-destructed game object.");
-                Destroy(gameObject);
+                DestroyImmediate(gameObject);
                 return;
             }
             _networkMapSource = new NetworkMapSource();
@@ -354,15 +385,6 @@ namespace Network
 
             _lastServerConfigPoll = DateTime.Now;
             StartCoroutine(FetchConfig());
-        }
-
-        public void OnEnable()
-        {
-            if (_networkMapSource == null)
-            {
-                Logger.DestroyTrackedLoggers();
-                Start();
-            }
         }
 
         public void OnSceneLoaded(Scene scene, LoadSceneMode mode)

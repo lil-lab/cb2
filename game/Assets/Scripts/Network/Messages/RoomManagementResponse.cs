@@ -28,6 +28,7 @@ namespace Network
         public int players_waiting;
     }
 
+    [Serializable]
     public class JoinResponse
     {
         public bool joined;  // Did the player join the room?

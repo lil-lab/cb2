@@ -31,7 +31,7 @@ class MessageType(Enum):
     LIVE_FEEDBACK = 8
 
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class MessageToServer:
     transmit_time: datetime = field(

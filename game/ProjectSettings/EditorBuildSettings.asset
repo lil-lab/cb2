@@ -17,4 +17,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/map_viewer.unity
     guid: 869af9e6084604159b86520cc6074dbd
+  - enabled: 1
+    path: Assets/Scenes/replay_scene.unity
+    guid: a568f9403d6694afd8e1d298726d2783
   m_configObjects: {}

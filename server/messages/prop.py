@@ -18,7 +18,7 @@ class PropType(Enum):
     CARD = 2
 
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass
 class GenericPropInfo:
     location: HecsCoord
@@ -28,7 +28,7 @@ class GenericPropInfo:
     border_color: action.Color = action.Color(0, 0, 1, 1)
 
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class CardConfig:
     color: card.Color
@@ -37,13 +37,13 @@ class CardConfig:
     selected: bool
 
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class SimpleConfig:
     asset_id: int
 
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class Prop:
     id: int

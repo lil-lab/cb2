@@ -5,10 +5,11 @@ from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from typing import List, Optional
 from marshmallow import fields
-from messages import message_to_server
-from messages import message_from_server
+from messages import message_to_server as mts
+from messages import message_from_server as mfs
 from messages.rooms import Role
 from remote_table import Remote
+from config import config as cfg
 
 import dateutil
 
@@ -29,8 +30,8 @@ def LogEntryFromOutgoingMessage(player_id, message_from_server):
 class LogEntry:
     message_direction: Direction
     player_id: int
-    message_from_server: message_from_server.MessageFromServer
-    message_to_server: message_to_server.MessageToServer
+    message_from_server: mfs.MessageFromServer = field(default_factory=mfs.MessageFromServer)
+    message_to_server: mts.MessageToServer = field(default_factory=mts.MessageToServer)
 
 @dataclass_json
 @dataclass(frozen=True)
@@ -43,6 +44,12 @@ class GameInfo:
         ))
     game_id: int
     game_name: str
-    remotes: List[Remote]
     roles: List[Role]
     ids: List[int]
+
+@dataclass_json
+@dataclass
+class GameLog(object):
+    game_info: GameInfo
+    log_entries: List[LogEntry]
+    server_config: cfg.Config = field(default_factory=cfg.Config)

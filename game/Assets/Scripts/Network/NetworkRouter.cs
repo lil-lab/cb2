@@ -23,7 +23,16 @@ namespace Network
         private StateSync _pendingStateSync;
         private MapUpdate _pendingMapUpdate;
 
-        public NetworkRouter(ClientConnection client, NetworkMapSource mapSource, NetworkManager networkManager, EntityManager entityManager, Player player)
+        public enum Mode
+        {
+            NONE = 0,
+            NETWORK = 1,  // Used for actual games. NetworkManager receives messages.
+            REPLAY = 2,  // Used to replay messages from the server. Doesn't relay to NetworkManager.
+        }
+
+        private Mode _mode = Mode.NONE;
+
+        public NetworkRouter(ClientConnection client, NetworkMapSource mapSource, NetworkManager networkManager, EntityManager entityManager=null, Player player=null, Mode mode=Mode.NETWORK)
         {
             _client = client;
             _mapSource = mapSource;
@@ -36,7 +45,14 @@ namespace Network
             {
                 _logger = Logger.CreateTrackedLogger("NetworkRouter");
             }
-            _client.RegisterHandler(this);
+            _mode = mode;
+
+            if (_client != null) _client.RegisterHandler(this);
+        }
+
+        public bool PlayerIsSet()
+        {
+            return _player != null;
         }
 
         public void SetEntityManager(EntityManager entityManager)
@@ -56,6 +72,10 @@ namespace Network
 
         public void SetPlayer(Player player)
         {
+            Debug.Log("NetworkRouter SetPlayer()");
+            if (player == null) {
+                Debug.Log("NetworkRouter player is null.");
+            }
             _player = player;
             if (_pendingStateSync != null)
             {
@@ -134,12 +154,12 @@ namespace Network
             if (message.type == MessageFromServer.MessageType.PING)
             {
                 _logger.Info("Received ping.");
-                _networkManager.RespondToPing();
+                if (_mode == Mode.NETWORK) _networkManager.RespondToPing();
                 return;
             }
             if (message.type == MessageFromServer.MessageType.ACTIONS)
             {
-                if (_player == null || _entityManager == null)
+                if (((_player == null) && (_mode == Mode.NETWORK)) || (_entityManager == null))
                 {
                     _logger.Error("Player or entity manager not set, yet received state sync.");
                     return;
@@ -147,17 +167,29 @@ namespace Network
                 foreach (Network.Action networkAction in message.actions)
                 {
                     ActionQueue.IAction action = ActionFromNetwork(networkAction);
-                    if (networkAction.id == _player.PlayerId())
+                    if ((_mode == Mode.NETWORK) && (networkAction.id == _player.PlayerId()))
                     {
                         _player.ValidateHistory(action);
                         continue;
+                    }
+                    if (_player == null)
+                    {
+                        _logger.Error("Player not set, yet received action.");
+                    }
+                    if ((_mode == Mode.REPLAY) && (_player != null) && (networkAction.id == _player.PlayerId()))
+                    {
+                        _logger.Info("Forwarding action to player! 3535");
+                        _player.AddAction(action);
+                        continue;
+                    } else {
+                        Debug.Log("Player ID: " + _player.PlayerId() + " networkAction.id: " + networkAction.id);
                     }
                     _entityManager.AddAction(networkAction.id, action);
                 }
             }
             if (message.type == MessageFromServer.MessageType.STATE_SYNC)
             {
-                if (!ApplyStateSyncToPlayer(message.state))
+                if ((!ApplyStateSyncToPlayer(message.state)))
                 {
                     _logger.Info("Player not set, yet received state sync.");
                     _pendingStateSync = message.state;
@@ -184,7 +216,7 @@ namespace Network
             }
             if (message.type == MessageFromServer.MessageType.ROOM_MANAGEMENT)
             {
-                _networkManager.HandleRoomManagement(message.room_management_response);
+                if (_mode == Mode.NETWORK) _networkManager.HandleRoomManagement(message.room_management_response);
             }
             if (message.type == MessageFromServer.MessageType.OBJECTIVE)
             {
@@ -220,7 +252,7 @@ namespace Network
                 DateTime transmitTime = DateTime.Parse(message.transmit_time, null, System.Globalization.DateTimeStyles.RoundtripKind);
                 menuTransitionHandler.HandleTurnState(transmitTime, state);
                 _networkManager.HandleTurnState(state);
-                _player.HandleTurnState(state);
+                if (_mode == Mode.NETWORK) _player.HandleTurnState(state);
             }
             if (message.type == MessageFromServer.MessageType.TUTORIAL_RESPONSE)
             {
@@ -242,6 +274,11 @@ namespace Network
             if (_player.PlayerId() == -1)
             {
                 _logger.Info("Can't send action to server; Player ID unknown.");
+                return;
+            }
+            if (_client == null)
+            {
+                Debug.Log("Can't send action to server; Client object null.");
                 return;
             }
             MessageToServer toServer = new MessageToServer();

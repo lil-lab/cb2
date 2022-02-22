@@ -21,10 +21,10 @@ class Tile:
 @dataclass_json
 @dataclass
 class MapMetadata:
-    num_cities: int
-    num_lakes: int
-    num_mountains: int
-    num_outposts: int
+    num_cities: int = 0
+    num_lakes: int = 0
+    num_mountains: int = 0
+    num_outposts: int = 0
     num_partitions: int = 0
 
 @dataclass_json
@@ -34,4 +34,4 @@ class MapUpdate:
     cols: int
     tiles: List[Tile]
     props: List[messages.prop.Prop]
-    metadata: MapMetadata
+    metadata: MapMetadata = field(default_factory=MapMetadata)

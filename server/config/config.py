@@ -7,6 +7,15 @@ from typing import List, Optional
 
 import pathlib
 
+g_config = None
+def GlobalConfig():
+    global g_config
+    return g_config
+
+def InitGlobalConfig(config_path):
+    global g_config
+    g_config = ReadConfigOrDie(config_path)
+
 # Attempts to parse the config file. If there's any parsing or file errors,
 # doesn't handle the exceptions.
 def ReadConfigOrDie(config_path):

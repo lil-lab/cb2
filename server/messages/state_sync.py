@@ -10,7 +10,7 @@ import dateutil.parser
 import typing
 
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class Actor:
     actor_id: int
@@ -18,7 +18,7 @@ class Actor:
     location: HecsCoord
     rotation_degrees: float
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class StateSync:
     population: int

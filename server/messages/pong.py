@@ -7,7 +7,7 @@ from typing import Optional
 
 import dateutil.parser
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class Pong:
     ping_receive_time: str = ""

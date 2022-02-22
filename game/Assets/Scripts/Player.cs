@@ -100,7 +100,8 @@ public class Player : MonoBehaviour
             }
         } else {
             // Probably not necessary... this block of logic could probably be cleaner.
-            _fpvCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("card_covers"));
+            if (_fpvCamera != null)
+                _fpvCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("card_covers"));
         }
         if ((OverheadCamera != null) && (_network.Role() == Network.Role.LEADER))
         {
