@@ -358,8 +358,8 @@ class TutorialGameState(object):
                 for actor_id in self._actors:
                     self._map_stale[actor_id] = True
         # Make sure to mark the game's end time.
-        self._game_record.end_time = datetime.now()
-        self._game_record.save()
+        self._tutorial_record.end_time = datetime.now()
+        self._tutorial_record.save()
         # Before quitting, sleep for a bit to ensure that all messages have been sent.
         await asyncio.sleep(1)
 
@@ -470,6 +470,7 @@ class TutorialGameState(object):
         instruction = schemas.game.Instruction.select().where(
             schemas.game.Instruction.uuid==objective_complete.uuid).get()
         instruction.turn_completed = self._turn_state.turn_number
+        instruction.save()
     
     def handle_tutorial_request(self, id, tutorial):
         if tutorial.type == TutorialRequestType.REQUEST_NEXT_STEP:

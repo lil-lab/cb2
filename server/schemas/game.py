@@ -45,8 +45,8 @@ class Turn(BaseModel):
     role = TextField()  # 'Leader' or 'Follower'
     time = DateTimeField(default=datetime.datetime.now)
     turn_number = IntegerField(default=0)
-    notes = TextField() # a CSV of 'UsedAllMoves', 'FinishedAllCommands', or 'RepeatedTurnNoInstructionsTodo'
-    end_method = TextField() # Either 'RanOutOfTime' or 'UserPrompted'
+    notes = TextField() # a CSV of 'UsedAllMoves', 'FinishedAllCommands', or 'SkippedTurnNoInstructionsTodo'
+    end_method = TextField() # Something like 'RanOutOfTime' or 'UserPrompted', or 'FollowerOutOfMoves', or 'FollowerFinishedInstructions'
 
 class Instruction(BaseModel):
     game = ForeignKeyField(Game, backref='instructions')

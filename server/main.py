@@ -101,6 +101,35 @@ async def Status(request):
     pretty_dumper = lambda x: json.dumps(x, indent=4, sort_keys=True)
     return web.json_response(server_state, dumps=pretty_dumper)
 
+def FindGameDirectory(game_id):
+    global g_config
+    record_base_dir = pathlib.Path(g_config.record_directory())
+    games = os.listdir(record_base_dir)
+    for game in games:
+        id = game.split("_")[1]
+        if game_id == id:
+            return record_base_dir / game
+    return None
+
+
+@routes.get('/data/messages_from_server/{game_id}')
+async def MessagesFromServer(request):
+    if not request.match_info.get('game_id'):
+        return web.HTTPNotFound()
+    game_dir = FindGameDirectory(request.match_info['game_id'])
+    if not game_dir:
+        return web.HTTPNotFound()
+    return web.FileResponse(game_dir / "messages_from_server.json")
+
+@routes.get('/data/messages_to_server/{game_id}')
+async def MessagesToServer(request):
+    if not request.match_info.get('game_id'):
+        return web.HTTPNotFound()
+    game_dir = FindGameDirectory(request.match_info['game_id'])
+    if not game_dir:
+        return web.HTTPNotFound()
+    return web.FileResponse(game_dir / "messages_to_server.json")
+
 @routes.get('/data/download')
 async def DataDump(request):
     global g_config
@@ -123,7 +152,7 @@ async def DataDump(request):
 
 @routes.get('/data/game-list')
 async def GameList(request):
-    games = schemas.game.Game.select().order_by(schemas.game.Game.id.desc())
+    games = schemas.game.Game.select().join(schemas.mturk.Worker, join_type=peewee.JOIN.LEFT_OUTER, on=((schemas.game.Game.leader == schemas.mturk.Worker.id) | (schemas.game.Game.follower == schemas.mturk.Worker.id))).order_by(schemas.game.Game.id.desc())
     response = []
     for game in games:
         response.append({
@@ -151,7 +180,7 @@ async def GameViewer(request):
 @routes.get('/data/turns/{game_id}')
 async def GameData(request):
     game_id = request.match_info.get('game_id')
-    game = schemas.game.Game.select().where(schemas.game.Game.id == game_id).get()
+    game = schemas.game.Game.select().join(schemas.game.Turn, join_type=peewee.JOIN.LEFT_OUTER).where(schemas.game.Game.id == game_id).get()
     turns = []
     for turn in game.turns:
         turns.append({
@@ -166,15 +195,15 @@ async def GameData(request):
 @routes.get('/data/instructions/{turn_id}')
 async def GameData(request):
     turn_id = request.match_info.get('turn_id')
-    turn = schemas.game.Turn.select().where(schemas.game.Turn.id == turn_id).get()
-    game = turn.game.get()
-    instructions = schemas.game.Instruction.select().where(schemas.game.Instruction.turn_issued == turn.turn_number).order_by(schemas.game.Instruction.turn_issued)
+    turn = schemas.game.Turn.select().join(schemas.game.Game).where(schemas.game.Turn.id == turn_id).get()
+    game = turn.game
+    instructions = schemas.game.Instruction.select().join(schemas.game.Game, join_type=peewee.JOIN.LEFT_OUTER).where(schemas.game.Instruction.turn_issued == turn.turn_number, schemas.game.Instruction.game == game).order_by(schemas.game.Instruction.turn_issued)
     json_instructions = []
     for instruction in instructions:
         json_instructions.append({
             "instruction_number": instruction.instruction_number,
             "turn_issued": instruction.turn_issued,
-            "time": str(turn.time),
+            "time": str(instruction.time),
             "turn_completed": instruction.turn_completed,
             "text": instruction.text
         })
@@ -183,9 +212,9 @@ async def GameData(request):
 @routes.get('/data/moves/{turn_id}')
 async def GameData(request):
     turn_id = request.match_info.get('turn_id')
-    turn = schemas.game.Turn.select().where(schemas.game.Turn.id == turn_id).get()
-    game = turn.game.get()
-    moves = schemas.game.Move.select().where(schemas.game.Move.turn_number == turn.turn_number).order_by(schemas.game.Move.game_time)
+    turn = schemas.game.Turn.select().join(schemas.game.Game).where(schemas.game.Turn.id == turn_id).get()
+    game = turn.game
+    moves = schemas.game.Move.select().join(schemas.game.Instruction).join(schemas.game.Game, join_type=peewee.JOIN.LEFT_OUTER).where(schemas.game.Move.turn_number == turn.turn_number, schemas.game.Move.game == game.id).order_by(schemas.game.Move.game_time)
     json_moves = []
     for move in moves:
         json_moves.append({
@@ -193,7 +222,7 @@ async def GameData(request):
             "action_code": move.action_code,
             "game_time": move.game_time,
             "position_before": str(move.position_before),
-            "instruction": move.instruction.get().text if move.instruction else "",
+            "instruction": move.instruction.text if move.instruction else "",
         })
     return web.json_response(json_moves)
 

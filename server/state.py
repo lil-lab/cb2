@@ -63,7 +63,7 @@ class State(object):
         
         self._objectives = []
         self._objectives_stale = {}  # Maps from player_id -> bool if their objective list is stale.
-        self._last_objective = None
+        self._active_objective = None
 
         self._map_update = self._map_provider.map()
         self._map_stale = {} # Maps from player_id -> bool if their map is stale.
@@ -309,9 +309,9 @@ class State(object):
         move = schemas.game.Move()
         move.game = self._game_record
         if actor.role() == Role.FOLLOWER:
-            if self._last_objective is not None:
+            if self._active_objective is not None:
                 last_obj_record = schemas.game.Instruction.select().where(
-                    schemas.game.Instruction.uuid == self._last_objective.uuid).get()
+                    schemas.game.Instruction.uuid == self._active_objective.uuid).get()
                 move.instruction = last_obj_record
         move.character_role = actor.role()
         if actor.role == Role.LEADER:
@@ -358,10 +358,10 @@ class State(object):
         end_of_turn = (datetime.now() >= self._turn_state.turn_end) or force_turn_end
         next_role = opposite_role if end_of_turn else self._turn_state.turn
         # Force the leader to act if there's no uncompleted instructions.
-        turn_repeated = False
+        turn_skipped = False
         if next_role == Role.FOLLOWER and not self.has_instructions_todo():
             next_role = Role.LEADER
-            turn_repeated = True
+            turn_skipped = True
         moves_remaining = max(self._turn_state.moves_remaining - 1, 0)
         turns_left = self._turn_state.turns_left
         turn_end = self._turn_state.turn_end
@@ -371,20 +371,21 @@ class State(object):
             if next_role == Role.LEADER:
                 turns_left -= 1
             turn_end = datetime.now() + self.turn_duration(next_role)
+            # Calculate the next turn number.
             turn_number += 1
 
             # Record the turn end to DB.
-            self._game_record.number_turns = turn_number
+            self._game_record.number_turns = self._turn_state.turn_number + 1
             self._game_record.save()
             turn = schemas.game.Turn()
             turn.game = self._game_record
             turn.role = str(self._turn_state.turn)
-            turn.turn_number = self._turn_state.turn_number + 1
+            turn.turn_number = self._turn_state.turn_number  # Recording the turn that just ended.
             end_method = end_reason if force_turn_end else "RanOutOfTime"
             turn.end_method = end_method
             notes = []
-            if turn_repeated:
-                notes.append("RepeatedTurnNoInstructionsTodo")
+            if turn_skipped:
+                notes.append("SkippedTurnNoInstructionsTodo")
             if self._turn_state.moves_remaining <= 0:
                 notes.append("UsedAllMoves")
             if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
@@ -482,7 +483,8 @@ class State(object):
         self.record_objective(objective)
         self._recvd_log.info(objective)
         self._objectives.append(objective)
-        self._last_objective = objective
+        if self._active_objective is None:
+            self._active_objective = objective
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True
 
@@ -497,11 +499,17 @@ class State(object):
                 self._record_log.info(objective_complete)
                 self._objectives[i].completed = True
                 break
+        # Mark the next "active" objective.
+        if i < len(self._objectives) - 1:
+            self._active_objective = self._objectives[i + 1]
+        else:
+            self._active_objective = None
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True
         instruction = schemas.game.Instruction.select().where(
             schemas.game.Instruction.uuid==objective_complete.uuid).get()
         instruction.turn_completed = self._turn_state.turn_number
+        instruction.save()
     
     def handle_turn_complete(self, id, turn_complete):
         if self._actors[id].role() != self._turn_state.turn:
