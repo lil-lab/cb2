@@ -43,6 +43,12 @@ TagManager:
   - AUDIO_LISTENER
   - TURN_START_SOUND
   - MUTE_AUDIO_TOGGLE
+  - REPLAY_GAME_TIME
+  - REPLAY_TURN
+  - REPLAY_SCORE
+  - REPLAY_PREV
+  - REPLAY_PAUSE
+  - REPLAY_NEXT
   layers:
   - Default
   - TransparentFX

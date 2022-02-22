@@ -151,6 +151,36 @@ def FindGameDirectory(game_id):
             return record_base_dir / game
     return None
 
+
+@routes.get('/data/messages_from_server/{game_id}')
+async def MessagesFromServer(request):
+    if not request.match_info.get('game_id'):
+        return web.HTTPNotFound()
+    game_dir = FindGameDirectory(request.match_info['game_id'])
+    if not game_dir:
+        return web.HTTPNotFound()
+    return web.FileResponse(game_dir / "messages_from_server.json")
+
+@routes.get('/data/messages_to_server/{game_id}')
+async def MessagesToServer(request):
+    if not request.match_info.get('game_id'):
+        return web.HTTPNotFound()
+    game_dir = FindGameDirectory(request.match_info['game_id'])
+    if not game_dir:
+        return web.HTTPNotFound()
+    return web.FileResponse(game_dir / "messages_to_server.json")
+
+@routes.get('/data/download')
+async def DataDump(request):
+    global g_config
+    record_base_dir = pathlib.Path(g_config.record_directory())
+    games = os.listdir(record_base_dir)
+    for game in games:
+        id = game.split("_")[1]
+        if game_id == id:
+            return record_base_dir / game
+    return None
+
 @routes.get('/data/username_from_id/{user_id}')
 async def GetUsername(request):
     user_id = request.match_info.get('user_id')
