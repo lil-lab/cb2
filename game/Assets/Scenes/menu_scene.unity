@@ -5255,7 +5255,7 @@ MonoBehaviour:
     m_VerticalOverflow: 0
     m_LineSpacing: 1
   m_Text: "Cereal Bar is a two-player web game designed for studying language understanding
-    agents in collaborative interactions. \n\nThe source code can be found at\nhttps://github.com/lil-lab/cb2-game-dev\n\n\"Cube
+    agents in collaborative interactions. \n\nLearn more here:\nhttps://lil.nlp.cornell.edu/cerealbar/\n\n\"Cube
     Robot - Animated\" (https://skfb.ly/6RyqL) by Berk Gedik is licensed under Creative
     Commons Attribution (http://creativecommons.org/licenses/by/4.0/)."
 --- !u!222 &1908018653
