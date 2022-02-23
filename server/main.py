@@ -152,14 +152,14 @@ async def DataDump(request):
 
 @routes.get('/data/game-list')
 async def GameList(request):
-    games = schemas.game.Game.select().join(schemas.mturk.Worker, join_type=peewee.JOIN.LEFT_OUTER, on=((schemas.game.Game.leader == schemas.mturk.Worker.id) | (schemas.game.Game.follower == schemas.mturk.Worker.id))).order_by(schemas.game.Game.id.desc())
+    games = schemas.game.Game.select().join(schemas.mturk.Worker, join_type=peewee.JOIN.LEFT_OUTER, on=((schemas.game.Game.leader == schemas.mturk.Worker.id) or (schemas.game.Game.follower == schemas.mturk.Worker.id))).order_by(schemas.game.Game.id.desc())
     response = []
     for game in games:
         response.append({
             "id": game.id,
             "type": game.type,
-            "leader": game.leader.get().hashed_id if game.leader else None,
-            "follower": game.follower.get().hashed_id if game.follower else None,
+            "leader": game.leader.hashed_id if game.leader else None,
+            "follower": game.follower.hashed_id if game.follower else None,
             "score": game.score,
             "turns": game.number_turns,
             "start_time": str(game.start_time),
