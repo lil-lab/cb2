@@ -178,10 +178,10 @@ class State(object):
 
             # If the follower currently has no instructions, end their turn.
             if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
-                self.update_turn(force_turn_end=True, end_reason="FollowerFinishedInstructions")
+                self.update_turn(force_role_switch=True, end_reason="FollowerFinishedInstructions")
 
             if self._turn_state.turn == Role.FOLLOWER and self._turn_state.moves_remaining <= 0:
-                self.update_turn(force_turn_end=True, end_reason="FollowerOutOfMoves")
+                self.update_turn(force_role_switch=True, end_reason="FollowerOutOfMoves")
 
             # Handle actor actions.
             for actor_id in self._actors:
@@ -243,15 +243,15 @@ class State(object):
                 added_turns = 0
                 cards_changed = True
                 if self._turn_state.sets_collected == 0:
-                    added_turns = 10
+                    added_turns = 5
                 elif self._turn_state.sets_collected in [1, 2]:
-                    added_turns = 8
-                elif self._turn_state.sets_collected in [3, 4]:
-                    added_turns = 6
-                elif self._turn_state.sets_collected in [5, 6]:
                     added_turns = 4
                 elif self._turn_state.sets_collected in [3, 4]:
+                    added_turns = 3
+                elif self._turn_state.sets_collected in [5, 6]:
                     added_turns = 2
+                else:
+                    added_turns = 1
                 new_turn_state = TurnUpdate(
                     self._turn_state.turn,
                     self._turn_state.moves_remaining,
@@ -353,10 +353,10 @@ class State(object):
                 return True
         return False
 
-    def update_turn(self, force_turn_end=False, end_reason=""):
+    def update_turn(self, force_role_switch=False, end_reason=""):
         opposite_role = Role.LEADER if self._turn_state.turn == Role.FOLLOWER else Role.FOLLOWER
-        end_of_turn = (datetime.now() >= self._turn_state.turn_end) or force_turn_end
-        next_role = opposite_role if end_of_turn else self._turn_state.turn
+        role_switch = (datetime.now() >= self._turn_state.turn_end) or force_role_switch
+        next_role = opposite_role if role_switch else self._turn_state.turn
         # Force the leader to act if there's no uncompleted instructions.
         turn_skipped = False
         if next_role == Role.FOLLOWER and not self.has_instructions_todo():
@@ -366,32 +366,35 @@ class State(object):
         turns_left = self._turn_state.turns_left
         turn_end = self._turn_state.turn_end
         turn_number = self._turn_state.turn_number
-        if end_of_turn:
+        if role_switch:
+            end_of_turn = (next_role == Role.LEADER)
             moves_remaining = self.moves_per_turn(next_role)
-            if next_role == Role.LEADER:
+            if end_of_turn:
                 turns_left -= 1
-            turn_end = datetime.now() + self.turn_duration(next_role)
-            # Calculate the next turn number.
-            turn_number += 1
+                turn_number += 1
+                turn_end = datetime.now() + self.turn_duration(next_role)
 
-            # Record the turn end to DB.
-            self._game_record.number_turns = self._turn_state.turn_number + 1
-            self._game_record.save()
-            turn = schemas.game.Turn()
-            turn.game = self._game_record
-            turn.role = str(self._turn_state.turn)
-            turn.turn_number = self._turn_state.turn_number  # Recording the turn that just ended.
-            end_method = end_reason if force_turn_end else "RanOutOfTime"
-            turn.end_method = end_method
-            notes = []
-            if turn_skipped:
-                notes.append("SkippedTurnNoInstructionsTodo")
-            if self._turn_state.moves_remaining <= 0:
-                notes.append("UsedAllMoves")
-            if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
-                notes.append("FinishedAllCommands")
-            turn.notes = ",".join(notes)
-            turn.save()
+                # Record the turn end to DB.
+                self._game_record.number_turns = self._turn_state.turn_number + 1
+                self._game_record.save()
+
+                turn = schemas.game.Turn()
+                turn.game = self._game_record
+                # Due to a change in how turns are counted, each turn now
+                # includes movements for both roles. This field is now deprecated.
+                turn.role = ""
+                turn.turn_number = self._turn_state.turn_number  # Recording the turn that just ended.
+                end_method = end_reason if force_role_switch else "RanOutOfTime"
+                turn.end_method = end_method
+                notes = []
+                if turn_skipped:
+                    notes.append("SkippedTurnNoInstructionsTodo")
+                if self._turn_state.moves_remaining <= 0:
+                    notes.append("UsedAllMoves")
+                if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
+                    notes.append("FinishedAllCommands")
+                turn.notes = ",".join(notes)
+                turn.save()
 
         turn_update = TurnUpdate(
             next_role,
@@ -521,7 +524,7 @@ class State(object):
                 logger.warn(f"Warning, turn complete received from ID: {str(id)} when it isn't their turn!")
                 return
         self._recvd_log.info(f"player_id: {id} turn_complete received.")
-        self.update_turn(force_turn_end=True, end_reason="UserPrompted")
+        self.update_turn(force_role_switch=True, end_reason="UserPrompted")
 
     def create_actor(self, role):
         spawn_point = self._spawn_points.pop() if self._spawn_points else HecsCoord(0, 0, 0)

@@ -214,7 +214,7 @@ async def GameData(request):
     turn_id = request.match_info.get('turn_id')
     turn = schemas.game.Turn.select().join(schemas.game.Game).where(schemas.game.Turn.id == turn_id).get()
     game = turn.game
-    moves = schemas.game.Move.select().join(schemas.game.Instruction).join(schemas.game.Game, join_type=peewee.JOIN.LEFT_OUTER).where(schemas.game.Move.turn_number == turn.turn_number, schemas.game.Move.game == game.id).order_by(schemas.game.Move.game_time)
+    moves = schemas.game.Move.select().join(schemas.game.Instruction, join_type=peewee.JOIN.LEFT_OUTER).join(schemas.game.Game, join_type=peewee.JOIN.LEFT_OUTER).where(schemas.game.Move.turn_number == turn.turn_number, schemas.game.Move.game == game.id).order_by(schemas.game.Move.game_time)
     json_moves = []
     for move in moves:
         json_moves.append({
