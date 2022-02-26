@@ -1,0 +1,88 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Qualification Task</title>
+        <link rel='stylesheet' href='https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css'>
+    </head>
+    <body>
+        <script type="text/javascript">
+            function validPreviewParams(params) {
+                if (!params.has('assignmentId')) {
+                    console.log('Missing assignmentId parameter.');
+                    return false;
+                }
+                if (params.get('assignmentId') != 'ASSIGNMENT_ID_NOT_AVAILABLE') {
+                    console.log('Not in preview mode.');
+                    return false;
+                }
+                return true;
+            }
+            function validWorkerParams(params) {
+                if (!params.has('workerId')) {
+                    console.log('Missing workerId parameter.');
+                    return false;
+                }
+                if (!params.has('assignmentId')) {
+                    console.log('Missing assignmentId parameter.');
+                    return false;
+                }
+                if (!params.has('turkSubmitTo'))
+                {
+                    console.log('Missing turkSubmitTo parameter.');
+                    return false;
+                }
+                return true;
+            }
+
+            function submitTask(params) {
+                var htmlForm = document.createElement('form');
+                htmlForm.action = (new URL('mturk/externalSubmit', params.get('turkSubmitTo'))).href
+                console.log(htmlForm.action);
+                htmlForm.method = 'post';
+
+                // Add the assignment ID to the form.
+                var assignmentIdInput = document.createElement("input");
+                assignmentIdInput.setAttribute("type", "hidden");
+                assignmentIdInput.setAttribute("name", "assignmentId");
+                assignmentIdInput.setAttribute("value", params.get('assignmentId'));
+                htmlForm.appendChild(assignmentIdInput);
+
+                // Add the form data to the form.
+                var formDataInput = document.createElement("input");
+                formDataInput.setAttribute("type", "hidden");
+                formDataInput.setAttribute("name", "formData");
+                formDataInput.setAttribute("value", "");
+                htmlForm.appendChild(formDataInput);
+
+                // Submit the form.
+                document.body.appendChild(htmlForm);
+                htmlForm.submit();
+            }
+
+            window.onload = function() {
+                var params = new URLSearchParams(window.location.search);
+                var statusElement = document.getElementById('status');
+                if (validWorkerParams(params)) {
+                    statusElement.innerHTML = 'Valid Amazon MTurk parameters. Submitting task shortly...';
+                    statusElement.style.backgroundColor = '#7FFFD4';
+                    setTimeout(submitTask, 2000, params);
+                } else if (validPreviewParams(params)) {
+                        statusElement.innerHTML = 'MTurk PREVIEW.';
+                        statusElement.style.backgroundColor = 'yellow';
+                } else {
+                    statusElement.innerHTML = 'Missing Amazon MTurk parameters. Did you access this page through mechanical turk?';
+                    statusElement.style.backgroundColor = 'red';
+                }
+            }
+        </script>
+        <div>
+            <h1>Oneoff Compensation Task</h1>
+            <h2 id="status"></h2>
+            <p style="background-color: rgb(255, 255, 170); font-size: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center; width: 60%;">
+                You are <b>strongly</b> encouraged to 
+                <a href="https://discord.gg/RErZXMzN6G">join the discord</a> for
+                support, updates and <b>notifications of new assignments</b>.
+            </p>
+    </body>
+</html>
