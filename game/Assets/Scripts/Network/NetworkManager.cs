@@ -124,7 +124,7 @@ namespace Network
             gameObject.tag = TAG;
         }
 
-        // Called when a user clicks the "Join Game" menu button. Starts a new game.
+        // Called when a user clicks the "Join Game" menu button. Enters the game queue.
         public void JoinGame()
         {
             MessageToServer msg = new MessageToServer();

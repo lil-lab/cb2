@@ -57,6 +57,13 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public void QuitGame()
     {
+        if (Application.platform != RuntimePlatform.WebGLPlayer) return;
+
+        Dictionary<string, string> urlParameters = Network.NetworkManager.UrlParameters();
+        if (urlParameters.ContainsKey("assignmentId")) {
+            Debug.Log("[DEBUG] MTURK: Marking task as submitted.");
+            SubmitMturk("");
+        }
         Network.NetworkManager.TaggedInstance().QuitGame();
     }
 
@@ -323,6 +330,9 @@ public class MenuTransitionHandler : MonoBehaviour
         EndGame(_lastTurnTransmitTime, _lastTurn);
     }
 
+    [DllImport("__Internal")]
+    private static extern void SubmitMturk(string game_data);
+
     private void EndGame(DateTime transmitTime, Network.TurnState state)
     {
         // Hide escape menu.
@@ -335,6 +345,15 @@ public class MenuTransitionHandler : MonoBehaviour
 
         Text score = FindTextWithTag(GAME_OVER_STATS);
         score.text = state.ScoreString(transmitTime);
+
+        // If mturk and in webgl, submit task.
+        if (Application.platform != RuntimePlatform.WebGLPlayer) return;
+
+        Dictionary<string, string> urlParameters = Network.NetworkManager.UrlParameters();
+        if (urlParameters.ContainsKey("assignmentId")) {
+            Debug.Log("[DEBUG] MTURK: Marking task as submitted.");
+            SubmitMturk("");
+        }
     }
 
     // Start is called before the first frame update

@@ -8,6 +8,7 @@ public class MturkUIController : MonoBehaviour
     public GameObject main_menu_ui;
     public GameObject queue_ui;
     private const string SKIP_TO_TASK_PARAM = "skipToTask";
+    private const string ASSIGNMENT_ID_PARAM = "assignmentId";
     private const string JOIN_QUEUE_TASK = "joinGameQueue";
     private const string LEADER_TUTORIAL_TASK = "leaderTutorial";
     private const string FOLLOWER_TUTORIAL_TASK = "followerTutorial";
@@ -20,7 +21,7 @@ public class MturkUIController : MonoBehaviour
             return;
         }
         Dictionary<string, string> urlParameters = Network.NetworkManager.UrlParameters();
-        if (urlParameters.ContainsKey(SKIP_TO_TASK_PARAM))
+        if (urlParameters.ContainsKey(ASSIGNMENT_ID_PARAM))
         {
             mturk_ui.SetActive(true);
             main_menu_ui.SetActive(false);
@@ -30,29 +31,29 @@ public class MturkUIController : MonoBehaviour
     public void JumpToMturkTask()
     {
         Dictionary<string, string> urlParameters = Network.NetworkManager.UrlParameters();
-        if (urlParameters.ContainsKey(SKIP_TO_TASK_PARAM))
+        string taskName = JOIN_QUEUE_TASK;
+        if (urlParameters.ContainsKey(SKIP_TO_TASK_PARAM)) {
+            taskName = urlParameters[SKIP_TO_TASK_PARAM];
+        }
+        switch(taskName)
         {
-            string taskName = urlParameters[SKIP_TO_TASK_PARAM];
-            switch(taskName)
-            {
-                case JOIN_QUEUE_TASK:
-                    mturk_ui.SetActive(false);
-                    queue_ui.SetActive(true);
-                    Debug.Log("[DEBUG] MTURK: Jumping to JoinGameQueue task.");
-                    Network.NetworkManager.TaggedInstance().JoinGame();
-                    break;
-                case LEADER_TUTORIAL_TASK:
-                    mturk_ui.SetActive(false);
-                    Network.NetworkManager.TaggedInstance().StartLeaderTutorial();
-                    break;
-                case FOLLOWER_TUTORIAL_TASK:
-                    mturk_ui.SetActive(false);
-                    Network.NetworkManager.TaggedInstance().StartFollowerTutorial();
-                    break;
-                default:
-                    Debug.LogError("[ERROR] MTURK: Unknown task name: " + taskName);
-                    break;
-            }
+            case JOIN_QUEUE_TASK:
+                mturk_ui.SetActive(false);
+                queue_ui.SetActive(true);
+                Debug.Log("[DEBUG] MTURK: Jumping to JoinGameQueue task.");
+                Network.NetworkManager.TaggedInstance().JoinGame();
+                break;
+            case LEADER_TUTORIAL_TASK:
+                mturk_ui.SetActive(false);
+                Network.NetworkManager.TaggedInstance().StartLeaderTutorial();
+                break;
+            case FOLLOWER_TUTORIAL_TASK:
+                mturk_ui.SetActive(false);
+                Network.NetworkManager.TaggedInstance().StartFollowerTutorial();
+                break;
+            default:
+                Debug.LogError("[ERROR] MTURK: Unknown task name: " + taskName);
+                break;
         }
     }
 }
