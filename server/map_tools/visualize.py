@@ -7,7 +7,10 @@ from hex import HexBoundary, Edges
 
 import math
 import pygame
+import pygame.font
+import random
 import sys
+import pathlib
 
 SCREEN_SIZE = 800
 SCALE = 5
@@ -71,7 +74,17 @@ def asset_id_to_color(asset_id):
     elif asset_id == AssetId.GROUND_TILE_FOREST:
         return pygame.Color("darkgreen")
     elif asset_id == AssetId.GROUND_TILE_HOUSE:
-        return pygame.Color("red")
+        return pygame.Color("green")
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_RED:
+        return pygame.Color("green")
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_BLUE:
+        return pygame.Color("green")
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_TRIPLE:
+        return pygame.Color("green")
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_TRIPLE_RED:
+        return pygame.Color("green")
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_TRIPLE_BLUE:
+        return pygame.Color("green")
     elif asset_id == AssetId.GROUND_TILE_STREETLIGHT:
         return pygame.Color("yellow")
     elif asset_id == AssetId.MOUNTAIN_TILE:
@@ -88,8 +101,46 @@ def asset_id_to_color(asset_id):
         print("Unknown asset ID encountered: " + str(asset_id))
         return pygame.Color("white")
 
-def asset_id_to_text(asset_id):
-    return str(asset_id)
+def asset_id_to_icon(asset_id):
+    if asset_id == AssetId.GROUND_TILE:
+        return ""
+    elif asset_id == AssetId.GROUND_TILE_ROCKY:
+        return "map_tools/asset_icons/rocks.png"
+    elif asset_id == AssetId.GROUND_TILE_STONES:
+        return "map_tools/asset_icons/stones.png"
+    elif asset_id == AssetId.GROUND_TILE_TREES:
+        return "map_tools/asset_icons/trees.png"
+    elif asset_id == AssetId.GROUND_TILE_TREES_2:
+        return "map_tools/asset_icons/trees.png"
+    elif asset_id == AssetId.GROUND_TILE_FOREST:
+        return "map_tools/asset_icons/trees.png"
+    elif asset_id == AssetId.GROUND_TILE_HOUSE:
+        return "map_tools/asset_icons/house.png"
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_RED:
+        return "map_tools/asset_icons/red_house.png"
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_BLUE:
+        return "map_tools/asset_icons/blue_house.png"
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_TRIPLE:
+        return "map_tools/asset_icons/triple_house.png"
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_TRIPLE_RED:
+        return "map_tools/asset_icons/red_triple_house.png"
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_TRIPLE_BLUE:
+        return "map_tools/asset_icons/blue_triple_house.png"
+    elif asset_id == AssetId.GROUND_TILE_STREETLIGHT:
+        return "map_tools/asset_icons/streetlight.png"
+    elif asset_id == AssetId.MOUNTAIN_TILE:
+        return ""
+    elif asset_id == AssetId.RAMP_TO_MOUNTAIN:
+        return ""
+    elif asset_id == AssetId.GROUND_TILE_PATH:
+        return ""
+    elif asset_id == AssetId.EMPTY_TILE:
+        return ""
+    elif asset_id == AssetId.WATER_TILE:
+        return ""
+    else:
+        print("Unknown asset ID encountered: " + str(asset_id))
+        return ""
 
 def get_hexagon_vertices(x, y, width, height, rotation):
     """ Gets the vertices of a hexagon.
@@ -211,6 +262,7 @@ class GameDisplay(object):
         self._cell_width = self._cell_height = 0
         self._map = None
         self._game_state = None
+        self._trajectory = None # A list of Hecscoords. A follower's pathway to draw.
         # Initialize pygame.
         pygame.init()
         # Create the screen
@@ -232,6 +284,9 @@ class GameDisplay(object):
             self._cell_width = self._cell_height * (1/1.5) * math.sqrt(3)
         else:
             self._cell_height = self._cell_width * 1.5 / math.sqrt(3)
+    
+    def set_trajectory(self, trajectory):
+        self._trajectory = trajectory
 
     def set_game_state(self, game_state):
         self._game_state = game_state
@@ -272,6 +327,17 @@ class GameDisplay(object):
                          self._cell_height, color, tile.rotation_degrees,
                          boundary)
 
+            asset_icon = asset_id_to_icon(asset_id)            
+            if not pathlib.Path(asset_icon).is_file():
+                continue
+            # Draw the asset label.
+            icon = pygame.image.load(asset_icon)
+            icon.convert()
+            icon_width = int(self._cell_width * 0.8)
+            icon_height = int(self._cell_height * 0.8)
+            icon = pygame.transform.scale(icon, (icon_width, icon_height))
+            self._screen.blit(icon, (center_x - icon_width/2, center_y - icon_height/2))
+
         # Draw card props.
         for prop in self._map.props:
             if prop.prop_type != PropType.CARD:
@@ -302,6 +368,34 @@ class GameDisplay(object):
             return
         for i in range(self._game_state.population):
             self.visualize_actor(i)
+    
+    def visualize_trajectory(self):
+        if self._trajectory is None or len(self._trajectory) == 0:
+            return
+        base_trajectory_color = pygame.Color("lightskyblue")
+        offset = (random.uniform(-3, 3), random.uniform(-3, 3))
+        for i in range(len(self._trajectory) - 1):
+            (x1, y1) = self.transform_to_screen_coords(self._trajectory[i].cartesian())
+            (x2, y2) = self.transform_to_screen_coords(self._trajectory[i+1].cartesian())
+            if x1 == x2 and y1 == y2:
+                continue
+            # Offset the trajectory coordinates with a small amount of noise so that lines don't overlap in the center.
+            x1 += offset[0]
+            y1 += offset[1]
+            offset = (random.uniform(-3, 3), random.uniform(-3, 3))
+            x2 += offset[0]
+            y2 += offset[1]
+            # Choose a color that gets brighter with each segment
+            trajectory_color = pygame.Color(base_trajectory_color)
+            print(trajectory_color.hsva)
+            trajectory_color.hsva = (trajectory_color.hsva[0], trajectory_color.hsva[1],
+                                    trajectory_color.hsva[2] - i * 1,
+                                    trajectory_color.hsva[3])
+            pygame.draw.line(self._screen, trajectory_color, (x1, y1), (x2, y2), 2)
+        # Draw a circle at the beginning of the trajectory.
+        (x, y) = self.transform_to_screen_coords(self._trajectory[0].cartesian())
+        pygame.draw.circle(self._screen, base_trajectory_color, (x, y), 10)
+
 
     def draw(self):
         # Fill the screen with white
@@ -309,6 +403,7 @@ class GameDisplay(object):
 
         self.visualize_map()
         self.visualize_game_state()
+        self.visualize_trajectory()
 
 def main():
     """ Reads a JSON bug report from a file provided on the command line and displays the map to the user. """
