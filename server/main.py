@@ -11,6 +11,7 @@ import peewee
 import pygame
 import shutil
 import sys
+import statistics
 import tempfile
 import time
 import zipfile
@@ -39,7 +40,7 @@ from room_manager import RoomManager
 from schemas import base
 from db_tools import backup
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 routes = web.RouteTableDef()
 
@@ -181,6 +182,10 @@ async def GameViewer(request):
     # Extract the game_id from the request.
     return web.FileResponse("www/game_viewer.html")
 
+@routes.get('/view/stats')
+async def Stats(request):
+    return web.FileResponse("www/stats.html")
+
 @routes.get('/data/turns/{game_id}')
 async def GameData(request):
     game_id = request.match_info.get('game_id')
@@ -229,6 +234,79 @@ async def GameData(request):
             "instruction": move.instruction.text if move.instruction else "",
         })
     return web.json_response(json_moves)
+
+@routes.get('/data/stats')
+async def stats(request):
+    games = schemas.game.Game.select().where(schemas.game.Game.type == "game").join(schemas.game.Instruction, join_type=peewee.JOIN.LEFT_OUTER)
+    durations = []
+    scores = []
+    instruction_counts = []
+    instructions = []
+    instruction_move_counts = []
+    vocab = set()
+    for game in games:
+        for instruction in game.instructions:
+            instruction_move_counts.append(instruction.moves.count())
+            instructions.append(instruction.text)
+            words = instruction.text.split(" ")
+            for word in words:
+                vocab.add(word)
+        duration = (game.end_time - game.start_time).total_seconds()
+        score = game.score
+        durations.append(duration)
+        scores.append(score)
+        instruction_counts.append(game.instructions.count())
+    
+    instruction_word_count = [len(instruction.split(" ")) for instruction in instructions]
+
+    json_stats = []
+    json_stats.append({
+        "name": "Total Game Time(m:s)",
+        "mean": str(timedelta(seconds=statistics.mean(durations))),
+        "median": str(timedelta(seconds=statistics.median(durations))),
+        "max": str(timedelta(seconds=max(durations)))
+    })
+    
+    json_stats.append( {
+        "name": "Score",
+        "mean": statistics.mean(scores),
+        "median": statistics.median(scores),
+        "max": max(scores),
+    })
+
+    json_stats.append( {
+        "name": "Instructions/Game",
+        "mean": statistics.mean(instruction_counts),
+        "median": statistics.median(instruction_counts),
+        "max": max(instruction_counts)
+    })
+
+    json_stats.append( {
+        "name": "Tokens/Instruction",
+        "mean": statistics.mean(instruction_word_count),
+        "median": statistics.median(instruction_word_count),
+        "max": max(instruction_word_count)
+    })
+
+    json_stats.append( {
+        "name": "Follower Actions/Instruction",
+        "mean": statistics.mean(instruction_move_counts),
+        "median": statistics.median(instruction_move_counts),
+        "max": max(instruction_move_counts)
+    })
+
+    json_stats.append({
+        "name": "Games",
+        "count": schemas.game.Game.select().where(schemas.game.Game.type == "game").count()
+    })
+
+    json_stats.append({
+        "name": "Vocabulary Size",
+        "count": len(vocab)
+    })
+
+    return web.json_response(json_stats)
+
 
 
 async def stream_game_state(request, ws):

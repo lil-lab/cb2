@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="https://w2ui.com/src/w2ui-1.5.min.css" />
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.0/jquery.min.js"></script>
+<script type="text/javascript" src="https://w2ui.com/src/w2ui-1.5.min.js"></script>
+</head>
+<body>
+  <div id="grid" style="width: 100%; height: 250px;"></div>
+</body>
+<script>
+$(function () {
+    $('#grid').w2grid({
+        name: 'grid',
+        header: 'List of Games',
+        columns: [
+          { field: 'name', text: '', size: '20%' },
+          { field: 'mean', text: 'Mean', size: '20%' },
+          { field: 'median', text: 'Median', size: '20%' },
+          { field: 'max', text: 'Max', size: '20%' },
+          { field: 'count', text: 'Count', size: '20%' },
+        ],
+        url: "/data/stats",
+    });
+});
+</script>
+</html>
