@@ -525,20 +525,19 @@ def main(config_file="config/server-config.json"):
 
     InitPythonLogging()
 
-    config = ReadConfigOrDie(config_file)
-    g_config = config
+    g_config = ReadConfigOrDie(config_file)
 
     logger.info(f"Config file parsed.");
-    logger.info(f"data prefix: {config.data_prefix}")
-    logger.info(f"Log directory: {config.record_directory()}")
-    logger.info(f"Assets directory: {config.assets_directory()}")
-    logger.info(f"Database path: {config.database_path()}")
+    logger.info(f"data prefix: {g_config.data_prefix}")
+    logger.info(f"Log directory: {g_config.record_directory()}")
+    logger.info(f"Assets directory: {g_config.assets_directory()}")
+    logger.info(f"Database path: {g_config.database_path()}")
 
-    CreateDataDirectory(config)
-    InitGameRecording(config)
+    CreateDataDirectory(g_config)
+    InitGameRecording(g_config)
 
-    assets_map = HashCollectAssets(config.assets_directory())
-    tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), debug_print(), serve(config))
+    assets_map = HashCollectAssets(g_config.assets_directory())
+    tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), debug_print(), serve(g_config))
     # If map visualization command line flag is enabled, run with the visualize task.
     # if gui:
     #   tasks = asyncio.gather(tasks, draw_gui())

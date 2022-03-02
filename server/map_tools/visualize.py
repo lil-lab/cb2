@@ -387,7 +387,6 @@ class GameDisplay(object):
             y2 += offset[1]
             # Choose a color that gets brighter with each segment
             trajectory_color = pygame.Color(base_trajectory_color)
-            print(trajectory_color.hsva)
             trajectory_color.hsva = (trajectory_color.hsva[0], trajectory_color.hsva[1],
                                     trajectory_color.hsva[2] - i * 1,
                                     trajectory_color.hsva[3])
