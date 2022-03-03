@@ -15,6 +15,7 @@ import asyncio
 import logging
 import os
 import pathlib
+import peewee
 from datetime import datetime
 
 import schemas.game
@@ -85,11 +86,16 @@ class Room(object):
             raise ValueError("Room is full.")
         id = self._game_state.create_actor(role)
         remote = GetRemote(ws)
-        remote_record = schemas.clients.Remote.select().where(
+        remote_record = schemas.clients.Remote.select().join(schemas.mturk.Worker, join_type=peewee.JOIN.LEFT_OUTER).where(
             schemas.clients.Remote.hashed_ip==remote.hashed_ip, 
             schemas.clients.Remote.remote_port==remote.client_port).get()
         if remote_record is None:
             logger.error(f"Added player with unrecognized remote IP(md5 hash)/Port: {remote.hashed_ip}/{remote.client_port}")
+        # If at least one of the players in this game is an mturk worker, mark the game type as "-mturk" (ex "game-mturk", or "follower-tutorial-mturk")
+        if remote_record.worker is not None:
+            if remote_record.worker.hashed_id != "":
+                if "-mturk" not in self._game_record.type:
+                    self._game_record.type += "-mturk"
         if role == Role.LEADER:
             self._game_record.lead_remote = remote_record
             if (remote_record is not None) and (remote_record.assignment is not None):
