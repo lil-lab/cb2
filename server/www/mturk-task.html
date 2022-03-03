@@ -2,8 +2,10 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Oneoff Task</title>
+        <title>Game Task</title>
         <link rel='stylesheet' href='https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css'>
+        <link rel='stylesheet' href='https://cdn.form.io/formiojs/formio.full.min.css'>
+        <script src='https://cdn.form.io/formiojs/formio.full.min.js'></script>
     </head>
     <body>
         <script type="text/javascript">
@@ -34,8 +36,10 @@
                 }
                 return true;
             }
-
-            function submitTask(params) {
+        
+            function onFormSubmit(event) {
+                event.preventDefault();
+                var params = new URLSearchParams(window.location.search);
                 var htmlForm = document.createElement('form');
                 htmlForm.action = (new URL('mturk/externalSubmit', params.get('turkSubmitTo'))).href
                 console.log(htmlForm.action);
@@ -49,10 +53,11 @@
                 htmlForm.appendChild(assignmentIdInput);
 
                 // Add the form data to the form.
+                var checkbox = document.getElementById("verification");
                 var formDataInput = document.createElement("input");
                 formDataInput.setAttribute("type", "hidden");
-                formDataInput.setAttribute("name", "formData");
-                formDataInput.setAttribute("value", "");
+                formDataInput.setAttribute("name", "userCheckbox");
+                formDataInput.setAttribute("value", checkbox.checked);
                 htmlForm.appendChild(formDataInput);
 
                 // Submit the form.
@@ -61,28 +66,63 @@
             }
 
             window.onload = function() {
+                var submissionButton = document.getElementById("submission_button");
+                submissionButton.disabled = true;
                 var params = new URLSearchParams(window.location.search);
                 var statusElement = document.getElementById('status');
                 if (validWorkerParams(params)) {
-                    statusElement.innerHTML = 'Valid Amazon MTurk parameters. Submitting task shortly...';
+                    statusElement.innerHTML = 'Valid Amazon MTurk parameters. Proceed to task.';
                     statusElement.style.backgroundColor = '#7FFFD4';
-                    setTimeout(submitTask, 2000, params);
                 } else if (validPreviewParams(params)) {
-                        statusElement.innerHTML = 'MTurk PREVIEW.';
+                        statusElement.innerHTML = 'MTurk PREVIEW. You can preview the form, but you cannot submit it.';
                         statusElement.style.backgroundColor = 'yellow';
                 } else {
                     statusElement.innerHTML = 'Missing Amazon MTurk parameters. Did you access this page through mechanical turk?';
                     statusElement.style.backgroundColor = 'red';
                 }
             }
+
+            function openInNewWindowForwardParams(url) {
+                var mturkParameters = new URLSearchParams(window.location.search);
+                var win = window.open(url + "&" + mturkParameters.toString(), '_blank');
+                win.focus();
+            }
+
+            function openGameQueue() {
+                openInNewWindowForwardParams("https://cerealbar2.com/?skipToTask=joinGameQueue");
+            }
+
+            function controlSubmitButton() {
+                var checkbox = document.getElementById("verification");
+                var submissionButton = document.getElementById("submission_button");
+                var validationWarning = document.getElementById("validation_warning");
+                submissionButton.disabled = !checkbox.checked;
+                validationWarning.style.display = (checkbox.checked) ? "none" : "inline";
+            }
+
         </script>
         <div>
-            <h1>Oneoff Compensation Task</h1>
+            <h1>Game Task</h1>
             <h2 id="status"></h2>
+            <h2>
+                Steps
+            </h2>
+            <ol>
+                <li><a id="game-link" href="#" onclick="openGameQueue()">Click here</a> to enter the game queue and play a game. You MUST use this link.</li>
+                <li>Once a game has been completed, come back and hit "submit" below.</li>
+            </ol>
             <p style="background-color: rgb(255, 255, 170); font-size: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center; width: 60%;">
                 You are <b>strongly</b> encouraged to 
                 <a href="https://discord.gg/RErZXMzN6G">join the discord</a> for
                 support, updates and <b>notifications of new assignments</b>.
             </p>
+            <h2>
+                Game Submission
+            </h2>
+            <form id="qual-form" style="margin-left: 15px;" onsubmit="onFormSubmit(event)" method="post">
+                <input type="checkbox" onclick="controlSubmitButton()" id="verification" name="verification" value="verified">
+                <label for="verification">I used the link above to participate in a Cerealbar2 game. <span id="validation_warning" style="color: red">(required)</span></label><br>
+                <input type="submit" id="submission_button" value="Submit">
+            </form>
     </body>
 </html>

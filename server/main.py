@@ -80,6 +80,10 @@ async def Index(request):
 async def Index(request):
     return web.FileResponse("www/oneoff.html")
 
+@routes.get('/mturk-task')
+async def Index(request):
+    return web.FileResponse("www/mturk-task.html")
+
 @routes.get('/images/{filename}')
 async def Index(request):
     if not request.match_info.get('filename'):
@@ -238,6 +242,8 @@ async def GameData(request):
 @routes.get('/data/stats')
 async def stats(request):
     games = schemas.game.Game.select().where(schemas.game.Game.type == "game").join(schemas.game.Instruction, join_type=peewee.JOIN.LEFT_OUTER)
+    mturk_valid_from = 119
+    mturk_valid_to = 139
     durations = []
     scores = []
     instruction_counts = []
