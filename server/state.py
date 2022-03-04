@@ -250,7 +250,7 @@ class State(object):
                     added_turns = 3
                 elif self._turn_state.sets_collected in [5, 6]:
                     added_turns = 2
-                else:
+                elif self._turn_state.sets_collected in [7, 8]:
                     added_turns = 1
                 new_turn_state = TurnUpdate(
                     self._turn_state.turn,
