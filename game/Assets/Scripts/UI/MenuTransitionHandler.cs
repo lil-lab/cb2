@@ -338,15 +338,6 @@ public class MenuTransitionHandler : MonoBehaviour
 
         Text score = FindTextWithTag(GAME_OVER_STATS);
         score.text = state.ScoreString(transmitTime);
-
-        // If mturk and in webgl, submit task.
-        if (Application.platform != RuntimePlatform.WebGLPlayer) return;
-
-        Dictionary<string, string> urlParameters = Network.NetworkManager.UrlParameters();
-        if (urlParameters.ContainsKey("assignmentId")) {
-            Debug.Log("[DEBUG] MTURK: Marking task as submitted.");
-            SubmitMturk("");
-        }
     }
 
     // Start is called before the first frame update
