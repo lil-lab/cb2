@@ -17,6 +17,7 @@ namespace Network
             TURN_STATE,
             TUTORIAL_RESPONSE,
             PING,
+            LIVE_FEEDBACK,
         }
 
         // These fields are always provided with any packet.
@@ -33,5 +34,6 @@ namespace Network
         public List<ObjectiveMessage> Objectives;
         public TurnState TurnState;
         public TutorialResponse TutorialResponse;
+        public LiveFeedback LiveFeedback;
     }
 }  // namespace Network

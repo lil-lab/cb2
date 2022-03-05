@@ -3,6 +3,7 @@
 from enum import Enum
 from messages.action import Action
 from messages.rooms import RoomManagementRequest
+from messages.live_feedback import LiveFeedback
 from messages.objective import ObjectiveMessage, ObjectiveCompleteMessage
 from messages.pong import Pong
 from messages.turn_state import TurnComplete
@@ -27,6 +28,7 @@ class MessageType(Enum):
     TURN_COMPLETE = 5
     TUTORIAL_REQUEST = 6
     PONG = 7
+    LIVE_FEEDBACK = 8
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
@@ -46,3 +48,4 @@ class MessageToServer:
     turn_complete: Optional[TurnComplete] = TurnComplete()
     tutorial_request: Optional[TutorialRequest] = TutorialRequest(TutorialRequestType.NONE, "")
     pong: Optional[Pong] = Pong()
+    live_feedback: Optional[LiveFeedback] = LiveFeedback()

@@ -216,6 +216,11 @@ namespace Network
             {
                 _networkManager.HandleTutorialResponse(message.TutorialResponse);
             }
+            if (message.Type == MessageFromServer.MessageType.LIVE_FEEDBACK)
+            {
+                Debug.Log("Received Live Feedback: " + message.LiveFeedback);
+                MenuTransitionHandler.TaggedInstance().HandleLiveFeedback(message.LiveFeedback);
+            }
         }
 
         public void TransmitAction(ActionQueue.IAction action)

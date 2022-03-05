@@ -1,6 +1,7 @@
 """ Defines message structure received from server.  """
 
 from enum import Enum
+from messages import live_feedback
 from messages.action import Action
 from messages.turn_state import TurnState
 from messages.state_sync import StateSync
@@ -8,6 +9,7 @@ from messages.map_update import MapUpdate
 from messages.rooms import RoomManagementResponse
 from messages.objective import ObjectiveMessage
 from messages.tutorials import TutorialResponse
+from messages.live_feedback import LiveFeedback
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
@@ -28,6 +30,7 @@ class MessageType(Enum):
     GAME_STATE = 5
     TUTORIAL_RESPONSE = 6
     PING = 7
+    LIVE_FEEDBACK = 8
 
 
 def ActionsFromServer(actions):
@@ -59,6 +62,9 @@ def TutorialResponseFromServer(tutorial_response):
 def PingMessageFromServer():
     return MessageFromServer(datetime.now(), MessageType.PING, None, None, None, None, None, None, None)
 
+def LiveFeedbackFromServer(feedback):
+    return MessageFromServer(datetime.now(), MessageType.LIVE_FEEDBACK, None, None, None, None, None, None, None, feedback)
+
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
 class MessageFromServer:
@@ -76,3 +82,4 @@ class MessageFromServer:
     objectives: Optional[List[ObjectiveMessage]]
     turn_state: Optional[TurnState]
     tutorial_response: Optional[TutorialResponse]
+    live_feedback: Optional[LiveFeedback] = LiveFeedback()

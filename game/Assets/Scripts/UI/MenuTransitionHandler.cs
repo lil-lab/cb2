@@ -34,6 +34,9 @@ public class MenuTransitionHandler : MonoBehaviour
 
     private static readonly string END_TURN_PANEL = "END_TURN_PANEL";
 
+    private static readonly string POSITIVE_FEEDBACK_TAG = "THUMBS_UP_SIGNAL";
+    private static readonly string NEGATIVE_FEEDBACK_TAG = "THUMBS_DOWN_SIGNAL";
+
     // We re-use ActionQueue here to animate UI transparency. It's a bit
     // overkill to have two animation queues here, but it's very obvious what's
     // happening for the reader, and that's worth it.
@@ -46,6 +49,13 @@ public class MenuTransitionHandler : MonoBehaviour
     private TurnState _lastTurn = new TurnState();
 
     List<Network.ObjectiveMessage> _lastObjectivesList = new List<Network.ObjectiveMessage>();
+
+    private DateTime _lastPositiveFeedback = DateTime.MinValue;
+    private GameObject _positiveFeedbackSignal;
+    private DateTime _lastNegativeFeedback = DateTime.MinValue;
+    private GameObject _negativeFeedbackSignal;
+
+    private static readonly float FEEDBACK_DURATION_SECONDS = 2.0f;
 
     public static MenuTransitionHandler TaggedInstance()
     {
@@ -204,6 +214,33 @@ public class MenuTransitionHandler : MonoBehaviour
         EventSystem.current.SetSelectedGameObject(null);
     }
 
+    public void SendPositiveFeedback()
+    {
+        Network.LiveFeedback feedback = new Network.LiveFeedback();
+        feedback.Signal = Network.FeedbackType.POSITIVE;
+        Network.NetworkManager.TaggedInstance().TransmitLiveFeedback(feedback);
+    }
+
+    public void SendNegativeFeedback()
+    {
+        Network.LiveFeedback feedback = new Network.LiveFeedback();
+        feedback.Signal = Network.FeedbackType.NEGATIVE;
+        Network.NetworkManager.TaggedInstance().TransmitLiveFeedback(feedback);
+    }
+
+    public void HandleLiveFeedback(LiveFeedback feedback)
+    {
+        Debug.Log("Received feedback: " + feedback.Signal);
+        // Display the positive feedback signal for 2 seconds.
+        if (feedback.Signal == Network.FeedbackType.POSITIVE)
+        {
+            _lastPositiveFeedback = DateTime.Now;
+        } else if (feedback.Signal == Network.FeedbackType.NEGATIVE)
+        {
+            _lastNegativeFeedback = DateTime.Now;
+        }
+    }
+
     public void HandleTurnState(DateTime transmitTime, Network.TurnState state)
     {
         if (state.GameOver)
@@ -346,6 +383,8 @@ public class MenuTransitionHandler : MonoBehaviour
         _currentMenuState = MenuState.NONE;
         notOurTurnIndicatorFade = new ActionQueue("NotOurTurnQueue");
         ourTurnIndicatorFade = new ActionQueue("OurTurnQueue");
+        _positiveFeedbackSignal = GameObject.FindWithTag(POSITIVE_FEEDBACK_TAG);
+        _negativeFeedbackSignal = GameObject.FindWithTag(NEGATIVE_FEEDBACK_TAG);
     }
 
 
@@ -369,6 +408,25 @@ public class MenuTransitionHandler : MonoBehaviour
         GameObject not_turn_obj = GameObject.FindWithTag(NOT_OUR_TURN_TAG);
         CanvasGroup not_turn_group = not_turn_obj.GetComponent<CanvasGroup>();
         not_turn_group.alpha = nTS.Opacity;
+
+        // Handle feedback UI.
+        if (_positiveFeedbackSignal != null)
+        {
+            bool is_pos = (DateTime.Now - _lastPositiveFeedback).TotalSeconds < FEEDBACK_DURATION_SECONDS;
+            Debug.Log("[Pos]: " + (DateTime.Now - _lastPositiveFeedback).TotalSeconds);
+            _positiveFeedbackSignal.SetActive((DateTime.Now - _lastPositiveFeedback).TotalSeconds < FEEDBACK_DURATION_SECONDS);
+        } else {
+            _positiveFeedbackSignal = GameObject.FindWithTag(POSITIVE_FEEDBACK_TAG);
+        }
+
+        if (_negativeFeedbackSignal != null)
+        {
+            bool is_neg = (DateTime.Now - _lastNegativeFeedback).TotalSeconds < FEEDBACK_DURATION_SECONDS;
+            Debug.Log("[Neg]: " + (DateTime.Now - _lastPositiveFeedback).TotalSeconds);
+            _negativeFeedbackSignal.SetActive((DateTime.Now - _lastNegativeFeedback).TotalSeconds < FEEDBACK_DURATION_SECONDS);
+        } else {
+            _negativeFeedbackSignal = GameObject.FindWithTag(NEGATIVE_FEEDBACK_TAG);
+        }
 
         if (Input.GetKeyDown(KeyCode.Return))
         {

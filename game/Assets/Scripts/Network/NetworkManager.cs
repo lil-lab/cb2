@@ -102,6 +102,15 @@ namespace Network
             _client.TransmitMessage(toServer);
         }
 
+        public void TransmitLiveFeedback(LiveFeedback feedback)
+        {
+            MessageToServer toServer = new MessageToServer();
+            toServer.TransmitTime = DateTime.Now.ToString("o");
+            toServer.Type = MessageToServer.MessageType.LIVE_FEEDBACK;
+            toServer.LiveFeedback = feedback;
+            _client.TransmitMessage(toServer);
+        }
+
         public void TransmitObjectiveComplete(ObjectiveCompleteMessage objectiveComplete)
         {
             MessageToServer toServer = new MessageToServer();

@@ -2,7 +2,7 @@ from actor import Actor
 from assets import AssetId
 from messages.action import Action, Color, ActionType
 from messages.rooms import Role
-from messages import message_from_server
+from messages import live_feedback, message_from_server
 from messages import message_to_server
 from messages import objective, state_sync
 from hex import HecsCoord
@@ -68,6 +68,8 @@ class State(object):
         self._map_update = self._map_provider.map()
         self._map_stale = {} # Maps from player_id -> bool if their map is stale.
         self._map_update_count = 0
+
+        self._live_feedback = {} # Maps from player_id -> live_feedback.FeedbackType if live feedback is pending. Otherwise live_feedback.FeedbackType.None.
 
         self._synced = {}
         self._action_history = {}
@@ -466,6 +468,10 @@ class State(object):
             logger.info(
                 f'Sync request recvd. Room: {self._room_id}, Player: {id}')
             self.desync(id)
+        elif message.type == message_to_server.MessageType.LIVE_FEEDBACK:
+            logger.info(
+                f'Live feedback recvd. Room: {self._room_id}, Player: {id}')
+            self.handle_live_feedback(id, message.live_feedback)
         else:
             logger.warn(f'Received unknown packet type: {message.type}')
 
@@ -513,6 +519,40 @@ class State(object):
             schemas.game.Instruction.uuid==objective_complete.uuid).get()
         instruction.turn_completed = self._turn_state.turn_number
         instruction.save()
+    
+    def handle_live_feedback(self, id, feedback):
+        if feedback.signal == live_feedback.FeedbackType.NONE:
+            logger.info(f'Received live feedback from {id} with type NONE. Dropping.')
+            return
+        for actor_id in self._actors:
+            if actor_id == id:
+                continue
+            self._live_feedback[actor_id] = feedback.signal
+        
+        # Find the follower.
+        follower = None
+        for actor_id in self._actors:
+            if self._actors[actor_id].role() == Role.FOLLOWER:
+                follower = self._actors[actor_id]
+                break
+        
+        # Create database record of the live feedback.
+        live_feedback_record = schemas.game.LiveFeedback()
+        live_feedback_record.game = self._game_record
+        live_feedback_record.feedback_type = "POSITIVE" if feedback.signal == live_feedback.FeedbackType.POSITIVE else "NEGATIVE"
+        
+        # Update the follower's state.
+        if self._active_objective is not None:
+            last_obj_record = schemas.game.Instruction.select().where(
+                schemas.game.Instruction.uuid == self._active_objective.uuid).get()
+            live_feedback_record.instruction = last_obj_record
+        live_feedback_record.turn_number = self._turn_state.turn_number
+        if follower is not None:
+            live_feedback_record.follower_position = follower.location()
+            live_feedback_record.follower_orientation = follower.heading_degrees()
+        live_feedback_record.game_time = datetime.now() - self._game_record.start_time
+        live_feedback_record.server_time = datetime.now()
+        live_feedback_record.save()
     
     def handle_turn_complete(self, id, turn_complete):
         if self._actors[id].role() != self._turn_state.turn:
@@ -621,6 +661,13 @@ class State(object):
             msg = message_from_server.GameStateFromServer(turn_state)
             return msg
 
+        live_feedback = self.drain_live_feedback(player_id)
+        if not live_feedback is None:
+            logger.info(
+                f'Room {self._room_id} drained live feedback {live_feedback} for player_id {player_id}')
+            msg = message_from_server.LiveFeedbackFromServer(live_feedback)
+            return msg
+
         # Nothing to send.
         return None
 
@@ -667,6 +714,16 @@ class State(object):
         self._map_stale[actor_id] = False
         self._sent_log.debug(f"to: {actor_id} map: {self._map_update}")
         return self._map_update
+
+    def drain_live_feedback(self, actor_id):
+        if actor_id not in self._live_feedback:
+            return None
+        if self._live_feedback[actor_id] == live_feedback.FeedbackType.NONE:
+            return None
+        feedback = live_feedback.LiveFeedbackFromType(self._live_feedback[actor_id])
+        self._live_feedback[actor_id] = live_feedback.FeedbackType.NONE
+        return feedback
+
 
 
     # Returns the current state of the game.

@@ -1,3 +1,4 @@
+from importlib.machinery import FrozenImporter
 from hex import HecsCoord
 from messages.action import Action
 from schemas.mturk import *
@@ -69,3 +70,13 @@ class Move(BaseModel):
     game_time = TextField()
     server_time = DateTimeField()
     action_code = TextField()  # One of MF (Move Forward), MB (Move Backward), TR (Turn Right), TL (Turn Left). Or invalid if the action was not valid.
+
+class LiveFeedback(BaseModel):
+    game = ForeignKeyField(Game, backref='moves')
+    feedback_type = TextField()
+    instruction = ForeignKeyField(Instruction, backref='moves', null=True)
+    turn_number = IntegerField()
+    follower_position = HecsCoordField()
+    follower_orientation = FloatField()
+    game_time = TextField()
+    server_time = DateTimeField()

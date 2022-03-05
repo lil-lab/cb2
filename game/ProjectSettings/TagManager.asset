@@ -36,6 +36,8 @@ TagManager:
   - INSTRUCTIONS
   - SCORE
   - FOLLOWER_COMMANDS
+  - THUMBS_UP_SIGNAL
+  - THUMBS_DOWN_SIGNAL
   layers:
   - Default
   - TransparentFX

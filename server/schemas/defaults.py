@@ -8,7 +8,7 @@ from schemas.mturk import *
 TABLES = [
     CardSets, Card, CardSelections,
     Remote, ConnectionEvents,
-    Game, Turn, Instruction, Move,
+    Game, Turn, Instruction, Move, LiveFeedback,
     MapUpdate,
     Worker, Assignment,
 ]
