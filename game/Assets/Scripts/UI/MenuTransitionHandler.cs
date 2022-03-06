@@ -55,7 +55,7 @@ public class MenuTransitionHandler : MonoBehaviour
     private DateTime _lastNegativeFeedback = DateTime.MinValue;
     private GameObject _negativeFeedbackSignal;
 
-    private static readonly float FEEDBACK_DURATION_SECONDS = 2.0f;
+    private static readonly float FEEDBACK_DURATION_SECONDS = 1.0f;
 
     public static MenuTransitionHandler TaggedInstance()
     {
