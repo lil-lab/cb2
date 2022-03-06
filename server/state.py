@@ -371,10 +371,10 @@ class State(object):
         if role_switch:
             end_of_turn = (next_role == Role.LEADER)
             moves_remaining = self.moves_per_turn(next_role)
+            turn_end = datetime.now() + self.turn_duration(next_role)
             if end_of_turn:
                 turns_left -= 1
                 turn_number += 1
-                turn_end = datetime.now() + self.turn_duration(next_role)
 
                 # Record the turn end to DB.
                 self._game_record.number_turns = self._turn_state.turn_number + 1
