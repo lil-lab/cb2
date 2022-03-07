@@ -275,7 +275,6 @@ class TutorialGameState(object):
                     objectives_completed = True
                     for objective in self._objectives:
                         if not objective.completed:
-                            logger.info(f"INSTRUCTIONS NOT COMPLETE. WAITING ON {objective.text}")
                             objectives_completed = False
                             break
                     next_step_ready = objectives_completed
