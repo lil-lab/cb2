@@ -17,7 +17,8 @@ def ListResearchGames():
                    Game.completed == True,
                    Game.type == "game-mturk",
                    ((Game.lead_assignment != None) & (Game.lead_assignment.submit_to_url == "https://www.mturk.com") | 
-                    ((Game.follow_assignment != None)& (Game.lead_assignment.submit_to_url == "https://www.mturk.com")))))
+                    ((Game.follow_assignment != None)& (Game.lead_assignment.submit_to_url == "https://www.mturk.com"))))
+            .switch(Game))
     return games
 
 def IsGameResearchData(game):

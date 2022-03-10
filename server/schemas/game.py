@@ -73,9 +73,9 @@ class Move(BaseModel):
     orientation_before = IntegerField()
 
 class LiveFeedback(BaseModel):
-    game = ForeignKeyField(Game, backref='moves')
+    game = ForeignKeyField(Game, backref='feedbacks')
     feedback_type = TextField()
-    instruction = ForeignKeyField(Instruction, backref='moves', null=True)
+    instruction = ForeignKeyField(Instruction, backref='feedbacks', null=True)
     turn_number = IntegerField()
     follower_position = HecsCoordField()
     follower_orientation = FloatField()
