@@ -11,6 +11,7 @@ from schemas.game import Turn
 from schemas.game import Game
 from schemas.game import Instruction
 from schemas.game import Move
+from schemas.game import LiveFeedback
 from schemas.map import MapUpdate
 from schemas import base
 from config.config import Config
@@ -54,7 +55,7 @@ def draw_wrapped(display, instruction_text, max_width=50):
         (line_text, _) = INSTRUCTION_FONT.render(line, pygame.Color(90, 90, 90))
         display._screen.blit(line_text, (SCREEN_SIZE * 0.5 - line_text.get_width() / 2, SCREEN_SIZE * 0.75 + i * 30))
 
-def draw_instruction(instruction, moves, map_update, filename):
+def draw_instruction(instruction, moves, feedbacks, map_update, filename, game_id):
     display = visualize.GameDisplay(SCREEN_SIZE)
     display.set_map(map_update)
     trajectory = [move.position_before for move in moves]
@@ -64,6 +65,11 @@ def draw_instruction(instruction, moves, map_update, filename):
     display.set_trajectory(trajectory)
     display.draw()
     draw_wrapped(display, f'"{instruction.text}"')
+
+    # Draw the game ID in the bottom left corner.
+    (text, _) = INSTRUCTION_FONT.render(f"Game {game_id}", pygame.Color(90, 90, 90))
+    display._screen.blit(text, (SCREEN_SIZE * 0.5 - text.get_width() / 2, SCREEN_SIZE * 0.90))
+
     pygame.display.flip()
     pygame.image.save(display.screen(), filename)
     
@@ -74,7 +80,7 @@ def ReadConfigOrDie(config_path):
         config = Config.from_json(cfg_file.read())
         return config
 
-def main(from_id=119, to_id=139, max_instructions=-1, config_path="config/server-config.json", output_dir="output"):
+def main(from_id=170, to_id=171, max_instructions=-1, config_path="config/server-config.json", output_dir="output"):
     config = ReadConfigOrDie(config_path)
 
     print(f"Reading database from {config.database_path()}")
@@ -107,9 +113,10 @@ def main(from_id=119, to_id=139, max_instructions=-1, config_path="config/server
         instructions = Instruction.select().join(Game).where(Instruction.game == game)
         for instruction in instructions:
             moves = Move.select().join(Game).where(Move.game == game, Move.instruction == instruction).order_by(Move.id)
+            feedbacks = LiveFeedback.select.join(Game).where(LiveFeedback.game == game, LiveFeedback.instruction == instruction).order_by(LiveFeedback.id)
             map = maps.where(MapUpdate.time <= instruction.time).order_by(MapUpdate.id.desc()).get()
             filepath = game_dir / f"instruction_vis_{instruction.id}.png"
-            draw_instruction(instruction, moves, map.map_data, filepath)
+            draw_instruction(instruction, moves, feedbacks, map.map_data, filepath, game.id)
             if max_instructions == 0:
                 break
             max_instructions -= 1

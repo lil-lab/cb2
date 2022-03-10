@@ -20,6 +20,8 @@ import schemas.defaults
 import schemas.clients
 import schemas.mturk
 
+import db_tools.db_utils as db_utils
+
 from aiohttp import web
 from config.config import Config
 from dataclasses import astuple
@@ -152,7 +154,7 @@ async def DataDump(request):
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "a", False) as zip_file:
         with open(g_config.backup_database_path(), "rb") as db_file:
-            zip_file.writestr("database.db", db_file.read())
+            zip_file.writestr("game_data.db", db_file.read())
         with open(game_archive, "rb") as game_file:
             zip_file.writestr("game_record.zip", game_file.read())
     # Delete the game archive now that we've read it into memory and added it to the zip file.
@@ -161,7 +163,10 @@ async def DataDump(request):
 
 @routes.get('/data/game-list')
 async def GameList(request):
-    games = schemas.game.Game.select().join(schemas.mturk.Worker, join_type=peewee.JOIN.LEFT_OUTER, on=((schemas.game.Game.leader == schemas.mturk.Worker.id) or (schemas.game.Game.follower == schemas.mturk.Worker.id))).order_by(schemas.game.Game.id.desc())
+    games = (schemas.game.Game.select()
+                .join(schemas.mturk.Worker, join_type=peewee.JOIN.LEFT_OUTER, on=((schemas.game.Game.leader == schemas.mturk.Worker.id) or (schemas.game.Game.follower == schemas.mturk.Worker.id)))
+                .join(schemas.mturk.Assignment, on=((schemas.game.Game.lead_assignment == schemas.mturk.Assignment.id) or (schemas.game.Game.follow_assignment == schemas.mturk.Assignment.id)), join_type=peewee.JOIN.LEFT_OUTER)
+                .order_by(schemas.game.Game.id.desc()))
     response = []
     for game in games:
         response.append({
@@ -174,6 +179,7 @@ async def GameList(request):
             "start_time": str(game.start_time),
             "duration": str(game.end_time - game.start_time),
             "completed": game.completed,
+            "research_valid": db_utils.IsGameResearchData(game)
         })
     return web.json_response(response)
 
@@ -241,9 +247,7 @@ async def GameData(request):
 
 @routes.get('/data/stats')
 async def stats(request):
-    games = schemas.game.Game.select().where(schemas.game.Game.type == "game").join(schemas.game.Instruction, join_type=peewee.JOIN.LEFT_OUTER)
-    mturk_valid_from = 119
-    mturk_valid_to = 139
+    games = db_utils.ListResearchGames().join(schemas.game.Instruction, join_type=peewee.JOIN.LEFT_OUTER)
     durations = []
     scores = []
     instruction_counts = []
@@ -312,7 +316,6 @@ async def stats(request):
     })
 
     return web.json_response(json_stats)
-
 
 
 async def stream_game_state(request, ws):
