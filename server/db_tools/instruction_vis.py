@@ -16,6 +16,8 @@ from schemas.map import MapUpdate
 from schemas import base
 from config.config import Config
 
+import db_tools.db_utils as db_utils
+
 import fire
 import pathlib
 import random
@@ -63,11 +65,22 @@ def draw_instruction(instruction, moves, feedbacks, map_update, filename, game_i
         final_position = HecsCoord.add(moves[-1].position_before, moves[-1].action.displacement)
         trajectory.append(final_position)
     display.set_trajectory(trajectory)
+    positive_markers = []
+    negative_markers = []
+    for feedback in feedbacks:
+        if feedback.feedback_type == "POSITIVE":
+            positive_markers.append((feedback.follower_position, feedback.follower_orientation))
+        elif feedback.feedback_type == "NEGATIVE":
+            negative_markers.append((feedback.follower_position, feedback.follower_orientation))
+        else:
+            print(f"Ignoring unknown feedback type: {feedback.feedback_type}")
+    display.set_positive_markers(positive_markers)
+    display.set_negative_markers(negative_markers)
     display.draw()
     draw_wrapped(display, f'"{instruction.text}"')
 
     # Draw the game ID in the bottom left corner.
-    (text, _) = INSTRUCTION_FONT.render(f"Game {game_id}", pygame.Color(90, 90, 90))
+    (text, _) = INSTRUCTION_FONT.render(f"Game {game_id}", pygame.Color(120, 120, 120))
     display._screen.blit(text, (SCREEN_SIZE * 0.5 - text.get_width() / 2, SCREEN_SIZE * 0.90))
 
     pygame.display.flip()
@@ -80,7 +93,7 @@ def ReadConfigOrDie(config_path):
         config = Config.from_json(cfg_file.read())
         return config
 
-def main(from_id=170, to_id=171, max_instructions=-1, config_path="config/server-config.json", output_dir="output"):
+def main(max_instructions=-1, config_path="config/server-config.json", output_dir="output"):
     config = ReadConfigOrDie(config_path)
 
     print(f"Reading database from {config.database_path()}")
@@ -93,17 +106,10 @@ def main(from_id=170, to_id=171, max_instructions=-1, config_path="config/server
     # Create the directory if it doesn't exist.
     output_dir.mkdir(parents=False, exist_ok=True)
 
-    instructions = Instruction.select().join(Game, join_type=peewee.JOIN.LEFT_OUTER).where(Game.id >= from_id, Game.id <= to_id)
-    print(f"Found {instructions.count()} instructions.")
     words = set()
     instruction_list = []
-    for instruction in instructions:
-        for word in instruction.text.split(" "):
-            words.add(word)
-        instruction_list.append(instruction.text)
-    print(f"Found {len(words)} unique words.")
 
-    games = Game.select().where(Game.id >= from_id, Game.id <= to_id).order_by(Game.id)
+    games = db_utils.ListResearchGames()
     # For each game.
     for game in games:
         # Create a directory for the game.
@@ -113,13 +119,20 @@ def main(from_id=170, to_id=171, max_instructions=-1, config_path="config/server
         instructions = Instruction.select().join(Game).where(Instruction.game == game)
         for instruction in instructions:
             moves = Move.select().join(Game).where(Move.game == game, Move.instruction == instruction).order_by(Move.id)
-            feedbacks = LiveFeedback.select.join(Game).where(LiveFeedback.game == game, LiveFeedback.instruction == instruction).order_by(LiveFeedback.id)
+            feedbacks = LiveFeedback.select().join(Game).where(LiveFeedback.game == game, LiveFeedback.instruction == instruction).order_by(LiveFeedback.id)
             map = maps.where(MapUpdate.time <= instruction.time).order_by(MapUpdate.id.desc()).get()
             filepath = game_dir / f"instruction_vis_{instruction.id}.png"
             draw_instruction(instruction, moves, feedbacks, map.map_data, filepath, game.id)
+            instruction_list.append(instruction.text)
+            for word in instruction.text.split(" "):
+                words.add(word)
             if max_instructions == 0:
                 break
             max_instructions -= 1
+
+    # print how many instructions and unique words there are.
+    print(f"{len(instruction_list)} instructions")
+    print(f"{len(words)} unique words")
 
 
 if __name__ == "__main__":

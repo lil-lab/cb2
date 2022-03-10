@@ -263,6 +263,8 @@ class GameDisplay(object):
         self._map = None
         self._game_state = None
         self._trajectory = None # A list of Hecscoords. A follower's pathway to draw.
+        self._positive_markers = None
+        self._negative_markers = None
         # Initialize pygame.
         pygame.init()
         # Create the screen
@@ -287,6 +289,12 @@ class GameDisplay(object):
     
     def set_trajectory(self, trajectory):
         self._trajectory = trajectory
+    
+    def set_positive_markers(self, positive_locations):
+        self._positive_markers = positive_locations
+    
+    def set_negative_markers(self, negative_locations):
+        self._negative_markers = negative_locations
 
     def set_game_state(self, game_state):
         self._game_state = game_state
@@ -395,6 +403,27 @@ class GameDisplay(object):
         (x, y) = self.transform_to_screen_coords(self._trajectory[0].cartesian())
         pygame.draw.circle(self._screen, base_trajectory_color, (x, y), 10)
 
+    def visualize_markers(self):
+        if self._positive_markers is None or len(self._positive_markers) == 0:
+            return
+        for (hecs, orientation) in self._positive_markers:
+            (x, y) = self.transform_to_screen_coords(hecs.cartesian())
+            heading = orientation - 60
+            orientation_offset = 20
+            x_offset = orientation_offset * math.cos(math.radians(heading))
+            y_offset = orientation_offset * math.sin(math.radians(heading))
+            pygame.draw.circle(self._screen, pygame.Color("green"), (x + x_offset, y + y_offset), 10)
+
+        if self._negative_markers is None or len(self._negative_markers) == 0:
+            return
+        
+        for (hecs, orientation) in self._negative_markers:
+            (x, y) = self.transform_to_screen_coords(hecs.cartesian())
+            heading = orientation - 60
+            orientation_offset = 20
+            x_offset = orientation_offset * math.cos(math.radians(heading))
+            y_offset = orientation_offset * math.sin(math.radians(heading))
+            pygame.draw.circle(self._screen, pygame.Color("red"), (x + x_offset, y + y_offset), 10)
 
     def draw(self):
         # Fill the screen with white
@@ -403,6 +432,7 @@ class GameDisplay(object):
         self.visualize_map()
         self.visualize_game_state()
         self.visualize_trajectory()
+        self.visualize_markers()
 
 def main():
     """ Reads a JSON bug report from a file provided on the command line and displays the map to the user. """
