@@ -247,7 +247,7 @@ async def GameData(request):
 
 @routes.get('/data/stats')
 async def stats(request):
-    games = db_utils.ListResearchGames().join(schemas.game.Instruction, join_type=peewee.JOIN.LEFT_OUTER)
+    games = db_utils.ListResearchGames()
     durations = []
     scores = []
     instruction_counts = []
