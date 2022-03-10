@@ -21,6 +21,8 @@ import pathlib
 import matplotlib
 import matplotlib.pyplot as plt
 
+import db_tools.db_utils as db_utils
+
 # Attempts to parse the config file. If there's any parsing or file errors,
 # doesn't handle the exceptions.
 def ReadConfigOrDie(config_path):
@@ -28,7 +30,7 @@ def ReadConfigOrDie(config_path):
         config = Config.from_json(cfg_file.read())
         return config
 
-def main(from_id=119, to_id=139, config_path="config/server-config.json", output_dir="plots"):
+def main(config_path="config/server-config.json", output_dir="plots"):
     config = ReadConfigOrDie(config_path)
 
     print(f"Reading database from {config.database_path()}")
@@ -41,7 +43,8 @@ def main(from_id=119, to_id=139, config_path="config/server-config.json", output
     # Create the directory if it doesn't exist.
     output_dir.mkdir(parents=False, exist_ok=True)
 
-    games = Game.select().join(schemas.mturk.Worker, join_type=peewee.JOIN.LEFT_OUTER, on=((schemas.game.Game.leader == schemas.mturk.Worker.id) or (schemas.game.Game.follower == schemas.mturk.Worker.id))).where(Game.id >= from_id, Game.id <= to_id).order_by(Game.id)
+    games = db_utils.ListResearchGames()
+    games = games.join(schemas.mturk.Worker, join_type=peewee.JOIN.LEFT_OUTER, on=((schemas.game.Game.leader == schemas.mturk.Worker.id) or (schemas.game.Game.follower == schemas.mturk.Worker.id))).order_by(Game.id)
     scores = []
     durations = []
     player_scores = {}
@@ -55,18 +58,11 @@ def main(from_id=119, to_id=139, config_path="config/server-config.json", output
         number_turns = game.number_turns
         scores.append(score)
         durations.append(duration_minutes)
-        if game.follower not in player_scores:
-            player_scores[game.follower] = []
-        player_scores[game.follower].append(score)
-        if game.follower not in player_durations:
-            player_durations[game.follower] = []
-        player_durations[game.follower].append(duration_minutes)
         if game.leader not in player_scores:
             player_scores[game.leader] = []
         player_scores[game.leader].append(score)
         if game.leader not in player_durations:
             player_durations[game.leader] = []
-        players.add(game.follower)
         players.add(game.leader)
         player_durations[game.leader].append(duration_minutes)
 
@@ -87,19 +83,19 @@ def main(from_id=119, to_id=139, config_path="config/server-config.json", output
     ax.set_ylabel("Score")
     fig.savefig(output_dir / "score_vs_duration.png")
 
-    print(f"{len(players)} players.")
+    print(f"{len(players)} leaders.")
     
     # Plot ratio of score to duration via scatter plot, make each player a different color.
     fig, ax = plt.subplots(1, 1, figsize=(10, 5))
     for player in players:
         player_label = "non-mturk"
         if player is not None:
-            player_label = player.hashed_id[0:5]
+            player_label = player.hashed_id[0:6]
         ax.scatter(player_durations[player], player_scores[player], label=player_label)
     ax.set_xlabel("Duration (s)")
     ax.set_ylabel("Score")
     ax.legend()
-    fig.savefig(output_dir / "score_vs_duration_by_player.png")
+    fig.savefig(output_dir / "score_vs_duration_by_leader.png")
 
 if __name__ == "__main__":
     fire.Fire(main)
