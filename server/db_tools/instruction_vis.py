@@ -60,10 +60,11 @@ def draw_wrapped(display, instruction_text, max_width=50):
 def draw_instruction(instruction, moves, feedbacks, map_update, filename, game_id):
     display = visualize.GameDisplay(SCREEN_SIZE)
     display.set_map(map_update)
-    trajectory = [move.position_before for move in moves]
+    trajectory = [(move.position_before, move.orientation_before) for move in moves]
     if len (moves) > 0:
         final_position = HecsCoord.add(moves[-1].position_before, moves[-1].action.displacement)
-        trajectory.append(final_position)
+        final_orientation = moves[-1].orientation_before + moves[-1].action.rotation
+        trajectory.append((final_position, final_orientation))
     display.set_trajectory(trajectory)
     positive_markers = []
     negative_markers = []

@@ -383,8 +383,10 @@ class GameDisplay(object):
         base_trajectory_color = pygame.Color("lightskyblue")
         offset = (random.uniform(-3, 3), random.uniform(-3, 3))
         for i in range(len(self._trajectory) - 1):
-            (x1, y1) = self.transform_to_screen_coords(self._trajectory[i].cartesian())
-            (x2, y2) = self.transform_to_screen_coords(self._trajectory[i+1].cartesian())
+            (pos, heading) = self._trajectory[i]
+            (next_pos, next_heading) = self._trajectory[i + 1]
+            (x1, y1) = self.transform_to_screen_coords(pos.cartesian())
+            (x2, y2) = self.transform_to_screen_coords(next_pos.cartesian())
             if x1 == x2 and y1 == y2:
                 continue
             # Offset the trajectory coordinates with a small amount of noise so that lines don't overlap in the center.
@@ -400,8 +402,18 @@ class GameDisplay(object):
                                     trajectory_color.hsva[3])
             pygame.draw.line(self._screen, trajectory_color, (x1, y1), (x2, y2), 2)
         # Draw a circle at the beginning of the trajectory.
-        (x, y) = self.transform_to_screen_coords(self._trajectory[0].cartesian())
+        (start_pos, start_heading) = self._trajectory[0]
+        (x, y) = self.transform_to_screen_coords(start_pos.cartesian())
         pygame.draw.circle(self._screen, base_trajectory_color, (x, y), 10)
+
+        # Draw the initial heading of the actor.
+        heading = start_heading - 60
+        heading_offset = 6
+        x_offset = heading_offset * math.cos(math.radians(heading))
+        y_offset = heading_offset * math.sin(math.radians(heading))
+        pygame.draw.circle(self._screen, pygame.Color("black"), (x + x_offset, y + y_offset), 4)
+
+
 
     def visualize_markers(self):
         if self._positive_markers is None or len(self._positive_markers) == 0:
@@ -409,10 +421,10 @@ class GameDisplay(object):
         for (hecs, orientation) in self._positive_markers:
             (x, y) = self.transform_to_screen_coords(hecs.cartesian())
             heading = orientation - 60
-            orientation_offset = 20
+            orientation_offset = 15
             x_offset = orientation_offset * math.cos(math.radians(heading))
             y_offset = orientation_offset * math.sin(math.radians(heading))
-            pygame.draw.circle(self._screen, pygame.Color("green"), (x + x_offset, y + y_offset), 10)
+            pygame.draw.circle(self._screen, pygame.Color("green"), (x + x_offset, y + y_offset), 7)
 
         if self._negative_markers is None or len(self._negative_markers) == 0:
             return
@@ -420,10 +432,10 @@ class GameDisplay(object):
         for (hecs, orientation) in self._negative_markers:
             (x, y) = self.transform_to_screen_coords(hecs.cartesian())
             heading = orientation - 60
-            orientation_offset = 20
+            orientation_offset = 15
             x_offset = orientation_offset * math.cos(math.radians(heading))
             y_offset = orientation_offset * math.sin(math.radians(heading))
-            pygame.draw.circle(self._screen, pygame.Color("red"), (x + x_offset, y + y_offset), 10)
+            pygame.draw.circle(self._screen, pygame.Color("red"), (x + x_offset, y + y_offset), 7)
 
     def draw(self):
         # Fill the screen with white

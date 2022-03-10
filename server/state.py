@@ -324,6 +324,7 @@ class State(object):
             move.worker = self._tutorial_record.follower
         move.action = proposed_action
         move.position_before = actor.location()
+        move.orientation_before = actor.heading_degrees()
         move.turn_number = self._turn_state.turn_number
         move.game_time = datetime.now() - self._game_record.start_time
         move.server_time = datetime.now()

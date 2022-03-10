@@ -70,6 +70,7 @@ class Move(BaseModel):
     game_time = TextField()
     server_time = DateTimeField()
     action_code = TextField()  # One of MF (Move Forward), MB (Move Backward), TR (Turn Right), TL (Turn Left). Or invalid if the action was not valid.
+    orientation_before = IntegerField()
 
 class LiveFeedback(BaseModel):
     game = ForeignKeyField(Game, backref='moves')

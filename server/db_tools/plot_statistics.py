@@ -97,5 +97,8 @@ def main(config_path="config/server-config.json", output_dir="plots"):
     ax.legend()
     fig.savefig(output_dir / "score_vs_duration_by_leader.png")
 
+    # TODO(sharf): Plot a scatter plot between score and amount of positive and negative feedback used.
+    # TODO(sharf): Plot how much positive & negative feedback was used.
+
 if __name__ == "__main__":
     fire.Fire(main)
