@@ -19,7 +19,7 @@ class PropType(Enum):
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
-@dataclass(frozen=True)
+@dataclass
 class GenericPropInfo:
     location: HecsCoord
     rotation_degrees: int

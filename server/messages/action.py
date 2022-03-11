@@ -1,7 +1,7 @@
 from enum import Enum
 from hex import HecsCoord
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from marshmallow import fields
@@ -34,6 +34,19 @@ class Color:
     b: float
     a: float
 
+    def __eq__(self, rhs):
+        return self.r == rhs.r and self.g == rhs.g and self.b == rhs.b and self.a == rhs.a
+
+
+def CensorActionForFollower(action, follower):
+    """ Censors actions to hide information that followers aren't supposed to see.
+    
+        For now, replaces red border colors with blue.
+    """
+    if action.border_color == Color(1, 0, 0, 1):
+        action = replace(action, border_color=Color(0, 0, 1, 1))
+        print(f"Censored action {action} for follower {follower}")
+    return action
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)

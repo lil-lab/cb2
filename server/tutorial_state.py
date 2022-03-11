@@ -1,7 +1,7 @@
 from numpy import select
 from actor import Actor
 from assets import AssetId
-from messages.action import Action, Color, ActionType
+from messages.action import Action, Color, ActionType, CensorActionForFollower
 from messages.rooms import Role
 from messages import message_from_server
 from messages import message_to_server
@@ -26,6 +26,7 @@ import random
 import time
 import uuid
 
+import map_utils
 import schemas.game
 import schemas.map
 import schemas.cards
@@ -641,9 +642,14 @@ class TutorialGameState(object):
         return None
 
     def drain_actions(self, actor_id):
+        actor = self._actors[actor_id]
         if not actor_id in self._action_history:
             return []
         action_history = self._action_history[actor_id]
+
+        if actor.role() == Role.FOLLOWER:
+            action_history = [CensorActionForFollower(action, actor) for action in action_history]
+
         # Log actions sent to client.
         for action in action_history:
             self._sent_log.info(f"to: {actor_id} action: {action}")
@@ -669,20 +675,25 @@ class TutorialGameState(object):
         if not self._map_stale[actor_id]:
             return None
 
+        map_update = self._map_update
+
+        if self._actors[actor_id].role() == Role.FOLLOWER:
+            map_update = map_utils.CensorMapForFollower(map_update, self._actors[actor_id])
+
         self._map_update_count += 1
 
         # Record the map update to the database.
         map_record = schemas.map.MapUpdate()
         map_record.world_seed = ""
-        map_record.map_data = self._map_update
+        map_record.map_data = map_update
         map_record.game = self._tutorial_record
         map_record.map_update_number = self._map_update_count
         map_record.save()
         
         # Send the latest map and mark as fresh for this player.
         self._map_stale[actor_id] = False
-        self._sent_log.info(f"to: {actor_id} map: {self._map_update}")
-        return self._map_update
+        self._sent_log.info(f"to: {actor_id} map: {map_update}")
+        return map_update
 
     def drain_tutorial_response(self, actor_id):
         if self._tutorial_responses.empty():

@@ -6,6 +6,12 @@ import random
 import logging
 from queue import Queue
 
+import messages.action as action
+import card 
+import messages.prop
+
+import dataclasses
+
 logger = logging.getLogger()
 
 def LayerToHeight(layer):
@@ -240,3 +246,15 @@ def FloodFillPartitionTiles(tiles):
                     tile_queue.put(tile_by_loc[neighbor])
         partitions.append(partition)
     return partitions
+
+def CensorMapForFollower(map_update, follower):
+    """ Censors information from a map that the follower isn't supposed to have.
+
+        For now, just hides red card edges. 
+    """
+    map_update_clone = dataclasses.replace(map_update)
+    for i, prop in enumerate(map_update_clone.props):
+        if map_update_clone.props[i].prop_type == messages.prop.PropType.CARD:
+            if map_update_clone.props[i].prop_info.border_color == action.Color(1, 0, 0, 1):
+                map_update_clone.props[i].prop_info.border_color = action.Color(0, 0, 1, 1)
+    return map_update_clone

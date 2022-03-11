@@ -1,6 +1,6 @@
 from actor import Actor
 from assets import AssetId
-from messages.action import Action, Color, ActionType
+from messages.action import Action, Color, ActionType, CensorActionForFollower
 from messages.rooms import Role
 from messages import live_feedback, message_from_server
 from messages import message_to_server
@@ -25,6 +25,7 @@ import uuid
 import schemas.game
 import schemas.map
 import schemas.cards
+import map_utils
 
 LEADER_MOVES_PER_TURN = 5
 FOLLOWER_MOVES_PER_TURN = 10
@@ -673,9 +674,17 @@ class State(object):
         return None
 
     def drain_actions(self, actor_id):
+        actor = self._actors[actor_id]
         if not actor_id in self._action_history:
             return []
         action_history = self._action_history[actor_id]
+
+        if len(action_history) == 0:
+            return []
+
+        if actor.role() == Role.FOLLOWER:
+            action_history = [CensorActionForFollower(action, actor) for action in action_history]
+
         # Log actions sent to client.
         for action in action_history:
             self._sent_log.debug(f"to: {actor_id} action: {action}")
@@ -702,19 +711,24 @@ class State(object):
             return None
         
         self._map_update_count += 1
+
+        map_update = self._map_update
+
+        if self._actors[actor_id].role() == Role.FOLLOWER:
+            map_update = map_utils.CensorMapForFollower(map_update, self._actors[actor_id])
         
         # Record the map update to the database.
         map_record = schemas.map.MapUpdate()
         map_record.world_seed = self._game_record.world_seed
-        map_record.map_data = self._map_update
+        map_record.map_data = map_update
         map_record.game = self._game_record
         map_record.map_update_number = self._map_update_count
         map_record.save()
 
         # Send the latest map and mark as fresh for this player.
         self._map_stale[actor_id] = False
-        self._sent_log.debug(f"to: {actor_id} map: {self._map_update}")
-        return self._map_update
+        self._sent_log.debug(f"to: {actor_id} map: {map_update}")
+        return map_update
 
     def drain_live_feedback(self, actor_id):
         if actor_id not in self._live_feedback:
