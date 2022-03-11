@@ -468,6 +468,14 @@ public class MenuTransitionHandler : MonoBehaviour
             TurnComplete();
         }
 
+        // Live feedback keyboard combos.
+        if (Input.GetKey(KeyCode.G)) {
+            SendPositiveFeedback();
+        }
+        if (Input.GetKey(KeyCode.B)) {
+            SendNegativeFeedback();
+        }
+
         GameObject esc_menu = GameObject.FindWithTag(ESCAPE_MENU_TAG);
         if (esc_menu == null)
         {
