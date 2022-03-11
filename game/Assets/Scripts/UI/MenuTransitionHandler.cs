@@ -37,6 +37,8 @@ public class MenuTransitionHandler : MonoBehaviour
     private static readonly string POSITIVE_FEEDBACK_TAG = "THUMBS_UP_SIGNAL";
     private static readonly string NEGATIVE_FEEDBACK_TAG = "THUMBS_DOWN_SIGNAL";
 
+    private static readonly string FEEDBACK_WINDOW_TAG = "FEEDBACK_WINDOW";
+
     // We re-use ActionQueue here to animate UI transparency. It's a bit
     // overkill to have two animation queues here, but it's very obvious what's
     // happening for the reader, and that's worth it.
@@ -410,23 +412,44 @@ public class MenuTransitionHandler : MonoBehaviour
         not_turn_group.alpha = nTS.Opacity;
 
         // Handle feedback UI.
-        if (_positiveFeedbackSignal != null)
+        UnityEngine.Color feedbackColor = new UnityEngine.Color(1f, 1f, 1f, 100f / 255f);  // Neutral color.
+        if ((_positiveFeedbackSignal != null) && (_negativeFeedbackSignal != null))
         {
             bool is_pos = (DateTime.Now - _lastPositiveFeedback).TotalSeconds < FEEDBACK_DURATION_SECONDS;
-            Debug.Log("[Pos]: " + (DateTime.Now - _lastPositiveFeedback).TotalSeconds);
-            _positiveFeedbackSignal.SetActive((DateTime.Now - _lastPositiveFeedback).TotalSeconds < FEEDBACK_DURATION_SECONDS);
-        } else {
-            _positiveFeedbackSignal = GameObject.FindWithTag(POSITIVE_FEEDBACK_TAG);
-        }
-
-        if (_negativeFeedbackSignal != null)
-        {
             bool is_neg = (DateTime.Now - _lastNegativeFeedback).TotalSeconds < FEEDBACK_DURATION_SECONDS;
-            Debug.Log("[Neg]: " + (DateTime.Now - _lastPositiveFeedback).TotalSeconds);
-            _negativeFeedbackSignal.SetActive((DateTime.Now - _lastNegativeFeedback).TotalSeconds < FEEDBACK_DURATION_SECONDS);
+
+            // If only one is active, show it.
+            if (!(is_pos && is_neg)) {
+                _positiveFeedbackSignal.SetActive(is_pos);
+                _negativeFeedbackSignal.SetActive(is_neg);
+                if (is_pos)
+                    feedbackColor = new UnityEngine.Color(0f, 1f, 0f, 1f);  // Green.
+                if (is_neg)
+                    feedbackColor = new UnityEngine.Color(1f, 0f, 0f, 1f);  // Red.
+            }
+
+            // If both are active, only show the most recent.
+            if (is_pos && is_neg) {
+                if (_lastPositiveFeedback < _lastNegativeFeedback) 
+                {
+                    feedbackColor = new UnityEngine.Color(1f, 0f, 0f, 1f);  // Red.
+                    _negativeFeedbackSignal.SetActive(true);
+                    _positiveFeedbackSignal.SetActive(false);
+                } else {
+                    _positiveFeedbackSignal.SetActive(true);
+                    _negativeFeedbackSignal.SetActive(false);
+                    feedbackColor = new UnityEngine.Color(0f, 1f, 0f, 1f);  // Green.
+                }
+            }
         } else {
-            _negativeFeedbackSignal = GameObject.FindWithTag(NEGATIVE_FEEDBACK_TAG);
+            if (_positiveFeedbackSignal == null)
+                _positiveFeedbackSignal = GameObject.FindWithTag(POSITIVE_FEEDBACK_TAG);
+            if (_negativeFeedbackSignal == null)
+                _negativeFeedbackSignal = GameObject.FindWithTag(NEGATIVE_FEEDBACK_TAG);
         }
+        GameObject feedback_obj = GameObject.FindWithTag(FEEDBACK_WINDOW_TAG);
+        if (feedback_obj != null)
+            feedback_obj.GetComponent<Image>().color = feedbackColor;
 
         if (Input.GetKeyDown(KeyCode.Return))
         {

@@ -9,7 +9,7 @@ public class HideIfMturk : MonoBehaviour
         // Only applies to WebGL contexts...
         if (Application.platform != RuntimePlatform.WebGLPlayer)
         {
-            gameObject.SetActive(false);
+            gameObject.SetActive(true);
             return;
         }
         Dictionary<string, string> urlParameters = Network.NetworkManager.UrlParameters();

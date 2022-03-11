@@ -38,6 +38,7 @@ TagManager:
   - FOLLOWER_COMMANDS
   - THUMBS_UP_SIGNAL
   - THUMBS_DOWN_SIGNAL
+  - FEEDBACK_WINDOW
   layers:
   - Default
   - TransparentFX
