@@ -26,6 +26,7 @@ class Game(BaseModel):
     follow_assignment = ForeignKeyField(Assignment, backref='follow_games', null=True)
     lead_remote = ForeignKeyField(Remote, backref='leader_games', null=True)
     follow_remote = ForeignKeyField(Remote, backref='follower_games', null=True)
+    server_software_commit = TextField(null=False)
 
 class HecsCoordField(TextField):
     def db_value(self, value):

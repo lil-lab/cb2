@@ -18,7 +18,7 @@ from messages.tutorials import RoleFromTutorialName, TutorialRequestType, Tutori
 from queue import Queue
 from remote_table import GetRemote 
 from room import Room, RoomType
-from util import IdAssigner, SafePasswordCompare
+from util import IdAssigner, GetCommitHash
 
 import aiohttp
 import asyncio
@@ -157,6 +157,8 @@ class RoomManager(object):
         log_directory = pathlib.Path(self._base_log_directory, game_name)
         log_directory.mkdir(parents=False, exist_ok=False)
         game_record.log_directory = str(log_directory)
+        game_record.server_software_commit = GetCommitHash()
+        game_record.save()
 
         # Create room.
         room = self.create_room(game_id, game_record, RoomType.TUTORIAL, tutorial_name)
@@ -194,6 +196,8 @@ class RoomManager(object):
             log_directory = pathlib.Path(self._base_log_directory, game_name)
             log_directory.mkdir(parents=False, exist_ok=False)
             game_record.log_directory = str(log_directory)
+            game_record.server_software_commit = GetCommitHash()
+            game_record.save()
 
             # Create room.
             room = self.create_room(game_id, game_record)
