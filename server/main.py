@@ -71,23 +71,27 @@ async def Index(request):
     return web.FileResponse("www/WebGL/index.html")
 
 @routes.get('/qualification')
-async def Index(request):
+async def QualificationPage(request):
     return web.FileResponse("www/qualification.html")
 
 @routes.get('/rules')
-async def Index(request):
+async def Rules(request):
     return web.FileResponse("www/rules.html")
 
 @routes.get('/oneoff')
-async def Index(request):
+async def OneoffComp(request):
     return web.FileResponse("www/oneoff.html")
 
 @routes.get('/mturk-task')
-async def Index(request):
+async def TaskPage(request):
     return web.FileResponse("www/mturk-task.html")
 
+@routes.get('/changelist')
+async def Changelist(request):
+    return web.FileResponse("www/changelist.html")
+
 @routes.get('/images/{filename}')
-async def Index(request):
+async def Images(request):
     if not request.match_info.get('filename'):
         return web.HTTPNotFound()
     return web.FileResponse(f"www/images/{request.match_info['filename']}")
