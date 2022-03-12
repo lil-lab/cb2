@@ -1,4 +1,4 @@
 {
     "_comment": "This config is used for launching the server from your local machine.",
-    "data_prefix": "/mnt/efs/fs1/cb2-game-data"
+    "data_prefix": "~/cb2-game-data"
 }
