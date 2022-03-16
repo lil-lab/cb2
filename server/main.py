@@ -609,14 +609,14 @@ def CreateDataDirectory(config):
     # Create the directory if it doesn't exist.
     data_prefix.mkdir(parents=False, exist_ok=True)
 
-def main(config_file="config/server-config.json"):
+def main(config_filepath="config/server-config.json"):
     global assets_map
     global room_manager
     global g_config
 
     InitPythonLogging()
 
-    g_config = ReadConfigOrDie(config_file)
+    g_config = ReadConfigOrDie(config_filepath)
 
     logger.info(f"Config file parsed.");
     logger.info(f"data prefix: {g_config.data_prefix}")
