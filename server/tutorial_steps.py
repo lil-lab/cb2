@@ -267,21 +267,13 @@ FOLLOWER_TUTORIAL_STEPS = [
         Instruction("Behind you, look for the two blue plusses near where you"
                     " started.") ),
     TutorialStep(
-        None,
-        Tooltip("",
-                "Uh oh, looks like we picked up a bad set! Each card in a set"
-                " must have a different color, shape, and number of items. If you"
-                " violate this rule, the cards turn red! (Shift to continue).",
-                TooltipType.UNTIL_DISMISSED),
-        None
-    ),
-    TutorialStep(
         Indicator(HecsCoord(0, 2, 2)),
-        Tooltip("",
-                "To deselect a card, walk off the card and onto it again. Try it"
-                " now!", TooltipType.UNTIL_INDICATOR_REACHED),
-        None
-    ),
+        Tooltip("INSTRUCTIONS",
+                "Follow the instructions... To unselect a card, step off of it"
+                " and then back onto it.",
+                TooltipType.UNTIL_OBJECTIVES_COMPLETED),
+        Instruction("Oops, sorry I messed up! Can you unselect that card by"
+                    " walking off it and then back onto it?") ),
     TutorialStep(
         Indicator(HecsCoord(1, 2, 1)),
         Tooltip("INSTRUCTIONS",
