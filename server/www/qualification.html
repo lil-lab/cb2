@@ -477,6 +477,8 @@
             window.onload = function() {
                 var params = new URLSearchParams(window.location.search);
                 var statusElement = document.getElementById('status');
+                RewriteFollowerTutorialLink();
+                RewriteLeaderTutorialLink();
                 if (validWorkerParams(params)) {
                     statusElement.innerHTML = 'Valid Amazon MTurk parameters. Proceed to task.';
                     statusElement.style.backgroundColor = '#7FFFD4';
@@ -491,18 +493,18 @@
                 }
             }
 
-            function openInNewWindowForwardParams(url) {
+            function RewriteLinkWithForwardParams(link_id, url) {
                 var mturkParameters = new URLSearchParams(window.location.search);
-                var win = window.open(url + "&" + mturkParameters.toString(), '_blank');
-                win.focus();
+                var link = document.getElementById(link_id);
+                link.href = url + "&" + mturkParameters.toString(); 
             }
 
-            function openLeaderTutorial() {
-                openInNewWindowForwardParams("https://cerealbar2.com/?skipToTask=leaderTutorial");
+            function RewriteLeaderTutorialLink() {
+                RewriteLinkWithForwardParams("leader-link", "https://cerealbar2.com/?skipToTask=leaderTutorial");
             }
 
-            function openFollowerTutorial() {
-                openInNewWindowForwardParams("https://cerealbar2.com/?skipToTask=followerTutorial");
+            function RewriteFollowerTutorialLink() {
+                RewriteLinkWithForwardParams("follower-link", "https://cerealbar2.com/?skipToTask=followerTutorial");
             }
         </script>
         <div>
@@ -512,8 +514,8 @@
                 Qualification Steps
             </h2>
             <ol>
-                <li><a id="follower-link" href="#" onclick="openFollowerTutorial()">Click here</a> to take the follower tutorial.</li>
-                <li><a id="leader-link" href="#" onclick="openLeaderTutorial()">Click here</a> to take the leader tutorial.</li>
+                <li><a id="follower-link" href="#">Click here</a> to take the follower tutorial.</li>
+                <li><a id="leader-link" href="#">Click here</a> to take the leader tutorial.</li>
                 <li>Take the qualification test (below)</li>
             </ol>
             <p style="background-color: rgb(255, 255, 170); font-size: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center; width: 60%;">
