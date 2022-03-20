@@ -21,6 +21,7 @@ from schemas.map import MapUpdate
 from schemas.mturk import Worker
 from schemas import base
 from config.config import Config
+import config.config as config
 
 import fire
 import pathlib
@@ -31,16 +32,9 @@ import time
 
 import db_tools.db_utils as db_utils
 
-# Attempts to parse the config file. If there's any parsing or file errors,
-# doesn't handle the exceptions.
-def ReadConfigOrDie(config_path):
-    with open(config_path, 'r') as cfg_file:
-        config = Config.from_json(cfg_file.read())
-        return config
-
 def main(config_path="config/latest-analysis.json", no_i_totally_know_what_im_doing_i_swear=False):
-    config = ReadConfigOrDie(config_path)
-    print(f"Reading database from {config.database_path()}")
+    cfg = config.ReadConfigOrDie(config_path)
+    print(f"Reading database from {cfg.database_path()}")
 
     if not no_i_totally_know_what_im_doing_i_swear:
         print("This script is a total hack. It was made once to recover lost orientation values. If you're relying on it, then you're probably in a bad spot. To make this work, run via :\n\tpython3 -m db_tools.integrate_orientation --no_i_totally_know_what_im_doing_i_swear")
@@ -51,7 +45,7 @@ def main(config_path="config/latest-analysis.json", no_i_totally_know_what_im_do
     print("Starting...")
 
     # Setup the sqlite database used to record game actions.
-    base.SetDatabase(config.database_path())
+    base.SetDatabase(cfg.database_path())
     base.ConnectDatabase()
     base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
 

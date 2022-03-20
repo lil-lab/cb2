@@ -19,6 +19,7 @@ import zipfile
 import schemas.defaults
 import schemas.clients
 import schemas.mturk
+import leaderboard
 
 import db_tools.db_utils as db_utils
 
@@ -26,6 +27,7 @@ from aiohttp import web
 from config.config import Config
 from dataclasses import astuple
 from dateutil import parser
+
 from hex import HecsCoord, HexBoundary, HexCell
 from map_tools import visualize
 from messages import map_update
@@ -125,6 +127,41 @@ def FindGameDirectory(game_id):
         if game_id == id:
             return record_base_dir / game
     return None
+
+@routes.get('/data/username/{hashed_id}')
+async def GetUsername(request):
+    hashed_id = request.match_info.get('hashed_id')
+    if not hashed_id:
+        return web.HTTPNotFound()
+
+    worker_select = schemas.mturk.Worker.select().where(schemas.mturk.Worker.hashed_id == hashed_id)
+    if worker_select.count() != 1:
+        return web.HTTPNotFound()
+    worker = worker_select.get()
+    username = leaderboard.LookupUsername(worker)
+    return web.json_response({"username": username})
+
+@routes.get('/data/leaderboard')
+async def MessagesFromServer(request):
+    board = leaderboard.GetLeaderboard()
+    leaderboard_entries = []
+    for i, entry in enumerate(board):
+        leader_name = leaderboard.LookupUsername(entry.leader)
+        follower_name = leaderboard.LookupUsername(entry.follower)
+        if leader_name == None:
+            leader_name = ""
+        if follower_name == None:
+            follower_name = ""
+        print(f"{i:3}: scr: {entry.score} ldr: {leader_name} flwr: {follower_name} time: {entry.time}")
+        entry = {
+            "time": str(entry.time),
+            "score": entry.score,
+            "leader": leader_name,
+            "follower": follower_name,
+        }
+        leaderboard_entries.append(entry)
+    return web.json_response(leaderboard_entries)
+
 
 
 @routes.get('/data/messages_from_server/{game_id}')

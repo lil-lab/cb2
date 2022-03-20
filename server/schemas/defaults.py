@@ -4,6 +4,7 @@ from schemas.clients import *
 from schemas.game import *
 from schemas.map import *
 from schemas.mturk import *
+from schemas.leaderboard import *
 
 TABLES = [
     CardSets, Card, CardSelections,
@@ -11,6 +12,7 @@ TABLES = [
     Game, Turn, Instruction, Move, LiveFeedback,
     MapUpdate,
     Worker, Assignment,
+    Leaderboard, Username
 ]
 
 def ListDefaultTables():

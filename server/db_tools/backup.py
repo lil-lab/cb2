@@ -3,14 +3,9 @@ from map_tools.visualize import *
 from playhouse.sqlite_ext import CSqliteExtDatabase
 from schemas import base
 
-import fire
+import config.config as config
 
-# Attempts to parse the config file. If there's any parsing or file errors,
-# doesn't handle the exceptions.
-def ReadConfigOrDie(config_path):
-    with open(config_path, 'r') as cfg_file:
-        config = Config.from_json(cfg_file.read())
-        return config
+import fire
 
 def BackupDb(config):
     database = CSqliteExtDatabase(config.database_path(), pragmas =
@@ -21,8 +16,8 @@ def BackupDb(config):
 
 def main(config_path="config/server-config.json"):
     """ Performs an online backup of the game database (works even if the server is actively running). """
-    config = ReadConfigOrDie(config_path)
-    BackupDb(config)
+    cfg = config.ReadConfigOrDie(config_path)
+    BackupDb(cfg)
 
 if __name__ == "__main__":
     fire.Fire(main)

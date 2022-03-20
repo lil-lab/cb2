@@ -12,6 +12,8 @@ from card import CardSelectAction, SetCompletionActions
 from util import IdAssigner
 from datetime import datetime, timedelta
 from messages.turn_state import TurnState, GameOverMessage, TurnUpdate
+import leaderboard
+
 
 import aiohttp
 import asyncio
@@ -25,6 +27,7 @@ import uuid
 import schemas.game
 import schemas.map
 import schemas.cards
+import schemas.leaderboard
 import map_utils
 
 LEADER_MOVES_PER_TURN = 5
@@ -297,6 +300,8 @@ class State(object):
         # Make sure to mark the game's end time.
         self._game_record.end_time = datetime.now()
         self._game_record.save()
+
+        leaderboard.UpdateLeaderboard(self._game_record)
     
     def record_objective(self, objective):
         instruction = schemas.game.Instruction()

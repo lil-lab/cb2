@@ -7,6 +7,13 @@ from typing import List, Optional
 
 import pathlib
 
+# Attempts to parse the config file. If there's any parsing or file errors,
+# doesn't handle the exceptions.
+def ReadConfigOrDie(config_path):
+    with open(config_path, 'r') as cfg_file:
+        config = Config.from_json(cfg_file.read())
+        return config
+
 @dataclass_json
 @dataclass
 class Config:

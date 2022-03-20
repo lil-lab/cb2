@@ -8,3 +8,4 @@ pygame==2.0.3
 peewee==3.14.8
 freetype-py==2.2.0
 matplotlib==3.5.1
+humanhash3==0.0.6
