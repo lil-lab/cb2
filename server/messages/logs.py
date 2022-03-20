@@ -43,6 +43,13 @@ class GameInfo:
         ))
     game_id: int
     game_name: str
-    remotes: List[Remote]
     roles: List[Role]
     ids: List[int]
+
+
+
+@dataclass_json
+@dataclass
+class GameLog(object):
+    game_info: GameInfo
+    log_entries: List[LogEntry]

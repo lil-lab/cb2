@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,36 +7,81 @@ using Newtonsoft.Json;
 
 public class ReplayManager : MonoBehaviour
 {
-    public static string GAME_ID_PARAM = "game_id";
+    public static readonly string GAME_ID_PARAM = "game_id";
+    public static readonly string ESCAPE_MENU_REPLAY_INFO_TAG = "ESCAPE_MENU_REPLAY_INFO";
     private Network.MessageFromServer[] _messagesFromServer;
-    private Network.MessageToServer[] _messagesToServer;
     private ReplayStateMachine _replayStateMachine;
     private bool _requestFailed = false;
     private bool _dataDownloaded = false;
-    private bool _messagesLoaded = false;
+    private DateTime _lastDownloadAttempt = DateTime.MinValue;
+
+    private DateTime _lastInfoUpdate = DateTime.MinValue;
+    private Network.GameInfo _gameInfo;
+
+
+    public bool TestMode = false;
+    public int TestModeId = 230;
 
     void Start()
     {
-        StartCoroutine(DownloadMessagesFromServer());
-        StartCoroutine(DownloadMessagesToServer());
+        _replayStateMachine = new ReplayStateMachine();
+        StartCoroutine(DownloadGameLogsFromServer());
+    }
+
+    string ReplayStatusInfo()
+    {
+        if (_gameInfo == null)
+            return "";
+        return string.Format("Game name: {0}\nID: {1}\nStart Time: {2}", _gameInfo.game_name, _gameInfo.game_id, _gameInfo.start_time);
     }
 
     void Update()
     {
-        if (_messagesToServer != null && _messagesFromServer != null && !_requestFailed && !_replayStateMachine.Started())
-        {
-            _replayStateMachine.Load(_messagesFromServer, _messagesToServer);
-            _replayStateMachine.Start();
-        }
         if (_replayStateMachine.Started()){
             _replayStateMachine.Update();
         }
+        if ((DateTime.Now - _lastInfoUpdate).Seconds > 5)
+        {
+            GameObject obj = GameObject.FindGameObjectWithTag(ESCAPE_MENU_REPLAY_INFO_TAG);
+            if (obj != null)
+            {
+                TMPro.TMP_Text textMeshPro = obj.GetComponent<TMPro.TMP_Text>();
+                textMeshPro.text = ReplayStatusInfo();
+            }
+        }
+        if (_messagesFromServer != null && _dataDownloaded && !_requestFailed && !_replayStateMachine.Started())
+        {
+            _replayStateMachine.Load(_messagesFromServer);
+            _replayStateMachine.Start();
+        }
+        if (_requestFailed && ((DateTime.Now - _lastDownloadAttempt).Seconds > 5))
+        {
+            _dataDownloaded = false;
+            _requestFailed = false;
+            StartCoroutine(DownloadGameLogsFromServer());
+        }
     }
 
-    private IEnumerator DownloadMessagesToServer()
+    public void PreviousTurn()
     {
-        string url = Network.NetworkManager.BaseUrl();
-        UnityWebRequest www = new UnityWebRequest(url + "data/messages_to_server/" + GameId());
+        _replayStateMachine.PreviousTurn();
+    }
+
+    public void NextTurn()
+    {
+        _replayStateMachine.NextTurn();
+    }
+
+    public void Reset()
+    {
+        _replayStateMachine.Reset();
+    }
+
+    private IEnumerator DownloadGameLogsFromServer()
+    {
+        _lastDownloadAttempt = DateTime.Now;
+        string url = Network.NetworkManager.BaseUrl(/*websocket=*/false);
+        UnityWebRequest www = new UnityWebRequest(url + "data/game_logs/" + GameId());
         yield return www.SendWebRequest();
 
         if (www.result != UnityWebRequest.Result.Success)
@@ -44,40 +90,54 @@ public class ReplayManager : MonoBehaviour
             _requestFailed = true;
             yield break;
         }
-
         string data = www.downloadHandler.text;
-        string[] lines = data.Split('\n');
-        _messagesToServer = new Network.MessageToServer[lines.Length];
-        for (int i = 0; i < lines.Length; ++i) 
+        Network.GameLog log = JsonConvert.DeserializeObject<Network.GameLog>(data);
+        _gameInfo = log.game_info;
+        // Find the leader ID.
+        int leader_id = -1;
+        for (int i = 0; i < log.game_info.roles.Count; ++i)
         {
-            _messagesToServer[i] = JsonConvert.DeserializeObject<Network.MessageToServer>(lines[i]);
+            if (log.game_info.roles[i] == Network.Role.LEADER)
+            {
+                leader_id = log.game_info.ids[i];
+                break;
+            }
         }
-    }
-
-    private IEnumerator DownloadMessagesFromServer()
-    {
-        string url = Network.NetworkManager.BaseUrl();
-        UnityWebRequest www = new UnityWebRequest(url + "data/messages_from_server/" + GameId());
-        yield return www.SendWebRequest();
-
-        if (www.result != UnityWebRequest.Result.Success)
+        if (leader_id == -1)
         {
-            Debug.Log("Error downloading data.");
+            Debug.Log("Error finding leader ID.");
             _requestFailed = true;
             yield break;
         }
-
-        string data = www.downloadHandler.text;
-        string[] lines = data.Split('\n');
-        _messagesFromServer = new Network.MessageFromServer[lines.Length];
-        for (int i = 0; i < lines.Length; ++i) 
+        List<Network.LogEntry> leaderLogEntries = new List<Network.LogEntry>();
+        for (int i = 0; i < log.log_entries.Count; ++i)
         {
-            _messagesFromServer[i] = JsonConvert.DeserializeObject<Network.MessageFromServer>(lines[i]);
+            if (log.log_entries[i].player_id == leader_id)
+            {
+                leaderLogEntries.Add(log.log_entries[i]);
+            }
         }
+        _messagesFromServer = new Network.MessageFromServer[leaderLogEntries.Count];
+        for (int i = 0; i < leaderLogEntries.Count; ++i)
+        {
+            if (leaderLogEntries[i].message_direction != Network.Direction.FROM_SERVER)
+            {
+                Debug.Log("ERR: Encountered MessageToServer in game log!");
+                _requestFailed = true;
+                yield break;
+            }
+            _messagesFromServer[i] = leaderLogEntries[i].message_from_server;
+        }
+        _dataDownloaded = true;
     }
 
     private int GameId()
     {
+        // Allow a hardcoded test ID to be injected for testing.
+        if (TestMode && Application.platform != RuntimePlatform.WebGLPlayer)
+        {
+            return TestModeId;
+        }
         Dictionary<string, string> urlParameters = Network.NetworkManager.UrlParameters();
         if (!urlParameters.ContainsKey(GAME_ID_PARAM))
         {

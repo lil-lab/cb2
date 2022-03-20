@@ -44,6 +44,7 @@ from messages.rooms import JoinResponse
 from messages.rooms import Role
 from messages.rooms import RoomManagementResponse
 from messages.rooms import RoomResponseType
+from messages.logs import GameLog, GameInfo, LogEntry
 from playhouse.sqlite_ext import CSqliteExtDatabase
 from remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTable, LogConnectionEvent
 from room_manager import RoomManager
@@ -169,6 +170,23 @@ async def MessagesToServer(request):
     if not game_dir:
         return web.HTTPNotFound()
     return web.FileResponse(game_dir / "messages_to_server.json")
+
+@routes.get('/data/game_logs/{game_id}')
+async def GameLogs(request):
+    if not request.match_info.get('game_id'):
+        return web.HTTPNotFound()
+    game_dir = FindGameDirectory(request.match_info['game_id'])
+    if not game_dir:
+        return web.HTTPNotFound()
+    game_log = GameLog(GameInfo(datetime.min, 0, "", [], []), [])
+    with open(game_dir / "messages_from_server.jsonl.log", "r") as f:
+        for line in f:
+            game_log.log_entries.append(LogEntry.from_json(line))
+    with open(game_dir / "game_info.jsonl.log", "r") as f:
+        line = f.readline()
+        game_log.game_info = GameInfo.from_json(line)
+    return web.json_response(json.loads(game_log.to_json()))
+
 
 @routes.get('/data/download')
 async def DataDump(request):

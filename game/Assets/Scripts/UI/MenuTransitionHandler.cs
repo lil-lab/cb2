@@ -7,6 +7,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class MenuTransitionHandler : MonoBehaviour
 {
@@ -43,11 +44,18 @@ public class MenuTransitionHandler : MonoBehaviour
 
     private static readonly string MUTE_AUDIO_TOGGLE = "MUTE_AUDIO_TOGGLE";
 
+    // Used for replay scene.
+    private static readonly string FOLLOWER_TURN_TAG = "FOLLOWER_TURN_INDICATOR";
+    private static readonly string LEADER_TURN_TAG = "LEADER_TURN_INDICATOR";
+
     // We re-use ActionQueue here to animate UI transparency. It's a bit
     // overkill to have two animation queues here, but it's very obvious what's
     // happening for the reader, and that's worth it.
     private ActionQueue notOurTurnIndicatorFade = new ActionQueue();
     private ActionQueue ourTurnIndicatorFade = new ActionQueue();
+    // Used for replays.
+    private ActionQueue leaderTurnIndicatorFade = new ActionQueue();
+    private ActionQueue followerTurnIndicatorFade = new ActionQueue();
 
     private MenuState _currentMenuState;
 
@@ -271,24 +279,55 @@ public class MenuTransitionHandler : MonoBehaviour
         }
     }
 
+    private void DisplayTurnStateReplayMode(DateTime transmitTime, Network.TurnState state)
+    {
+        if (_lastTurn.Turn != state.Turn)
+        {
+            Debug.Log("Changing turn animation. " + _lastTurn.Turn + " -> " + state.Turn);
+            GameObject endTurnPanel = GameObject.FindGameObjectWithTag(END_TURN_PANEL);
+            if (state.Turn == Network.Role.LEADER)
+            {
+                followerTurnIndicatorFade.AddAction(Fade.FadeOut(0.5f));
+                leaderTurnIndicatorFade.AddAction(Instant.Pause(0.5f));
+                leaderTurnIndicatorFade.AddAction(Fade.FadeIn(0.5f));
+                if (endTurnPanel != null)
+                {
+                    endTurnPanel.transform.localScale = new Vector3(1f, 1f, 1f);
+                }
+            } else {
+                leaderTurnIndicatorFade.AddAction(Fade.FadeOut(0.5f));
+                followerTurnIndicatorFade.AddAction(Instant.Pause(0.5f));
+                followerTurnIndicatorFade.AddAction(Fade.FadeIn(0.5f));
+                if (endTurnPanel != null)
+                {
+                    endTurnPanel.transform.localScale = new Vector3(0f, 0f, 0f);
+                }
+            }
+        }
+        _lastTurnTransmitTime = transmitTime;
+        _lastTurn = state;
+
+        // Force the canvas to re-render in order to display the new text mesh.
+        Canvas.ForceUpdateCanvases();
+    }
+
     private void DisplayTurnState(DateTime transmitTime, Network.TurnState state)
     {
-        // Load the NetworkManager.
-        GameObject obj = GameObject.FindWithTag(Network.NetworkManager.TAG);
-        if (obj == null)
-        {
-            Debug.Log("Could not find network manager!");
-            return;
-        }
-
-        Network.NetworkManager networkManager = obj.GetComponent<Network.NetworkManager>();
+        Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
 
         string twoLineSummary = state.ShortStatus(transmitTime, networkManager.Role());
         GameObject scoreObj = GameObject.FindWithTag(SCORE_TEXT_TAG);
         TMPro.TMP_Text textMeshPro = scoreObj.GetComponent<TMPro.TMP_Text>();
         textMeshPro.text = twoLineSummary;
 
-        if (_lastTurn.turn != state.turn)
+        Scene scene = SceneManager.GetActiveScene();
+        if (scene.name == "replay-scene")
+        {
+            DisplayTurnStateReplayMode(transmitTime, state);
+            return;
+        }
+
+        if (_lastTurn.Turn != state.Turn)
         {
             Debug.Log("Changing turn animation. " + _lastTurn.turn + " -> " + state.turn);
             GameObject endTurnPanel = GameObject.FindGameObjectWithTag(END_TURN_PANEL);
@@ -440,6 +479,53 @@ public class MenuTransitionHandler : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        Scene scene = SceneManager.GetActiveScene();
+        if (scene.name == "replay-scene")
+        {
+            // Handle replay UI animations.
+            leaderTurnIndicatorFade.Update();
+            State.Continuous lTS = leaderTurnIndicatorFade.ContinuousState();
+            GameObject leader_turn_obj = GameObject.FindWithTag(LEADER_TURN_TAG);
+            CanvasGroup leader_turn_group = leader_turn_obj.GetComponent<CanvasGroup>();
+            leader_turn_group.alpha = lTS.Opacity;
+
+            followerTurnIndicatorFade.Update();
+            State.Continuous fTS = notOurTurnIndicatorFade.ContinuousState();
+            GameObject follower_turn_obj = GameObject.FindWithTag(FOLLOWER_TURN_TAG);
+            CanvasGroup follower_turn_group = follower_turn_obj.GetComponent<CanvasGroup>();
+            follower_turn_group.alpha = fTS.Opacity;
+        } else {
+            // Handle UI animations.
+            ourTurnIndicatorFade.Update();
+            State.Continuous tS = ourTurnIndicatorFade.ContinuousState();
+            GameObject turn_obj = GameObject.FindWithTag(OUR_TURN_TAG);
+            CanvasGroup turn_group = turn_obj.GetComponent<CanvasGroup>();
+            turn_group.alpha = tS.Opacity;
+
+            notOurTurnIndicatorFade.Update();
+            State.Continuous nTS = notOurTurnIndicatorFade.ContinuousState();
+            GameObject not_turn_obj = GameObject.FindWithTag(NOT_OUR_TURN_TAG);
+            CanvasGroup not_turn_group = not_turn_obj.GetComponent<CanvasGroup>();
+            not_turn_group.alpha = nTS.Opacity;
+        }
+
+        if (Input.GetKeyDown(KeyCode.Return))
+        {
+            SendObjective();
+        }
+
+        if (Input.GetKeyDown(KeyCode.T) && !UserTypingInput())
+        {
+            GameObject textObj = GameObject.FindWithTag(INPUT_FIELD_TAG);
+            TMPro.TMP_InputField textMeshPro = textObj.GetComponent<TMPro.TMP_InputField>();
+            textMeshPro.Select();
+        }
+
+        if (Input.GetKeyDown(KeyCode.N) && !UserTypingInput())
+        {
+            TurnComplete();
+        }
+
         GameObject esc_menu = GameObject.FindWithTag(ESCAPE_MENU_TAG);
         if (esc_menu == null)
         {

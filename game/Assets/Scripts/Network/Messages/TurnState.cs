@@ -15,6 +15,7 @@ namespace Network
         public int sets_collected;
         public int score;
         public bool game_over;
+        public int turn_number;
 
         public string ScoreString(DateTime transmitTime)
         {

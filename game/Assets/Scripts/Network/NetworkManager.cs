@@ -49,6 +49,12 @@ namespace Network
             }
             return _networkMapSource;
         }
+
+        public NetworkMapSource NetworkMapSource()
+        {
+            return _networkMapSource;
+        }
+
         public static NetworkManager TaggedInstance()
         {
             GameObject obj = GameObject.FindGameObjectWithTag(Network.NetworkManager.TAG);
