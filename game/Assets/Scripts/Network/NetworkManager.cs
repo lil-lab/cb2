@@ -17,7 +17,7 @@ namespace Network
 
         public static NetworkManager Instance;
 
-        public string URL = "ws://localhost:8080/player_endpoint";
+        public readonly static string URL = "ws://localhost:8080/player_endpoint";
 
         private ClientConnection _client;
         private NetworkMapSource _networkMapSource;
@@ -50,6 +50,29 @@ namespace Network
             if (obj == null)
                 return null;
             return obj.GetComponent<Network.NetworkManager>();
+        }
+
+        public static string BaseUrl(bool webSocket=true)
+        {
+            string url = URL;
+            if (Application.absoluteURL != "")
+            {
+                // We can figure out the server's address based on Unity's API.
+                Uri servedUrl = new Uri(Application.absoluteURL);
+
+                string scheme = servedUrl.Scheme;
+                if (webSocket) {
+                    scheme = servedUrl.Scheme == "https" ? "wss" : "ws";
+                }
+                UriBuilder endpointUrlBuilder =
+                    new UriBuilder(scheme, servedUrl.Host, servedUrl.Port);
+                if (servedUrl.Query.Length > 0)
+                {
+                    endpointUrlBuilder.Query = servedUrl.Query.Substring(1);  // Remove leading '?'
+                }
+                url = endpointUrlBuilder.Uri.AbsoluteUri;
+            }
+            return url;
         }
 
         public static Dictionary<string, string> UrlParameters()

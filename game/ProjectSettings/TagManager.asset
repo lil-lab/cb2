@@ -39,6 +39,7 @@ TagManager:
   - THUMBS_UP_SIGNAL
   - THUMBS_DOWN_SIGNAL
   - FEEDBACK_WINDOW
+  - USERNAME_DISPLAY
   layers:
   - Default
   - TransparentFX
