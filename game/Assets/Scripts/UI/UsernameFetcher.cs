@@ -53,7 +53,7 @@ public class UsernameFetcher : MonoBehaviour
     IEnumerator GetUsername(string md5hash)
     {
         string base_url = Network.NetworkManager.BaseUrl(/*websocket=*/false);
-        using (UnityWebRequest webRequest = UnityWebRequest.Get(base_url + "data/username/" + md5hash))
+        using (UnityWebRequest webRequest = UnityWebRequest.Get(base_url + "data/username_from_hash/" + md5hash))
         {
             // Request and wait for the desired page.
             yield return webRequest.SendWebRequest();

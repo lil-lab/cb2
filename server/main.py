@@ -128,7 +128,21 @@ def FindGameDirectory(game_id):
             return record_base_dir / game
     return None
 
-@routes.get('/data/username/{hashed_id}')
+@routes.get('/data/username_from_id/{user_id}')
+async def GetUsername(request):
+    user_id = request.match_info.get('user_id')
+    if not user_id:
+        return web.HTTPNotFound()
+
+    hashed_id = hashlib.md5(user_id.encode('utf-8')).hexdigest(), # Worker ID is PII, so only save the hash.
+    worker_select = schemas.mturk.Worker.select().where(schemas.mturk.Worker.hashed_id == hashed_id)
+    if worker_select.count() != 1:
+        return web.HTTPNotFound()
+    worker = worker_select.get()
+    username = leaderboard.LookupUsername(worker)
+    return web.json_response({"username": username})
+
+@routes.get('/data/username_from_hash/{hashed_id}')
 async def GetUsername(request):
     hashed_id = request.match_info.get('hashed_id')
     if not hashed_id:
