@@ -300,7 +300,6 @@ class State(object):
         # Make sure to mark the game's end time.
         self._game_record.end_time = datetime.now()
         self._game_record.save()
-
         leaderboard.UpdateLeaderboard(self._game_record)
     
     def record_objective(self, objective):

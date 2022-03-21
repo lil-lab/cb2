@@ -154,7 +154,7 @@ async def MessagesFromServer(request):
             follower_name = ""
         print(f"{i:3}: scr: {entry.score} ldr: {leader_name} flwr: {follower_name} time: {entry.time}")
         entry = {
-            "time": str(entry.time),
+            "time": str(entry.time.date()),
             "score": entry.score,
             "leader": leader_name,
             "follower": follower_name,

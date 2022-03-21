@@ -31,6 +31,7 @@ public class LeaderboardFetcher : MonoBehaviour
         if (_board != null && !_leaderboardDisplayed)
         {
             string text = "Leaderboard: \n";
+            text += string.Format("{0,10} {1,10} {2,15} {3,15}\n", "Date", "Score", "Leader", "Follower");
             // Convert the leaderboard to text, using a fixed-width encoding for each field.
             foreach (LeaderboardRecord record in _board)
             {
