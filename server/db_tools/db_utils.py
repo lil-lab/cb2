@@ -14,7 +14,6 @@ def ListResearchGames():
     games = (Game.select()
             .join(Assignment, on=((Game.lead_assignment == Assignment.id) or (Game.follow_assignment == Assignment.id)), join_type=peewee.JOIN.LEFT_OUTER)
             .where(Game.valid == True,
-                   Game.completed == True,
                    Game.type == "game-mturk",
                    ((Game.lead_assignment != None) & (Game.lead_assignment.submit_to_url == "https://www.mturk.com") | 
                     ((Game.follow_assignment != None)& (Game.lead_assignment.submit_to_url == "https://www.mturk.com"))))
