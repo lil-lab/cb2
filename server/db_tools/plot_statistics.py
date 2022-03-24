@@ -30,8 +30,20 @@ def ReadConfigOrDie(config_path):
         config = Config.from_json(cfg_file.read())
         return config
 
-def main(config_path="config/server-config.json", output_dir="plots"):
-    config = ReadConfigOrDie(config_path)
+# Calculated by https://cerealbar2.com/rules though we have base pay of 0.30
+# due to misconfig HIT. TODO(sharf): fix this.
+def award(score):
+    amt = 0.30
+    awards = [0.15, 0.25, 0.25, 0.30, 0.30, 0.35, 0.35, 0.40, 0.40, 0.40, 0.40, 0.50, 0.50, 0.60]
+    for i in range(score):
+        if i < len(awards):
+            amt += awards[i]
+        if i >= len(awards):
+            amt += awards[-1]
+    return amt
+
+def main(config_filepath="config/server-config.json", output_dir="plots"):
+    config = ReadConfigOrDie(config_filepath)
 
     print(f"Reading database from {config.database_path()}")
     # Setup the sqlite database used to record game actions.
@@ -50,8 +62,17 @@ def main(config_path="config/server-config.json", output_dir="plots"):
     player_scores = {}
     player_durations = {}
     players = set()
+    total_cost = 0
+    instructions = []
     # For each game.
     for game in games:
+        # Calculate the cost of the game.
+        cost = 2 * award(game.score)  # 2x for leader & follower.
+        total_cost += cost
+        game_instructions = Instruction.select().join(Game).where(Instruction.game == game)
+        instructions.extend(game_instructions)
+
+
         # Collect some statistics about each game.
         score = game.score
         duration_minutes = (game.end_time - game.start_time).total_seconds() / 60
@@ -84,6 +105,10 @@ def main(config_path="config/server-config.json", output_dir="plots"):
     fig.savefig(output_dir / "score_vs_duration.png")
 
     print(f"{len(players)} leaders.")
+    print(f"{len(instructions)} instructions.")
+    print(f"{games.count()} games.")
+    print(f"{total_cost / len(instructions):0.2f} average cost per instruction.")
+    print(f"{total_cost / games.count():0.2f} average cost per game.")
     
     # Plot ratio of score to duration via scatter plot, make each player a different color.
     fig, ax = plt.subplots(1, 1, figsize=(10, 5))

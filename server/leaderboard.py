@@ -1,7 +1,9 @@
 """ Code for updating the leaderboard table. """
 from schemas.game import Game
 import schemas.leaderboard
+import schemas.mturk
 
+import hashlib
 import humanhash
 
 def GetLeaderboard():
@@ -29,6 +31,18 @@ def LookupUsername(worker):
     if username_select.count() == 0:
         return None
     return username_select.get().username
+
+def LookupUsernameFromId(worker_id):
+  md5sum = hashlib.md5(worker_id.encode('utf-8')).hexdigest()
+  return LookupUsernameFromMd5sum(md5sum)
+
+def LookupUsernameFromMd5sum(worker_id_md5sum):
+  worker_select = schemas.mturk.Worker.select().where(schemas.mturk.Worker.hashed_id == worker_id_md5sum)
+  if worker_select.count() == 0:
+    return None
+  return LookupUsername(worker_select.get())
+
+
 
 def SetUsername(worker, username):
     """ Sets the username for a given worker. """

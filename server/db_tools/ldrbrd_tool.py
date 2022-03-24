@@ -9,13 +9,22 @@ from schemas import base
 from db_tools import db_utils
 
 import fire
+import humanhash
+import hashlib
+import pathlib
 import sys
 
 COMMANDS = [
     "list",
     "delete",
-    "recalculate",
+    "regen_leaderboard",
     "list_names",
+    "id_lookup",
+    "hash_lookup",
+    "reverse_hash",
+    "reverse_name",
+    "help",
+    "calc_hash",
 ]
 
 def PrintUsage():
@@ -23,10 +32,37 @@ def PrintUsage():
     print("  ldrbrd list")
     print("  ldrbrd delete --item=[0-9]")
     print("  ldrbrd delete --item=ALL")
-    print("  ldrbrd recalculate")
+    print("  ldrbrd regen_leaderboard")
     print("  ldrbrd list_names")
+    print("  ldrbrd calc_hash --id=<worker_id>")
+    print("  ldrbrd id_lookup --id=<worker_id>")
+    print("  ldrbrd hash_lookup --hash=<md5sum>")
+    print("  ldrbrd reverse_hash --hash=<md5sum> --workers_file=<filepath>")
+    print("  ldrbrd reverse_name --name=<username> --workers_file=<filepath>")
+    print("  ldrbrd help")
 
-def main(command, item="", config_filepath="config/server-config.json"):
+def ReverseHash(worker_hash, workers_file):
+  path = pathlib.PosixPath(workers_file).expanduser()
+  with path.open() as wlist:
+    for worker in wlist:
+      worker = worker.strip()
+      md5sum = hashlib.md5(worker.encode('utf-8')).hexdigest()
+      if worker_hash is not None:
+        if md5sum == worker_hash:
+          return worker
+
+def ReverseUsername(worker_name, workers_file): 
+  path = pathlib.PosixPath(workers_file).expanduser()
+  with path.open() as wlist:
+    for worker in wlist:
+      worker = worker.strip()
+      md5sum = hashlib.md5(worker.encode('utf-8')).hexdigest()
+      name = humanhash.humanize(md5sum, words=2)
+      if worker_name is not None:
+        if name == worker_name:
+          return worker
+
+def main(command, id="", hash="", name="", workers_file = "", item="", config_filepath="config/server-config.json"):
     cfg = config.ReadConfigOrDie(config_filepath)
 
     print(f"Reading database from {cfg.database_path()}")
@@ -62,7 +98,7 @@ def main(command, item="", config_filepath="config/server-config.json"):
                 sys.exit(1)
             entry = board[index]
             entry.delete_instance()
-    elif command == "recalculate":
+    elif command == "regen_leaderboard":
         print(f"This could take a while...")
         games = db_utils.ListResearchGames()
         for game in games:
@@ -71,6 +107,21 @@ def main(command, item="", config_filepath="config/server-config.json"):
         names = Username.select()
         for name in names:
             print(f"{name.username}: {name.worker.hashed_id}")
+    elif command == "id_lookup":
+        worker_name = leaderboard.LookupUsernameFromId(id)
+        print(worker_name)
+    elif command == "hash_lookup":  
+        worker_name = leaderboard.LookupUsernameFromMd5sum(hash)
+        print(worker_name)
+    elif command == "reverse_hash":
+        worker_id = ReverseHash(hash, workers_file)
+        print(worker_id)
+    elif command == "reverse_name":
+        worker_id = ReverseUsername(name, workers_file)
+        print(worker_id)
+    elif command == "calc_hash":
+        md5sum = hashlib.md5(id.encode('utf-8')).hexdigest()
+        print(md5sum)
     else:
         PrintUsage()
 

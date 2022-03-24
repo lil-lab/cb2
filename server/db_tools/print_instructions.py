@@ -15,6 +15,8 @@ from schemas.map import MapUpdate
 from schemas import base
 from config.config import Config
 
+from db_tools import db_utils
+
 import fire
 import pathlib
 import random
@@ -74,8 +76,8 @@ def ReadConfigOrDie(config_path):
         config = Config.from_json(cfg_file.read())
         return config
 
-def main(number=100, from_id=119, to_id=139, config_path="config/server-config.json"):
-    config = ReadConfigOrDie(config_path)
+def main(number=100, search_term="", research_only=True, config_filepath="config/server-config.json"):
+    config = ReadConfigOrDie(config_filepath)
 
     print(f"Reading database from {config.database_path()}")
     # Setup the sqlite database used to record game actions.
@@ -83,17 +85,23 @@ def main(number=100, from_id=119, to_id=139, config_path="config/server-config.j
     base.ConnectDatabase()
     base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
 
-    instructions = Instruction.select().join(Game, join_type=peewee.JOIN.LEFT_OUTER).where(Game.id >= from_id, Game.id <= to_id)
-    print(f"Found {instructions.count()} instructions.")
+    games = db_utils.ListResearchGames()
+    if not research_only:
+        games = Game.select()
     words = set()
     instruction_list = []
-    for instruction in instructions:
-        for word in instruction.text.split(" "):
-            words.add(word)
-        instruction_list.append(instruction.text)
-    sample = random.sample(instruction_list, number)
-    for instruction in sample:
-      print(instruction)
+    for game in games:
+      instructions = Instruction.select().join(Game).where(Instruction.game == game)
+      for instruction in instructions:
+          if len(search_term) > 0 and search_term in instruction.text:
+            print(f"Search term found in game {game.id}: {instruction.text}")
+          for word in instruction.text.split(" "):
+              words.add(word)
+          instruction_list.append(instruction.text)
+      sample = random.sample(instruction_list, min(number, len(instruction_list)))
+      if len(search_term) == 0:
+        for instruction in sample:
+          print(instruction)
 
 
 if __name__ == "__main__":

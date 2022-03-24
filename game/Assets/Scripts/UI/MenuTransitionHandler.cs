@@ -192,7 +192,7 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public void SendObjective()
     {
-        ObjectiveMessage objective = new ObjectiveMessage();
+        Network.ObjectiveMessage objective = new Network.ObjectiveMessage();
 
         // Get the text entered by the user.
         GameObject textObj = GameObject.FindWithTag(INPUT_FIELD_TAG);
@@ -398,6 +398,35 @@ public class MenuTransitionHandler : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        GameObject esc_menu = GameObject.FindWithTag(ESCAPE_MENU_TAG);
+        if (esc_menu == null)
+        {
+            Debug.Log("Could not find escape menu!");
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            if (_currentMenuState == MenuState.NONE)
+            {
+                Canvas gameOverCanvas = FindCanvasWithTag(GAME_OVER_MENU);
+                if (gameOverCanvas.enabled)
+                {
+                    // Don't do anything if the end game menu is already displayed.
+                    return;
+                }
+                _currentMenuState = MenuState.ESCAPE_MENU;
+                esc_menu.GetComponent<Canvas>().enabled = true;
+                Debug.Log("Opening esc menu");
+            }
+            else if (_currentMenuState == MenuState.ESCAPE_MENU)
+            {
+                _currentMenuState = MenuState.NONE;
+                esc_menu.GetComponent<Canvas>().enabled = false;
+                Debug.Log("Closed esc menu");
+            }
+        }
+
         // Handle UI animations.
         ourTurnIndicatorFade.Update();
         State.Continuous tS = ourTurnIndicatorFade.ContinuousState();
@@ -450,60 +479,6 @@ public class MenuTransitionHandler : MonoBehaviour
         GameObject feedback_obj = GameObject.FindWithTag(FEEDBACK_WINDOW_TAG);
         if (feedback_obj != null)
             feedback_obj.GetComponent<Image>().color = feedbackColor;
-
-        if (Input.GetKeyDown(KeyCode.Return))
-        {
-            SendObjective();
-        }
-
-        if (Input.GetKeyDown(KeyCode.T) && !UserTypingInput())
-        {
-            GameObject textObj = GameObject.FindWithTag(INPUT_FIELD_TAG);
-            TMPro.TMP_InputField textMeshPro = textObj.GetComponent<TMPro.TMP_InputField>();
-            textMeshPro.Select();
-        }
-
-        if (Input.GetKeyDown(KeyCode.N) && !UserTypingInput())
-        {
-            TurnComplete();
-        }
-
-        // Live feedback keyboard combos.
-        if (Input.GetKey(KeyCode.G)) {
-            SendPositiveFeedback();
-        }
-        if (Input.GetKey(KeyCode.B)) {
-            SendNegativeFeedback();
-        }
-
-        GameObject esc_menu = GameObject.FindWithTag(ESCAPE_MENU_TAG);
-        if (esc_menu == null)
-        {
-            Debug.Log("Could not find escape menu!");
-            return;
-        }
-
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            if (_currentMenuState == MenuState.NONE)
-            {
-                Canvas gameOverCanvas = FindCanvasWithTag(GAME_OVER_MENU);
-                if (gameOverCanvas.enabled)
-                {
-                    // Don't do anything if the end game menu is already displayed.
-                    return;
-                }
-                _currentMenuState = MenuState.ESCAPE_MENU;
-                esc_menu.GetComponent<Canvas>().enabled = true;
-                Debug.Log("Opening esc menu");
-            }
-            else if (_currentMenuState == MenuState.ESCAPE_MENU)
-            {
-                _currentMenuState = MenuState.NONE;
-                esc_menu.GetComponent<Canvas>().enabled = false;
-                Debug.Log("Closed esc menu");
-            }
-        }
     }
 
     private bool UserTypingInput()

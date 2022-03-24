@@ -398,7 +398,7 @@ class GameDisplay(object):
             # Choose a color that gets brighter with each segment
             trajectory_color = pygame.Color(base_trajectory_color)
             trajectory_color.hsva = (trajectory_color.hsva[0], trajectory_color.hsva[1],
-                                    trajectory_color.hsva[2] - i * 1,
+                                    max(trajectory_color.hsva[2] - i * 1, 0),
                                     trajectory_color.hsva[3])
             pygame.draw.line(self._screen, trajectory_color, (x1, y1), (x2, y2), 2)
         # Draw a circle at the beginning of the trajectory.

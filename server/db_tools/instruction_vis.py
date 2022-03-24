@@ -17,7 +17,7 @@ from schemas import base
 from config.config import Config
 
 import db_tools.db_utils as db_utils
-import config
+import config.config as config
 
 import fire
 import pathlib
@@ -88,8 +88,8 @@ def draw_instruction(instruction, moves, feedbacks, map_update, filename, game_i
     pygame.display.flip()
     pygame.image.save(display.screen(), filename)
     
-def main(max_instructions=-1, config_path="config/server-config.json", output_dir="output"):
-    cfg = config.ReadConfigOrDie(config_path)
+def main(max_instructions=-1, config_filepath="config/server-config.json", output_dir="output"):
+    cfg = config.ReadConfigOrDie(config_filepath)
 
     print(f"Reading database from {cfg.database_path()}")
     # Setup the sqlite database used to record game actions.
