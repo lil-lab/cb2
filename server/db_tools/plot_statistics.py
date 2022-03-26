@@ -107,6 +107,7 @@ def main(config_filepath="config/server-config.json", output_dir="plots"):
     print(f"{len(players)} leaders.")
     print(f"{len(instructions)} instructions.")
     print(f"{games.count()} games.")
+    print(f"{total_cost:0.2f} total cost.")
     print(f"{total_cost / len(instructions):0.2f} average cost per instruction.")
     print(f"{total_cost / games.count():0.2f} average cost per game.")
     

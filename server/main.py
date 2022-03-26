@@ -378,8 +378,14 @@ async def stream_game_state(request, ws):
     was_in_room = False
     remote = GetRemote(ws)
     remote.last_ping = datetime.now(timezone.utc)
+    last_loop = time.time()
     while not ws.closed:
         await asyncio.sleep(0.001)
+        poll_period = time.time() - last_loop
+        if (poll_period) > 0.1:
+            logging.warn(
+                f"Transmit socket for iphash {remote.hashed_ip} port {remote.client_port}, slow poll period of {poll_period}s")
+        last_loop = time.time()
         # If not in a room, drain messages from the room manager.
         message = room_manager.drain_message(ws)
         if message is not None:
@@ -415,15 +421,21 @@ async def stream_game_state(request, ws):
             await transmit(ws, message_from_server.PingMessageFromServer().to_json())
 
         msg_from_server = room.drain_message(player_id)
-        if msg_from_server is not None:
+        while msg_from_server is not None:
             await transmit(ws, msg_from_server.to_json())
-        await asyncio.sleep(0.001)
+            msg_from_server = room.drain_message(player_id)
 
 
 async def receive_agent_updates(request, ws):
     global room_manager
+    last_loop = time.time()
     async for msg in ws:
-        await asyncio.sleep(0.001)
+        remote = GetRemote(ws)
+        poll_period = time.time() - last_loop
+        if (poll_period) > 0.1:
+            logging.warn(
+                f"Receive socket for iphash {remote.hashed_ip} port {remote.client_port}, slow poll period of {poll_period}s")
+        last_loop = time.time()
         if ws.closed:
             return
         if msg.type == aiohttp.WSMsgType.ERROR:
@@ -435,7 +447,6 @@ async def receive_agent_updates(request, ws):
         if msg.type != aiohttp.WSMsgType.TEXT:
             continue
 
-        remote = GetRemote(ws)
         remote.last_message_up = time.time()
         remote.bytes_up += len(msg.data)
 
@@ -497,11 +508,13 @@ async def PlayerEndpoint(request):
     await ws.prepare(request)
     logger = logging.getLogger()
     logger.info("player connected from : " + request.remote)
-    hashed_ip = hashlib.md5(request.remote.encode('utf-8')).hexdigest()
+    hashed_ip = "UNKNOWN"
     peername = request.transport.get_extra_info('peername')
     port = 0
     if peername is not None:
+        ip = peername[0]
         port = peername[1]
+        hashed_ip = hashlib.md5(ip.encode('utf-8')).hexdigest()
     remote = Remote(hashed_ip, port, 0, 0, time.time(), time.time(), request, ws)
     AddRemote(ws, remote, assignment)
     LogConnectionEvent(remote, "Connected to Server.")

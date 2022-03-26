@@ -41,11 +41,11 @@ class MessageToServer:
             mm_field=fields.DateTime(format='iso')
         ))
     type: MessageType
-    actions: Optional[List[Action]]
-    room_request: Optional[RoomManagementRequest]
-    objective: Optional[ObjectiveMessage] = ObjectiveMessage("")
-    objective_complete: Optional[ObjectiveCompleteMessage] = ObjectiveCompleteMessage("")
-    turn_complete: Optional[TurnComplete] = TurnComplete()
-    tutorial_request: Optional[TutorialRequest] = TutorialRequest(TutorialRequestType.NONE, "")
-    pong: Optional[Pong] = Pong()
-    live_feedback: Optional[LiveFeedback] = LiveFeedback()
+    actions: Optional[List[Action]] = None
+    room_request: Optional[RoomManagementRequest] = None
+    objective: Optional[ObjectiveMessage] = None
+    objective_complete: Optional[ObjectiveCompleteMessage] = None
+    turn_complete: Optional[TurnComplete] = None
+    tutorial_request: Optional[TutorialRequest] = None
+    pong: Optional[Pong] = None
+    live_feedback: Optional[LiveFeedback] = None
