@@ -14,14 +14,14 @@ public class Actor
     public static Actor FromStateSync(Network.StateSync.Actor netActor)
     {
         UnityAssetSource assetLoader = new UnityAssetSource();
-        GameObject asset = assetLoader.Load((IAssetSource.AssetId)netActor.AssetId);
-        Actor actor = new Actor(asset, (IAssetSource.AssetId)netActor.AssetId);
+        GameObject asset = assetLoader.Load((IAssetSource.AssetId)netActor.asset_id);
+        Actor actor = new Actor(asset, (IAssetSource.AssetId)netActor.asset_id);
         // Instantly move the actor to its starting location.
         actor.AddAction(new Init(new ActionQueue.ActionInfo()
         {
             Type = ActionQueue.AnimationType.IDLE,
-            Displacement = netActor.Location,
-            Rotation = netActor.RotationDegrees,
+            Displacement = netActor.location,
+            Rotation = netActor.rotation_degrees,
             DurationS = 0.001f,
             Expiration = DateTime.MaxValue,
         }));

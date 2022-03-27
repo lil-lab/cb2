@@ -50,13 +50,13 @@ public class Instant : ActionQueue.IAction
     {
         return new Network.Action()
         {
-            Id = id,
-            ActionType = Network.ActionType.INSTANT,
-            AnimationType = (Network.AnimationType)_info.Type,
-            Displacement = _info.Displacement,
-            Rotation = _info.Rotation,
-            DurationS = _info.DurationS,
-            Expiration = _info.Expiration.ToString("o"),
+            id = id,
+            action_type = Network.ActionType.INSTANT,
+            animation_type = (Network.AnimationType)_info.Type,
+            displacement = _info.Displacement,
+            rotation = _info.Rotation,
+            duration_s = _info.DurationS,
+            expiration = _info.Expiration.ToString("o"),
         };
     }
 }

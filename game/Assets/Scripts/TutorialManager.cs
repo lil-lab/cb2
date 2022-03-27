@@ -86,15 +86,15 @@ public class TutorialManager : MonoBehaviour
 
     public void HandleTutorialStep(Network.TutorialStep step)
     {
-        if (step.Tooltip != null)
+        if (step.tooltip != null)
         {
-            Network.Tooltip tooltip = step.Tooltip;
+            Network.Tooltip tooltip = step.tooltip;
             _lastTooltip = tooltip;
-            SetTooltip(tooltip.Text, tooltip.HighlightedComponentTag);
+            SetTooltip(tooltip.text, tooltip.highlighted_component_tag);
         }
-        if (step.Indicator != null)
+        if (step.indicator != null)
         {
-            SetIndicator(step.Indicator.Location);
+            SetIndicator(step.indicator.location);
         } else {
             ClearIndicator();
         }
@@ -114,11 +114,11 @@ public class TutorialManager : MonoBehaviour
     {
         if (_lastTooltip != null)
         {
-            if ((Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.RightShift)) && (_lastTooltip.Type == Network.TooltipType.UNTIL_DISMISSED))
+            if ((Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.RightShift)) && (_lastTooltip.type == Network.TooltipType.UNTIL_DISMISSED))
             {
                 NextStep();
             }
-            if (Input.GetKeyDown(KeyCode.C) && (_lastTooltip.Type == Network.TooltipType.UNTIL_CAMERA_TOGGLED))
+            if (Input.GetKeyDown(KeyCode.C) && (_lastTooltip.type == Network.TooltipType.UNTIL_CAMERA_TOGGLED))
             {
                 NextStep();
             }

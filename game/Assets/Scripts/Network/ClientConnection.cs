@@ -89,7 +89,7 @@ namespace Network
                 return;
             }
 
-            string received = System.Text.Encoding.ASCII.GetString(bytes);
+            string received = System.Text.Encoding.UTF8.GetString(bytes);
             Debug.Log("Received: " + received);
             MessageFromServer message = JsonConvert.DeserializeObject<MessageFromServer>(System.Text.Encoding.ASCII.GetString(bytes));
             _router.HandleMessage(message);

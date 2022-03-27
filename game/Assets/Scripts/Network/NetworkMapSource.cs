@@ -26,16 +26,16 @@ namespace Network
         public void ReceiveMapUpdate(Network.MapUpdate mapInfo)
         {
             _map = new List<HexGridManager.TileInformation>();
-            _rows = mapInfo.Rows;
-            _cols = mapInfo.Cols;
+            _rows = mapInfo.rows;
+            _cols = mapInfo.cols;
 
-            foreach (Network.MapUpdate.Tile tile in mapInfo.Tiles)
+            foreach (Network.MapUpdate.Tile tile in mapInfo.tiles)
             {
                 _map.Add(new HexGridManager.TileInformation
                 {
-                    Cell = tile.Cell,
-                    AssetId = (IAssetSource.AssetId)tile.AssetId,
-                    RotationDegrees = tile.RotationDegrees,
+                    Cell = tile.cell,
+                    AssetId = (IAssetSource.AssetId)tile.asset_id,
+                    RotationDegrees = tile.rotation_degrees,
                 });
             }
             Debug.Log("NetworkMapSource received map update.");

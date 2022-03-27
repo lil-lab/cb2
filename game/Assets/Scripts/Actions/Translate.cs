@@ -55,13 +55,13 @@ public class Translate : ActionQueue.IAction
     {
         return new Network.Action()
         {
-            Id = id,
-            ActionType = Network.ActionType.TRANSLATE,
-            AnimationType = (Network.AnimationType)_info.Type,
-            Displacement = _info.Displacement,
-            Rotation = 0,
-            DurationS = _info.DurationS,
-            Expiration = _info.Expiration.ToString("o"),
+            id = id,
+            action_type = Network.ActionType.TRANSLATE,
+            animation_type = (Network.AnimationType)_info.Type,
+            displacement = _info.Displacement,
+            rotation = 0,
+            duration_s = _info.DurationS,
+            expiration = _info.Expiration.ToString("o"),
         };
     }
 }

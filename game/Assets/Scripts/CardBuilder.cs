@@ -44,18 +44,18 @@ public class CardBuilder
 
     public static CardBuilder FromNetwork(Network.Prop netProp)
     {
-        if (netProp.PropType != Network.PropType.CARD)
+        if (netProp.prop_type != Network.PropType.CARD)
         {
             Debug.Log("Warning, attempted to initialize card from non-card prop.");
             return null;
         }
         CardBuilder cardBuilder = new CardBuilder();
-        cardBuilder.SetPropId(netProp.Id)
-                   .SetRotationDegrees(netProp.PropInfo.RotationDegrees)
-                   .SetLocation(netProp.PropInfo.Location)
-                   .SetShape(netProp.CardInit.Shape)
-                   .SetColor(netProp.CardInit.Color)
-                   .SetCount(netProp.CardInit.Count);
+        cardBuilder.SetPropId(netProp.id)
+                   .SetRotationDegrees(netProp.prop_info.rotation_degrees)
+                   .SetLocation(netProp.prop_info.location)
+                   .SetShape(netProp.card_init.shape)
+                   .SetColor(netProp.card_init.color)
+                   .SetCount(netProp.card_init.count);
         return cardBuilder;
     }
 

@@ -566,7 +566,7 @@ class MapProvider(object):
         return not (len(shapes) == len(colors) == len(counts) == num_cards) or len(self.selected_cards()) > 3
 
     def selected_valid_set(self):
-        return not self.selected_cards_collide() and len(self.selected_cards()) == 3
+        return len(self.selected_cards()) == 3 and not self.selected_cards_collide()
 
     def card_by_location(self, location):
         return self._cards_by_location.get(location, None)
@@ -576,4 +576,4 @@ class MapProvider(object):
     
     def coord_in_map(self, coord):
         offset_coords = coord.to_offset_coordinates()
-        return (offset_coords[0] in range(0, self._rows) and offset_coords[1] in range(0, self._cols))
+        return (0 <= offset_coords[0] < self._rows) and (0 <= offset_coords[1] < self._cols)

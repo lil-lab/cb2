@@ -13,6 +13,7 @@ from tutorial_state import TutorialGameState
 
 import asyncio
 import logging
+import orjson
 import os
 import pathlib
 import peewee
@@ -124,7 +125,8 @@ class Room(object):
         return len(self._players)
 
     def handle_packet(self, id, message):
-        self._messages_to_server_log.write(LogEntryFromIncomingMessage(id, message).to_json() + "\n")
+        log_message = orjson.dumps(LogEntryFromIncomingMessage(id, message), option=orjson.OPT_NAIVE_UTC).decode('utf-8')
+        self._messages_to_server_log.write(log_message + "\n")
         self._game_state.handle_packet(id, message)
 
     def start(self):
@@ -191,7 +193,8 @@ class Room(object):
         if message is None:
             return
 
-        self._messages_from_server_log.write(LogEntryFromOutgoingMessage(player_id, message).to_json() + "\n")
+        log_bytes = orjson.dumps(LogEntryFromOutgoingMessage(player_id, message), option=orjson.OPT_NAIVE_UTC).decode('utf-8')
+        self._messages_from_server_log.write(log_bytes + "\n")
 
         # Render map updates to a PNG.
         if message.type == message_from_server.MessageType.MAP_UPDATE:

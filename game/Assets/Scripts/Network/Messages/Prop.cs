@@ -4,26 +4,26 @@ namespace Network
     [Serializable]
     public class GenericPropInfo
     {
-        public HecsCoord Location;
-        public int RotationDegrees;  // Even multiples of 60.
-        public bool Collide;  // Whether actors can collide with the prop.
-        public int BorderRadius;  // The radius of the prop's outline.
-        public Network.Color BorderColor;
+        public HecsCoord location;
+        public int rotation_degrees;  // Even multiples of 60.
+        public bool collide;  // Whether actors can collide with the prop.
+        public int border_radius;  // The radius of the prop's outline.
+        public Network.Color border_color;
     }
 
     [Serializable]
     public class CardConfig
     {
-        public CardBuilder.Shape Shape;
-        public CardBuilder.Color Color;
-        public int Count;
-        public bool Selected;
+        public CardBuilder.Shape shape;
+        public CardBuilder.Color color;
+        public int count;
+        public bool selected;
     }
 
     [Serializable]
     public class SimpleConfig
     {
-        public int AssetId;
+        public int asset_id;
     }
 
     public enum PropType
@@ -37,13 +37,13 @@ namespace Network
     public class Prop
     {
         // Always provided.
-        public int Id;
-        public PropType PropType;
-        public GenericPropInfo PropInfo;
+        public int id;
+        public PropType prop_type;
+        public GenericPropInfo prop_info;
 
         // At most one member below is initialized, based on parent's PropType
         // (see PropUpdate class).
-        public CardConfig CardInit;
-        public SimpleConfig SimpleInit;
+        public CardConfig card_init;
+        public SimpleConfig simple_init;
     }
 }

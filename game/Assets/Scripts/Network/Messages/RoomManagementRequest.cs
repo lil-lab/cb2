@@ -14,7 +14,7 @@ namespace Network
     [Serializable]
     public class RoomManagementRequest
     {
-        public RoomRequestType Type;
+        public RoomRequestType type;
     }
 
 }

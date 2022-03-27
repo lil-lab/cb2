@@ -9,7 +9,7 @@ public class HideIfInstructions : MonoBehaviour
         List<Network.ObjectiveMessage> messages = MenuTransitionHandler.TaggedInstance().ObjectiveList();
         foreach (Network.ObjectiveMessage message in messages)
         {
-            if (!message.Completed)
+            if (!message.completed)
             {
                 gameObject.transform.localScale = new Vector3(0, 0, 0);
                 return;

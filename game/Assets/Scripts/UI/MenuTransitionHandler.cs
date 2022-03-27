@@ -132,7 +132,7 @@ public class MenuTransitionHandler : MonoBehaviour
         {
             UnityAssetSource source = new UnityAssetSource();
             GameObject uiTemplate;
-            if (objectives[i].Completed)
+            if (objectives[i].completed)
             {
                 uiTemplate = source.LoadUi(IAssetSource.UiId.OBJECTIVE_COMPLETE);
             } else if (activeIndex == -1)
@@ -147,7 +147,7 @@ public class MenuTransitionHandler : MonoBehaviour
             objectiveUi.transform.localScale = Vector3.one;
             objectiveUi.transform.localPosition = Vector3.zero;
             objectiveUi.transform.localRotation = Quaternion.identity;
-            objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = objectives[i].Text;
+            objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = objectives[i].text;
             if (activeIndex == i)
             {
                 objectiveUi.GetComponent<UIObjectiveInfo>().Objective = objectives[i];
@@ -156,7 +156,7 @@ public class MenuTransitionHandler : MonoBehaviour
             {
                 if (networkManager.Role() == Network.Role.LEADER)
                 {
-                    objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = "(unseen) " + objectives[i].Text;
+                    objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = "(unseen) " + objectives[i].text;
                 } else {
                     objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = "(pending objective)";
                     // Only draw one "(pending objective)", even if multiple are available.
@@ -205,9 +205,9 @@ public class MenuTransitionHandler : MonoBehaviour
 
         Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
 
-        objective.Text = textMeshPro.text;
-        objective.Sender = networkManager.Role();
-        objective.Completed = false;
+        objective.text = textMeshPro.text;
+        objective.sender = networkManager.Role();
+        objective.completed = false;
 
         networkManager.TransmitObjective(objective);
 
@@ -219,25 +219,25 @@ public class MenuTransitionHandler : MonoBehaviour
     public void SendPositiveFeedback()
     {
         Network.LiveFeedback feedback = new Network.LiveFeedback();
-        feedback.Signal = Network.FeedbackType.POSITIVE;
+        feedback.signal = Network.FeedbackType.POSITIVE;
         Network.NetworkManager.TaggedInstance().TransmitLiveFeedback(feedback);
     }
 
     public void SendNegativeFeedback()
     {
         Network.LiveFeedback feedback = new Network.LiveFeedback();
-        feedback.Signal = Network.FeedbackType.NEGATIVE;
+        feedback.signal = Network.FeedbackType.NEGATIVE;
         Network.NetworkManager.TaggedInstance().TransmitLiveFeedback(feedback);
     }
 
     public void HandleLiveFeedback(LiveFeedback feedback)
     {
-        Debug.Log("Received feedback: " + feedback.Signal);
+        Debug.Log("Received feedback: " + feedback.signal);
         // Display the positive feedback signal for 2 seconds.
-        if (feedback.Signal == Network.FeedbackType.POSITIVE)
+        if (feedback.signal == Network.FeedbackType.POSITIVE)
         {
             _lastPositiveFeedback = DateTime.Now;
-        } else if (feedback.Signal == Network.FeedbackType.NEGATIVE)
+        } else if (feedback.signal == Network.FeedbackType.NEGATIVE)
         {
             _lastNegativeFeedback = DateTime.Now;
         }
@@ -245,7 +245,7 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public void HandleTurnState(DateTime transmitTime, Network.TurnState state)
     {
-        if (state.GameOver)
+        if (state.game_over)
         {
             EndGame(transmitTime, state);
         }
@@ -272,11 +272,11 @@ public class MenuTransitionHandler : MonoBehaviour
         TMPro.TMP_Text textMeshPro = scoreObj.GetComponent<TMPro.TMP_Text>();
         textMeshPro.text = twoLineSummary;
 
-        if (_lastTurn.Turn != state.Turn)
+        if (_lastTurn.turn != state.turn)
         {
-            Debug.Log("Changing turn animation. " + _lastTurn.Turn + " -> " + state.Turn);
+            Debug.Log("Changing turn animation. " + _lastTurn.turn + " -> " + state.turn);
             GameObject endTurnPanel = GameObject.FindGameObjectWithTag(END_TURN_PANEL);
-            if (state.Turn == networkManager.Role())
+            if (state.turn == networkManager.Role())
             {
                 notOurTurnIndicatorFade.AddAction(Fade.FadeOut(0.5f));
                 ourTurnIndicatorFade.AddAction(Instant.Pause(0.5f));

@@ -13,16 +13,16 @@ public class Prop
 
     public static Prop FromNetwork(Network.Prop netProp)
     {
-        if (netProp.PropType != Network.PropType.SIMPLE)
+        if (netProp.prop_type != Network.PropType.SIMPLE)
         {
             Debug.Log("Warning, attempted to initialize simple prop from non-simple network message.");
             return null;
         }
         UnityAssetSource assetSource = new UnityAssetSource();
-        GameObject obj = assetSource.Load((IAssetSource.AssetId)netProp.SimpleInit.AssetId);
-        IAssetSource.AssetId assetId = (IAssetSource.AssetId)netProp.SimpleInit.AssetId;
+        GameObject obj = assetSource.Load((IAssetSource.AssetId)netProp.simple_init.asset_id);
+        IAssetSource.AssetId assetId = (IAssetSource.AssetId)netProp.simple_init.asset_id;
         Prop prop = new Prop(obj, assetId);
-        prop.AddAction(Init.InitAt(netProp.PropInfo.Location, netProp.PropInfo.RotationDegrees));
+        prop.AddAction(Init.InitAt(netProp.prop_info.location, netProp.prop_info.rotation_degrees));
         return prop;
     }
 

@@ -11,14 +11,14 @@ public class KeyboardShortcutHandler : MonoBehaviour
     public void SendPositiveFeedback()
     {
         Network.LiveFeedback feedback = new Network.LiveFeedback();
-        feedback.Signal = Network.FeedbackType.POSITIVE;
+        feedback.signal = Network.FeedbackType.POSITIVE;
         Network.NetworkManager.TaggedInstance().TransmitLiveFeedback(feedback);
     }
 
     public void SendNegativeFeedback()
     {
         Network.LiveFeedback feedback = new Network.LiveFeedback();
-        feedback.Signal = Network.FeedbackType.NEGATIVE;
+        feedback.signal = Network.FeedbackType.NEGATIVE;
         Network.NetworkManager.TaggedInstance().TransmitLiveFeedback(feedback);
     }
 
@@ -37,9 +37,9 @@ public class KeyboardShortcutHandler : MonoBehaviour
 
         Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
 
-        objective.Text = textMeshPro.text;
-        objective.Sender = networkManager.Role();
-        objective.Completed = false;
+        objective.text = textMeshPro.text;
+        objective.sender = networkManager.Role();
+        objective.completed = false;
 
         networkManager.TransmitObjective(objective);
 

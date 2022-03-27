@@ -21,19 +21,19 @@ namespace Network
         }
 
         // These fields are always provided with any packet.
-        public string TransmitTime;  // When the server transmitted this message in ISO 8601 format.
+        public string transmit_time;  // When the server transmitted this message in ISO 8601 format.
 
         // Message Type.
-        public MessageType Type;
+        public MessageType type;
 
         // Only one of these is populated. Check the message type.
-        public List<Action> Actions;
-        public MapUpdate MapUpdate;
-        public StateSync State;
-        public RoomManagementResponse RoomManagementResponse;
-        public List<ObjectiveMessage> Objectives;
-        public TurnState TurnState;
-        public TutorialResponse TutorialResponse;
-        public LiveFeedback LiveFeedback;
+        public List<Action> actions;
+        public MapUpdate map_update;
+        public StateSync state;
+        public RoomManagementResponse room_management_response;
+        public List<ObjectiveMessage> objectives;
+        public TurnState turn_state;
+        public TutorialResponse tutorial_response;
+        public LiveFeedback live_feedback;
     }
 }  // namespace Network

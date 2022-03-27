@@ -87,16 +87,16 @@ public class Outline : ActionQueue.IAction
     {
         return new Network.Action()
         {
-            Id = id,
-            ActionType = Network.ActionType.OUTLINE,
-            AnimationType = (Network.AnimationType)_info.Type,
-            Displacement = HecsCoord.ORIGIN,
-            Rotation = _info.Rotation,
-            DurationS = _info.DurationS,
-            BorderRadius = _info.BorderRadius,
-            BorderColor = _info.BorderColor,
-            Opacity = _info.Opacity,
-            Expiration = _info.Expiration.ToString("o"),
+            id = id,
+            action_type = Network.ActionType.OUTLINE,
+            animation_type = (Network.AnimationType)_info.Type,
+            displacement = HecsCoord.ORIGIN,
+            rotation = _info.Rotation,
+            duration_s = _info.DurationS,
+            border_radius = _info.BorderRadius,
+            border_color = _info.BorderColor,
+            opacity = _info.Opacity,
+            expiration = _info.Expiration.ToString("o"),
         };
     }
 }

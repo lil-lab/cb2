@@ -69,6 +69,8 @@ class State(object):
         self._objectives_stale = {}  # Maps from player_id -> bool if their objective list is stale.
         self._active_objective = None
 
+        self._turn_complete_queue = []
+
         self._map_update = self._map_provider.map()
         self._map_stale = {} # Maps from player_id -> bool if their map is stale.
         self._map_update_count = 0
@@ -142,7 +144,7 @@ class State(object):
         last_loop = time.time()
         current_set_invalid = False
         while not self._done:
-            await asyncio.sleep(0.001)
+            await asyncio.sleep(0)
             poll_period = time.time() - last_loop
             if (poll_period) > 0.1:
                 logging.warn(
@@ -192,7 +194,7 @@ class State(object):
             # Handle actor actions.
             for actor_id in self._actors:
                 actor = self._actors[actor_id]
-                if actor.has_actions():
+                while actor.has_actions():
                     logger.info(f"Actor {actor_id} has pending actions.")
                     proposed_action = actor.peek()
                     if not self._turn_state.turn == actor.role():
@@ -219,6 +221,10 @@ class State(object):
                         self.desync(actor_id)
                         self._record_log.error(f"Resyncing {actor_id} after invalid action.")
                         continue
+            
+            if len(self._turn_complete_queue) > 0:
+                reason = self._turn_complete_queue.pop()
+                self.update_turn(force_role_switch=True, end_reason=reason)
 
             selected_cards = list(self._map_provider.selected_cards())
             cards_changed = False
@@ -570,7 +576,11 @@ class State(object):
                 logger.warn(f"Warning, turn complete received from ID: {str(id)} when it isn't their turn!")
                 return
         self._recvd_log.info(f"player_id: {id} turn_complete received.")
-        self.update_turn(force_role_switch=True, end_reason="UserPrompted")
+        if len(self._turn_complete_queue) >= 1:
+            logger.warn(
+                f"Warning, turn complete queued from ID: {str(id)}, but one was already received!")
+            return
+        self._turn_complete_queue.append("UserPrompted")
 
     def create_actor(self, role):
         spawn_point = self._spawn_points.pop() if self._spawn_points else HecsCoord(0, 0, 0)

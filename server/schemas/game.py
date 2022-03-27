@@ -5,6 +5,8 @@ from schemas.mturk import *
 from peewee import *
 from schemas.clients import *
 
+import orjson
+
 import datetime
 
 class Game(BaseModel):
@@ -30,14 +32,14 @@ class Game(BaseModel):
 
 class HecsCoordField(TextField):
     def db_value(self, value):
-        return value.to_json()
+        return orjson.dumps(value, option=orjson.OPT_NAIVE_UTC).decode('utf-8')
     
     def python_value(self, db_val):
         return HecsCoord.from_json(db_val)
 
 class ActionField(TextField):
     def db_value(self, value):
-        return value.to_json()
+        return orjson.dumps(value, option=orjson.OPT_NAIVE_UTC).decode('utf-8')
     
     def python_value(self, db_val):
         return Action.from_json(db_val)

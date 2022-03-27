@@ -61,14 +61,14 @@ namespace Network
         public bool ApplyStateSyncToPlayer(StateSync stateSync)
         {
             if (_player == null) return false;
-            _player.SetPlayerId(stateSync.PlayerId);
+            _player.SetPlayerId(stateSync.player_id);
             _player.FlushActionQueue();
-            foreach (Network.StateSync.Actor actor in stateSync.Actors)
+            foreach (Network.StateSync.Actor actor in stateSync.actors)
             {
-                if (actor.ActorId == _player.PlayerId())
+                if (actor.actor_id == _player.PlayerId())
                 {
-                    Debug.Log("SETTING player asset id to " + actor.AssetId);
-                    _player.SetAssetId(actor.AssetId);
+                    Debug.Log("SETTING player asset id to " + actor.asset_id);
+                    _player.SetAssetId(actor.asset_id);
                     ActionQueue.IAction action = TeleportToStartState(actor);
                     _player.AddAction(action);
                     continue;
@@ -80,10 +80,10 @@ namespace Network
         {
             if (_entityManager == null) return false;
             _entityManager.DestroyActors();
-            foreach (Network.StateSync.Actor actor in stateSync.Actors)
+            foreach (Network.StateSync.Actor actor in stateSync.actors)
             {
-                if (actor.ActorId == stateSync.PlayerId) continue;
-                _entityManager.RegisterActor(actor.ActorId, Actor.FromStateSync(actor));
+                if (actor.actor_id == stateSync.player_id) continue;
+                _entityManager.RegisterActor(actor.actor_id, Actor.FromStateSync(actor));
             }
             return true;
         }
@@ -92,26 +92,26 @@ namespace Network
         {
             if (_entityManager == null) return false;
             _entityManager.QueueDestroyProps();
-            foreach (Network.Prop netProp in mapUpdate.Props)
+            foreach (Network.Prop netProp in mapUpdate.props)
             {
-                if (netProp.PropType == PropType.CARD)
+                if (netProp.prop_type == PropType.CARD)
                 {
                     CardBuilder cardBuilder = CardBuilder.FromNetwork(netProp);
-                    _entityManager.RegisterProp(netProp.Id, cardBuilder.Build());
-                    if (netProp.CardInit.Selected)
+                    _entityManager.RegisterProp(netProp.id, cardBuilder.Build());
+                    if (netProp.card_init.selected)
                     {
                         _entityManager.AddAction(
-                            netProp.Id,
-                            Outline.Select(netProp.PropInfo.BorderRadius,
-                                           netProp.PropInfo.BorderColor,
+                            netProp.id,
+                            Outline.Select(netProp.prop_info.border_radius,
+                                           netProp.prop_info.border_color,
                                            0.1f));
                     }
                     continue;
                 }
-                if (netProp.PropType == PropType.SIMPLE)
+                if (netProp.prop_type == PropType.SIMPLE)
                 {
                     global::Prop prop = global::Prop.FromNetwork(netProp);
-                    _entityManager.RegisterProp(netProp.Id, prop);
+                    _entityManager.RegisterProp(netProp.id, prop);
                     continue;
                 }
                 Debug.LogWarning("Unknown proptype encountered.");
@@ -120,79 +120,63 @@ namespace Network
         }
         public void HandleMessage(MessageFromServer message)
         {
-            Debug.Log("Received message of type: " + message.Type);
-            if (message.Type == MessageFromServer.MessageType.PING)
+            Debug.Log("Received message of type: " + message.type);
+            if (message.type == MessageFromServer.MessageType.PING)
             {
                 Debug.Log("Received ping.");
                 _networkManager.RespondToPing();
                 return;
             }
-            if (message.Type == MessageFromServer.MessageType.ACTIONS)
+            if (message.type == MessageFromServer.MessageType.ACTIONS)
             {
                 if (_player == null || _entityManager == null)
                 {
                     Debug.LogError("Player or entity manager not set, yet received state sync.");
                     return;
                 }
-                foreach (Network.Action networkAction in message.Actions)
+                foreach (Network.Action networkAction in message.actions)
                 {
                     ActionQueue.IAction action = ActionFromNetwork(networkAction);
-                    if (networkAction.Id == _player.PlayerId())
+                    if (networkAction.id == _player.PlayerId())
                     {
                         _player.ValidateHistory(action);
                         continue;
                     }
-                    _entityManager.AddAction(networkAction.Id, action);
+                    _entityManager.AddAction(networkAction.id, action);
                 }
             }
-            if (message.Type == MessageFromServer.MessageType.STATE_SYNC)
+            if (message.type == MessageFromServer.MessageType.STATE_SYNC)
             {
-                if (!ApplyStateSyncToPlayer(message.State))
+                if (!ApplyStateSyncToPlayer(message.state))
                 {
                     Debug.Log("Player not set, yet received state sync.");
-                    _pendingStateSync = message.State;
+                    _pendingStateSync = message.state;
                 }
-                if (!ApplyStateSyncToEntityManager(message.State))
+                if (!ApplyStateSyncToEntityManager(message.state))
                 {
                     Debug.Log("Entity manager not set, yet received state sync.");
-                    _pendingStateSync = message.State;
+                    _pendingStateSync = message.state;
                 }
             }
-            if (message.Type == MessageFromServer.MessageType.MAP_UPDATE)
+            if (message.type == MessageFromServer.MessageType.MAP_UPDATE)
             {
                 if (_mapSource == null)
                 {
                     Debug.Log("Network Router received map update but no map source to forward it to.");
                     return;
                 }
-                _mapSource.ReceiveMapUpdate(message.MapUpdate);
-                if(!ApplyMapUpdateToEntityManager(message.MapUpdate))
+                _mapSource.ReceiveMapUpdate(message.map_update);
+                if(!ApplyMapUpdateToEntityManager(message.map_update))
                 {
                     Debug.Log("Unable to apply map update to entity manager... Saved for later.");
-                    _pendingMapUpdate = message.MapUpdate;
+                    _pendingMapUpdate = message.map_update;
                 }
             }
-            if (message.Type == MessageFromServer.MessageType.ROOM_MANAGEMENT)
+            if (message.type == MessageFromServer.MessageType.ROOM_MANAGEMENT)
             {
-                _networkManager.HandleRoomManagement(message.RoomManagementResponse);
+                _networkManager.HandleRoomManagement(message.room_management_response);
             }
-            if (message.Type == MessageFromServer.MessageType.OBJECTIVE)
-            {
-                GameObject obj = GameObject.FindGameObjectWithTag(MenuTransitionHandler.TAG);
-                if (obj == null)
-                {
-                    Debug.Log("Could not find menu transition handler object.");
-                    return;
-                }
-                MenuTransitionHandler menuTransitionHandler = obj.GetComponent<MenuTransitionHandler>();
-                if (menuTransitionHandler == null)
-                {
-                    Debug.Log("Could not find menu transition handler.");
-                    return;
-                }
-                menuTransitionHandler.RenderObjectiveList(message.Objectives);
-            }
-            if (message.Type == MessageFromServer.MessageType.TURN_STATE)
+            if (message.type == MessageFromServer.MessageType.OBJECTIVE)
             {
                 GameObject obj = GameObject.FindGameObjectWithTag(MenuTransitionHandler.TAG);
                 if (obj == null)
@@ -206,20 +190,35 @@ namespace Network
                     Debug.Log("Could not find menu transition handler.");
                     return;
                 }
-                TurnState state = message.TurnState;
-                DateTime transmitTime = DateTime.Parse(message.TransmitTime, null, System.Globalization.DateTimeStyles.RoundtripKind);
+                menuTransitionHandler.RenderObjectiveList(message.objectives);
+            }
+            if (message.type == MessageFromServer.MessageType.TURN_STATE)
+            {
+                GameObject obj = GameObject.FindGameObjectWithTag(MenuTransitionHandler.TAG);
+                if (obj == null)
+                {
+                    Debug.Log("Could not find menu transition handler object.");
+                    return;
+                }
+                MenuTransitionHandler menuTransitionHandler = obj.GetComponent<MenuTransitionHandler>();
+                if (menuTransitionHandler == null)
+                {
+                    Debug.Log("Could not find menu transition handler.");
+                    return;
+                }
+                TurnState state = message.turn_state;
+                DateTime transmitTime = DateTime.Parse(message.transmit_time, null, System.Globalization.DateTimeStyles.RoundtripKind);
                 menuTransitionHandler.HandleTurnState(transmitTime, state);
                 _networkManager.HandleTurnState(state);
                 _player.HandleTurnState(state);
             }
-            if (message.Type == MessageFromServer.MessageType.TUTORIAL_RESPONSE)
+            if (message.type == MessageFromServer.MessageType.TUTORIAL_RESPONSE)
             {
-                _networkManager.HandleTutorialResponse(message.TutorialResponse);
+                _networkManager.HandleTutorialResponse(message.tutorial_response);
             }
-            if (message.Type == MessageFromServer.MessageType.LIVE_FEEDBACK)
+            if (message.type == MessageFromServer.MessageType.LIVE_FEEDBACK)
             {
-                Debug.Log("Received Live Feedback: " + message.LiveFeedback);
-                MenuTransitionHandler.TaggedInstance().HandleLiveFeedback(message.LiveFeedback);
+                MenuTransitionHandler.TaggedInstance().HandleLiveFeedback(message.live_feedback);
             }
         }
 
@@ -236,10 +235,10 @@ namespace Network
                 return;
             }
             MessageToServer toServer = new MessageToServer();
-            toServer.TransmitTime = DateTime.Now.ToString("o");
-            toServer.Type = MessageToServer.MessageType.ACTIONS;
-            toServer.Actions = new List<Action>();
-            toServer.Actions.Add(action.Packet(_player.PlayerId()));
+            toServer.transmit_time = DateTime.Now.ToString("o");
+            toServer.type = MessageToServer.MessageType.ACTIONS;
+            toServer.actions = new List<Action>();
+            toServer.actions.Add(action.Packet(_player.PlayerId()));
             _client.TransmitMessage(toServer);
         }
 
@@ -248,8 +247,8 @@ namespace Network
             return new Init(new ActionQueue.ActionInfo()
             {
                 Type = ActionQueue.AnimationType.IDLE,
-                Displacement = actorState.Location,
-                Rotation = actorState.RotationDegrees,
+                Displacement = actorState.location,
+                Rotation = actorState.rotation_degrees,
                 DurationS = 0.001f,
                 Expiration = DateTime.MaxValue,
             });
@@ -257,20 +256,20 @@ namespace Network
 
         private ActionQueue.IAction ActionFromNetwork(Network.Action networkAction)
         {
-            DateTime expiration = DateTime.Parse(networkAction.Expiration, null,
+            DateTime expiration = DateTime.Parse(networkAction.expiration, null,
                 System.Globalization.DateTimeStyles.RoundtripKind);
             ActionQueue.ActionInfo info = new ActionQueue.ActionInfo()
             {
-                Type = (ActionQueue.AnimationType)networkAction.AnimationType,
-                Displacement = networkAction.Displacement,
-                Rotation = networkAction.Rotation,
-                DurationS = networkAction.DurationS,
-                BorderRadius = networkAction.BorderRadius,
-                BorderColor = networkAction.BorderColor,
+                Type = (ActionQueue.AnimationType)networkAction.animation_type,
+                Displacement = networkAction.displacement,
+                Rotation = networkAction.rotation,
+                DurationS = networkAction.duration_s,
+                BorderRadius = networkAction.border_radius,
+                BorderColor = networkAction.border_color,
                 Expiration = expiration,
             };
             ActionQueue.IAction action;
-            switch (networkAction.ActionType)
+            switch (networkAction.action_type)
             {
                 case ActionType.INIT:
                     action = new Init(info);

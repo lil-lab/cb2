@@ -22,35 +22,35 @@ namespace Network
     [Serializable]
     public class StatsResponse
     {
-        public int NumberOfGames;
-        public int PlayersInGame;
-        public int PlayersWaiting;
+        public int number_of_games;
+        public int players_in_game;
+        public int players_waiting;
     }
 
     public class JoinResponse
     {
-        public bool Joined;  // Did the player join the room?
+        public bool joined;  // Did the player join the room?
 
         // These are optionally populated depending on the value of Joined.
-        public int PlaceInQueue;  // If Joined == false.
-        public Role Role;  // If Joined == true.
+        public int place_in_queue;  // If Joined == false.
+        public Role role;  // If Joined == true.
     }
 
     [Serializable]
     public class LeaveRoomNotice
     {
-        public string Reason;
+        public string reason;
     }
 
     [Serializable]
     public class RoomManagementResponse
     {
-        public RoomResponseType Type;
+        public RoomResponseType type;
 
         // Depending on the type above, these are optionally populated.
-        public StatsResponse Stats;
-        public JoinResponse JoinResponse;
-        public LeaveRoomNotice LeaveNotice;
-        public string Error;
+        public StatsResponse stats;
+        public JoinResponse join_response;
+        public LeaveRoomNotice leave_notice;
+        public string error;
     }
 }

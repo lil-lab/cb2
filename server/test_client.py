@@ -10,6 +10,7 @@ from messages import message_from_server
 from messages import message_to_server
 from messages import action
 from messages import turn_state
+from messages.objective import ObjectiveMessage
 import messages.rooms
 
 from hex import HecsCoord
@@ -17,8 +18,11 @@ from hex import HecsCoord
 
 # Connect via websocket to the server's /player_endpoint endpoint.
 async def connect_to_server(server_url):
+    url = f"{server_url}/player_endpoint"
+    print(f"Connecting to {url}...")
     session = aiohttp.ClientSession()
-    ws = await session.ws_connect(f"{server_url}/player_endpoint")
+    ws = await session.ws_connect(url)
+    print(f"Connected!")
     return session, ws
 
 async def join_room(ws):
@@ -79,7 +83,10 @@ async def wait_for_turn(ws, player_id, role, receive_times):
     while True:
         if ws.closed:
             return
-        message = await ws.receive()
+        try:
+            message = await ws.receive()
+        except:
+            return
         if message is None:
             continue
         if message.type == aiohttp.WSMsgType.ERROR:
@@ -104,7 +111,8 @@ async def wait_for_turn(ws, player_id, role, receive_times):
         if response.type == message_from_server.MessageType.ACTIONS:
             for action in response.actions:
                 message_id = action.rotation
-                receive_times[message_id].append(datetime.now())
+                if message_id in receive_times:
+                    receive_times[message_id].append(datetime.now())
         if response.type == message_from_server.MessageType.GAME_STATE:
             game_state = response.turn_state
             if game_state.turn == role:
@@ -117,10 +125,10 @@ class State(Enum):
     NONE = 0
     START = 1
     JOIN_SENT = 2
-    JOINED = 4
-    WAITING_FOR_TURN = 5
-    TURN = 6
-    DONE = 7
+    JOINED = 3
+    WAITING_FOR_TURN = 4
+    TURN = 5
+    DONE = 6
 
 
 ws_state = {}
@@ -130,19 +138,26 @@ transmit_times = {}
 receive_times = {}
 message_no = 0
 last_monitor_update = datetime.now()
+all_joined = False
 
 async def monitor_task():
     global last_monitor_update
+    global all_joined
+    global ws_state
     while True:
         await asyncio.sleep(0.1)
         if datetime.now() - last_monitor_update > timedelta(seconds=3):
             print(f"Monitoring task: {ws_state}")
             last_monitor_update = datetime.now()
-        if all([x == State.DONE for x in ws_state.values()]):
+        if (len(ws_state.values()) > 0) and all([x == State.JOINED for x in ws_state.values()]) and (not all_joined):
+            print(f"All joined")
+            all_joined = True
+        if len(ws_state.values()) > 0 and all([x == State.DONE for x in ws_state.values()]):
             print("All done")
             break
 
 async def handle_receive(ws):
+    global all_joined
     global receive_times
     while ws_state[ws] != State.JOIN_SENT:
         await asyncio.sleep(0.1)
@@ -151,6 +166,8 @@ async def handle_receive(ws):
     print(f"Player role: {player_role[ws]}")
     print(f"Player id: {player_id[ws]}")
     ws_state[ws] = State.JOINED
+    while not all_joined:
+        await asyncio.sleep(0.1)
     while True:
         await asyncio.sleep(0.1)
         if ws.closed:
@@ -164,11 +181,25 @@ async def handle_receive(ws):
             ws.close()
             return
 
+async def send_instruction(ws, message_string):
+    if ws.closed:
+        return
+    try:
+        message = message_to_server.MessageToServer(transmit_time=datetime.now(), type=message_to_server.MessageType.OBJECTIVE, objective=ObjectiveMessage(messages.rooms.Role.LEADER, message_string))
+        print(f"Sending message: {message}")
+        await ws.send_str(message.to_json())
+    except:
+        return
+
+
 async def handle_send(ws, messages_per_socket):
     global message_no
+    global all_joined
     await join_room(ws)
     ws_state[ws] = State.JOIN_SENT
     while ws_state[ws] != State.JOINED:
+        await asyncio.sleep(0.1)
+    while not all_joined:
         await asyncio.sleep(0.1)
     messages_sent = 0
     while True:
@@ -177,17 +208,19 @@ async def handle_send(ws, messages_per_socket):
             ws_state[ws] = State.DONE
             return
         if messages_sent >= messages_per_socket:
+            print(f"=========== Sent {messages_sent} messages!")
             ws_state[ws] = State.DONE
             await ws.close()
             return
         if (ws_state[ws] == State.TURN) or (ws_state[ws] == State.JOINED):
-            print(f"Making moves.")
             messages_to_send = 5 if player_role[ws] == messages.rooms.Role.LEADER else 15
             messages_to_send = min(messages_to_send, messages_per_socket - messages_sent)
             for i in range(messages_to_send):
                 await send_turn_action(ws, player_id[ws], message_no)
                 messages_sent += 1
                 message_no += 0.01
+            if player_role[ws] == messages.rooms.Role.LEADER:
+                await send_instruction(ws, "Automated test player, please leave game.")
             await end_turn(ws)
             ws_state[ws] = State.WAITING_FOR_TURN
 
@@ -228,8 +261,6 @@ async def main(server_url="ws://localhost:8080", num_sockets=20, messages_per_so
 
     global receive_times
     global transmit_times
-
-    print(receive_times)
 
     total_rtts = []
     for message_no in transmit_times:

@@ -109,45 +109,45 @@ namespace Network
         public void RespondToPing()
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.TransmitTime = DateTime.Now.ToString("o");
-            toServer.Type = MessageToServer.MessageType.PONG;
-            toServer.Pong = new Pong{PingReceiveTime = DateTime.Now.ToString("o")};
+            toServer.transmit_time = DateTime.Now.ToString("o");
+            toServer.type = MessageToServer.MessageType.PONG;
+            toServer.pong = new Pong{ping_receive_time = DateTime.Now.ToString("o")};
             _client.TransmitMessage(toServer);
         }
 
         public void TransmitObjective(ObjectiveMessage objective)
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.TransmitTime = DateTime.Now.ToString("o");
-            toServer.Type = MessageToServer.MessageType.OBJECTIVE;
-            toServer.Objective = objective;
-            toServer.Objective.Sender = _role;
+            toServer.transmit_time = DateTime.Now.ToString("o");
+            toServer.type = MessageToServer.MessageType.OBJECTIVE;
+            toServer.objective = objective;
+            toServer.objective.sender = _role;
             _client.TransmitMessage(toServer);
         }
 
         public void TransmitLiveFeedback(LiveFeedback feedback)
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.TransmitTime = DateTime.Now.ToString("o");
-            toServer.Type = MessageToServer.MessageType.LIVE_FEEDBACK;
-            toServer.LiveFeedback = feedback;
+            toServer.transmit_time = DateTime.Now.ToString("o");
+            toServer.type = MessageToServer.MessageType.LIVE_FEEDBACK;
+            toServer.live_feedback = feedback;
             _client.TransmitMessage(toServer);
         }
 
         public void TransmitObjectiveComplete(ObjectiveCompleteMessage objectiveComplete)
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.TransmitTime = DateTime.Now.ToString("o");
-            toServer.Type = MessageToServer.MessageType.OBJECTIVE_COMPLETE;
-            toServer.ObjectiveComplete = objectiveComplete;
+            toServer.transmit_time = DateTime.Now.ToString("o");
+            toServer.type = MessageToServer.MessageType.OBJECTIVE_COMPLETE;
+            toServer.objective_complete = objectiveComplete;
             _client.TransmitMessage(toServer);
         }
 
         public void TransmitTurnComplete()
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.TransmitTime = DateTime.Now.ToString("o");
-            toServer.Type = MessageToServer.MessageType.TURN_COMPLETE;
+            toServer.transmit_time = DateTime.Now.ToString("o");
+            toServer.type = MessageToServer.MessageType.TURN_COMPLETE;
             _client.TransmitMessage(toServer);
         }
 
@@ -160,10 +160,10 @@ namespace Network
         public void JoinGame()
         {
             MessageToServer msg = new MessageToServer();
-            msg.TransmitTime = DateTime.Now.ToString("o");
-            msg.Type = MessageToServer.MessageType.ROOM_MANAGEMENT;
-            msg.RoomRequest = new RoomManagementRequest();
-            msg.RoomRequest.Type = RoomRequestType.JOIN;
+            msg.transmit_time = DateTime.Now.ToString("o");
+            msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
+            msg.room_request = new RoomManagementRequest();
+            msg.room_request.type = RoomRequestType.JOIN;
             Debug.Log("[DEBUG]Joining game...");
             _client.TransmitMessage(msg);
         }
@@ -181,11 +181,11 @@ namespace Network
         public void StartTutorial(string tutorialName)
         {
             MessageToServer msg = new MessageToServer();
-            msg.TransmitTime = DateTime.Now.ToString("o");
-            msg.Type = MessageToServer.MessageType.TUTORIAL_REQUEST;
-            msg.TutorialRequest = new TutorialRequest();
-            msg.TutorialRequest.Type = TutorialRequestType.START_TUTORIAL;
-            msg.TutorialRequest.TutorialName = tutorialName;
+            msg.transmit_time = DateTime.Now.ToString("o");
+            msg.type = MessageToServer.MessageType.TUTORIAL_REQUEST;
+            msg.tutorial_request = new TutorialRequest();
+            msg.tutorial_request.type = TutorialRequestType.START_TUTORIAL;
+            msg.tutorial_request.tutorial_name = tutorialName;
             Debug.Log("[DEBUG]Joining tutorial...");
             _client.TransmitMessage(msg);
         }
@@ -193,10 +193,10 @@ namespace Network
         public void NextTutorialStep()
         {
             MessageToServer msg = new MessageToServer();
-            msg.TransmitTime = DateTime.Now.ToString("o");
-            msg.Type = MessageToServer.MessageType.TUTORIAL_REQUEST;
-            msg.TutorialRequest = new TutorialRequest();
-            msg.TutorialRequest.Type = Network.TutorialRequestType.REQUEST_NEXT_STEP;
+            msg.transmit_time = DateTime.Now.ToString("o");
+            msg.type = MessageToServer.MessageType.TUTORIAL_REQUEST;
+            msg.tutorial_request = new TutorialRequest();
+            msg.tutorial_request.type = Network.TutorialRequestType.REQUEST_NEXT_STEP;
             Debug.Log("[DEBUG]Requesting next tutorial step...");
             _client.TransmitMessage(msg);            
         }
@@ -205,10 +205,10 @@ namespace Network
         public void CancelGameQueue()
         {
             MessageToServer msg = new MessageToServer();
-            msg.TransmitTime = DateTime.Now.ToString("o");
-            msg.Type = MessageToServer.MessageType.ROOM_MANAGEMENT;
-            msg.RoomRequest = new RoomManagementRequest();
-            msg.RoomRequest.Type = RoomRequestType.CANCEL;
+            msg.transmit_time = DateTime.Now.ToString("o");
+            msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
+            msg.room_request = new RoomManagementRequest();
+            msg.room_request.type = RoomRequestType.CANCEL;
             _client.TransmitMessage(msg);
         }
 
@@ -216,10 +216,10 @@ namespace Network
         public void QuitGame()
         {
             MessageToServer msg = new MessageToServer();
-            msg.TransmitTime = DateTime.Now.ToString("o");
-            msg.Type = MessageToServer.MessageType.ROOM_MANAGEMENT;
-            msg.RoomRequest = new RoomManagementRequest();
-            msg.RoomRequest.Type = RoomRequestType.LEAVE;
+            msg.transmit_time = DateTime.Now.ToString("o");
+            msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
+            msg.room_request = new RoomManagementRequest();
+            msg.room_request.type = RoomRequestType.LEAVE;
             _client.TransmitMessage(msg);
             ReturnToMenu();
         }
@@ -338,72 +338,72 @@ namespace Network
 
         public void HandleTutorialResponse(TutorialResponse tutorialResponse)
         {
-            if (tutorialResponse.Type == TutorialResponseType.STARTED)
+            if (tutorialResponse.type == TutorialResponseType.STARTED)
             {
                 Debug.Log("[DEBUG]Tutorial started.");
                 SceneManager.LoadScene("tutorial_scene");
                 _role = tutorialResponse.Role();
             }
-            else if (tutorialResponse.Type == TutorialResponseType.COMPLETED)
+            else if (tutorialResponse.type == TutorialResponseType.COMPLETED)
             {
                 Debug.Log("[DEBUG]Tutorial completed.");
                 DisplayGameOverMenu("Tutorial completed. Your participation has been recorded.");
             }
-            else if (tutorialResponse.Type == TutorialResponseType.STEP)
+            else if (tutorialResponse.type == TutorialResponseType.STEP)
             {
                 Debug.Log("[DEBUG]Tutorial next step received.");
-                TutorialManager.TaggedInstance().HandleTutorialStep(tutorialResponse.Step);
+                TutorialManager.TaggedInstance().HandleTutorialStep(tutorialResponse.step);
             }
         }
 
         public void HandleRoomManagement(RoomManagementResponse response)
         {
-            if (response.Type == RoomResponseType.JOIN_RESPONSE)
+            if (response.type == RoomResponseType.JOIN_RESPONSE)
             {
-                if (response.JoinResponse.Joined)
+                if (response.join_response.joined)
                 {
-                    Debug.Log("Joined room as " + response.JoinResponse.Role + "!");
+                    Debug.Log("Joined room as " + response.join_response.role + "!");
                     SceneManager.LoadScene("game_scene");
-                    _role = response.JoinResponse.Role;
+                    _role = response.join_response.role;
                 }
                 else
                 {
-                    Debug.Log("Waiting for room. Position in queue: " + response.JoinResponse.PlaceInQueue);
+                    Debug.Log("Waiting for room. Position in queue: " + response.join_response.place_in_queue);
                 }
             }
-            else if (response.Type == RoomResponseType.LEAVE_NOTICE)
+            else if (response.type == RoomResponseType.LEAVE_NOTICE)
             {
-                Debug.Log("Game ended. Reason: " + response.LeaveNotice.Reason);
+                Debug.Log("Game ended. Reason: " + response.leave_notice.reason);
                 Scene scene = SceneManager.GetActiveScene();
                 Debug.Log("[DEBUG] scene: " + scene.name);
                 if (scene.name != "menu_scene")
                 {
-                    DisplayGameOverMenu("Game ended. Reason: " + response.LeaveNotice.Reason);
+                    DisplayGameOverMenu("Game ended. Reason: " + response.leave_notice.reason);
                 }
             }
-            else if (response.Type == RoomResponseType.STATS)
+            else if (response.type == RoomResponseType.STATS)
             {
-                Debug.Log("Stats: " + response.Stats.ToString());
+                Debug.Log("Stats: " + response.stats.ToString());
                 GameObject obj = GameObject.FindGameObjectWithTag("Stats");
                 if (obj == null) return;
                 Text stats = obj.GetComponent<Text>();
-                stats.text = "Players in game: " + response.Stats.PlayersInGame + "\n" +
-                             "Games: " + response.Stats.NumberOfGames + "\n" +
-                             "Players Waiting: " + response.Stats.PlayersWaiting + "\n";
+                stats.text = "Players in game: " + response.stats.players_in_game + "\n" +
+                             "Games: " + response.stats.number_of_games + "\n" +
+                             "Players Waiting: " + response.stats.players_waiting + "\n";
             }
-            else if (response.Type == RoomResponseType.ERROR)
+            else if (response.type == RoomResponseType.ERROR)
             {
-                Debug.Log("Received room management error: " + response.Error);
+                Debug.Log("Received room management error: " + response.error);
             }
             else
             {
-                Debug.Log("Received unknown room management response type: " + response.Type);
+                Debug.Log("Received unknown room management response type: " + response.type);
             }
         }
 
         public void HandleTurnState(TurnState state)
         {
-            _currentTurn = state.Turn;
+            _currentTurn = state.turn;
         }
 
         // Update is called once per frame
@@ -415,10 +415,10 @@ namespace Network
                 Debug.Log("Requesting stats..");
                 _lastStatsPoll = DateTime.Now;
                 MessageToServer msg = new MessageToServer();
-                msg.TransmitTime = DateTime.Now.ToString("o");
-                msg.Type = MessageToServer.MessageType.ROOM_MANAGEMENT;
-                msg.RoomRequest = new RoomManagementRequest();
-                msg.RoomRequest.Type = RoomRequestType.STATS;
+                msg.transmit_time = DateTime.Now.ToString("o");
+                msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
+                msg.room_request = new RoomManagementRequest();
+                msg.room_request.type = RoomRequestType.STATS;
                 _client.TransmitMessage(msg);
             }
 

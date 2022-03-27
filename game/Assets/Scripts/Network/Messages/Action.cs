@@ -43,39 +43,39 @@ namespace Network
         public static readonly Color Grey = new Color(0.5f, 0.5f, 0.5f, 1);
         public static readonly Color Transparent = new Color(0, 0, 0, 0);
 
-        public Color(float r, float g, float b, float a)
+        public Color(float r_init, float g_init, float b_init, float a_init)
         {
-            R = r;
-            G = g;
-            B = b;
-            A = a;
+            r = r_init;
+            g = g_init;
+            b = b_init;
+            a = a_init;
         }
 
         // Of course, a Unity Color conversion function.
         public UnityEngine.Color ToUnity()
         {
-            return new UnityEngine.Color(R, G, B, A);
+            return new UnityEngine.Color(r, g, b, a);
         }
 
         // RGBA. Floating point. 0 to 1.
-        public float R;
-        public float G;
-        public float B;
-        public float A;
+        public float r;
+        public float g;
+        public float b;
+        public float a;
     }
 
     [Serializable]
     public class Action
     {
-        public int Id;
-        public ActionType ActionType;
-        public AnimationType AnimationType;
-        public HecsCoord Displacement;
-        public float Rotation;  // Degrees.
-        public float BorderRadius;  // Outline radius.
-        public Color BorderColor;  // Outline color.
-        public float Opacity;  // Used to animate some UI elements.
-        public float DurationS;
-        public string Expiration;  // DateTime in ISO 8601.
+        public int id;
+        public ActionType action_type;
+        public AnimationType animation_type;
+        public HecsCoord displacement;
+        public float rotation;  // Degrees.
+        public float border_radius;  // Outline radius.
+        public Color border_color;  // Outline color.
+        public float opacity;  // Used to animate some UI elements.
+        public float duration_s;
+        public string expiration;  // DateTime in ISO 8601.
     }
 }  // namespace Network

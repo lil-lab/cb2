@@ -4,6 +4,7 @@ import fire
 import hashlib
 import io
 import json
+import orjson
 import logging
 import os
 import pathlib
@@ -15,6 +16,7 @@ import statistics
 import tempfile
 import time
 import zipfile
+import yappi
 
 import schemas.defaults
 import schemas.clients
@@ -66,7 +68,23 @@ async def transmit(ws, message):
     remote.bytes_down += len(message)
     remote.last_message_down = time.time()
 
-    await ws.send_str(message)
+    try:
+        await ws.send_str(message)
+    except ConnectionResetError:
+        pass
+
+async def transmit_bytes(ws, message):
+    remote = GetRemote(ws)
+    if remote is None:
+        return ValueError("Agent ID not found in remote table")
+
+    remote.bytes_down += len(message)
+    remote.last_message_down = time.time()
+
+    try:
+        await ws.send_str(message.decode('utf-8'))
+    except ConnectionResetError:
+        pass
 
 @routes.get('/')
 async def Index(request):
@@ -110,12 +128,12 @@ async def Status(request):
         "number_rooms": len(room_manager.room_ids()),
         "remotes": [str(remote_table[ws]) for ws in remote_table],
         "room_manager_remotes":[str(room_manager.socket_info(ws)) for ws in remote_table],
-        "rooms": [room_manager.get_room(room_id).state().to_json() for room_id in room_manager.room_ids()],
+        "rooms": [room_manager.get_room(room_id).state() for room_id in room_manager.room_ids()],
         "room_selected_cards": [str(room_manager.get_room(room_id).selected_cards()) for room_id in room_manager.room_ids()],
         "player_queue": player_queue,
         "room_debug_info": [room_manager.get_room(room_id).debug_status() for room_id in room_manager.room_ids()],
     }
-    pretty_dumper = lambda x: json.dumps(x, indent=4, sort_keys=True)
+    pretty_dumper = lambda x: orjson.dumps(x, option=orjson.OPT_NAIVE_UTC | orjson.OPT_INDENT_2).decode('utf-8')
     return web.json_response(server_state, dumps=pretty_dumper)
 
 def FindGameDirectory(game_id):
@@ -380,7 +398,7 @@ async def stream_game_state(request, ws):
     remote.last_ping = datetime.now(timezone.utc)
     last_loop = time.time()
     while not ws.closed:
-        await asyncio.sleep(0.001)
+        await asyncio.sleep(0)
         poll_period = time.time() - last_loop
         if (poll_period) > 0.1:
             logging.warn(
@@ -389,7 +407,7 @@ async def stream_game_state(request, ws):
         # If not in a room, drain messages from the room manager.
         message = room_manager.drain_message(ws)
         if message is not None:
-            await transmit(ws, message.to_json())
+            await transmit_bytes(ws, orjson.dumps(message, option=orjson.OPT_NAIVE_UTC))
 
         if not room_manager.socket_in_room(ws):
             if was_in_room:
@@ -408,21 +426,21 @@ async def stream_game_state(request, ws):
         if not was_in_room:
             was_in_room = True
             # Make sure we drain pending room manager commands here with sleeps to ensure the client has time to switch scenes.
-            # await asyncio.sleep(0.5)
+            # await asyncio.sleep(1.0)
             message = room_manager.drain_message(ws)
             if message is not None:
-                await transmit(ws, message.to_json())
+                await transmit_bytes(ws, orjson.dumps(message, option=orjson.OPT_NAIVE_UTC))
             # await asyncio.sleep(1.0)
             continue
         
         # If it's been a second, send a ping.
         if (datetime.now(timezone.utc) - remote.last_ping).total_seconds() > 5.0:
             remote.last_ping = datetime.now(timezone.utc)
-            await transmit(ws, message_from_server.PingMessageFromServer().to_json())
+            await transmit_bytes(ws, orjson.dumps(message_from_server.PingMessageFromServer(), option=orjson.OPT_NAIVE_UTC))
 
         msg_from_server = room.drain_message(player_id)
         while msg_from_server is not None:
-            await transmit(ws, msg_from_server.to_json())
+            await transmit_bytes(ws, orjson.dumps(msg_from_server, option=orjson.OPT_NAIVE_UTC))
             msg_from_server = room.drain_message(player_id)
 
 
@@ -569,37 +587,12 @@ async def serve(config):
         await asyncio.sleep(1)
 
 
-async def debug_print():
-    global room_manager
-    room = room_manager.get_room_by_name("debug")
-    loop = asyncio.get_event_loop()
-    prev_tasks = set(asyncio.all_tasks())
-    while True:
-        await asyncio.sleep(0.001)
-        tasks = set(asyncio.all_tasks())
-        if len(prev_tasks) != len(tasks):
-            logger.debug(
-                f"New task added. size: {len(tasks)}. prev size: {len(prev_tasks)}.")
-            logger.debug(
-                "========================= New Tasks added =========================")
-            logger.debug(f"{str(tasks - prev_tasks)}")
-            logger.debug(
-                "========================= New Tasks removed =========================")
-            logger.debug(f"{str(prev_tasks - tasks)}")
-        prev_tasks = tasks
-        if room is None:
-            room = room_manager.get_room_by_name("Room 0")
-            continue
-        state = room.state()
-        print(state)
-
-
 async def draw_gui():
     global room_manager
     room = room_manager.get_room_by_name("Room #0")
     display = visualize.GameDisplay(SCREEN_SIZE)
     while True:
-        await asyncio.sleep(0.001)
+        await asyncio.sleep(0)
         if room is None:
             room = room_manager.get_room_by_name("Room #0")
             continue
@@ -673,6 +666,16 @@ def CreateDataDirectory(config):
     # Create the directory if it doesn't exist.
     data_prefix.mkdir(parents=False, exist_ok=True)
 
+async def profiler():
+    last_print = datetime.now()
+    while True:
+        await asyncio.sleep(0)
+        if datetime.now() - last_print > timedelta(seconds=10):
+            print(f"====== Profiler ======")
+            # yappi.get_func_stats().print_all()
+            # yappi.get_thread_stats().print_all()
+            last_print = datetime.now()
+
 def main(config_filepath="config/server-config.json"):
     global assets_map
     global room_manager
@@ -691,8 +694,11 @@ def main(config_filepath="config/server-config.json"):
     CreateDataDirectory(g_config)
     InitGameRecording(g_config)
 
+    # yappi.set_clock_type("cpu") # Use set_clock_type("wall") for wall time
+    # yappi.start()
+
     assets_map = HashCollectAssets(g_config.assets_directory())
-    tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), debug_print(), serve(g_config))
+    tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), serve(g_config))
     # If map visualization command line flag is enabled, run with the visualize task.
     # if gui:
     #   tasks = asyncio.gather(tasks, draw_gui())
@@ -704,6 +710,8 @@ def main(config_filepath="config/server-config.json"):
     finally:
         room_manager.end_server()
         loop.close()
+        yappi.get_func_stats().print_all()
+        yappi.get_thread_stats().print_all()
 
 
 if __name__ == "__main__":

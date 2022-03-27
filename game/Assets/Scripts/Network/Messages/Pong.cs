@@ -6,7 +6,7 @@ namespace Network
     [Serializable]
     public class Pong
     {
-        public string PingReceiveTime;  // ISO 8601 format.
+        public string ping_receive_time;  // ISO 8601 format.
     }
 
 }

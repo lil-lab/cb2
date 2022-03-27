@@ -178,13 +178,13 @@ public class Player : MonoBehaviour
 
 
         // Ignore keypresses when it's not our turn.
-        if (_currentTurn.Turn != _network.Role())
+        if (_currentTurn.turn != _network.Role())
         {
             return;
         }
 
         // Don't try to move if we're out of moves.
-        if (_currentTurn.MovesRemaining <= 0)
+        if (_currentTurn.moves_remaining <= 0)
         {
             return;
         }

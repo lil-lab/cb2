@@ -12,6 +12,6 @@ namespace Network
     [Serializable]
     public class LiveFeedback
     {
-        public FeedbackType Signal;
+        public FeedbackType signal;
     }
 }

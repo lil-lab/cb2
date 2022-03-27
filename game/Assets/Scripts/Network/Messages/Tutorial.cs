@@ -19,40 +19,40 @@ namespace Network
     [Serializable]
     public class Tooltip
     {
-        public string HighlightedComponentTag;
-        public string Text;
+        public string highlighted_component_tag;
+        public string text;
 
         // How to satisfy the tooltip.
-        public TooltipType Type;
-        public int KeyCode;
-        public HecsCoord Location;
+        public TooltipType type;
+        public int key_code;
+        public HecsCoord location;
     }
 
     [Serializable]
     public class Indicator
     {
-        public HecsCoord Location;
+        public HecsCoord location;
     }
 
     [Serializable]
     public class Instruction
     {
-        public string Text;
+        public string text;
     }
 
     [Serializable]
     public class TutorialStep
     {
-        public Tooltip Tooltip;
-        public Indicator Indicator;
-        public Instruction Instruction;
+        public Tooltip tooltip;
+        public Indicator indicator;
+        public Instruction instruction;
     }
 
     [Serializable]
     public class TutorialComplete
     {
-        public string TutorialName;
-        public string CompletionDate;
+        public string tutorial_name;
+        public string completion_date;
     }
 
     public enum TutorialRequestType
@@ -75,25 +75,25 @@ namespace Network
     {
         public static readonly string LEADER_TUTORIAL = "leader_tutorial";
         public static readonly string FOLLOWER_TUTORIAL = "follower_tutorial";
-        public TutorialRequestType Type;
-        public string TutorialName;
+        public TutorialRequestType type;
+        public string tutorial_name;
     }
 
     [Serializable]
     public class TutorialResponse
     {
-        public TutorialResponseType Type;
-        public string TutorialName;
-        public TutorialStep Step;
-        public TutorialComplete Complete;
+        public TutorialResponseType type;
+        public string tutorial_name;
+        public TutorialStep step;
+        public TutorialComplete complete;
 
         public Role Role()
         {
-            if (TutorialName == "leader_tutorial")
+            if (tutorial_name == "leader_tutorial")
             {
                 return Network.Role.LEADER;
             }
-            else if (TutorialName == "follower_tutorial")
+            else if (tutorial_name == "follower_tutorial")
             {
                 return Network.Role.FOLLOWER;
             }

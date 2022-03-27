@@ -71,14 +71,14 @@ public class Fade : ActionQueue.IAction
     {
         return new Network.Action()
         {
-            Id = id,
-            ActionType = Network.ActionType.ROTATE,
-            AnimationType = (Network.AnimationType)_info.Type,
-            Displacement = HecsCoord.ORIGIN,
-            Rotation = _info.Rotation,
-            DurationS = _info.DurationS,
-            Opacity = _info.Opacity,
-            Expiration = _info.Expiration.ToString("o"),
+            id = id,
+            action_type = Network.ActionType.ROTATE,
+            animation_type = (Network.AnimationType)_info.Type,
+            displacement = HecsCoord.ORIGIN,
+            rotation = _info.Rotation,
+            duration_s = _info.DurationS,
+            opacity = _info.Opacity,
+            expiration = _info.Expiration.ToString("o"),
         };
     }
 }

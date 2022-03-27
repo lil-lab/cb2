@@ -9,7 +9,7 @@ public class UIObjectiveInfo : MonoBehaviour
     public void OnCompleteObjective()
     {
         Network.ObjectiveCompleteMessage complete = new Network.ObjectiveCompleteMessage();
-        complete.Uuid = Objective.Uuid;
+        complete.uuid = Objective.uuid;
         MenuTransitionHandler.TaggedInstance().OnCompleteObjective(complete);
     }
 

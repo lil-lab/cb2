@@ -5,15 +5,15 @@ namespace Network
     [Serializable]
     public class ObjectiveMessage
     {
-        public Role Sender;
-        public string Text;
-        public string Uuid = "";
-        public bool Completed = false;
+        public Role sender;
+        public string text;
+        public string uuid = "";
+        public bool completed = false;
     }
 
     [Serializable]
     public class ObjectiveCompleteMessage
     {
-        public string Uuid = "";
+        public string uuid = "";
     }
 }

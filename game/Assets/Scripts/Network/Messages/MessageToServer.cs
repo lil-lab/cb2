@@ -27,19 +27,19 @@ namespace Network
         }
 
         // These fields are populated for every packet.
-        public string TransmitTime;  // Transmission time of this message in ISO 8601 format.
+        public string transmit_time;  // Transmission time of this message in ISO 8601 format.
 
         // Depending on the type, One of the following may be populated.
-        public MessageType Type;
+        public MessageType type;
 
-        public List<Action> Actions;
-        public RoomManagementRequest RoomRequest;
-        public ObjectiveMessage Objective;
-        public ObjectiveCompleteMessage ObjectiveComplete;
-        public TurnComplete TurnComplete;
-        public TutorialRequest TutorialRequest;
-        public Pong Pong;
-        public LiveFeedback LiveFeedback;
+        public List<Action> actions;
+        public RoomManagementRequest room_request;
+        public ObjectiveMessage objective;
+        public ObjectiveCompleteMessage objective_complete;
+        public TurnComplete turn_complete;
+        public TutorialRequest tutorial_request;
+        public Pong pong;
+        public LiveFeedback live_feedback;
     }
 
 }  // namespace Network

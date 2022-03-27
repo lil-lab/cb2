@@ -14,19 +14,19 @@ namespace Network
         public class Tile
         {
             // The ID of the asset for this ground tile. See IAssetSource.
-            public int AssetId;
-            public HexCell Cell;
-            public int RotationDegrees;  // Multiple of 60 for grid alignment.
-            public float Height;
+            public int asset_id;
+            public HexCell cell;
+            public int rotation_degrees;  // Multiple of 60 for grid alignment.
+            public float height;
         }
 
-        public int Rows;
-        public int Cols;
+        public int rows;
+        public int cols;
 
         // Tiles.
-        public Tile[] Tiles;
+        public Tile[] tiles;
 
         // Prop initial states.
-        public List<Network.Prop> Props;
+        public List<Network.Prop> props;
     }
 }  // namespace Network
