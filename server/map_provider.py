@@ -8,6 +8,7 @@ from map_utils import *
 from messages.map_update import MapUpdate, Tile
 from queue import Queue
 
+import asyncio
 import dataclasses
 import itertools
 import logging
@@ -16,6 +17,8 @@ import random
 import card
 import numpy as np
 import tutorial_map_data
+
+from util import IdAssigner
 
 MAP_WIDTH = 16
 MAP_HEIGHT = 16
@@ -484,16 +487,20 @@ class MapProvider(object):
 
     def add_layer_boundaries(self):
         """ If two neighboring cells differ in Z-layer, adds an edge between them. """
+        loc_to_tile_index = {}
         for i, it in enumerate(self._tiles):
             iloc = it.cell.coord
-            for j, jt in enumerate(self._tiles):
-                jloc = jt.cell.coord
-                if (iloc.equals(jloc)):
+            loc_to_tile_index[iloc] = i
+        for i, it in enumerate(self._tiles):
+            iloc = it.cell.coord
+            neighbors = iloc.neighbors()
+            for n in neighbors:
+                if n not in loc_to_tile_index:
                     continue
-                if not (iloc.is_adjacent_to(jloc)):
-                    continue
-                if abs(it.cell.layer - jt.cell.layer) > 1:
-                    self._tiles[i].cell.boundary.set_edge_between(iloc, jloc)
+                other_tile_index = loc_to_tile_index[n]
+                other_tile = self._tiles[other_tile_index]
+                if abs(it.cell.layer - other_tile.cell.layer) > 1:
+                    self._tiles[i].cell.boundary.set_edge_between(iloc, other_tile.cell.coord)
 
     def cards(self):
         return self._cards
@@ -570,5 +577,3 @@ class MapProvider(object):
     def coord_in_map(self, coord):
         offset_coords = coord.to_offset_coordinates()
         return (offset_coords[0] in range(0, self._rows) and offset_coords[1] in range(0, self._cols))
-
-

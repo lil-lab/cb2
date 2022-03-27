@@ -78,7 +78,12 @@ class HecsCoord:
     
     def is_adjacent_to(self, other):
         displacement = HecsCoord.sub(other, self)
-        return displacement in HecsCoord.origin().neighbors()
+        if abs(displacement.a) == 0:
+            return (displacement.r == 0) and abs(displacement.c) == 1
+        elif abs(displacement.a) == 1:
+            return (displacement.r in [0, -1]) and (displacement.c in [0, -1])
+        
+        return False
     
     def neighbor_at_heading(self, heading):
         """  Returns the Hecs coordinate of the neighbor at a given heading.
@@ -152,18 +157,18 @@ class HexBoundary:
 
     def set_edge_between(self, a, b):
         """ Sets the edge between two HECS coordinates, if this cell is at location a and the neighbor is at location b. """
-        if not a.is_adjacent_to(b):
-            raise ValueError("HecsCoords passed to set_edge_between are not adjacent.")
         displacement = HecsCoord.sub(b, a)
-        edge = HexBoundary.DIR_TO_EDGE[displacement]
+        edge = HexBoundary.DIR_TO_EDGE.get(displacement, None)
+        if edge is None:
+            raise ValueError(f"HecsCoords {a}, {b} passed to set_edge_between are not adjacent.")
         self.set_edge(edge)
     
     def get_edge_between(self, a, b):
         """ Checks the edge between two HECS coordinates, if this cell is at location a and the neighbor is at location b. """
-        if not a.is_adjacent_to(b):
-            raise ValueError("HecsCoords passed to set_edge_between are not adjacent.")
         displacement = HecsCoord.sub(b, a)
-        edge = HexBoundary.DIR_TO_EDGE[displacement]
+        edge = HexBoundary.DIR_TO_EDGE.get(displacement, None)
+        if edge is None:
+            raise ValueError(f"HecsCoords {a}, {b} passed to set_edge_between are not adjacent.")
         return self.get_edge(edge)
 
 
