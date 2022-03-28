@@ -104,7 +104,7 @@ def main(max_instructions=-1, config_filepath="config/server-config.json", outpu
     words = set()
     instruction_list = []
 
-    games = db_utils.ListResearchGames()
+    games = db_utils.ListMturkGames()
     # For each game.
     for game in games:
         # Create a directory for the game.

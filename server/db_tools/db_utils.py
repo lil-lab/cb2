@@ -20,6 +20,16 @@ def ListResearchGames():
             .switch(Game))
     return games
 
+def ListMturkGames():
+    games = (Game.select()
+            .join(Assignment, on=((Game.lead_assignment == Assignment.id) or (Game.follow_assignment == Assignment.id)), join_type=peewee.JOIN.LEFT_OUTER)
+            .where(Game.valid == True,
+                   Game.type == "game-mturk",
+                   ((Game.lead_assignment != None) & (Game.lead_assignment.submit_to_url == "https://www.mturk.com") | 
+                    ((Game.follow_assignment != None)& (Game.lead_assignment.submit_to_url == "https://www.mturk.com"))))
+            .switch(Game))
+    return games
+
 def IsGameResearchData(game):
     """Returns True if the game is usable as research data.
 
@@ -28,7 +38,6 @@ def IsGameResearchData(game):
 
     A game is considered research data if it satisfies the following conditions:
     - The game's "valid" column is true (in the games table).
-    - The game's "complete" column is true (in the games table).
     - The game's "type" column is "game-mturk".
     - Either the game's "leader_assignment" or "follower_assignment" column is not null and has a submit URL of "https://www.mturk.com".
     
