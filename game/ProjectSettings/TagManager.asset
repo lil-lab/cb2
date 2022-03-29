@@ -40,6 +40,9 @@ TagManager:
   - THUMBS_DOWN_SIGNAL
   - FEEDBACK_WINDOW
   - USERNAME_DISPLAY
+  - AUDIO_LISTENER
+  - TURN_START_SOUND
+  - MUTE_AUDIO_TOGGLE
   layers:
   - Default
   - TransparentFX

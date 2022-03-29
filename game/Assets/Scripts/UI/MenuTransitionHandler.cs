@@ -39,6 +39,10 @@ public class MenuTransitionHandler : MonoBehaviour
 
     private static readonly string FEEDBACK_WINDOW_TAG = "FEEDBACK_WINDOW";
 
+    private static readonly string TURN_START_SOUND = "TURN_START_SOUND";
+
+    private static readonly string MUTE_AUDIO_TOGGLE = "MUTE_AUDIO_TOGGLE";
+
     // We re-use ActionQueue here to animate UI transparency. It's a bit
     // overkill to have two animation queues here, but it's very obvious what's
     // happening for the reader, and that's worth it.
@@ -292,6 +296,32 @@ public class MenuTransitionHandler : MonoBehaviour
                 if (endTurnPanel != null)
                 {
                     endTurnPanel.transform.localScale = new Vector3(0f, 0f, 0f);
+                }
+            }
+            if (_lastTurn.turn != Role.NONE && state.turn == networkManager.Role())
+            {
+                GameObject soundObject = GameObject.FindGameObjectWithTag(TURN_START_SOUND);
+                if (soundObject != null)
+                {
+                    AudioSource audioSource = soundObject.GetComponent<AudioSource>();
+                    if (audioSource != null)
+                    {
+                        bool playAudio = true;
+                        GameObject muteToggleObject = GameObject.FindGameObjectWithTag(MUTE_AUDIO_TOGGLE);
+                        if (muteToggleObject != null)
+                        {
+                            Toggle muteToggle = muteToggleObject.GetComponent<Toggle>();
+                            if (muteToggle != null)
+                            {
+                                Debug.Log("Mute toggle is " + muteToggle.isOn);
+                                playAudio = !muteToggle.isOn;
+                            }
+                        }
+                        if (playAudio)
+                        {
+                            audioSource.Play();
+                        }
+                    }
                 }
             }
         }
