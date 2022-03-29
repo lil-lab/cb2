@@ -499,6 +499,9 @@ class State(object):
             logger.warn(
                 f'Warning, objective received from non-leader ID: {str(id)}')
             return
+        if self._turn_state.turn != Role.LEADER:
+            logger.warn(f'Warning, objective received out of turn.')
+            return
         # TODO: Make UUID and non-UUID'd objectives separate message types.
         objective.uuid = uuid.uuid4().hex
         self.record_objective(objective)
