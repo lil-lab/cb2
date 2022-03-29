@@ -74,6 +74,7 @@ def main(config_filepath="config/server-config.json", output_dir="plots"):
     moves_per_instruction = []
     good_games = []
     bad_games = []
+    good_game_scores = []
     # For each game.
     for game in games:
         # Calculate the cost of the game.
@@ -107,6 +108,7 @@ def main(config_filepath="config/server-config.json", output_dir="plots"):
             good_game_cost += cost
             good_instructions += game_instructions.count()
             good_games.append(game)
+            good_game_scores.append(game.score)
             if game.leader:
                 if game.leader not in player_good_lead_games:
                     player_good_lead_games[game.leader] = 0
@@ -131,6 +133,7 @@ def main(config_filepath="config/server-config.json", output_dir="plots"):
             player_durations[game.leader] = []
         players.add(game.leader)
         player_durations[game.leader].append(duration_minutes)
+    
 
     # Plot scores and durations via a histogram.
     fig, ax = plt.subplots(1, 2, figsize=(10, 5))
@@ -199,6 +202,36 @@ def main(config_filepath="config/server-config.json", output_dir="plots"):
             continue
         if player_good_lead_games[player] >= 1 and player_good_follow_games[player] >= 1:
             good_players.append(player)
+    
+    print(f"Experienced players with zero-games: ")
+    new_good_players = []
+    for player in good_players:
+        # Print "good" players with more than 30% of their games having a score of 0.
+        if player not in player_scores:
+            print(f"Missing scores for player {player}.")
+        scores = player_scores[player]
+        zero_scores = [score for score in scores if score == 0]
+        if len(zero_scores) / len(scores) >= 0.5:
+            print(f"{player.hashed_id} has {len(zero_scores)}/{len(scores)} games with a score of 0.")
+        else:
+            new_good_players.append(player)
+    good_players = new_good_players
+    
+    experienced_only_scores = []
+    for game in games:
+        if game.leader not in good_players:
+            continue
+        if game.follower not in good_players:
+            continue
+        experienced_only_scores.append(game.score)
+
+
+    # Plot a histogram of the scores of good games.
+    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+    ax[0].hist(experienced_only_scores, bins=20)
+    ax[0].set_xlabel("Experienced players scores")
+    ax[0].set_ylabel("Frequency")
+    fig.savefig(output_dir / "game_scores.png")
 
     print(f"Number of good players: {len(good_players)}.")
     print(f"Number of players total: {len(players)}.")
