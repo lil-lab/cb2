@@ -31,6 +31,7 @@ from dataclasses import astuple
 from dateutil import parser
 
 from hex import HecsCoord, HexBoundary, HexCell
+from map_provider import MapGenerationTask, MapPoolSize
 from map_tools import visualize
 from messages import map_update
 from messages import message_from_server
@@ -126,6 +127,7 @@ async def Status(request):
     server_state = {
         "assets": assets_map,
         "number_rooms": len(room_manager.room_ids()),
+        "map_cache_size": MapPoolSize(),
         "remotes": [str(remote_table[ws]) for ws in remote_table],
         "room_manager_remotes":[str(room_manager.socket_info(ws)) for ws in remote_table],
         "rooms": [room_manager.get_room(room_id).state() for room_id in room_manager.room_ids()],
@@ -698,7 +700,7 @@ def main(config_filepath="config/server-config.json"):
     # yappi.start()
 
     assets_map = HashCollectAssets(g_config.assets_directory())
-    tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), serve(g_config))
+    tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), serve(g_config), MapGenerationTask(room_manager))
     # If map visualization command line flag is enabled, run with the visualize task.
     # if gui:
     #   tasks = asyncio.gather(tasks, draw_gui())

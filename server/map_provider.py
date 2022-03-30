@@ -387,8 +387,9 @@ class MapType(Enum):
     RANDOM = 1
     HARDCODED = 2
 
+
 class MapProvider(object):
-    def __init__(self, map_type, id_assigner):
+    def __init__(self, map_type):
         map = None
         if map_type == MapType.RANDOM:
             map = RandomMap()
@@ -397,12 +398,13 @@ class MapProvider(object):
         else:
             raise ValueError("Invalid map type NONE specified.")
         
+        self._id_assigner = IdAssigner()
         self._tiles = map.tiles
         self._rows = map.rows
         self._cols = map.cols
         self._cards = []
         self._selected_cards = {}
-        self._card_generator = CardGenerator(id_assigner)
+        self._card_generator = CardGenerator(self._id_assigner)
         self.add_map_boundaries()
         self.add_layer_boundaries()
         if map_type == MapType.HARDCODED:
@@ -413,7 +415,7 @@ class MapProvider(object):
                 # state persists between instances (very bad! this took a while
                 # to debug)
                 card_copy = dataclasses.replace(tutorial_card)
-                card_copy.id = id_assigner.alloc()
+                card_copy.id = self._id_assigner.alloc()
                 self._cards.append(card_copy)
         else: 
             # Sort through the potential spawn tiles via floodfill and find
@@ -447,6 +449,9 @@ class MapProvider(object):
             self._cards_by_location[generated_card.location] = generated_card
         self._spawn_points = [tile.cell.coord for tile in self._tiles
                               if (tile.asset_id == AssetId.GROUND_TILE_PATH) and (tile.cell.coord not in self._cards_by_location)]
+    
+    def id_assigner(self):
+        return self._id_assigner
 
     def choose_card_spawn_locations(self, n):
         """ Returns a list of size n of spawn locations for cards. Does not return a location that is actively occupied by an existing card."""
@@ -577,3 +582,28 @@ class MapProvider(object):
     def coord_in_map(self, coord):
         offset_coords = coord.to_offset_coordinates()
         return (0 <= offset_coords[0] < self._rows) and (0 <= offset_coords[1] < self._cols)
+
+MAP_POOL_MAXIMUM = 500
+map_pool = []
+
+def CachedMapRetrieval():
+    global map_pool
+    if len(map_pool) == 0:
+        print(f"Map pool ran out of cached maps. Generating...")
+        return MapProvider(MapType.RANDOM)
+    else:
+        return map_pool.pop()
+
+def MapPoolSize():
+    global map_pool
+    return len(map_pool)
+
+async def MapGenerationTask(room_manager):
+    while True:
+        # Only generate maps when there are no active games.
+        if len(room_manager.room_ids()) == 0:
+            if len(map_pool) < MAP_POOL_MAXIMUM:
+                map_pool.append(MapProvider(MapType.RANDOM))
+                print(f"Generated map. Map pool size now: {len(map_pool)}")
+        await asyncio.sleep(0)
+

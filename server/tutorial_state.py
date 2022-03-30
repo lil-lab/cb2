@@ -39,7 +39,6 @@ logger = logging.getLogger()
 class TutorialGameState(object):
     def __init__(self, room_id, tutorial_name, tutorial_record):
         self._room_id = room_id
-        self._id_assigner = IdAssigner()
 
         self._player_role = RoleFromTutorialName(tutorial_name)
 
@@ -71,7 +70,8 @@ class TutorialGameState(object):
 
         # Map props and actors share IDs from the same pool, so the ID assigner
         # is shared to prevent overlap.
-        self._map_provider = MapProvider(MapType.HARDCODED, self._id_assigner)
+        self._map_provider = MapProvider(MapType.HARDCODED)
+        self._id_assigner = self._map_provider.id_assigner()  # Map and state props share same ID space.
         self._tutorial_record.number_cards = len(self._map_provider.cards())
         
         self._objectives = []

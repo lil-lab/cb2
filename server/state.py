@@ -7,9 +7,8 @@ from messages import message_to_server
 from messages import objective, state_sync
 from hex import HecsCoord
 from queue import Queue
-from map_provider import MapProvider, MapType
+from map_provider import MapProvider, MapType, CachedMapRetrieval
 from card import CardSelectAction, SetCompletionActions
-from util import IdAssigner
 from datetime import datetime, timedelta
 from messages.turn_state import TurnState, GameOverMessage, TurnUpdate
 import leaderboard
@@ -38,7 +37,6 @@ logger = logging.getLogger()
 class State(object):
     def __init__(self, room_id, game_record):
         self._room_id = room_id
-        self._id_assigner = IdAssigner()
 
         # Create an entry in the Game database table.
         self._game_record = game_record
@@ -62,7 +60,8 @@ class State(object):
 
         # Map props and actors share IDs from the same pool, so the ID assigner
         # is shared to prevent overlap.
-        self._map_provider = MapProvider(MapType.RANDOM, self._id_assigner)
+        self._map_provider = CachedMapRetrieval()
+        self._id_assigner = self._map_provider.id_assigner()  # Map and state props share the same ID space.
         self._game_record.number_cards = len(self._map_provider.cards())
         
         self._objectives = []
