@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -29,6 +30,9 @@ public class HexGridManager
         public GameObject Model;
     }
 
+
+    private Logger _logger;
+
     private IMapSource _mapSource;
     private IAssetSource _assetSource;
 
@@ -42,6 +46,11 @@ public class HexGridManager
     {
         _mapSource = mapSource;
         _assetSource = assetSource;
+        _logger = Logger.GetTrackedLogger("HexGridManager");
+        if (_logger == null)
+        {
+            _logger = Logger.CreateTrackedLogger("HexGridManager");
+        }
     }
 
     public Vector3 CenterPosition()
@@ -54,7 +63,7 @@ public class HexGridManager
         int c = cols;
         if (_grid.GetLength(0) <= a || _grid.GetLength(1) <= r || _grid.GetLength(2) <= c)
         {
-            Debug.Log("HexGrid not yet initialized. Returning Vector3.zero");
+            _logger.Info("HexGrid not yet initialized. Returning vector3.zero");
             return Vector3.zero;
         }
         Tile center_tile = _grid[a, r, c];
@@ -71,7 +80,7 @@ public class HexGridManager
         var (rows, cols) = _mapSource.GetMapDimensions();
         if ((i < 0) || (i >= rows) || (j < 0) || (j >= cols))
         {
-            Debug.Log("Position requested outside of map. Returning (0, 0, 0). (" + i + ", " + j + ")");
+            _logger.Info("Position requested outside of map. Returning (0, 0, 0). (" + i + ", " + j + ")");
             return Vector3.zero;
         }
         int a = i % 2;
@@ -94,7 +103,7 @@ public class HexGridManager
     public void InitializeGrid()
     {
         (int rows, int cols) = _mapSource.GetMapDimensions();
-        Debug.Log("rows: " + rows + ", cols:" + cols);
+        _logger.Info("rows: " + rows + ", cols:" + cols);
         _grid = new Tile[2, rows / 2, cols];
 
         // Pre-initialize the edge map to be all-empty.
@@ -121,7 +130,7 @@ public class HexGridManager
     public void Update()
     {
         UpdateMap();
-        if (_debugEdges)
+        if (UnityEngine.Debug.isDebugBuild && _debugEdges)
         {
             foreach (Tile t in _grid)
             {
@@ -236,9 +245,9 @@ public class HexGridManager
             _mapSource = Network.NetworkManager.TaggedInstance().MapSource();
             if (_mapSource != null)
             {
-                Debug.Log("Map source re-acquired.");
+                _logger.Info("Map source re-acquired.");
             } else {
-                Debug.LogError("Map source is null!");
+                _logger.Info("Map source is null!");
                 return;
             }
         }
@@ -248,7 +257,8 @@ public class HexGridManager
             return;
         }
 
-        Debug.Log("Map available, performing update!");
+        DateTime mapLoadStart = DateTime.Now;
+        _logger.Info("Map available, performing update!");
 
         foreach (var tile in _grid)
         {
@@ -265,7 +275,7 @@ public class HexGridManager
 
         if (tileList == null)
         {
-            Debug.Log("Null item list received.");
+            _logger.Info("Null item list received.");
             return;
         }
         foreach (var t in tileList)
@@ -287,7 +297,7 @@ public class HexGridManager
         OverheadCamera camera = OverheadCamera.TaggedOverheadInstance();
         if (camera != null)
         {
-            Debug.Log("Updating overhead camera position.");
+            _logger.Info("Updating overhead camera position.");
             camera.CenterCameraOnGrid();
         }
         OverheadCamera angledCamera = OverheadCamera.TaggedAngledInstance();
@@ -296,5 +306,7 @@ public class HexGridManager
             Debug.Log("Updating angled camera position.");
             angledCamera.CenterCameraOnGrid();
         }
+        DateTime mapLoadEnd = DateTime.Now;
+        _logger.Info("Map update took: " + (mapLoadEnd - mapLoadStart).TotalMilliseconds + "ms");
     }
 }

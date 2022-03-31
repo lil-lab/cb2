@@ -98,8 +98,20 @@ public class MenuTransitionHandler : MonoBehaviour
         localBugReport.MapUpdate = mapUpdate;
         localBugReport.TurnStateLog = turnStateLog;
 
-        string bugReportJson = JsonUtility.ToJson(localBugReport, /*prettyPrint=*/true);
+        localBugReport.Logs = new List<ModuleLog>();
+        List<string> modules = Logger.GetTrackedModules();
+        Debug.Log("Modules: " + modules.Count);
+        foreach (string module in modules)
+        {
+            Logger logger = Logger.GetTrackedLogger(module);
+            ModuleLog moduleLog = new ModuleLog();
+            moduleLog.Module = module;
+            moduleLog.Log = System.Text.Encoding.UTF8.GetString(logger.GetBuffer());
+            localBugReport.Logs.Add(moduleLog);
+            Debug.Log("Module: " + module + " and log size: " + moduleLog.Log.Length);
+        }
 
+        string bugReportJson = JsonUtility.ToJson(localBugReport, /*prettyPrint=*/true);
         DownloadJson("client_bug_report.json.log", bugReportJson);
     }
 

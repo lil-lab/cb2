@@ -12,6 +12,8 @@ namespace Network
     // for the server.
     public class NetworkRouter
     {
+
+        private Logger _logger;
         private readonly ClientConnection _client;
         private NetworkMapSource _mapSource;
         private readonly NetworkManager _networkManager;
@@ -29,7 +31,11 @@ namespace Network
             _entityManager = entityManager;
             _player = player;
             _pendingStateSync = null;
-
+            _logger = Logger.GetTrackedLogger("NetworkRouter");
+            if (_logger == null)
+            {
+                _logger = Logger.CreateTrackedLogger("NetworkRouter");
+            }
             _client.RegisterHandler(this);
         }
 
@@ -38,12 +44,12 @@ namespace Network
             _entityManager = entityManager;
             if (_pendingStateSync != null)
             {
-                Debug.Log("EntityManager receiving pending state sync.");
+                _logger.Info("EntityManager receiving pending state sync.");
                 ApplyStateSyncToEntityManager(_pendingStateSync);
             }
             if (_pendingMapUpdate != null)
             {
-                Debug.Log("EntityManager receiving pending map update.");
+                _logger.Info("EntityManager receiving pending map update.");
                 ApplyMapUpdateToEntityManager(_pendingMapUpdate);
             }
         }
@@ -53,7 +59,7 @@ namespace Network
             _player = player;
             if (_pendingStateSync != null)
             {
-                Debug.Log("Player receiving pending state sync.");
+                _logger.Info("Player receiving pending state sync.");
                 ApplyStateSyncToPlayer(_pendingStateSync);
             }
         }
@@ -67,7 +73,7 @@ namespace Network
             {
                 if (actor.actor_id == _player.PlayerId())
                 {
-                    Debug.Log("SETTING player asset id to " + actor.asset_id);
+                    _logger.Info("SETTING player asset id to " + actor.asset_id);
                     _player.SetAssetId(actor.asset_id);
                     ActionQueue.IAction action = TeleportToStartState(actor);
                     _player.AddAction(action);
@@ -114,16 +120,16 @@ namespace Network
                     _entityManager.RegisterProp(netProp.id, prop);
                     continue;
                 }
-                Debug.LogWarning("Unknown proptype encountered.");
+                _logger.Warn("Unknown proptype encountered.");
             }
             return true;
         }
         public void HandleMessage(MessageFromServer message)
         {
-            Debug.Log("Received message of type: " + message.type);
+            _logger.Info("Received message of type: " + message.type);
             if (message.type == MessageFromServer.MessageType.PING)
             {
-                Debug.Log("Received ping.");
+                _logger.Info("Received ping.");
                 _networkManager.RespondToPing();
                 return;
             }
@@ -131,7 +137,7 @@ namespace Network
             {
                 if (_player == null || _entityManager == null)
                 {
-                    Debug.LogError("Player or entity manager not set, yet received state sync.");
+                    _logger.Error("Player or entity manager not set, yet received state sync.");
                     return;
                 }
                 foreach (Network.Action networkAction in message.actions)
@@ -149,12 +155,12 @@ namespace Network
             {
                 if (!ApplyStateSyncToPlayer(message.state))
                 {
-                    Debug.Log("Player not set, yet received state sync.");
+                    _logger.Info("Player not set, yet received state sync.");
                     _pendingStateSync = message.state;
                 }
                 if (!ApplyStateSyncToEntityManager(message.state))
                 {
-                    Debug.Log("Entity manager not set, yet received state sync.");
+                    _logger.Info("Entity manager not set, yet received state sync.");
                     _pendingStateSync = message.state;
                 }
             }
@@ -226,12 +232,12 @@ namespace Network
         {
             if (_player == null)
             {
-                Debug.Log("Can't send action to server; Player object null.");
+                _logger.Info("Can't send action to server; Player object null.");
                 return;
             }
             if (_player.PlayerId() == -1)
             {
-                Debug.Log("Can't send action to server; Player ID unknown.");
+                _logger.Info("Can't send action to server; Player ID unknown.");
                 return;
             }
             MessageToServer toServer = new MessageToServer();
@@ -287,7 +293,7 @@ namespace Network
                     action = new Outline(info);
                     break;
                 default:
-                    Debug.Log("Unknown action type encountered. Converting to instant.");
+                    _logger.Info("Unknown action type encountered. Converting to instant.");
                     action = new Instant(info);
                     break;
             }

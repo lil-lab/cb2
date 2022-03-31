@@ -90,7 +90,7 @@ namespace Network
             }
 
             string received = System.Text.Encoding.UTF8.GetString(bytes);
-            Debug.Log("Received: " + received);
+            Debug.Log("[" + DateTime.Now.ToString() + "]: Received: " + received);
             MessageFromServer message = JsonConvert.DeserializeObject<MessageFromServer>(System.Text.Encoding.ASCII.GetString(bytes));
             _router.HandleMessage(message);
         }
@@ -144,7 +144,7 @@ namespace Network
                     return;
                 }
 
-                Debug.Log("Sending: " + JsonUtility.ToJson(toServer));
+                Debug.Log("[" + DateTime.Now.ToString() + "]: Sending: " + JsonUtility.ToJson(toServer));
                 await _webSocket.SendText(JsonUtility.ToJson(toServer));
             }
         }

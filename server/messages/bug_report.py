@@ -1,4 +1,5 @@
 from enum import Enum
+from modulefinder import Module
 from hex import HecsCoord
 
 from dataclasses import dataclass, field
@@ -14,7 +15,14 @@ import dateutil.parser
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
+class ModuleLog:
+    module: str
+    log: str
+
+@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass(frozen=True)
 class BugReport:
     map_update: MapUpdate
     turn_state_log: List[TurnState]
     state_sync: StateSync
+    logs: List[ModuleLog]
