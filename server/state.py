@@ -161,7 +161,7 @@ class State(object):
                     self._turn_state.turn_number)
                 self.record_turn_state(game_over_message)
                 self._game_record.completed = True
-                self._game_record.end_time = datetime.now()
+                self._game_record.end_time = datetime.utcnow()
                 self._game_record.score = self._turn_state.score
                 self._game_record.save()
                 self.end_game()
@@ -303,13 +303,14 @@ class State(object):
                 for actor_id in self._actors:
                     self._map_stale[actor_id] = True
         # Make sure to mark the game's end time.
-        self._game_record.end_time = datetime.now()
+        self._game_record.end_time = datetime.utcnow()
         self._game_record.save()
         leaderboard.UpdateLeaderboard(self._game_record)
     
     def record_objective(self, objective):
         instruction = schemas.game.Instruction()
         instruction.game = self._game_record
+        instruction.time = datetime.utcnow()
         instruction.worker = self._game_record.leader
         instruction.uuid = objective.uuid
         instruction.text = objective.text
@@ -336,8 +337,8 @@ class State(object):
         move.position_before = actor.location()
         move.orientation_before = actor.heading_degrees()
         move.turn_number = self._turn_state.turn_number
-        move.game_time = datetime.now() - self._game_record.start_time
-        move.server_time = datetime.now()
+        move.game_time = datetime.utcnow() - self._game_record.start_time
+        move.server_time = datetime.utcnow()
         move_code = ""
         forward_location = actor.location().neighbor_at_heading(actor.heading_degrees())
         backward_location = actor.location().neighbor_at_heading(actor.heading_degrees() + 180)
@@ -564,8 +565,8 @@ class State(object):
         if follower is not None:
             live_feedback_record.follower_position = follower.location()
             live_feedback_record.follower_orientation = follower.heading_degrees()
-        live_feedback_record.game_time = datetime.now() - self._game_record.start_time
-        live_feedback_record.server_time = datetime.now()
+        live_feedback_record.game_time = datetime.utcnow() - self._game_record.start_time
+        live_feedback_record.server_time = datetime.utcnow()
         live_feedback_record.save()
     
     def handle_turn_complete(self, id, turn_complete):

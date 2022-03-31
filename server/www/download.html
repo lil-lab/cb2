@@ -1,0 +1,61 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Downloader</title>
+        <link rel='stylesheet' href='https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css'>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.0/jquery.min.js"></script>
+    </head>
+    <body>
+        <script type="text/javascript">
+            function downloadFile(filePath){
+                var link=document.createElement('a');
+                link.href = filePath
+                link.download = "";
+                link.click();
+            }
+
+            interval = undefined;
+            function check_download_status() {
+                // Make a jquery GET request to "/data/download_status" to check if the download is complete.
+                // The response is a JSON object with "status" and "log" keys. Update the elements with ids "status" and "download_log" accordingly.
+                // The item in "log" is a list of strings. Concatenate them before placing in "download_log".
+                $.get("/data/download_status")
+                    .done(function(data) {
+                        // Update the status element with the status.
+                        $("#status").text("Status: " + data.status);
+                        // Update the download log element with the log.
+                        $("#download_log").text(data.log.join("\n"));
+                        // If the download is complete, then redirect to the download link after a delay.
+                        if (data.status == "ready") {
+                            $("#status").text("Status: " + data.status + ". Downloading...");
+                            clearInterval(interval);
+                            setTimeout(function() {
+                                console.log("Redirecting to download link...");
+                                downloadFile("/data/download_retrieve");
+                            }, 1000);
+                        }
+                    })
+                    .fail(function(data) {
+                        // If the request fails, update the status element with an error message.
+                        $("#status").text("Error: Could not check download status.");
+                    });
+            }
+
+            window.onload = function() {
+                // Trigger a check_download_status every second. Save the interval so it can be cancelled later.
+                interval = setInterval(check_download_status, 1000);
+            }
+        </script>
+        <div>
+            <h1>Data Export Page</h1>
+            <h2 id="status" style="background-color: aliceblue; display: block; width: 60%; margin: auto;">Status: starting...</h2>
+            <pre id="download_log" style="color: green; background-color: black; display: block; margin: auto; width: 60%; height: 300px; overflow-y: scroll"></pre>
+            <p style="background-color: rgb(255, 255, 170); font-size: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center; width: 60%;">
+                Visiting this page triggers the server to archive its current data for download. For performance reasons, the download won't begin while any users are actively playing games.
+            </p>
+            <p style="background-color: rgb(255, 255, 170); font-size: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center; width: 60%;">
+                The download will begin automatically once the data is ready.
+            </p>
+    </body>
+</html>

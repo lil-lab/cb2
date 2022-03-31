@@ -1,3 +1,4 @@
+from threading import local
 import aiohttp
 import asyncio
 import fire
@@ -29,6 +30,7 @@ from aiohttp import web
 from config.config import Config
 from dataclasses import astuple
 from dateutil import parser
+from dateutil import tz
 
 from hex import HecsCoord, HexBoundary, HexCell
 from map_provider import MapGenerationTask, MapPoolSize
@@ -216,25 +218,84 @@ async def MessagesToServer(request):
         return web.HTTPNotFound()
     return web.FileResponse(game_dir / "messages_to_server.json")
 
-@routes.get('/data/download')
-async def DataDump(request):
+download_requested = False
+download_contents = None
+download_status = {
+    "status": "idle",
+    "log": [],
+}
+async def DataDownloader(room_manager):
+    global download_contents
+    global download_requested
+    global download_status
     global g_config
-    database = CSqliteExtDatabase(g_config.database_path(), pragmas =
-            [ ('cache_size', -1024 * 64),  # 64MB page-cache.
-              ('journal_mode', 'wal'),  # Use WAL-mode (you should always use this!).
-              ('foreign_keys', 1)])
-    database.backup_to_file(g_config.backup_database_path())
-    time_string = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
-    game_archive = shutil.make_archive(f"{g_config.record_directory()}-{time_string}", 'zip', g_config.record_directory())
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "a", False) as zip_file:
-        with open(g_config.backup_database_path(), "rb") as db_file:
-            zip_file.writestr("game_data.db", db_file.read())
-        with open(game_archive, "rb") as game_file:
-            zip_file.writestr("game_record.zip", game_file.read())
-    # Delete the game archive now that we've read it into memory and added it to the zip file.
-    os.remove(game_archive)
-    return web.Response(body=zip_buffer.getvalue(), content_type="application/zip")
+    NYC = tz.gettz('America/New_York')
+    timestamp =  lambda : datetime.now(NYC).strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = lambda x: download_status["log"].append(f"{timestamp()}: {x}")
+    while True:
+        await asyncio.sleep(1)
+
+        if not download_requested:
+            continue
+
+        # Don't process downloads if someone is actively playing a game.
+        if len(room_manager.room_ids()) > 0:
+            download_status["status"] = "busy"
+            log_entry(f"Waiting on {len(room_manager.room_ids())} active games to finish before downloading.")
+            await asyncio.sleep(10)
+            continue
+
+        database = CSqliteExtDatabase(g_config.database_path(), pragmas =
+                [ ('cache_size', -1024 * 64),  # 64MB page-cache.
+                ('journal_mode', 'wal'),  # Use WAL-mode (you should always use this!).
+                ('foreign_keys', 1)])
+        log_entry(f"Starting...") 
+        download_status["status"] = "preparing"
+        database.backup_to_file(g_config.backup_database_path())
+        log_entry(f"DB backed up.")
+        await asyncio.sleep(0.5)
+        time_string = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
+        game_archive = shutil.make_archive(f"{g_config.record_directory()}-{time_string}", 'zip', g_config.record_directory())
+        log_entry("Game files archived.")
+        await asyncio.sleep(0.5)
+        download_contents = io.BytesIO()
+        with zipfile.ZipFile(download_contents, "a", False) as zip_file:
+            with open(g_config.backup_database_path(), "rb") as db_file:
+                zip_file.writestr("game_data.db", db_file.read())
+                log_entry(f"DB file added to download ZIP.")
+                await asyncio.sleep(0.5)
+            with open(game_archive, "rb") as game_file:
+                zip_file.writestr("game_record.zip", game_file.read())
+                log_entry(f"Game archive added to download ZIP.")
+                await asyncio.sleep(0.5)
+        # Delete the game archive now that we've read it into memory and added it to the zip file.
+        os.remove(game_archive)
+        log_entry("Download ready.")
+        download_status["status"] = "ready"
+        download_requested = False
+
+@routes.get('/data/download_status')
+async def DownloadStatus(request):
+    global download_status
+    return web.json_response(download_status)
+
+@routes.get('/data/download_retrieve')
+async def RetrieveData(request):
+    global download_contents
+    global download_status
+    local_download_contents = download_contents
+    if local_download_contents is None:
+        return web.HTTPNotFound()
+    download_contents = None
+    download_status["log"] = []
+    download_status["status"] = "idle"
+    return web.Response(body=local_download_contents.getvalue(), content_type="application/zip")
+
+@routes.get('/data/download')
+async def DataDownloadStart(request):
+    global download_requested
+    download_requested = True
+    return web.FileResponse("www/download.html")
 
 @routes.get('/data/game-list')
 async def GameList(request):
@@ -243,6 +304,8 @@ async def GameList(request):
                 .join(schemas.mturk.Assignment, on=((schemas.game.Game.lead_assignment == schemas.mturk.Assignment.id) or (schemas.game.Game.follow_assignment == schemas.mturk.Assignment.id)), join_type=peewee.JOIN.LEFT_OUTER)
                 .order_by(schemas.game.Game.id.desc()))
     response = []
+    # For convenience, convert timestamps to US eastern time.
+    NYC = tz.gettz('America/New_York')
     for game in games:
         response.append({
             "id": game.id,
@@ -251,7 +314,7 @@ async def GameList(request):
             "follower": game.follower.hashed_id if game.follower else None,
             "score": game.score,
             "turns": game.number_turns,
-            "start_time": str(game.start_time),
+            "start_time": str(game.start_time.replace(tzinfo=tz.tzutc()).astimezone(NYC)),
             "duration": str(game.end_time - game.start_time),
             "completed": game.completed,
             "research_valid": db_utils.IsGameResearchData(game)
@@ -276,11 +339,13 @@ async def GameData(request):
     game_id = request.match_info.get('game_id')
     game = schemas.game.Game.select().join(schemas.game.Turn, join_type=peewee.JOIN.LEFT_OUTER).where(schemas.game.Game.id == game_id).get()
     turns = []
+    # For convenience, convert timestamps to US eastern time.
+    NYC = tz.gettz('America/New_York')
     for turn in game.turns:
         turns.append({
             "id": turn.id,
             "number": turn.turn_number,
-            "time": str(turn.time),
+            "time": str(turn.time.replace(tzinfo=tz.tzutc()).astimezone(NYC)),
             "notes": turn.notes,
             "end_method": turn.end_method,
         })
@@ -292,12 +357,13 @@ async def GameData(request):
     turn = schemas.game.Turn.select().join(schemas.game.Game).where(schemas.game.Turn.id == turn_id).get()
     game = turn.game
     instructions = schemas.game.Instruction.select().join(schemas.game.Game, join_type=peewee.JOIN.LEFT_OUTER).where(schemas.game.Instruction.turn_issued == turn.turn_number, schemas.game.Instruction.game == game).order_by(schemas.game.Instruction.turn_issued)
+    NYC = tz.gettz('America/New_York')
     json_instructions = []
     for instruction in instructions:
         json_instructions.append({
             "instruction_number": instruction.instruction_number,
             "turn_issued": instruction.turn_issued,
-            "time": str(instruction.time),
+            "time": str(instruction.time.replace(tzinfo=tz.tzutc()).astimezone(NYC)),
             "turn_completed": instruction.turn_completed,
             "text": instruction.text
         })
@@ -700,7 +766,7 @@ def main(config_filepath="config/server-config.json"):
     # yappi.start()
 
     assets_map = HashCollectAssets(g_config.assets_directory())
-    tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), serve(g_config), MapGenerationTask(room_manager))
+    tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), serve(g_config), MapGenerationTask(room_manager), DataDownloader(room_manager))
     # If map visualization command line flag is enabled, run with the visualize task.
     # if gui:
     #   tasks = asyncio.gather(tasks, draw_gui())
