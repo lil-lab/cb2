@@ -642,7 +642,7 @@ async def serve(config):
     routes.static('/', './www/WebGL')
 
     app.add_routes(routes)
-    runner = runner = aiohttp.web.AppRunner(app)
+    runner = runner = aiohttp.web.AppRunner(app, handle_signals=True)
     await runner.setup()
     site = web.TCPSite(runner, None, config.http_port)
     await site.start()
