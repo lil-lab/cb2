@@ -17,12 +17,28 @@ def ReadConfigOrDie(config_path):
 @dataclass_json
 @dataclass
 class Config:
+    name: str = ""  # The name of the config.
+
     # Data filepath configurations.
     data_prefix: str = "./" # Prefix added to the below data directories. Can be used to store data on a different fs.
     record_directory_suffix: str = "game_records/" # Where to store game recordings.
     assets_directory_suffix: str = "assets/"  # Where to store asset resources.
     database_path_suffix: str = "game_data.db"  # Where to store the sqlite3 record database.
     backup_db_path_suffix: str = "game_data.bk.db"
+
+    # These are not server configurations. They're data configurations. Once game data is downloaded via server URL '/data/download',
+    # this property can be used to specify which game IDs are used for analysis scripts.
+    # For example, [[1, 3], [5, 6]] would include games 1, 2, 3, 5, and 6.
+    analysis_game_id_ranges: List[List[int]] = field(default_factory=list)
+
+    http_port: int = 8080
+
+    # Optional feature configurations.
+    gui: bool = False
+
+    map_cache_size: int = 500
+
+    comment: str = ""
 
     # Data path accessors that add the requisite data_prefix.
     def record_directory(self):
@@ -33,8 +49,3 @@ class Config:
         return pathlib.Path(self.data_prefix, self.database_path_suffix).expanduser()
     def backup_database_path(self):
         return pathlib.Path(self.data_prefix, self.backup_db_path_suffix).expanduser()
-
-    http_port: int = 8080
-
-    # Optional feature configurations.
-    gui: bool = False

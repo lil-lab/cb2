@@ -6,6 +6,7 @@
 <script type="text/javascript" src="https://w2ui.com/src/w2ui-1.5.min.js"></script>
 </head>
 <body>
+  <h2 id="title"></h2>
   <div id="grid" style="width: 100%; height: 250px;"></div>
 </body>
 <script>
@@ -21,6 +22,11 @@ $(function () {
           { field: 'count', text: 'Count', size: '20%' },
         ],
         url: "/data/stats",
+    });
+
+    // use $.get() to grab the server configuration ('/data/config'). Set the "title" element to the configuration's name.
+    $.get("/data/config", function(data) {
+        $("#title").text(data.name);
     });
 });
 </script>

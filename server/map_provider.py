@@ -598,12 +598,20 @@ def MapPoolSize():
     global map_pool
     return len(map_pool)
 
-async def MapGenerationTask(room_manager):
+async def MapGenerationTask(room_manager, config):
     while True:
         # Only generate maps when there are no active games.
-        if len(room_manager.room_ids()) == 0:
-            if len(map_pool) < MAP_POOL_MAXIMUM:
-                map_pool.append(MapProvider(MapType.RANDOM))
-                print(f"Generated map. Map pool size now: {len(map_pool)}")
-        await asyncio.sleep(0)
+        if len(room_manager.room_ids()) != 0:
+            await asyncio.sleep(10)
+            continue
+
+        # Map cache is full, skip.
+        if len(map_pool) >= MAP_POOL_MAXIMUM or len(map_pool) >= config.map_cache_size:
+            await asyncio.sleep(10)
+            continue
+
+        # Add a map to the map cache.
+        map_pool.append(MapProvider(MapType.RANDOM))
+        print(f"Generated map. Map pool size now: {len(map_pool)}")
+        await asyncio.sleep(0.001)
 

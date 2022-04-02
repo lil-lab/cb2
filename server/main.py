@@ -4,6 +4,7 @@ import asyncio
 import fire
 import hashlib
 import io
+import itertools
 import json
 import orjson
 import logging
@@ -330,6 +331,12 @@ async def GameViewer(request):
     # Extract the game_id from the request.
     return web.FileResponse("www/game_viewer.html")
 
+@routes.get('/data/config')
+async def GetConfig(request):
+    global g_config
+    pretty_dumper = lambda x: orjson.dumps(x, option=orjson.OPT_NAIVE_UTC | orjson.OPT_INDENT_2).decode('utf-8')
+    return web.json_response(g_config, dumps=pretty_dumper)
+
 @routes.get('/view/stats')
 async def Stats(request):
     return web.FileResponse("www/stats.html")
@@ -388,7 +395,13 @@ async def GameData(request):
 
 @routes.get('/data/stats')
 async def stats(request):
+    global g_config
     games = db_utils.ListResearchGames()
+    if len(g_config.analysis_game_id_ranges) > 0:
+        valid_ids = set(itertools.chain(*[range(x, y) for x,y in g_config.analysis_game_id_ranges]))
+        print(f"Filtered to {valid_ids}")
+        print(f"Number of valid IDs: {len(valid_ids)}")
+        games = [game for game in games if game.id in valid_ids]
     durations = []
     scores = []
     instruction_counts = []
@@ -448,7 +461,7 @@ async def stats(request):
 
     json_stats.append({
         "name": "Games",
-        "count": schemas.game.Game.select().where(schemas.game.Game.type == "game").count()
+        "count": len(games)
     })
 
     json_stats.append({
@@ -766,7 +779,7 @@ def main(config_filepath="config/server-config.json"):
     # yappi.start()
 
     assets_map = HashCollectAssets(g_config.assets_directory())
-    tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), serve(g_config), MapGenerationTask(room_manager), DataDownloader(room_manager))
+    tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), serve(g_config), MapGenerationTask(room_manager, g_config), DataDownloader(room_manager))
     # If map visualization command line flag is enabled, run with the visualize task.
     # if gui:
     #   tasks = asyncio.gather(tasks, draw_gui())

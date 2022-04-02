@@ -85,9 +85,7 @@ def main(number=100, search_term="", research_only=True, config_filepath="config
     base.ConnectDatabase()
     base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
 
-    games = db_utils.ListResearchGames()
-    if not research_only:
-        games = Game.select()
+    games = db_utils.ListResearchGames() if research_only else db_utils.ListMturkGames()
     words = set()
     instruction_list = []
     for game in games:

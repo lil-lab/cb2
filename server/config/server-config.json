@@ -1,4 +1,5 @@
 {
-    "_comment": "This config is used for launching the server",
+    "name": "Deployed server config",
+    "comment": "This config is used for launching the server",
     "data_prefix": "/mnt/efs/fs1/cb2-game-data"
 }
