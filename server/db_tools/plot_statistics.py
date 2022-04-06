@@ -87,19 +87,19 @@ def main(config_filepath="config/server-config.json", experienced_player_ids="~/
     player_good_lead_games = {}
     player_good_follow_games = {}
     good_instructions = []
-    good_vocab = Counter()
     good_game_cost = 0
     player_durations = {}
     players = set()
     total_cost = 0
     instructions = []
     vocab = Counter()
+    good_vocab = Counter()
+    bad_vocab = Counter()
     incomplete_instructions = []
     percent_incomplete_instructions = []
     moves_per_instruction = []
     good_games = []
     bad_games = []
-    bad_vocab = Counter()
     bad_instructions = []
     good_game_scores = []
     bad_game_scores = []
@@ -144,12 +144,12 @@ def main(config_filepath="config/server-config.json", experienced_player_ids="~/
                 if game.follower not in player_good_follow_games:
                     player_good_follow_games[game.follower] = 0
                 player_good_follow_games[game.follower]+=1
-            for instruction in instructions:
+            for instruction in game_instructions:
                 good_vocab.update(instruction.text.split())
         else:
             bad_games.append(game)
             bad_game_scores.append(game.score)
-            for instruction in instructions:
+            for instruction in game_instructions:
                 bad_vocab.update(instruction.text.split())
             bad_instructions.extend(game_instructions)
 
@@ -222,9 +222,11 @@ def main(config_filepath="config/server-config.json", experienced_player_ids="~/
     for word in good_vocab:
         if word not in bad_vocab:
             print(f"{word} IS NOT in useless vocab.")
+            break
     for word in bad_vocab:
         if word not in good_vocab:
             print(f"{word} IS NOT in useful vocab.")
+            break
     
     
     # Plot ratio of score to duration via scatter plot, make each player a different color.

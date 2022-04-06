@@ -76,7 +76,7 @@ def ReadConfigOrDie(config_path):
         config = Config.from_json(cfg_file.read())
         return config
 
-def main(number=100, search_term="", research_only=True, config_filepath="config/server-config.json"):
+def main(number=-1, search_term="", research_only=True, config_filepath="config/server-config.json"):
     config = ReadConfigOrDie(config_filepath)
 
     print(f"Reading database from {config.database_path()}")
@@ -91,15 +91,17 @@ def main(number=100, search_term="", research_only=True, config_filepath="config
     for game in games:
       instructions = Instruction.select().join(Game).where(Instruction.game == game)
       for instruction in instructions:
-          if len(search_term) > 0 and search_term in instruction.text:
+        if len(search_term) > 0 and search_term in instruction.text:
             print(f"Search term found in game {game.id}: {instruction.text}")
-          for word in instruction.text.split(" "):
-              words.add(word)
-          instruction_list.append(instruction.text)
-      sample = random.sample(instruction_list, min(number, len(instruction_list)))
-      if len(search_term) == 0:
+        words.update(instruction.text.split(" "))
+        instruction_list.append(instruction.text)
+       
+    if number < 0:
+        number = len(instruction_list)
+    sample = random.sample(instruction_list, min(number, len(instruction_list)))
+    if len(search_term) == 0:
         for instruction in sample:
-          print(instruction)
+            print(instruction)
 
 
 if __name__ == "__main__":
