@@ -5,7 +5,8 @@ Material:
   serializedVersion: 6
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
   m_Name: M_Roof1
   m_Shader: {fileID: 4800000, guid: 078b2a90d062e49c9903390f113619d3, type: 3}
   m_ShaderKeywords: COLR_1_2
@@ -78,17 +79,18 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _AmbientColor: {r: 0.5, g: 0.5, b: 0.5, a: 0}
-    - _BackBottomColor: {r: 0.3764706, g: 0.67058825, b: 0.654902, a: 0}
+    - _BackBottomColor: {r: 0.7735849, g: 0.7735849, b: 0.7735849, a: 0}
     - _BackTopColor: {r: 0.57254905, g: 0.78431374, b: 0.77254903, a: 0}
-    - _BottomColor: {r: 0.37597898, g: 0.6698113, b: 0.65330386, a: 0}
+    - _BottomColor: {r: 0.6792453, g: 0.6792453, b: 0.6792453, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FrontBottomColor: {r: 0.3764706, g: 0.67058825, b: 0.654902, a: 0}
-    - _FrontTopColor: {r: 0.57254905, g: 0.78431374, b: 0.77254903, a: 0}
-    - _LeftBottomColor: {r: 0.3764706, g: 0.67058825, b: 0.654902, a: 0}
-    - _LeftTopColor: {r: 0.57254905, g: 0.78431374, b: 0.77254903, a: 0}
+    - _FrontBottomColor: {r: 0.735849, g: 0.735849, b: 0.735849, a: 0}
+    - _FrontTopColor: {r: 0.8301887, g: 0.8301887, b: 0.8301887, a: 0}
+    - _LeftBottomColor: {r: 0.6320754, g: 0.6320754, b: 0.6320754, a: 0}
+    - _LeftTopColor: {r: 0.7830189, g: 0.7830189, b: 0.7830189, a: 0}
     - _LightTint: {r: 1, g: 1, b: 1, a: 0}
     - _LightmapColor: {r: 0, g: 0, b: 0, a: 0}
-    - _RightBottomColor: {r: 0.3764706, g: 0.67058825, b: 0.654902, a: 0}
-    - _RightTopColor: {r: 0.57254905, g: 0.78431374, b: 0.77254903, a: 0}
-    - _TopColor: {r: 0.5724902, g: 0.7830189, b: 0.7734494, a: 0}
+    - _RightBottomColor: {r: 0.5943396, g: 0.5943396, b: 0.5943396, a: 1}
+    - _RightTopColor: {r: 0.7830189, g: 0.7830189, b: 0.7830189, a: 0}
+    - _TopColor: {r: 0.8773585, g: 0.8773585, b: 0.8773585, a: 0}
+  m_BuildTextureStacks: []

@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: M_Tree3
+  m_Name: M_Snow_Tree3
   m_Shader: {fileID: 4800000, guid: 078b2a90d062e49c9903390f113619d3, type: 3}
   m_ShaderKeywords: BACK_GRADIENT_ON COLR_1_2 FRONT_GRADIENT_ON LEFT_GRADIENT_ON
     RIGHT_GRADIENT_ON
@@ -80,18 +80,18 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _AmbientColor: {r: 0.5, g: 0.5, b: 0.5, a: 0}
-    - _BackBottomColor: {r: 0.18039216, g: 0.3137255, b: 0.21960786, a: 0}
-    - _BackTopColor: {r: 0.61582947, g: 0.755, b: 0.6436636, a: 0}
-    - _BottomColor: {r: 0.538, g: 0.538, b: 0.538, a: 1}
+    - _BackBottomColor: {r: 1, g: 1, b: 1, a: 0}
+    - _BackTopColor: {r: 1, g: 1, b: 1, a: 1}
+    - _BottomColor: {r: 1, g: 1, b: 1, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FrontBottomColor: {r: 0.18039216, g: 0.3137255, b: 0.21960786, a: 0}
-    - _FrontTopColor: {r: 0.61582947, g: 0.755, b: 0.6436636, a: 0}
-    - _LeftBottomColor: {r: 0.18039216, g: 0.3137255, b: 0.21960786, a: 0}
-    - _LeftTopColor: {r: 0.61582947, g: 0.755, b: 0.6436636, a: 0}
+    - _FrontBottomColor: {r: 1, g: 1, b: 1, a: 0}
+    - _FrontTopColor: {r: 1, g: 1, b: 1, a: 0}
+    - _LeftBottomColor: {r: 1, g: 1, b: 1, a: 0}
+    - _LeftTopColor: {r: 1, g: 1, b: 1, a: 0}
     - _LightTint: {r: 1, g: 1, b: 1, a: 0}
     - _LightmapColor: {r: 0, g: 0, b: 0, a: 0}
-    - _RightBottomColor: {r: 0.180495, g: 0.315, b: 0.21892497, a: 0}
-    - _RightTopColor: {r: 0.61582947, g: 0.755, b: 0.6436636, a: 0}
-    - _TopColor: {r: 0.4888964, g: 0.601, b: 0.5106943, a: 0}
+    - _RightBottomColor: {r: 1, g: 1, b: 1, a: 0}
+    - _RightTopColor: {r: 1, g: 1, b: 1, a: 0}
+    - _TopColor: {r: 1, g: 1, b: 1, a: 0}
   m_BuildTextureStacks: []

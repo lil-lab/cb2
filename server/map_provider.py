@@ -20,8 +20,8 @@ import tutorial_map_data
 
 from util import IdAssigner
 
-MAP_WIDTH = 16
-MAP_HEIGHT = 16
+MAP_WIDTH = 18
+MAP_HEIGHT = 18
 
 logger = logging.getLogger()
 
@@ -79,7 +79,7 @@ def place_city(map, city):
                 continue
             if map[r][c].asset_id == AssetId.EMPTY_TILE:
                 if point.radius % 3 == 0:
-                    tile_generator = np.random.choice([GroundTile, GroundTileTrees, GroundTileStreetLight], size=1, p=[0.6, 0.2, 0.2])[0]
+                    tile_generator = np.random.choice([GroundTile, RandomGroundTree, GroundTileStreetLight], size=1, p=[0.6, 0.2, 0.2])[0]
                     map[r][c] = tile_generator(rotation_degrees = random.choice([0, 60, 120, 180, 240, 300]))
                 elif point.radius % 3 == 1:
                     map[r][c] = PathTile()
@@ -138,7 +138,7 @@ def place_lake(map, lake):
                 continue
             if map[r][c].asset_id == AssetId.EMPTY_TILE:
                 if point.radius == lake.size:
-                    tile_generator = np.random.choice([GroundTile, GroundTileTrees, GroundTileStreetLight], size=1, p=[0.6, 0.2, 0.2])[0]
+                    tile_generator = np.random.choice([GroundTile, RandomGroundTree, GroundTileStreetLight], size=1, p=[0.6, 0.2, 0.2])[0]
                     map[r][c] = tile_generator(rotation_degrees = random.choice([0, 60, 120, 180, 240, 300]))
                 elif point.radius == lake.size - 1:
                     map[r][c] = PathTile()
@@ -159,6 +159,7 @@ class Mountain:
     r: int
     c: int
     type: MountainType
+    snowy: bool
 
 def offset_coord_in_map(map, offset):
     return (offset[0] in range(1, len(map) - 1) and
@@ -168,7 +169,7 @@ def place_small_mountain(map, mountain):
     mountain_coords = []
     # MountainTile(rotation_degrees=0)
     # RampToMountain(rotation_degrees=0)
-    map[mountain.r][mountain.c] = MountainTile(rotation_degrees=0)
+    map[mountain.r][mountain.c] = MountainTile(rotation_degrees=0, snowy=mountain.snowy)
     start = HecsCoord.from_offset(mountain.r, mountain.c)
     mountain_coords.append(start)
     mountain_coords.append(start.right())
@@ -178,14 +179,14 @@ def place_small_mountain(map, mountain):
     for coord in mountain_coords:
         offset = coord.to_offset_coordinates()
         if offset_coord_in_map(map, offset):
-            map[offset[0]][offset[1]] = MountainTile(rotation_degrees=0)
+            map[offset[0]][offset[1]] = MountainTile(rotation_degrees=0, snowy=mountain.snowy)
 
     first_ramp_offset = start.left().to_offset_coordinates()
     second_ramp_offset = start.right().down_right().to_offset_coordinates()
     if offset_coord_in_map(map, first_ramp_offset):
-        map[first_ramp_offset[0]][first_ramp_offset[1]] = RampToMountain(rotation_degrees=00)
+        map[first_ramp_offset[0]][first_ramp_offset[1]] = RampToMountain(rotation_degrees=00, snowy=mountain.snowy)
     if offset_coord_in_map(map, second_ramp_offset):
-        map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=180)
+        map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=180, snowy=mountain.snowy)
 
     placed_coords = mountain_coords + [start.left(), start.right().down_right()]
     for coord in placed_coords:
@@ -199,7 +200,7 @@ def place_medium_mountain(map, mountain):
     mountain_coords = []
     # MountainTile(rotation_degrees=0)
     # RampToMountain(rotation_degrees=0)
-    map[mountain.r][mountain.c] = MountainTile(rotation_degrees=0)
+    map[mountain.r][mountain.c] = MountainTile(rotation_degrees=0, snowy=mountain.snowy)
     start = HecsCoord.from_offset(mountain.r, mountain.c)
     mountain_coords.append(start)
     mountain_coords.append(start.down_right())
@@ -210,14 +211,14 @@ def place_medium_mountain(map, mountain):
     for coord in mountain_coords:
         offset = coord.to_offset_coordinates()
         if offset_coord_in_map(map, offset):
-            map[offset[0]][offset[1]] = MountainTile(rotation_degrees=0)
+            map[offset[0]][offset[1]] = MountainTile(rotation_degrees=0, snowy=mountain.snowy)
 
     first_ramp_offset = start.left().to_offset_coordinates()
     second_ramp_offset = start.down_right().down_right().down_left().to_offset_coordinates()
     if offset_coord_in_map(map, first_ramp_offset):
-        map[first_ramp_offset[0]][first_ramp_offset[1]] = RampToMountain(rotation_degrees=60)
+        map[first_ramp_offset[0]][first_ramp_offset[1]] = RampToMountain(rotation_degrees=60, snowy=mountain.snowy)
     if offset_coord_in_map(map, second_ramp_offset):
-        map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=240)
+        map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=240, snowy=mountain.snowy)
 
     placed_coords = mountain_coords + [start.left(), start.down_right().down_right().down_left()]
     for coord in placed_coords:
@@ -231,7 +232,7 @@ def place_large_mountain(map, mountain):
     mountain_coords = []
     # MountainTile(rotation_degrees=0)
     # RampToMountain(rotation_degrees=0)
-    map[mountain.r][mountain.c] = MountainTile(rotation_degrees=0)
+    map[mountain.r][mountain.c] = MountainTile(rotation_degrees=0, snowy=mountain.snowy)
     start = HecsCoord.from_offset(mountain.r, mountain.c)
     mountain_coords.append(start)
     for coord in start.neighbors():
@@ -240,14 +241,14 @@ def place_large_mountain(map, mountain):
     for coord in mountain_coords:
         offset = coord.to_offset_coordinates()
         if offset_coord_in_map(map, offset):
-            map[offset[0]][offset[1]] = MountainTile(rotation_degrees=0)
+            map[offset[0]][offset[1]] = MountainTile(rotation_degrees=0, snowy=mountain.snowy)
 
     first_ramp_offset = start.left().left().to_offset_coordinates()
     second_ramp_offset = start.right().right().to_offset_coordinates()
     if offset_coord_in_map(map, first_ramp_offset):
-        map[first_ramp_offset[0]][first_ramp_offset[1]] = RampToMountain(rotation_degrees=0)
+        map[first_ramp_offset[0]][first_ramp_offset[1]] = RampToMountain(rotation_degrees=0, snowy=mountain.snowy)
     if offset_coord_in_map(map, second_ramp_offset):
-        map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=180)
+        map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=180, snowy=mountain.snowy)
 
     placed_coords = mountain_coords + [start.left().left(), start.right().right()]
     for coord in placed_coords:
@@ -290,7 +291,7 @@ def RandomMap():
     feature_center_candidates = feature_center_candidates[number_of_mountains:len(feature_center_candidates)]
     logger.info(f"Remaining feature points: {len(feature_center_candidates)}")
 
-    mountains = [Mountain(r, c, random.choice([MountainType.SMALL, MountainType.MEDIUM, MountainType.LARGE])) for r, c in mountain_centers]
+    mountains = [Mountain(r, c, random.choice([MountainType.SMALL, MountainType.MEDIUM, MountainType.LARGE]), random.choice([True, False])) for r, c in mountain_centers]
     for mountain in mountains:
         place_mountain(map, mountain)
 
@@ -320,7 +321,8 @@ def RandomMap():
     for r in range(0, MAP_HEIGHT):
         for c in range(0, MAP_WIDTH):
             if map[r][c].asset_id == AssetId.EMPTY_TILE:
-                map[r][c] = GroundTile()
+                tile_generator = np.random.choice([GroundTile, RandomNatureTile, GroundTileStreetLight], size=1, p=[0.7, 0.2, 0.1])[0]
+                map[r][c] = tile_generator()
             map[r][c].cell.coord = HecsCoord.from_offset(r, c)
 
     # Flatten the 2D map of tiles to a list.
@@ -476,6 +478,8 @@ class MapProvider(object):
         elif tile.asset_id == AssetId.GROUND_TILE_PATH:
             return 2
         elif tile.asset_id == AssetId.MOUNTAIN_TILE:
+            return 2
+        elif tile.asset_id == AssetId.SNOWY_MOUNTAIN_TILE:
             return 2
         else:
             return 0

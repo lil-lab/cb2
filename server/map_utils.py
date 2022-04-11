@@ -1,4 +1,4 @@
-from assets import AssetId
+from assets import AssetId, TreeAssets, NatureAssets, SnowifyAssetId
 from hex import HecsCoord, HexCell, HexBoundary
 from messages.map_update import MapUpdate, Tile
 from enum import Enum
@@ -46,6 +46,17 @@ def GroundTile(rotation_degrees=0):
         rotation_degrees
     )
 
+def GroundTileSnow(rotation_degrees=0):
+    """ Creates a single tile of ground."""
+    return Tile(
+        AssetId.SNOWY_GROUND_TILE,
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0),
+                LayerToHeight(0),  # Height (float)
+                0,  # Z-Layer (int)
+                ),
+        rotation_degrees
+    )
+
 
 def WaterTile(rotation_degrees=0):
     """ Creates a single tile of Water."""
@@ -82,6 +93,17 @@ def GroundTileRocky(rotation_degrees=0):
         rotation_degrees
     )
 
+def GroundTileRockySnow(rotation_degrees=0):
+    """ Creates a single tile of rocky ground."""
+    return Tile(
+        AssetId.SNOWY_GROUND_TILE_ROCKY,
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
+                LayerToHeight(0),  # Height (float)
+                0  # Z-Layer (int)
+                ),
+        rotation_degrees
+    )
+
 
 def GroundTileStones(rotation_degrees=0):
     """ Creates a single tile of ground with stones."""
@@ -90,7 +112,18 @@ def GroundTileStones(rotation_degrees=0):
         HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
                 LayerToHeight(0),  # Height (float)
                 0  # Z-Layer (int)
-                ),
+        ),
+        rotation_degrees
+    )
+
+def GroundTileStonesSnow(rotation_degrees=0):
+    """ Creates a single tile of ground with stones."""
+    return Tile(
+        AssetId.SNOWY_GROUND_TILE_STONES,
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
+                LayerToHeight(0),  # Height (float)
+                0  # Z-Layer (int)
+        ),
         rotation_degrees
     )
 
@@ -102,19 +135,87 @@ def GroundTileTrees(rotation_degrees=0):
         HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
                 LayerToHeight(0),  # Height (float)
                 0  # Z-Layer (int)
+        ),
+        rotation_degrees
+    )
+
+def GroundTileTree(rotation_degrees=0):
+    """ Creates a single tile of ground with several trees. """
+    return Tile(
+        AssetId.GROUND_TILE_TREE,
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
+                LayerToHeight(0),  # Height (float)
+                0  # Z-Layer (int)
+        ),
+        rotation_degrees
+    )
+
+def GroundTileTreeBrown(rotation_degrees=0):
+    """ Creates a single tile of ground with a tree."""
+    return Tile(
+        AssetId.GROUND_TILE_TREE_BROWN,
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
+                LayerToHeight(0),  # Height (float)
+                0  # Z-Layer (int)
                 ),
         rotation_degrees
     )
 
+def GroundTileTreeSnow(rotation_degrees=0):
+    """ Creates a single tile of ground with a tree."""
+    return Tile(
+        AssetId.GROUND_TILE_TREE_SNOW,
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
+                LayerToHeight(0),  # Height (float)
+                0  # Z-Layer (int)
+        ),
+        rotation_degrees
+    )
 
-def GroundTileSingleTree(rotation_degrees=0):
+def RandomGroundTree(rotation_degrees=0):
+    """ Creates a single tile of ground with a tree. """
+    tree_asset_id = random.choice(TreeAssets())
+    return Tile(
+        tree_asset_id,
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
+                LayerToHeight(0),  # Height (float)
+                0  # Z-Layer (int)
+        ),
+        rotation_degrees
+    )
+
+def RandomNatureTile(rotation_degrees=0):
+    """ Creates a single tile of nature. """
+    nature_asset_id = random.choice(NatureAssets())
+    return Tile(
+        nature_asset_id,
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
+                LayerToHeight(0),  # Height (float)
+                0  # Z-Layer (int)
+        ),
+        rotation_degrees
+    )
+
+
+def GroundTileTreeRocks(rotation_degrees=0):
     """ Creates a single tile of ground with a tree."""
     return Tile(
         AssetId.GROUND_TILE_TREES_2,
         HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
                 LayerToHeight(0),  # Height (float)
                 0  # Z-Layer (int)
-                ),
+        ),
+        rotation_degrees
+    )
+
+def GroundTileTreeRocksSnow(rotation_degrees=0):
+    """ Creates a single tile of ground with a tree."""
+    return Tile(
+        AssetId.SNOWY_GROUND_TILE_TREES_2,
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
+                LayerToHeight(0),  # Height (float)
+                0  # Z-Layer (int)
+        ),
         rotation_degrees
     )
 
@@ -189,10 +290,13 @@ def GroundTileStreetLight(rotation_degrees=0):
     )
 
 
-def MountainTile(rotation_degrees=0):
+def MountainTile(rotation_degrees=0, snowy=False):
     """ Creates a single tile of mountain."""
+    asset_id = AssetId.MOUNTAIN_TILE
+    if snowy:
+        asset_id = SnowifyAssetId(asset_id)
     return Tile(
-        AssetId.MOUNTAIN_TILE,
+        asset_id,
         HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0),
                 LayerToHeight(2),  # Height (float)
                 2  # Z-Layer (int)
@@ -201,10 +305,13 @@ def MountainTile(rotation_degrees=0):
     )
 
 
-def RampToMountain(rotation_degrees=0):
+def RampToMountain(rotation_degrees=0, snowy=False):
     """ Creates a single tile of ramp."""
+    asset_id = AssetId.RAMP_TO_MOUNTAIN
+    if snowy:
+        asset_id = SnowifyAssetId(asset_id)
     return Tile(
-        AssetId.RAMP_TO_MOUNTAIN,
+        asset_id,
         HexCell(HecsCoord.from_offset(0, 0), HexBoundary.rotate_cw(HexBoundary(0b101101), rotation_degrees),
                 LayerToHeight(1),  # Height (float)
                 1  # Z-Layer (int)
