@@ -57,6 +57,10 @@ def TreeAssets():
     """ Returns a list of snow-themed assets. """
     return [AssetId.GROUND_TILE_TREE, AssetId.GROUND_TILE_TREE_BROWN, AssetId.GROUND_TILE_TREE_SNOW, AssetId.GROUND_TILE_TREES_2]
 
+def TreeFrequencies():
+    """ Returns a list of len(TreeAssets()) with the "proper" frequency of each asset. """
+    return [0.7, 0.1, 0.05, 0.15]
+
 def NatureAssets():
     """ Trees, stones, or any other sort of blocking tile that would fit in a forest. """
     return TreeAssets() + [AssetId.GROUND_TILE_STONES, AssetId.GROUND_TILE_ROCKY]

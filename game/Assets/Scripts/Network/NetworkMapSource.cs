@@ -39,6 +39,13 @@ namespace Network
                 });
             }
             Debug.Log("NetworkMapSource received map update.");
+            
+            // Log the number of cities, lakes, mountains and outposts.
+            Debug.Log("Cities: " + mapInfo.metadata.num_cities);
+            Debug.Log("Lakes: " + mapInfo.metadata.num_lakes);
+            Debug.Log("Mountains: " + mapInfo.metadata.num_mountains);
+            Debug.Log("Outposts: " + mapInfo.metadata.num_outposts);
+
             _networkMapReady = true;
             _lastMapReceived = mapInfo;
         }

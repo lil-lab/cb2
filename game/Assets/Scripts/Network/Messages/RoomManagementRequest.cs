@@ -9,6 +9,7 @@ namespace Network
         JOIN,
         CANCEL,  // Cancel a previous JOIN.
         LEAVE,
+        MAP_SAMPLE,
     }
 
     [Serializable]

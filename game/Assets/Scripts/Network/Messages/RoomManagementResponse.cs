@@ -9,7 +9,8 @@ namespace Network
         STATS,
         JOIN_RESPONSE,
         LEAVE_NOTICE,
-        ERROR
+        ERROR,
+        MAP_SAMPLE
     }
 
     public enum Role
@@ -51,6 +52,7 @@ namespace Network
         public StatsResponse stats;
         public JoinResponse join_response;
         public LeaveRoomNotice leave_notice;
+        public MapUpdate map_update;
         public string error;
     }
 }

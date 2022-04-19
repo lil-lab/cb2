@@ -3,6 +3,15 @@ using System.Collections.Generic;
 
 namespace Network
 {
+    [Serializable]
+    public class MapMetadata
+    {
+        public int num_cities;
+        public int num_lakes;
+        public int num_mountains;
+        public int num_outposts;
+    }
+
     // A MapUpdate consists of a list of Tiles and Props. The Map is a 2D tiling
     // grid of hexagons, and Tiles describe each hexagon individually.
     // Props are objects located on the tiles, such as forests, trees, stones,
@@ -28,5 +37,6 @@ namespace Network
 
         // Prop initial states.
         public List<Network.Prop> props;
+        public MapMetadata metadata;
     }
 }  // namespace Network

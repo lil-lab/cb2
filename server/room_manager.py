@@ -3,6 +3,7 @@ from collections import deque
 from dataclasses import dataclass, field, astuple
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
+from map_provider import CachedMapRetrieval
 from messages import message_from_server
 from messages import message_to_server
 from messages.logs import GameInfo
@@ -255,18 +256,22 @@ class RoomManager(object):
 
     def handle_leave_request(self, request, ws):
         if not ws in self._remotes:
-            return RoomManagementResponse(RoomResponseType.ERROR, None, None, None, "You are not in a room.")
+            return RoomManagementResponse(RoomResponseType.ERROR, None, None, None, None, "You are not in a room.")
         room_id, player_id, _ = astuple(self._remotes[ws])
         self.disconnect_socket(ws)
         self._pending_room_management_responses[ws].put(
-            RoomManagementResponse(RoomResponseType.LEAVE_NOTICE, None, None, LeaveRoomNotice("Player requested leave.")))
+            RoomManagementResponse(RoomResponseType.LEAVE_NOTICE, None, None, LeaveRoomNotice("Player requested leave."), None))
 
     def handle_stats_request(self, request, ws):
         total_players = sum(
             [room.number_of_players() for room in self._rooms.values()])
         stats = StatsResponse(len(self._rooms), total_players, len(self._player_queue))
         self._pending_room_management_responses[ws].put(
-            RoomManagementResponse(RoomResponseType.STATS, stats, None, None))
+            RoomManagementResponse(RoomResponseType.STATS, stats, None, None, None))
+    
+    def handle_map_sample_request(self, request, ws):
+        self._pending_room_management_responses[ws].put(
+            RoomManagementResponse(RoomResponseType.MAP_SAMPLE, None, None, None, CachedMapRetrieval().map()))
 
     def remove_socket_from_queue(self, ws):
         player_queue = deque()
@@ -276,7 +281,6 @@ class RoomManager(object):
                 logger.info("Removed socket from queue.")
                 removed = True
                 continue
-                
             logger.info(f"{element}(element) != {ws}(ws -- to be deleted)")
             player_queue.append(element)
         if not removed:
@@ -307,6 +311,8 @@ class RoomManager(object):
             self.handle_stats_request(request, ws)
         elif request.type == RoomRequestType.CANCEL:
             self.handle_cancel_request(request, ws)
+        elif request.type == RoomRequestType.MAP_SAMPLE:
+            self.handle_map_sample_request(request, ws)
         else:
             logger.WARN("Unknown request type.")
 

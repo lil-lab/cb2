@@ -11,18 +11,26 @@ import typing
 import messages.prop
 
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class Tile:
     asset_id: int
     cell: HexCell
     rotation_degrees: int
 
+@dataclass_json
+@dataclass(frozen=True)
+class MapMetadata:
+    num_cities: int
+    num_lakes: int
+    num_mountains: int
+    num_outposts: int
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class MapUpdate:
     rows: int
     cols: int
     tiles: List[Tile]
     props: List[messages.prop.Prop]
+    metadata: MapMetadata

@@ -1,9 +1,7 @@
-from assets import AssetId, TreeAssets, NatureAssets, SnowifyAssetId
+from assets import AssetId, TreeAssets, NatureAssets, SnowifyAssetId, TreeFrequencies
 from hex import HecsCoord, HexCell, HexBoundary
 from messages.map_update import MapUpdate, Tile
 from enum import Enum
-import random
-import logging
 from queue import Queue
 
 import messages.action as action
@@ -11,6 +9,9 @@ import card
 import messages.prop
 
 import dataclasses
+import logging
+import numpy as np
+import random
 
 logger = logging.getLogger()
 
@@ -174,7 +175,7 @@ def GroundTileTreeSnow(rotation_degrees=0):
 
 def RandomGroundTree(rotation_degrees=0):
     """ Creates a single tile of ground with a tree. """
-    tree_asset_id = random.choice(TreeAssets())
+    tree_asset_id = int(np.random.choice(TreeAssets(), p=TreeFrequencies()))
     return Tile(
         tree_asset_id,
         HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
@@ -195,7 +196,6 @@ def RandomNatureTile(rotation_degrees=0):
         ),
         rotation_degrees
     )
-
 
 def GroundTileTreeRocks(rotation_degrees=0):
     """ Creates a single tile of ground with a tree."""
@@ -227,7 +227,7 @@ def GroundTileForest(rotation_degrees=0):
         HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
                 LayerToHeight(0),  # Height (float)
                 0  # Z-Layer (int)
-                ),
+        ),
         rotation_degrees
     )
 
@@ -273,10 +273,30 @@ def GroundTileHouse(rotation_degrees=0, type=HouseType.HOUSE):
         HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
                 LayerToHeight(0),  # Height (float)
                 0  # Z-Layer (int)
-                ),
+        ),
         rotation_degrees
     )
 
+def UrbanHouseTile(rotation_degrees=0):
+    """ Creates a random house tile (like GroundTileHouse type=HouseType.RANDOM, but with a distribution meant for cities. """
+    house_types = [
+        HouseType.HOUSE,
+        HouseType.HOUSE_RED,
+        HouseType.HOUSE_BLUE,
+        HouseType.TRIPLE_HOUSE,
+        HouseType.TRIPLE_HOUSE_RED,
+        HouseType.TRIPLE_HOUSE_BLUE,
+    ]
+    house_type = np.random.choice(house_types, p=[0.25, 0.25, 0.25, 0.07, 0.09, 0.09])
+    asset_id = AssetIdFromHouseType(house_type)
+    return Tile(
+        asset_id,
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
+                LayerToHeight(0),  # Height (float)
+                0  # Z-Layer (int)
+        ),
+        rotation_degrees
+    )
 
 def GroundTileStreetLight(rotation_degrees=0):
     """ Creates a single tile of ground with a street light."""
@@ -285,7 +305,7 @@ def GroundTileStreetLight(rotation_degrees=0):
         HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
                 LayerToHeight(0),  # Height (float)
                 0  # Z-Layer (int)
-                ),
+        ),
         rotation_degrees
     )
 
@@ -349,6 +369,8 @@ def FloodFillPartitionTiles(tiles):
             for neighbor in coord.neighbors():
                 if neighbor not in tile_by_loc:
                     continue
+                if neighbor in visited_tiles:
+                    continue
                 if not boundary.get_edge_between(coord, neighbor):
                     tile_queue.put(tile_by_loc[neighbor])
         partitions.append(partition)
@@ -365,3 +387,4 @@ def CensorMapForFollower(map_update, follower):
             if map_update_clone.props[i].prop_info.border_color == action.Color(1, 0, 0, 1):
                 map_update_clone.props[i].prop_info.border_color = action.Color(0, 0, 1, 1)
     return map_update_clone
+

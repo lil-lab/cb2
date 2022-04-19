@@ -395,6 +395,10 @@ namespace Network
             {
                 Debug.Log("Received room management error: " + response.error);
             }
+            else if (response.type == RoomResponseType.MAP_SAMPLE)
+            {
+                _networkMapSource.ReceiveMapUpdate(response.map_update);
+            }
             else
             {
                 Debug.Log("Received unknown room management response type: " + response.type);
@@ -404,6 +408,16 @@ namespace Network
         public void HandleTurnState(TurnState state)
         {
             _currentTurn = state.turn;
+        }
+
+        public void RequestMapSample()
+        {
+            MessageToServer msg = new MessageToServer();
+            msg.transmit_time = DateTime.Now.ToString("o");
+            msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
+            msg.room_request = new RoomManagementRequest();
+            msg.room_request.type = RoomRequestType.MAP_SAMPLE;
+            _client.TransmitMessage(msg);
         }
 
         // Update is called once per frame

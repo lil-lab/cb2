@@ -7,6 +7,7 @@ new game.
 
 from enum import Enum
 from hex import HecsCoord
+from messages.map_update import MapUpdate
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
@@ -59,6 +60,7 @@ class RoomRequestType(Enum):
     JOIN = 2
     CANCEL = 3
     LEAVE = 4
+    MAP_SAMPLE = 5
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
@@ -74,6 +76,7 @@ class RoomResponseType(Enum):
     JOIN_RESPONSE = 2
     LEAVE_NOTICE = 3
     ERROR = 4
+    MAP_SAMPLE = 5
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
@@ -85,4 +88,5 @@ class RoomManagementResponse:
     stats: Optional[StatsResponse]
     join_response: Optional[JoinResponse]
     leave_notice: Optional[LeaveRoomNotice]
+    map_update: Optional[MapUpdate]
     error: str = ""

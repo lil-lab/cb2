@@ -76,6 +76,12 @@ class HecsCoord:
         nearest_div_of_60 = round(deg / 60.0) * 60
         return nearest_div_of_60
     
+    def distance_to(self, other):
+        """ Returns the distance between this Hecs coordinate and another Hecs coordinate. """
+        self_cart = self.cartesian()
+        other_cart = other.cartesian()
+        return math.sqrt((self_cart[0] - other_cart[0]) ** 2 + (self_cart[1] - other_cart[1]) ** 2)
+    
     def is_adjacent_to(self, other):
         displacement = HecsCoord.sub(other, self)
         if abs(displacement.a) == 0:
