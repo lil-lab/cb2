@@ -483,7 +483,7 @@ def RandomMap():
     for r in range(0, MAP_HEIGHT):
         for c in range(0, MAP_WIDTH):
             if map[r][c].asset_id == AssetId.EMPTY_TILE:
-                tile_generator = np.random.choice([GroundTile, RandomNatureTile, GroundTileStreetLight], size=1, p=[0.8, 0.1, 0.1])[0]
+                tile_generator = np.random.choice([GroundTile, RandomNatureTile, GroundTileStreetLight], size=1, p=[0.8, 0.15, 0.05])[0]
                 map[r][c] = tile_generator()
             map[r][c].cell.coord = HecsCoord.from_offset(r, c)
 
