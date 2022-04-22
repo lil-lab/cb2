@@ -1,4 +1,5 @@
 """ This utility streams a hardcoded map to clients. """
+from pathlib import Path
 from assets import AssetId
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
@@ -46,62 +47,56 @@ def place_city(map, city):
     # Place the center path tile.
     map[city.r][city.c] = PathTile()
 
-    # Place two cross streets going through city.
-    for i in range(city.size + 2):
-        if city.c + i < MAP_WIDTH:
-            r,c = (city.r, city.c + i)
-            if map[r][c].asset_id == AssetId.EMPTY_TILE:
-                map[r][c] = PathTile()
-        if city.r + i < MAP_HEIGHT:
-            r,c = (city.r + i, city.c)
-            if map[r][c].asset_id == AssetId.EMPTY_TILE:
-                map[r][c] = PathTile()
-        if city.c - i >= 0: 
-            r,c = (city.r, city.c - i)
-            if map[r][c].asset_id == AssetId.EMPTY_TILE:
-                map[r][c] = PathTile()
-        if city.r - i >= 0:
-            r,c = (city.r - i, city.c)
-            if map[r][c].asset_id == AssetId.EMPTY_TILE:
-                map[r][c] = PathTile()
+    # Make openings to enter and exit the city.
+    connection_points = city_connection_points(city)
+    for point in connection_points:
+        r,c = point.to_offset_coordinates()
+        map[r][c] = PathTile()
 
     point_queue = Queue()
     point_queue.put(SearchPoint(city.r, city.c, 0))
     covered_points = set()
     while not point_queue.empty():
         point = point_queue.get()
+        if (point.r, point.c) in covered_points:
+            continue
         covered_points.add((point.r, point.c))
+        if map[point.r][point.c].asset_id in [AssetId.EMPTY_TILE, AssetId.GROUND_TILE] + NatureAssets():
+            if point.radius % 3 == 0:
+                tile_generator = np.random.choice([PathTile, RandomGroundTree, GroundTileStreetLight], size=1, p=[0.0, 0.0, 1])[0]
+                map[point.r][point.c] = tile_generator(rotation_degrees = random.choice([0, 60, 120, 180, 240, 300]))
+            elif point.radius % 3 == 1:
+                map[point.r][point.c] = PathTile()
+            elif point.radius % 3 == 2:
+                coord = HecsCoord.from_offset(point.r, point.c)
+                center = HecsCoord.from_offset(city.r, city.c)
+                degrees_to_center = coord.degrees_to(center) - 60
+                map[point.r][point.c] = UrbanHouseTile(rotation_degrees=degrees_to_center)
         hc = HecsCoord.from_offset(point.r, point.c)
         for neighbor in hc.neighbors():
-            r,c = neighbor.to_offset_coordinates()
-            if (r, c) in covered_points:
+            nr,nc = neighbor.to_offset_coordinates()
+            if (nr, nc) in covered_points:
                 continue
-            if r < 0 or r >= MAP_HEIGHT or c < 0 or c >= MAP_WIDTH:
+            if nr < 0 or nr >= MAP_HEIGHT or nc < 0 or nc >= MAP_WIDTH:
                 continue
-            if map[r][c].asset_id == AssetId.EMPTY_TILE:
-                if point.radius % 3 == 0:
-                    tile_generator = np.random.choice([GroundTile, RandomGroundTree, GroundTileStreetLight], size=1, p=[0.6, 0.2, 0.2])[0]
-                    map[r][c] = tile_generator(rotation_degrees = random.choice([0, 60, 120, 180, 240, 300]))
-                elif point.radius % 3 == 1:
-                    map[r][c] = PathTile()
-                elif point.radius % 3 == 2:
-                    coord = HecsCoord.from_offset(r, c)
-                    center = HecsCoord.from_offset(city.r, city.c)
-                    degrees_to_center = coord.degrees_to(center) - 60
-                    map[r][c] = UrbanHouseTile(rotation_degrees=degrees_to_center)
             if point.radius < city.size:
-                point_queue.put(SearchPoint(r, c, point.radius + 1))
+                point_queue.put(SearchPoint(nr, nc, point.radius + 1))
 
 def city_connection_points(city):
     """ Returns the HecsCoord coordinates of the city's connection points."""
-    potential_connections = [(city.r, city.c + city.size + 2), (city.r + city.size + 2, city.c), (city.r, city.c - city.size - 2), (city.r - city.size - 2, city.c)]
+    center = HecsCoord.from_offset(city.r, city.c)
+    potential_connections = [
+        center.left().left().to_offset_coordinates(),
+        center.right().right().to_offset_coordinates(),
+        center.up_left().up_right().to_offset_coordinates(),
+        center.down_left().down_right().to_offset_coordinates()
+    ]
     connections = []
     for r,c in potential_connections:
         if r < 0 or r >= MAP_HEIGHT or c < 0 or c >= MAP_WIDTH:
             continue
         connections.append(HecsCoord.from_offset(r, c))
     return connections
-
 
 @dataclass_json
 @dataclass
@@ -115,25 +110,6 @@ def place_lake(map, lake):
     # Place the center tile.
     map[lake.r][lake.c] = WaterTile()
 
-    # Place two cross streets going through lake.
-    for i in range(lake.size, lake.size + 2):
-        if lake.c + i < MAP_WIDTH:
-            r,c = (lake.r, lake.c + i)
-            if map[r][c].asset_id == AssetId.EMPTY_TILE:
-                map[r][c] = PathTile()
-        if lake.r + i < MAP_HEIGHT:
-            r,c = (lake.r + i, lake.c)
-            if map[r][c].asset_id == AssetId.EMPTY_TILE:
-                map[r][c] = PathTile()
-        if lake.c - i >= 0: 
-            r,c = (lake.r, lake.c - i)
-            if map[r][c].asset_id == AssetId.EMPTY_TILE:
-                map[r][c] = PathTile()
-        if lake.r - i >= 0:
-            r,c = (lake.r - i, lake.c)
-            if map[r][c].asset_id == AssetId.EMPTY_TILE:
-                map[r][c] = PathTile()
-
     point_queue = Queue()
     point_queue.put(SearchPoint(lake.r, lake.c, 0))
     covered_points = set()
@@ -146,28 +122,31 @@ def place_lake(map, lake):
             if (r, c) in covered_points:
                 continue
             # Keep lakes away from the edge of the map.
-            if r < 2 or r >= MAP_HEIGHT - 2 or c < 2 or c >= MAP_WIDTH - 2:
+            if r < 0 or r >= MAP_HEIGHT or c < 0 or c >= MAP_WIDTH:
                 continue
-            if map[r][c].asset_id == AssetId.EMPTY_TILE:
-                if point.radius == lake.size:
-                    tile_generator = np.random.choice([GroundTile, RandomGroundTree, GroundTileStreetLight], size=1, p=[0.6, 0.2, 0.2])[0]
-                    map[r][c] = tile_generator(rotation_degrees = random.choice([0, 60, 120, 180, 240, 300]))
-                elif point.radius == lake.size - 1:
+            edge_of_map = (r == 0 or c == 0 or r == MAP_HEIGHT - 1 or c == MAP_WIDTH - 1)
+            if map[r][c].asset_id in [AssetId.EMPTY_TILE, AssetId.GROUND_TILE]:
+                if point.radius == lake.size or edge_of_map:
                     map[r][c] = PathTile()
-                else:
+                elif map[r][c].asset_id == AssetId.EMPTY_TILE:
                     map[r][c] = WaterTile()
             if point.radius < lake.size:
                 point_queue.put(SearchPoint(r, c, point.radius + 1))
 
 def lake_connection_points(lake):
     """ Returns the HecsCoord coordinates of the lake's connection points."""
-    potential_connections = [(lake.r, lake.c + lake.size + 2), (lake.r + lake.size + 2, lake.c), (lake.r, lake.c - lake.size - 2), (lake.r - lake.size - 2, lake.c)]
+    potential_connections = [(lake.r, lake.c + lake.size + 1), (lake.r + lake.size + 1, lake.c), (lake.r, lake.c - lake.size - 1), (lake.r - lake.size - 1, lake.c)]
     connections = []
     for r,c in potential_connections:
         if r < 0 or r >= MAP_HEIGHT or c < 0 or c >= MAP_WIDTH:
             continue
         connections.append(HecsCoord.from_offset(r, c))
     return connections
+
+def is_walkable(map, hecs_coord):
+    """ Returns whether or not the given HecsCoord is walkable."""
+    r,c = hecs_coord.to_offset_coordinates()
+    return map[r][c].asset_id in [AssetId.EMPTY_TILE, AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH]
 
 class MountainType(Enum):
     NONE = 0
@@ -205,12 +184,17 @@ def place_small_mountain(map, mountain):
 
     first_ramp_offset = start.left().to_offset_coordinates()
     second_ramp_offset = start.right().down_right().to_offset_coordinates()
-    if offset_coord_in_map(map, first_ramp_offset):
+    first_connection_point = start.left().left();
+    second_connection_point = start.right().down_right().right()
+    ramp_locations = []
+    if offset_coord_in_map(map, first_ramp_offset) and is_walkable(map, first_connection_point):
+        ramp_locations.append(HecsCoord.from_offset(*first_ramp_offset))
         map[first_ramp_offset[0]][first_ramp_offset[1]] = RampToMountain(rotation_degrees=00, snowy=mountain.snowy)
-    if offset_coord_in_map(map, second_ramp_offset):
+    if offset_coord_in_map(map, second_ramp_offset) and is_walkable(map, second_connection_point):
+        ramp_locations.append(HecsCoord.from_offset(*second_ramp_offset))
         map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=180, snowy=mountain.snowy)
 
-    placed_coords = mountain_coords + [start.left(), start.right().down_right()]
+    placed_coords = mountain_coords + ramp_locations
     for coord in placed_coords:
         for neighbor in coord.neighbors():
             offset = neighbor.to_offset_coordinates()
@@ -237,12 +221,17 @@ def place_medium_mountain(map, mountain):
 
     first_ramp_offset = start.left().to_offset_coordinates()
     second_ramp_offset = start.down_right().down_right().down_left().to_offset_coordinates()
-    if offset_coord_in_map(map, first_ramp_offset):
+    first_connection_point = start.left().up_left()
+    second_connection_point = start.down_right().down_right().down_right().down_left()
+    ramp_locations = []
+    if offset_coord_in_map(map, first_ramp_offset) and is_walkable(map, first_connection_point):
+        ramp_locations.append(HecsCoord.from_offset(*first_ramp_offset))
         map[first_ramp_offset[0]][first_ramp_offset[1]] = RampToMountain(rotation_degrees=60, snowy=mountain.snowy)
-    if offset_coord_in_map(map, second_ramp_offset):
+    if offset_coord_in_map(map, second_ramp_offset) and is_walkable(map, second_connection_point):
+        ramp_locations.append(HecsCoord.from_offset(*second_ramp_offset))
         map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=240, snowy=mountain.snowy)
 
-    placed_coords = mountain_coords + [start.left(), start.down_right().down_right().down_left()]
+    placed_coords = mountain_coords + ramp_locations
     for coord in placed_coords:
         for neighbor in coord.neighbors():
             offset = neighbor.to_offset_coordinates()
@@ -267,12 +256,17 @@ def place_large_mountain(map, mountain):
 
     first_ramp_offset = start.left().left().to_offset_coordinates()
     second_ramp_offset = start.right().right().to_offset_coordinates()
-    if offset_coord_in_map(map, first_ramp_offset):
+    first_connection_point = start.left().left().left()
+    second_connection_point = start.right().right().right()
+    ramp_locations = []
+    if offset_coord_in_map(map, first_ramp_offset) and is_walkable(map, first_connection_point):
+        ramp_locations.append(HecsCoord.from_offset(*first_ramp_offset))
         map[first_ramp_offset[0]][first_ramp_offset[1]] = RampToMountain(rotation_degrees=0, snowy=mountain.snowy)
-    if offset_coord_in_map(map, second_ramp_offset):
+    if offset_coord_in_map(map, second_ramp_offset) and is_walkable(map, second_connection_point):
+        ramp_locations.append(HecsCoord.from_offset(*second_ramp_offset))
         map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=180, snowy=mountain.snowy)
 
-    placed_coords = mountain_coords + [start.left().left(), start.right().right()]
+    placed_coords = mountain_coords + ramp_locations
     for coord in placed_coords:
         for neighbor in coord.neighbors():
             offset = neighbor.to_offset_coordinates()
@@ -330,10 +324,10 @@ def PathFind(map, start, end):
             nr, nc = neighbor.to_offset_coordinates()
             if nr < 0 or nr >= len(map) or nc < 0 or nc >= len(map[0]):
                 continue
-            if map[r][c].cell.boundary.get_edge_between(current, neighbor):
-                continue
+            #if map[r][c].cell.boundary.get_edge_between(current, neighbor):
+            #    continue
             neighbor_tile = map[nr][nc]
-            if neighbor_tile.asset_id == AssetId.EMPTY_TILE or neighbor_tile.asset_id == AssetId.GROUND_TILE:
+            if neighbor_tile.asset_id in [AssetId.EMPTY_TILE, AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH, AssetId.WATER_TILE] + NatureAssets():
                 if neighbor not in visited:
                     neighbor_path_to_parent = path_to_current + [neighbor]
                     child_node = (neighbor, neighbor_path_to_parent)
@@ -353,25 +347,25 @@ class Outpost:
 
 def place_outpost(map, outpost):
     """ Place tiles at (r, c), (r + 1, c), (r, c + 2), (r + 1, c + 2) """
-    coords = [(outpost.r, outpost.c), (outpost.r + 1, outpost.c), (outpost.r, outpost.c + 1), (outpost.r + 1, outpost.c + 1)] 
+    coords = [(outpost.r, outpost.c), (outpost.r + 1, outpost.c), (outpost.r + 1, outpost.c + 1), (outpost.r+3, outpost.c + 1)] 
     tiles = outpost.tiles
     # Truncate tiles to the maximum size of an outpost.
     if len(outpost.tiles) > len(coords):
         tiles = tiles[:len(coords)]
     # Place the outpost.
     for i, tile in enumerate(tiles):
+        if i >= len(coords):
+            break
         row, col = coords[i]
         tile.cell.coord = HecsCoord.from_offset(row, col)
         map[row][col] = tile
     
     # The outpost positioning purposefully leaves out (r, c+1). This is the center. Mark it as PathTile and then path-connect it to nearest features.
-    map[outpost.r][outpost.c + 1] = PathTile()
-    map[outpost.r + 1][outpost.c + 1] = PathTile()
-    map[outpost.r - 1][outpost.c + 1] = PathTile()
+    map[outpost.r+2][outpost.c] = PathTile()
 
     # Connect the outpost to the nearest features.
-    path_to_a = PathFind(map, HecsCoord.from_offset(outpost.r, outpost.c + 1), outpost.connection_a)
-    path_to_b = PathFind(map, HecsCoord.from_offset(outpost.r, outpost.c + 1), outpost.connection_b)
+    path_to_a = PathFind(map, HecsCoord.from_offset(outpost.r + 2, outpost.c), outpost.connection_a)
+    path_to_b = PathFind(map, HecsCoord.from_offset(outpost.r + 2, outpost.c), outpost.connection_b)
 
     # Replace all non-mountain and non-ramp tiles in paths a and b with PathTile.
     for path_to_x in [path_to_a, path_to_b]:
@@ -380,8 +374,7 @@ def place_outpost(map, outpost):
         for coord in path_to_x:
             offset = coord.to_offset_coordinates()
             if offset_coord_in_map(map, offset):
-                if map[offset[0]][offset[1]].asset_id != AssetId.MOUNTAIN_TILE and map[offset[0]][offset[1]].asset_id != AssetId.RAMP_TO_MOUNTAIN:
-                    map[offset[0]][offset[1]] = PathTile()
+                map[offset[0]][offset[1]] = PathTile()
             
 
 # # A point in a BFS or DFS search from a certain origin.
@@ -406,50 +399,45 @@ def RandomMap():
     rows = list(range(1, MAP_HEIGHT - 2, 6))
     cols = list(range(1, MAP_WIDTH - 2, 6))
     feature_center_candidates = list(itertools.product(rows, cols))
-    logger.info(f"Feature points: {len(feature_center_candidates)}")
     random.shuffle(feature_center_candidates)
 
     # Points where an outpost can be connected to.
     connection_points = []
 
-    # Add a random number of mountains.
-    number_of_mountains = min(random.randint(1, 4), len(feature_center_candidates))
-    logger.info(f"Number of mountains: {number_of_mountains}")
-    mountain_centers = feature_center_candidates[0:number_of_mountains]
-    feature_center_candidates = feature_center_candidates[number_of_mountains:len(feature_center_candidates)]
-    logger.info(f"Remaining feature points: {len(feature_center_candidates)}")
+    number_of_cities = 0
+    number_of_lakes = 0
+    number_of_mountains = 0
+    # Add features. Each feature can be a mountain, lake, or city.
+    min_number_of_features = len(feature_center_candidates) // 4
+    max_number_of_features = len(feature_center_candidates) - 2  # Save some for outposts.
+    number_of_features = random.randint(min_number_of_features, max_number_of_features)
+    logger.info(f"Feature points: {number_of_features}")
+    for i in range(number_of_features):
+        feature_choice = random.randint(0, 2)
+        if feature_choice == 0:
+            # Place a mountain.
+            number_of_mountains += 1
+            mountain_center = feature_center_candidates.pop()
+            mountain = Mountain(mountain_center[0], mountain_center[1], random.choice([MountainType.SMALL, MountainType.MEDIUM, MountainType.LARGE]), random.choice([True, False]))
+            place_mountain(map, mountain)
+            connection_points.extend(mountain_connection_points(map, mountain))
+        elif feature_choice == 1:
+            # Place a lake.
+            number_of_lakes += 1
+            lake_center = feature_center_candidates.pop()
+            lake = Lake(lake_center[0], lake_center[1], random.randint(2, 4))
+            place_lake(map, lake)
+            connection_points.extend(lake_connection_points(lake))
+        elif feature_choice == 2:
+            # Place a city.
+            number_of_cities += 1
+            city_center = feature_center_candidates.pop()
+            city = City(city_center[0], city_center[1], 2)
+            place_city(map, city)
+            connection_points.extend(city_connection_points(city))
 
-    mountains = [Mountain(r, c, random.choice([MountainType.SMALL, MountainType.MEDIUM, MountainType.LARGE]), random.choice([True, False])) for r, c in mountain_centers]
-    for mountain in mountains:
-        place_mountain(map, mountain)
-        connection_points.extend(mountain_connection_points(map, mountain))
-
-    # Add a random number of lakes
-    number_of_lakes = min(random.randint(1, 3), len(feature_center_candidates))
-    logger.info(f"Number of lakes: {number_of_lakes}")
-    lake_centers = feature_center_candidates[0:number_of_lakes]
-    feature_center_candidates = feature_center_candidates[number_of_lakes:len(feature_center_candidates)]
-    logger.info(f"Remaining feature points: {len(feature_center_candidates)}")
-        
-    lakes = [Lake(r, c, random.randint(2, 4)) for r, c in lake_centers] 
-    for lake in lakes:
-        place_lake(map, lake)
-        connection_points.extend(lake_connection_points(lake))
-
-    # Add a random number of cities.
-    number_of_cities = min(random.randint(2, 3), len(feature_center_candidates))
-    logger.info(f"Number of cities: {number_of_cities}")
-    city_centers = feature_center_candidates[0:number_of_cities]
-    feature_center_candidates = feature_center_candidates[number_of_cities:len(feature_center_candidates)]
-    logger.info(f"Remaining feature points: {len(feature_center_candidates)}")
-
-    cities = [City(r, c, 2) for r, c in city_centers]
-    for city in cities:
-        place_city(map, city)
-        connection_points.extend(city_connection_points(city))
-    
     # Add a random number of outposts.
-    number_of_outposts = min(random.randint(1, 3), len(feature_center_candidates))
+    number_of_outposts = min(random.randint(1, len(feature_center_candidates)), len(feature_center_candidates))
     logger.info(f"Number of outposts: {number_of_outposts}")
     outpost_centers = feature_center_candidates[0:number_of_outposts]
     feature_center_candidates = feature_center_candidates[number_of_outposts:len(feature_center_candidates)]
@@ -459,16 +447,17 @@ def RandomMap():
     for outpost_center in outpost_centers:
         outpost_center_hex = HecsCoord.from_offset(outpost_center[0], outpost_center[1])
         nearest_connection_points = sorted(connection_points, key=lambda x: x.distance_to(outpost_center_hex))
-        outpost = Outpost(outpost_center[0], outpost_center[1], nearest_connection_points[0], nearest_connection_points[1], [RandomNatureTile(), GroundTileHouse(type=HouseType.RANDOM), RandomNatureTile()])
+        first_connection_point = nearest_connection_points.pop(0) if len(nearest_connection_points) > 0 else None
+        second_connection_point = nearest_connection_points.pop(0) if len(nearest_connection_points) > 0 else None
+        outpost = Outpost(outpost_center[0], outpost_center[1], first_connection_point, second_connection_point, [RandomNatureTile(), UrbanHouseTile(), RandomNatureTile()])
         if random.randint(0, 1) == 0:
-            outpost.tiles.append(GroundTileHouse(type=HouseType.RANDOM))
+            outpost.tiles.append(UrbanHouseTile(rotation_degrees=180))
         place_outpost(map, outpost)
-
 
     # For each connection point, if it has path tile neighbors, make it a path tile as well.
     for connection_point in connection_points:
         (r, c) = connection_point.to_offset_coordinates()
-        if map[r][c].asset_id == AssetId.GROUND_TILE_PATH:
+        if map[r][c].asset_id not in [AssetId.EMPTY_TILE, AssetId.GROUND_TILE]:
             continue
         for neighbor in connection_point.neighbors():
             (nr, nc) = neighbor.to_offset_coordinates()
@@ -478,12 +467,29 @@ def RandomMap():
                 map[r][c] = PathTile()
                 break
 
+    # Make sure there's at least 23 walkable tiles (2 for spawn points, 21 for card placement). 
+    walkable_tiles = 0
+    blocked_nature_tiles = []
+    for r in range(0, MAP_HEIGHT):
+        for c in range(0, MAP_WIDTH):
+            if is_walkable(map, HecsCoord.from_offset(r, c)):
+                walkable_tiles += 1
+            elif map[r][c].asset_id in NatureAssets():
+                blocked_nature_tiles.append(map[r][c])
+    
+    if walkable_tiles < 23:
+        for i in range(23 - walkable_tiles):
+            blocked_nature_tile = random.choice(blocked_nature_tiles)
+            r, c = blocked_nature_tile.cell.coord.to_offset_coordinates()
+            map[r][c] = GroundTile()
+            blocked_nature_tiles.remove(blocked_nature_tile)
+            walkable_tiles += 1
 
     # Fix all the tile coordinates and replace empty tiles with ground tiles.
     for r in range(0, MAP_HEIGHT):
         for c in range(0, MAP_WIDTH):
             if map[r][c].asset_id == AssetId.EMPTY_TILE:
-                tile_generator = np.random.choice([GroundTile, RandomNatureTile, GroundTileStreetLight], size=1, p=[0.8, 0.15, 0.05])[0]
+                tile_generator = np.random.choice([GroundTile, RandomNatureTile, GroundTileStreetLight], size=1, p=[0.8, 0.18, 0.02])[0]
                 map[r][c] = tile_generator()
             map[r][c].cell.coord = HecsCoord.from_offset(r, c)
 
@@ -593,6 +599,7 @@ class MapProvider(object):
             sorted_spaces = sorted(spaces, key=len, reverse=True)
             # Only spawn cards in the largest contiguous region.
             logger.info(f"NUMBER OF PARTITIONS: {len(sorted_spaces)}")
+            self._map_metadata.num_partitions = len(sorted_spaces)
             self._potential_spawn_tiles = sorted_spaces[0]
 
             self._potential_spawn_tiles = [tile 
@@ -606,6 +613,8 @@ class MapProvider(object):
             for _ in range(number_of_sets):
                 card_configs = card.RandomUniqueSet()
                 for config in card_configs:
+                    if len(card_spawn_locations) == 0:
+                        break
                     (r, c) = card_spawn_locations.pop()
                     (shape, color, count) = config
                     self._cards.append(self._card_generator.generate_card_at(r, c, shape, color, count))
@@ -634,6 +643,9 @@ class MapProvider(object):
         # Normalize card spawn weights so that they sum to 1.
         card_spawn_weights = [float(weight) / sum(card_spawn_weights) for weight in card_spawn_weights]
 
+        if n > len(self._potential_spawn_tiles):
+            logger.error("WARNING: Not enough spawn tiles to spawn all cards.")
+            n = len(self._potential_spawn_tiles)
         spawn_tiles = np.random.choice(self._potential_spawn_tiles, size=n, replace=False, p=card_spawn_weights)
         return [tile.cell.coord.to_offset_coordinates() for tile in spawn_tiles]
     

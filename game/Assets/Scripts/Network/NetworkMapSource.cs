@@ -13,11 +13,20 @@ namespace Network
         private List<HexGridManager.TileInformation> _map;
         private Network.MapUpdate _lastMapReceived;
 
-        public NetworkMapSource() { }
+        private Logger _logger;
+
+        public NetworkMapSource()
+        { 
+            _logger = Logger.GetTrackedLogger("NetworkMapSource");
+            if (_logger == null)
+            {
+                _logger = Logger.CreateTrackedLogger("NetworkRouter");
+            }
+        }
 
         public void ClearMapUpdate()
         {
-            Debug.Log("ClearMapUpdate");
+            _logger.Info("ClearMapUpdate");
             _networkMapReady = false;
             _rows = 0;
             _cols = 0;
@@ -38,13 +47,14 @@ namespace Network
                     RotationDegrees = tile.rotation_degrees,
                 });
             }
-            Debug.Log("NetworkMapSource received map update.");
+            _logger.Info("NetworkMapSource received map update.");
             
             // Log the number of cities, lakes, mountains and outposts.
-            Debug.Log("Cities: " + mapInfo.metadata.num_cities);
-            Debug.Log("Lakes: " + mapInfo.metadata.num_lakes);
-            Debug.Log("Mountains: " + mapInfo.metadata.num_mountains);
-            Debug.Log("Outposts: " + mapInfo.metadata.num_outposts);
+            _logger.Info("Cities: " + mapInfo.metadata.num_cities);
+            _logger.Info("Lakes: " + mapInfo.metadata.num_lakes);
+            _logger.Info("Mountains: " + mapInfo.metadata.num_mountains);
+            _logger.Info("Outposts: " + mapInfo.metadata.num_outposts);
+            _logger.Info("Partitions: " + mapInfo.metadata.num_partitions);
 
             _networkMapReady = true;
             _lastMapReceived = mapInfo;
@@ -62,7 +72,7 @@ namespace Network
         public List<HexGridManager.TileInformation> FetchTileList()
         {
             _networkMapReady = false;
-            Debug.Log("[DEBUG] Retrieved list of tiles!");
+            _logger.Debug("Retrieved list of tiles!");
             return _map;
         }
 
@@ -77,7 +87,7 @@ namespace Network
         {
             if (_lastMapReceived == null)
             {
-                Debug.LogError("RawMapUpdate() called before map update received.");
+                _logger.Error("RawMapUpdate() called before map update received.");
                 return null;
             }
             return _lastMapReceived;

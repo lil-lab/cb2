@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from tkinter import W
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from hex import HexCell, HecsCoord
@@ -19,12 +20,13 @@ class Tile:
     rotation_degrees: int
 
 @dataclass_json
-@dataclass(frozen=True)
+@dataclass
 class MapMetadata:
     num_cities: int
     num_lakes: int
     num_mountains: int
     num_outposts: int
+    num_partitions: int = 0
 
 @dataclass_json
 @dataclass(frozen=True)

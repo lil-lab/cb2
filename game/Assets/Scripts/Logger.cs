@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Util;
+using System.Runtime.InteropServices;
+
 
 public class Logger
 {
@@ -15,6 +17,9 @@ public class Logger
 
     string _module;
     private CircularBuffer _buffer;
+
+    [DllImport("__Internal")]
+    private static extern void LogToConsole(string log);
 
     public static List<string> GetTrackedModules()
     {
@@ -89,11 +94,15 @@ public class Logger
         string log = "[" + timestamp + "] [" + INFO + "] [" + _module + "] " + message + " (" + filePath + ":" + caller + ":" + lineNumber + ")\n";
         if (MODULE_CONTEXTS != null && MODULE_CONTEXTS.ContainsKey(_module))
         {
-            UnityEngine.Debug.Log(log, MODULE_CONTEXTS[_module]);
+            if (UnityEngine.Debug.isDebugBuild) {
+                UnityEngine.Debug.Log(log, MODULE_CONTEXTS[_module]);
+            } else {
+                LogToConsole(log);
+            }
         }
         else
         {
-            UnityEngine.Debug.Log(log);
+            LogToConsole(log);
         }
         _buffer.EnqueueString(log);
     }

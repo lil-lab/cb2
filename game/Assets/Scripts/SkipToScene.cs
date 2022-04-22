@@ -5,6 +5,10 @@ using UnityEngine.SceneManagement;
 
 public class SkipToScene : MonoBehaviour
 {
+    void Start()
+    {
+        // SceneManager.LoadScene("map_viewer");
+    }
     void Update()
     {
         // Wait until the NetworkManager is ready.

@@ -10,6 +10,7 @@ namespace Network
         public int num_lakes;
         public int num_mountains;
         public int num_outposts;
+        public int num_partitions;
     }
 
     // A MapUpdate consists of a list of Tiles and Props. The Map is a 2D tiling

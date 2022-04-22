@@ -25,4 +25,8 @@ mergeInto(LibraryManager.library, {
         }, 0); 
     
     },
+    LogToConsole: function(log) {
+        var log = Pointer_stringify(log);
+        console.log(log);
+    }
 });
