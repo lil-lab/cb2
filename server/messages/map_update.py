@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from tkinter import W
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from hex import HexCell, HecsCoord
