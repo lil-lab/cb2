@@ -25,6 +25,20 @@ from util import IdAssigner
 MAP_WIDTH = 18
 MAP_HEIGHT = 18
 
+MIN_NUMBER_OF_MOUNTAINS = 2
+MAX_NUMBER_OF_MOUNTAINS = 3
+
+MIN_NUMBER_OF_CITIES = 1
+MAX_NUMBER_OF_CITIES = 4
+
+MIN_NUMBER_OF_LAKES = 1
+MAX_NUMBER_OF_LAKES = 3
+
+MIN_NUMBER_OF_OUTPOSTS = 1
+MAX_NUMBER_OF_OUTPOSTS = 5
+
+PATH_CONNECTION_DISTANCE = 3
+
 logger = logging.getLogger()
 
 @dataclass_json
@@ -126,7 +140,7 @@ def place_lake(map, lake):
                 continue
             edge_of_map = (r == 0 or c == 0 or r == MAP_HEIGHT - 1 or c == MAP_WIDTH - 1)
             if map[r][c].asset_id in [AssetId.EMPTY_TILE, AssetId.GROUND_TILE]:
-                if point.radius == lake.size or edge_of_map:
+                if (point.radius == lake.size) or edge_of_map:
                     map[r][c] = PathTile()
                 elif map[r][c].asset_id == AssetId.EMPTY_TILE:
                     map[r][c] = WaterTile()
@@ -403,48 +417,60 @@ def RandomMap():
 
     # Points where an outpost can be connected to.
     connection_points = []
+    connection_point_entity = {}  # Give each feature a unique ID. This maps connection_point to entity.
+    ids = IdAssigner()
 
-    number_of_cities = 0
-    number_of_lakes = 0
-    number_of_mountains = 0
-    # Add features. Each feature can be a mountain, lake, or city.
-    min_number_of_features = len(feature_center_candidates) // 4
-    max_number_of_features = len(feature_center_candidates) - 2  # Save some for outposts.
-    number_of_features = random.randint(min_number_of_features, max_number_of_features)
-    logger.info(f"Feature points: {number_of_features}")
-    for i in range(number_of_features):
-        feature_choice = random.randint(0, 2)
-        if feature_choice == 0:
-            # Place a mountain.
-            number_of_mountains += 1
-            mountain_center = feature_center_candidates.pop()
-            mountain = Mountain(mountain_center[0], mountain_center[1], random.choice([MountainType.SMALL, MountainType.MEDIUM, MountainType.LARGE]), random.choice([True, False]))
-            place_mountain(map, mountain)
-            connection_points.extend(mountain_connection_points(map, mountain))
-        elif feature_choice == 1:
-            # Place a lake.
-            number_of_lakes += 1
-            lake_center = feature_center_candidates.pop()
-            lake = Lake(lake_center[0], lake_center[1], random.randint(2, 4))
-            place_lake(map, lake)
-            connection_points.extend(lake_connection_points(lake))
-        elif feature_choice == 2:
-            # Place a city.
-            number_of_cities += 1
-            city_center = feature_center_candidates.pop()
-            city = City(city_center[0], city_center[1], 2)
-            place_city(map, city)
-            connection_points.extend(city_connection_points(city))
+    number_of_cities = random.randint(MIN_NUMBER_OF_CITIES, MAX_NUMBER_OF_CITIES)
+    cities = []
+    for i in range(number_of_cities):
+        if len(feature_center_candidates) == 0:
+            break
+        city_center = feature_center_candidates.pop()
+        city = City(city_center[0], city_center[1], 2)
+        cities.append(city)
+        place_city(map, city)
+        new_connection_points = city_connection_points(city)
+        connection_points.extend(new_connection_points)
+        feature_id = ids.alloc()
+        for point in new_connection_points:
+            connection_point_entity[point] = feature_id
+
+
+    number_of_lakes = random.randint(MIN_NUMBER_OF_LAKES, MAX_NUMBER_OF_LAKES)
+    for i in range(number_of_lakes):
+        if len(feature_center_candidates) == 0:
+            break
+        lake_center = feature_center_candidates.pop()
+        lake = Lake(lake_center[0], lake_center[1], random.randint(1, 2))
+        place_lake(map, lake)
+        new_connection_points = lake_connection_points(lake)
+        connection_points.extend(new_connection_points)
+        feature_id = ids.alloc()
+        for point in new_connection_points:
+            connection_point_entity[point] = feature_id
+
+    number_of_mountains = random.randint(MIN_NUMBER_OF_MOUNTAINS, MAX_NUMBER_OF_MOUNTAINS)
+    for i in range(number_of_mountains):
+        if len(feature_center_candidates) == 0:
+            break
+        mountain_center = feature_center_candidates.pop()
+        mountain = Mountain(mountain_center[0], mountain_center[1], random.choice([MountainType.SMALL, MountainType.MEDIUM, MountainType.LARGE]), random.choice([True, False]))
+        place_mountain(map, mountain)
+        new_connection_points = mountain_connection_points(map, mountain)
+        connection_points.extend(new_connection_points)
+        feature_id = ids.alloc()
+        for point in new_connection_points:
+            connection_point_entity[point] = feature_id
+
+
 
     # Add a random number of outposts.
-    number_of_outposts = min(random.randint(1, len(feature_center_candidates)), len(feature_center_candidates))
-    logger.info(f"Number of outposts: {number_of_outposts}")
-    outpost_centers = feature_center_candidates[0:number_of_outposts]
-    feature_center_candidates = feature_center_candidates[number_of_outposts:len(feature_center_candidates)]
-    logger.info(f"Remaining feature points: {len(feature_center_candidates)}")
-    logger.info(f"Connection points: {len(connection_points)}")
+    number_of_outposts = random.randint(MIN_NUMBER_OF_OUTPOSTS, MAX_NUMBER_OF_OUTPOSTS)
 
-    for outpost_center in outpost_centers:
+    for i in range(number_of_outposts):
+        if len(feature_center_candidates) == 0:
+            break
+        outpost_center = feature_center_candidates.pop()
         outpost_center_hex = HecsCoord.from_offset(outpost_center[0], outpost_center[1])
         nearest_connection_points = sorted(connection_points, key=lambda x: x.distance_to(outpost_center_hex))
         first_connection_point = nearest_connection_points.pop(0) if len(nearest_connection_points) > 0 else None
@@ -453,6 +479,27 @@ def RandomMap():
         if random.randint(0, 1) == 0:
             outpost.tiles.append(UrbanHouseTile(rotation_degrees=180))
         place_outpost(map, outpost)
+    
+    # For each city, see if another city is nearby. If so, path connect them.
+    number_connection_points = len(connection_points)
+    connected = [[0 for _ in range(number_connection_points)] for _ in range(number_connection_points)]
+    for i, connection_i in enumerate(connection_points):
+        for j, connection_j in enumerate(connection_points):
+            if connection_point_entity[connection_i] == connection_point_entity[connection_j]:
+                continue
+            if connected[i][j]:
+                continue
+            distance = connection_i.distance_to(connection_j)
+            if distance > 0 and distance <= PATH_CONNECTION_DISTANCE:
+                path_to_j = PathFind(map, connection_i, connection_j)
+                if path_to_j is not None:
+                    for coord in path_to_j:
+                        offset = coord.to_offset_coordinates()
+                        if offset_coord_in_map(map, offset):
+                            map[offset[0]][offset[1]] = PathTile()
+                    connected[i][j] = 1
+                    connected[j][i] = 1
+
 
     # For each connection point, if it has path tile neighbors, make it a path tile as well.
     for connection_point in connection_points:
