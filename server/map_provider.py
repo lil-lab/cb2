@@ -177,8 +177,8 @@ class Mountain:
     snowy: bool
 
 def offset_coord_in_map(map, offset):
-    return (offset[0] in range(1, len(map) - 1) and
-            offset[1] in range(1, len(map[offset[0]]) - 1))
+    return (offset[0] in range(0, len(map)) and
+            offset[1] in range(0, len(map[offset[0]])))
 
 def place_small_mountain(map, mountain):
     mountain_coords = []
@@ -201,10 +201,10 @@ def place_small_mountain(map, mountain):
     first_connection_point = start.left().left();
     second_connection_point = start.right().down_right().right()
     ramp_locations = []
-    if offset_coord_in_map(map, first_ramp_offset) and is_walkable(map, first_connection_point):
+    if offset_coord_in_map(map, first_connection_point.to_offset_coordinates()) and is_walkable(map, first_connection_point):
         ramp_locations.append(HecsCoord.from_offset(*first_ramp_offset))
         map[first_ramp_offset[0]][first_ramp_offset[1]] = RampToMountain(rotation_degrees=00, snowy=mountain.snowy)
-    if offset_coord_in_map(map, second_ramp_offset) and is_walkable(map, second_connection_point):
+    if offset_coord_in_map(map, second_connection_point.to_offset_coordinates()) and is_walkable(map, second_connection_point):
         ramp_locations.append(HecsCoord.from_offset(*second_ramp_offset))
         map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=180, snowy=mountain.snowy)
 
@@ -238,10 +238,10 @@ def place_medium_mountain(map, mountain):
     first_connection_point = start.left().up_left()
     second_connection_point = start.down_right().down_right().down_right().down_left()
     ramp_locations = []
-    if offset_coord_in_map(map, first_ramp_offset) and is_walkable(map, first_connection_point):
+    if offset_coord_in_map(map, first_connection_point.to_offset_coordinates()) and is_walkable(map, first_connection_point):
         ramp_locations.append(HecsCoord.from_offset(*first_ramp_offset))
         map[first_ramp_offset[0]][first_ramp_offset[1]] = RampToMountain(rotation_degrees=60, snowy=mountain.snowy)
-    if offset_coord_in_map(map, second_ramp_offset) and is_walkable(map, second_connection_point):
+    if offset_coord_in_map(map, second_connection_point.to_offset_coordinates()) and is_walkable(map, second_connection_point):
         ramp_locations.append(HecsCoord.from_offset(*second_ramp_offset))
         map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=240, snowy=mountain.snowy)
 
@@ -273,10 +273,10 @@ def place_large_mountain(map, mountain):
     first_connection_point = start.left().left().left()
     second_connection_point = start.right().right().right()
     ramp_locations = []
-    if offset_coord_in_map(map, first_ramp_offset) and is_walkable(map, first_connection_point):
+    if offset_coord_in_map(map, first_connection_point.to_offset_coordinates()) and is_walkable(map, first_connection_point):
         ramp_locations.append(HecsCoord.from_offset(*first_ramp_offset))
         map[first_ramp_offset[0]][first_ramp_offset[1]] = RampToMountain(rotation_degrees=0, snowy=mountain.snowy)
-    if offset_coord_in_map(map, second_ramp_offset) and is_walkable(map, second_connection_point):
+    if offset_coord_in_map(map, second_connection_point.to_offset_coordinates()) and is_walkable(map, second_connection_point):
         ramp_locations.append(HecsCoord.from_offset(*second_ramp_offset))
         map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=180, snowy=mountain.snowy)
 
@@ -339,7 +339,7 @@ def path_find(map, start, end):
             if nr < 0 or nr >= len(map) or nc < 0 or nc >= len(map[0]):
                 continue
             neighbor_tile = map[nr][nc]
-            if neighbor_tile.asset_id in [AssetId.EMPTY_TILE, AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH, AssetId.WATER_TILE] + NatureAssets():
+            if neighbor_tile.asset_id in [AssetId.EMPTY_TILE, AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH] + NatureAssets():
                 if neighbor not in visited:
                     path_to_neighbor = path_to_current + [neighbor]
                     child_node = (neighbor, path_to_neighbor)
