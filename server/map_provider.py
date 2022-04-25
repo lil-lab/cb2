@@ -37,7 +37,7 @@ MAX_NUMBER_OF_LAKES = 3
 MIN_NUMBER_OF_OUTPOSTS = 1
 MAX_NUMBER_OF_OUTPOSTS = 5
 
-PATH_CONNECTION_DISTANCE = 3
+PATH_CONNECTION_DISTANCE = 4
 
 logger = logging.getLogger()
 
@@ -312,13 +312,13 @@ def mountain_connection_points(map, mountain):
         first_connection_point = start.left().left().left()
         second_connection_point = start.right().right().right()
     connection_points = []
-    if first_connection_point is not None and offset_coord_in_map(map, first_connection_point.to_offset_coordinates()):
+    if first_connection_point is not None and offset_coord_in_map(map, first_connection_point.to_offset_coordinates()) and is_walkable(map, first_connection_point):
         connection_points.append(first_connection_point)
-    if second_connection_point is not None and offset_coord_in_map(map, second_connection_point.to_offset_coordinates()):
+    if second_connection_point is not None and offset_coord_in_map(map, second_connection_point.to_offset_coordinates()) and is_walkable(map, second_connection_point):
         connection_points.append(second_connection_point)
     return connection_points
 
-def PathFind(map, start, end):
+def path_find(map, start, end):
     """ Finds a path of empty or ground tiles from start to end on the map.
 
         Returns a list of tiles that make up the path.
@@ -326,7 +326,7 @@ def PathFind(map, start, end):
         Used for outpost routing.
     """
     children = Queue()
-    children.put((start, []))
+    children.put((start, [start]))
     visited = set()
     visited.add(start)
     while not children.empty():
@@ -338,13 +338,11 @@ def PathFind(map, start, end):
             nr, nc = neighbor.to_offset_coordinates()
             if nr < 0 or nr >= len(map) or nc < 0 or nc >= len(map[0]):
                 continue
-            #if map[r][c].cell.boundary.get_edge_between(current, neighbor):
-            #    continue
             neighbor_tile = map[nr][nc]
             if neighbor_tile.asset_id in [AssetId.EMPTY_TILE, AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH, AssetId.WATER_TILE] + NatureAssets():
                 if neighbor not in visited:
-                    neighbor_path_to_parent = path_to_current + [neighbor]
-                    child_node = (neighbor, neighbor_path_to_parent)
+                    path_to_neighbor = path_to_current + [neighbor]
+                    child_node = (neighbor, path_to_neighbor)
                     children.put(child_node)
                     visited.add(neighbor)
     return None
@@ -378,8 +376,8 @@ def place_outpost(map, outpost):
     map[outpost.r+2][outpost.c] = PathTile()
 
     # Connect the outpost to the nearest features.
-    path_to_a = PathFind(map, HecsCoord.from_offset(outpost.r + 2, outpost.c), outpost.connection_a)
-    path_to_b = PathFind(map, HecsCoord.from_offset(outpost.r + 2, outpost.c), outpost.connection_b)
+    path_to_a = path_find(map, HecsCoord.from_offset(outpost.r + 2, outpost.c), outpost.connection_a)
+    path_to_b = path_find(map, HecsCoord.from_offset(outpost.r + 2, outpost.c), outpost.connection_b)
 
     # Replace all non-mountain and non-ramp tiles in paths a and b with PathTile.
     for path_to_x in [path_to_a, path_to_b]:
@@ -450,11 +448,14 @@ def RandomMap():
             connection_point_entity[point] = feature_id
 
     number_of_mountains = random.randint(MIN_NUMBER_OF_MOUNTAINS, MAX_NUMBER_OF_MOUNTAINS)
+    mountain_types = [MountainType.SMALL, MountainType.MEDIUM, MountainType.LARGE]
+    random.shuffle(mountain_types)
+
     for i in range(number_of_mountains):
         if len(feature_center_candidates) == 0:
             break
         mountain_center = feature_center_candidates.pop()
-        mountain = Mountain(mountain_center[0], mountain_center[1], random.choice([MountainType.SMALL, MountainType.MEDIUM, MountainType.LARGE]), random.choice([True, False]))
+        mountain = Mountain(mountain_center[0], mountain_center[1], mountain_types.pop(), np.random.choice([True, False], p=[0.3, 0.7]))
         place_mountain(map, mountain)
         new_connection_points = mountain_connection_points(map, mountain)
         connection_points.extend(new_connection_points)
@@ -462,11 +463,8 @@ def RandomMap():
         for point in new_connection_points:
             connection_point_entity[point] = feature_id
 
-
-
     # Add a random number of outposts.
     number_of_outposts = random.randint(MIN_NUMBER_OF_OUTPOSTS, MAX_NUMBER_OF_OUTPOSTS)
-
     for i in range(number_of_outposts):
         if len(feature_center_candidates) == 0:
             break
@@ -480,39 +478,34 @@ def RandomMap():
             outpost.tiles.append(UrbanHouseTile(rotation_degrees=180))
         place_outpost(map, outpost)
     
-    # For each city, see if another city is nearby. If so, path connect them.
-    number_connection_points = len(connection_points)
-    connected = [[0 for _ in range(number_connection_points)] for _ in range(number_connection_points)]
+    # For each connection point, see if another connection point is nearby. If so, path connect them.
+    number_of_entities = ids.num_allocated()
+    connected = [[0 for _ in range(number_of_entities)] for _ in range(number_of_entities)]
     for i, connection_i in enumerate(connection_points):
         for j, connection_j in enumerate(connection_points):
             if connection_point_entity[connection_i] == connection_point_entity[connection_j]:
                 continue
-            if connected[i][j]:
+            entity_i = connection_point_entity[connection_i]
+            entity_j = connection_point_entity[connection_j]
+            if connected[entity_i][entity_j]:
                 continue
             distance = connection_i.distance_to(connection_j)
             if distance > 0 and distance <= PATH_CONNECTION_DISTANCE:
-                path_to_j = PathFind(map, connection_i, connection_j)
+                path_to_j = path_find(map, connection_i, connection_j)
                 if path_to_j is not None:
                     for coord in path_to_j:
                         offset = coord.to_offset_coordinates()
                         if offset_coord_in_map(map, offset):
                             map[offset[0]][offset[1]] = PathTile()
-                    connected[i][j] = 1
-                    connected[j][i] = 1
+                    connected[entity_i][entity_j] = 1
+                    connected[entity_j][entity_i] = 1
 
-
-    # For each connection point, if it has path tile neighbors, make it a path tile as well.
-    for connection_point in connection_points:
-        (r, c) = connection_point.to_offset_coordinates()
-        if map[r][c].asset_id not in [AssetId.EMPTY_TILE, AssetId.GROUND_TILE]:
-            continue
-        for neighbor in connection_point.neighbors():
-            (nr, nc) = neighbor.to_offset_coordinates()
-            if not offset_coord_in_map(map, (nr, nc)):
-                continue
-            if map[nr][nc].asset_id == AssetId.GROUND_TILE_PATH:
-                map[r][c] = PathTile()
-                break
+    # Fill empty tiles with random ground tiles.
+    for r in range(0, MAP_HEIGHT):
+        for c in range(0, MAP_WIDTH):
+            if map[r][c].asset_id == AssetId.EMPTY_TILE:
+                tile_generator = np.random.choice([GroundTile, RandomNatureTile, GroundTileStreetLight], size=1, p=[0.8, 0.18, 0.02])[0]
+                map[r][c] = tile_generator()
 
     # Make sure there's at least 23 walkable tiles (2 for spawn points, 21 for card placement). 
     walkable_tiles = 0
@@ -532,12 +525,9 @@ def RandomMap():
             blocked_nature_tiles.remove(blocked_nature_tile)
             walkable_tiles += 1
 
-    # Fix all the tile coordinates and replace empty tiles with ground tiles.
+    # Fix all the tile coordinates.
     for r in range(0, MAP_HEIGHT):
         for c in range(0, MAP_WIDTH):
-            if map[r][c].asset_id == AssetId.EMPTY_TILE:
-                tile_generator = np.random.choice([GroundTile, RandomNatureTile, GroundTileStreetLight], size=1, p=[0.8, 0.18, 0.02])[0]
-                map[r][c] = tile_generator()
             map[r][c].cell.coord = HecsCoord.from_offset(r, c)
 
     # Flatten the 2D map of tiles to a list.

@@ -22,6 +22,8 @@ class IdAssigner(object):
     def free(self, id):
         pass
 
+    def num_allocated(self):
+        return self._last_id
 
 def SafePasswordCompare(a, b):
     """ Compares two passwords. Resistant to timing attacks.  """
