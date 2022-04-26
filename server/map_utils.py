@@ -236,10 +236,14 @@ class HouseType(Enum):
     HOUSE = 1
     HOUSE_RED = 2
     HOUSE_BLUE = 3
-    TRIPLE_HOUSE = 4
-    TRIPLE_HOUSE_RED = 5
-    TRIPLE_HOUSE_BLUE = 6
-    RANDOM = 7
+    HOUSE_PINK = 4
+    HOUSE_GREEN = 5
+    HOUSE_YELLOW = 6
+    HOUSE_ORANGE = 7
+    TRIPLE_HOUSE = 8
+    TRIPLE_HOUSE_RED = 9
+    TRIPLE_HOUSE_BLUE = 10
+    RANDOM = 11
 
 def AssetIdFromHouseType(type):
     if type == HouseType.HOUSE:
@@ -248,6 +252,14 @@ def AssetIdFromHouseType(type):
         return AssetId.GROUND_TILE_HOUSE_RED
     elif type == HouseType.HOUSE_BLUE:
         return AssetId.GROUND_TILE_HOUSE_BLUE
+    elif type == HouseType.HOUSE_PINK:
+        return AssetId.GROUND_TILE_HOUSE_PINK
+    elif type == HouseType.HOUSE_GREEN:
+        return AssetId.GROUND_TILE_HOUSE_GREEN
+    elif type == HouseType.HOUSE_YELLOW:
+        return AssetId.GROUND_TILE_HOUSE_YELLOW
+    elif type == HouseType.HOUSE_ORANGE:
+        return AssetId.GROUND_TILE_HOUSE_ORANGE
     elif type == HouseType.TRIPLE_HOUSE:
         return AssetId.GROUND_TILE_HOUSE_TRIPLE
     elif type == HouseType.TRIPLE_HOUSE_RED:
@@ -258,6 +270,10 @@ def AssetIdFromHouseType(type):
         return random.choice([AssetId.GROUND_TILE_HOUSE,
                               AssetId.GROUND_TILE_HOUSE_RED,
                               AssetId.GROUND_TILE_HOUSE_BLUE,
+                              AssetId.GROUND_TILE_HOUSE_GREEN,
+                              AssetId.GROUND_TILE_HOUSE_ORANGE,
+                              AssetId.GROUND_TILE_HOUSE_PINK,
+                              AssetId.GROUND_TILE_HOUSE_YELLOW,
                               AssetId.GROUND_TILE_HOUSE_TRIPLE,
                               AssetId.GROUND_TILE_HOUSE_TRIPLE_RED,
                               AssetId.GROUND_TILE_HOUSE_TRIPLE_BLUE])
@@ -283,11 +299,15 @@ def UrbanHouseTile(rotation_degrees=0):
         HouseType.HOUSE,
         HouseType.HOUSE_RED,
         HouseType.HOUSE_BLUE,
+        HouseType.HOUSE_PINK,
+        HouseType.HOUSE_GREEN,
+        HouseType.HOUSE_ORANGE,
+        HouseType.HOUSE_YELLOW,
         HouseType.TRIPLE_HOUSE,
         HouseType.TRIPLE_HOUSE_RED,
         HouseType.TRIPLE_HOUSE_BLUE,
     ]
-    house_type = np.random.choice(house_types, p=[0.25, 0.25, 0.25, 0.07, 0.09, 0.09])
+    house_type = np.random.choice(house_types, p=[0.13, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.09, 0.09, 0.09])
     asset_id = AssetIdFromHouseType(house_type)
     return Tile(
         asset_id,
