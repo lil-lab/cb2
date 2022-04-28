@@ -78,6 +78,10 @@ namespace Network
         public static Dictionary<string, string> UrlParameters()
         {
             // We can figure out the server's address based on Unity's API.
+            if (Application.absoluteURL == "")
+            {
+                return new Dictionary<string, string>();
+            }
             Uri servedUrl = new Uri(Application.absoluteURL);
             string query = servedUrl.Query;
             // Remove the initial ?.

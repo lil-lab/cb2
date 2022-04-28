@@ -94,15 +94,19 @@ public class Logger
         string log = "[" + timestamp + "] [" + INFO + "] [" + _module + "] " + message + " (" + filePath + ":" + caller + ":" + lineNumber + ")\n";
         if (MODULE_CONTEXTS != null && MODULE_CONTEXTS.ContainsKey(_module))
         {
-            if (UnityEngine.Debug.isDebugBuild) {
-                UnityEngine.Debug.Log(log, MODULE_CONTEXTS[_module]);
-            } else {
+            if (UnityEngine.Application.platform == UnityEngine.RuntimePlatform.WebGLPlayer)
+            {
                 LogToConsole(log);
+            } else {
+                UnityEngine.Debug.Log(log, MODULE_CONTEXTS[_module]);
             }
-        }
-        else
-        {
-            LogToConsole(log);
+        } else {
+            if (UnityEngine.Application.platform == UnityEngine.RuntimePlatform.WebGLPlayer)
+            {
+                LogToConsole(log);
+            } else {
+                UnityEngine.Debug.Log(log);
+            }
         }
         _buffer.EnqueueString(log);
     }

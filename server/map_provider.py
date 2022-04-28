@@ -77,7 +77,7 @@ def place_city(map, city):
         covered_points.add((point.r, point.c))
         if map[point.r][point.c].asset_id in [AssetId.EMPTY_TILE, AssetId.GROUND_TILE] + NatureAssets():
             if point.radius % 3 == 0:
-                tile_generator = np.random.choice([PathTile, RandomGroundTree, GroundTileStreetLight], size=1, p=[0.0, 0.0, 1])[0]
+                tile_generator = np.random.choice([PathTile, RandomGroundTree, GroundTileStreetLight], size=1, p=[0.3, 0.3, 0.4])[0]
                 map[point.r][point.c] = tile_generator(rotation_degrees = random.choice([0, 60, 120, 180, 240, 300]))
             elif point.radius % 3 == 1:
                 map[point.r][point.c] = PathTile()

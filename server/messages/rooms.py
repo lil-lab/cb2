@@ -88,5 +88,5 @@ class RoomManagementResponse:
     stats: Optional[StatsResponse]
     join_response: Optional[JoinResponse]
     leave_notice: Optional[LeaveRoomNotice]
-    map_update: Optional[MapUpdate]
+    map_update: Optional[MapUpdate] = None
     error: str = ""

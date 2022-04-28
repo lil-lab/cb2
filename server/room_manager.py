@@ -218,9 +218,9 @@ class RoomManager(object):
             game_info_log.close()
 
             self._pending_room_management_responses[leader].put(
-                RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.LEADER), None))
+                RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.LEADER), None, None))
             self._pending_room_management_responses[follower].put(
-                RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.FOLLOWER), None))
+                RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.FOLLOWER), None, None))
 
     def get_leader_follower_match(self):
         """ Returns a pair of leader, follower.
@@ -252,7 +252,7 @@ class RoomManager(object):
             return
         self._player_queue.append(ws)
         self._pending_room_management_responses[ws].put(
-            RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, len(self._player_queue), Role.NONE), None))
+            RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, len(self._player_queue), Role.NONE), None, None))
 
     def handle_leave_request(self, request, ws):
         if not ws in self._remotes:
