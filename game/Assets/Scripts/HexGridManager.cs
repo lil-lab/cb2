@@ -56,23 +56,26 @@ public class HexGridManager
     public Vector3 CenterPosition()
     {
         var (rows, cols) = _mapSource.GetMapDimensions();
-        rows /= 2;
-        cols /= 2;
-        int a = rows % 2;
-        int r = rows / 2;
-        int c = cols;
+        int a = (rows - 1) % 2;
+        int r = (rows - 1) / 2;
+        int c = (cols - 1);
         if (_grid.GetLength(0) <= a || _grid.GetLength(1) <= r || _grid.GetLength(2) <= c)
         {
             _logger.Info("HexGrid not yet initialized. Returning vector3.zero");
             return Vector3.zero;
         }
-        Tile center_tile = _grid[a, r, c];
-        // This part could be improved. Figure out better way of calculating the center of a hex grid.
-        float apothem = center_tile.Cell.Apothem();
-        float halfTileOffsetX = rows % 2 == 0 ? -apothem * Mathf.Sin(Mathf.PI/6) : 0;
-        float halfTileOffsetZ = cols % 2 == 0 ? apothem * Mathf.Cos(Mathf.PI/6): 0;
-        Vector3 halfTileOffset = new Vector3(halfTileOffsetX, 0, halfTileOffsetZ);
-        return center_tile.Cell.Center() + halfTileOffset;
+        Tile corner_1 = _grid[0, 0, 0];
+        Tile corner_2 = _grid[a, r, c];
+        Tile corner_3 = _grid[a, r, 0];
+        Tile corner_4 = _grid[0, 0, c];
+        Vector3 center = 0.25f * (
+            corner_1.Cell.Center() +
+            corner_2.Cell.Center() +
+            corner_3.Cell.Center() +
+            corner_4.Cell.Center()
+        );
+        _logger.Info("Center position: " + center);
+        return center;
     }
 
     public Vector3 Position(int i, int j)

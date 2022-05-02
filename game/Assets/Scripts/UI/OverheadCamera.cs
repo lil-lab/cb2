@@ -8,7 +8,7 @@ public class OverheadCamera : MonoBehaviour
     public static readonly string OVERHEAD_TAG = "OverheadViewCam";
     public static readonly string ANGLED_TAG = "AngledViewCam";
 
-    private static readonly float OrthographicPrecalculatedDistance = 200;
+    private static readonly float OrthographicPrecalculatedDistance = 20;
 
     public float Theta = 90;
     public float ScreenMargin = 0.05f;
