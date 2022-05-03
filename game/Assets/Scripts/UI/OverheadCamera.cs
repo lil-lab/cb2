@@ -11,7 +11,12 @@ public class OverheadCamera : MonoBehaviour
     private static readonly float OrthographicPrecalculatedDistance = 200;
 
     public float Theta = 90;
-    public float ScreenMargin = 0.05f;
+    public float ScreenMarginFirstThreshold = 0.025f;
+    public float ScreenMarginSetpoint = 0.05f;
+    public float ScreenMarginSecondThreshold = 0.1f;
+
+    private bool _zoomingIn = false;
+    private bool _zoomingOut = false;
     private float _calculatedDistance = 0;
 
     // If you assign a FollowPlayer instance, then the camera will center on the player with the provided distance.
@@ -23,6 +28,16 @@ public class OverheadCamera : MonoBehaviour
     private bool _isDraggingMouse = false;
     private float _phi = 0;  // the X-Z plane (Y-axis) rotation around the player. Controlled by the A and D keys.
 
+    private Logger _logger;
+
+    public OverheadCamera()
+    {
+        _logger = Logger.GetTrackedLogger("NetworkRouter");
+        if (_logger == null)
+        {
+            _logger = Logger.CreateTrackedLogger("NetworkRouter");
+        }
+    }
 
     public static OverheadCamera TaggedOverheadInstance()
     {
@@ -53,11 +68,17 @@ public class OverheadCamera : MonoBehaviour
         return gameObject.GetComponent<Camera>();
     }
 
+    private bool IsInRange(float value, float min, float max)
+    {
+        return value >= min && value <= max;
+    }
+
     private bool IsPointClipped(Camera camera, Vector3 worldCoord, float margin, float clipMargin=1.0f)
     {
         Vector3 viewPortPoint = camera.WorldToViewportPoint(worldCoord);
-        return (viewPortPoint.x < margin) || (viewPortPoint.x > 1 - margin) ||
-               (viewPortPoint.y < margin) || (viewPortPoint.y > 1 - margin) || (viewPortPoint.z < (camera.nearClipPlane + clipMargin)) || (viewPortPoint.z > (camera.farClipPlane - clipMargin));
+        return (!IsInRange(viewPortPoint.x, 0.0f, 1.0f - margin) || !IsInRange(viewPortPoint.y, 0.0f, 1.0f - margin))
+                || (viewPortPoint.z < (camera.nearClipPlane + clipMargin)) 
+                || (viewPortPoint.z > (camera.farClipPlane - clipMargin));
     }
     
     private void AdjustDepthIfClipped(Camera camera, float clipMargin=1.0f)
@@ -65,7 +86,6 @@ public class OverheadCamera : MonoBehaviour
         if (camera.orthographic)
         {
             _calculatedDistance = OrthographicPrecalculatedDistance;
-            return;
         }
         HexGrid grid = HexGrid.TaggedInstance();
         (int rows, int cols) = grid.MapDimensions();
@@ -80,18 +100,55 @@ public class OverheadCamera : MonoBehaviour
         corners.Add(grid.Position(rows - 1, 0));
         corners.Add(grid.Position(0, cols - 1));
         corners.Add(grid.Position(rows - 1, cols - 1));
-        bool clipped = false;
+        bool smallMarginClipped = false;
+        bool largeMarginClipped = false;
+        bool correctMarginClipped = false;
         foreach (Vector3 corner in corners)
         {
-            if (IsPointClipped(GetCamera(), corner, ScreenMargin))
+            if (IsPointClipped(camera, corner, ScreenMarginFirstThreshold))
             {
-                clipped = true;
-                break;
+                smallMarginClipped = true;
+            }
+            if (IsPointClipped(camera, corner, ScreenMarginSecondThreshold))
+            {
+                largeMarginClipped = true;
+            }
+            if (IsPointClipped(camera, corner, ScreenMarginSetpoint))
+            {
+                correctMarginClipped = true;
             }
         }
-        if (clipped)
+        if (smallMarginClipped) {
+            _zoomingOut = true;
+        }
+        if (!largeMarginClipped) {
+            _zoomingIn = true;
+        }
+        if (!correctMarginClipped) {
+            _zoomingOut = false;
+        }
+        if (correctMarginClipped)
         {
-            _calculatedDistance += Time.deltaTime * 10f;
+            _zoomingIn = false;
+        }
+        _logger.Info("correctMarginClipped: " + correctMarginClipped);
+        _logger.Info("smallMarginClipped: " + smallMarginClipped);
+        _logger.Info("largeMarginClipped: " + largeMarginClipped);
+        if (_zoomingOut)
+        {
+            if (camera.orthographic) {
+                camera.orthographicSize += Time.deltaTime * 10f;
+                _logger.Info("Camera is zooming out. Adjusting depth: " + camera.orthographicSize);
+            } else {
+                _calculatedDistance += Time.deltaTime * 10f;
+            }
+        } else if (_zoomingIn) {
+            if (camera.orthographic) {
+                camera.orthographicSize -= Time.deltaTime * 10f;
+                _logger.Info("Camera is zooming in. Adjusting depth: " + camera.orthographicSize);
+            } else {
+                _calculatedDistance -= Time.deltaTime * 10f;
+            }
         }
     }
 
@@ -129,7 +186,7 @@ public class OverheadCamera : MonoBehaviour
             bool clipped = false;
             foreach (Vector3 corner in corners)
             {
-                if (IsPointClipped(GetCamera(), corner, ScreenMargin))
+                if (IsPointClipped(GetCamera(), corner, ScreenMarginSetpoint))
                 {
                     clipped = true;
                     break;
@@ -203,6 +260,7 @@ public class OverheadCamera : MonoBehaviour
         {
             _isDraggingMouse = false;
         }
+        AdjustDepthIfClipped(GetCamera());
         HexGrid grid = HexGrid.TaggedInstance();
         Vector3 center = (FollowPlayer != null) ? FollowPlayer.GetComponent<Player>().Position() : grid.CenterPosition();
         float distance = (FollowPlayer != null) ? FollowDistance : _calculatedDistance;

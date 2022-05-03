@@ -61,6 +61,8 @@ public class HexGridManager
         int c = (cols - 1);
         if (_grid.GetLength(0) <= a || _grid.GetLength(1) <= r || _grid.GetLength(2) <= c)
         {
+            _logger.Info("ARC: " + a + " R: " + r + " C: " + c);
+            _logger.Info("GRID: " + _grid.GetLength(0) + " " + _grid.GetLength(1) + " " + _grid.GetLength(2));
             _logger.Info("HexGrid not yet initialized. Returning vector3.zero");
             return Vector3.zero;
         }
@@ -74,7 +76,6 @@ public class HexGridManager
             corner_3.Cell.Center() +
             corner_4.Cell.Center()
         );
-        _logger.Info("Center position: " + center);
         return center;
     }
 
