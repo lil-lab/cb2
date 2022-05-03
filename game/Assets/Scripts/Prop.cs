@@ -84,7 +84,6 @@ public class Prop
         State.Discrete discrete = _actionQueue.State();
         if (discrete.EndOfLife)
         {
-            Debug.Log("EOL for object. Killing...");
             if (!IsDestroyed()) Destroy();
             return;
         }

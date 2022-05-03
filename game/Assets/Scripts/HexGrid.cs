@@ -13,6 +13,8 @@ public class HexGrid : MonoBehaviour
 
     private HexGridManager _manager;
 
+    private Logger _logger;
+
     public static HexGrid TaggedInstance()
     {
         GameObject obj = GameObject.FindGameObjectWithTag(TAG);
@@ -59,7 +61,7 @@ public class HexGrid : MonoBehaviour
         return _manager.MapDimensions();
     }
 
-    void Start()
+    Util.Status InitializeManager()
     {
         Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
         IMapSource mapSource = networkManager.MapSource();
@@ -69,13 +71,31 @@ public class HexGrid : MonoBehaviour
             Scale += 0.04f;
         }
         Debug.Log("[DEBUG] Loading HexGrid.");
-        _manager = new HexGridManager(mapSource, new UnityAssetSource());
-        _manager.Start();
+        _manager = new HexGridManager();
+        _manager.Start(mapSource, new UnityAssetSource());
+        return Util.Status.OkStatus();
+    }
+
+    void Start()
+    {
+        _logger = Logger.GetOrCreateTrackedLogger("HexGrid");
+        InitializeManager();
     }
 
     public void SetMap(IMapSource map)
     {
         _manager.SetMap(map);
+    }
+
+    public void OnEnable()
+    {
+        Debug.Log("HexGrid: OnEnable()");
+        if (_manager == null)
+        {
+            Debug.Log("HexGrid: Start()");
+            Start();
+            _logger.Info("HexGridManager re-initialized.");
+        }
     }
 
     void Update()

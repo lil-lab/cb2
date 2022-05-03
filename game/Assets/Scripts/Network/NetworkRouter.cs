@@ -96,7 +96,9 @@ namespace Network
 
         public bool ApplyMapUpdateToEntityManager(MapUpdate mapUpdate)
         {
+            _logger.Info("ApplyMapUpdateToEntityManager()");
             if (_entityManager == null) return false;
+            _logger.Info("Applying map update to entity manager...");
             _entityManager.QueueDestroyProps();
             foreach (Network.Prop netProp in mapUpdate.props)
             {
@@ -168,13 +170,13 @@ namespace Network
             {
                 if (_mapSource == null)
                 {
-                    Debug.Log("Network Router received map update but no map source to forward it to.");
+                    _logger.Info("Network Router received map update but no map source to forward it to.");
                     return;
                 }
                 _mapSource.ReceiveMapUpdate(message.map_update);
                 if(!ApplyMapUpdateToEntityManager(message.map_update))
                 {
-                    Debug.Log("Unable to apply map update to entity manager... Saved for later.");
+                    _logger.Info("Unable to apply map update to entity manager... Saved for later.");
                     _pendingMapUpdate = message.map_update;
                 }
             }

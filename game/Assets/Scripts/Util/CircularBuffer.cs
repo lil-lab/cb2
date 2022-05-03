@@ -4,6 +4,7 @@ using UnityEngine;
 namespace Util 
 {
 
+[Serializable]
 public class CircularBuffer
 {
     private int _capacity;

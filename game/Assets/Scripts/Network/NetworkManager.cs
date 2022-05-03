@@ -28,6 +28,8 @@ namespace Network
         private Role _role = Network.Role.NONE;
         private Role _currentTurn = Network.Role.NONE;
 
+        private Logger _logger;
+
         public IMapSource MapSource()
         {
             Scene scene = SceneManager.GetActiveScene();
@@ -248,44 +250,52 @@ namespace Network
         public Util.Status InitializeTaggedObjects()
         {
             GameObject obj = GameObject.FindGameObjectWithTag(EntityManager.TAG);
-            if (obj == null)
+            Util.Status result = Util.Status.OkStatus();
+            if (obj != null)
             {
+                _entityManager = obj.GetComponent<EntityManager>();
+            } else {
                 _entityManager = null;
-                return Util.Status.NotFound("Could not find tag: " + EntityManager.TAG);
+                result.Chain(Util.Status.NotFound("Could not find tag: " + EntityManager.TAG));
             }
-            _entityManager = obj.GetComponent<EntityManager>();
-            if (_entityManager == null)
+            if (_entityManager != null)
             {
+                _router.SetEntityManager(_entityManager);
+            } else {
                 return Util.Status.NotFound("Could not find component: " + EntityManager.TAG);
             }
 
             GameObject playerObj = GameObject.FindGameObjectWithTag(Player.TAG);
-            if (playerObj == null)
+            if (playerObj != null)
             {
+                _player = playerObj.GetComponent<Player>();
+            } else {
                 _player = null;
-                return Util.Status.NotFound("Could not find tag: " + Player.TAG);
+                result.Chain(Util.Status.NotFound("Could not find tag: " + Player.TAG));
             }
-            _player = playerObj.GetComponent<Player>();
-            if (_player == null)
+            if (_player != null)
             {
-                return Util.Status.NotFound("Could not find component: " + Player.TAG);
+                _router.SetPlayer(_player);
+            } else {
+                result.Chain(Util.Status.NotFound("Could not find component: " + Player.TAG));
             }
-
-            _router.SetEntityManager(_entityManager);
-            _router.SetPlayer(_player);
-            return Util.Status.OkStatus();
+            return result;
         }
 
         // Start is called before the first frame update
         private void Start()
         {
+            _logger = Logger.GetTrackedLogger("NetworkManager");
+            if (_logger == null)
+            {
+                _logger = Logger.CreateTrackedLogger("NetworkManager");
+            }
             if (Instance == null)
             {
                 Instance = this;
                 DontDestroyOnLoad(this);  // Persist network connection between scene changes.
-            }
-            else if (Instance != this)
-            {
+            } else if (Instance != this) {
+                _logger.Warn("Tried to create duplicate network manager. Self-destructed game object.");
                 Destroy(gameObject);
                 return;
             }
@@ -324,14 +334,24 @@ namespace Network
             _client.Start();
         }
 
+        public void OnEnable()
+        {
+            if (_networkMapSource == null)
+            {
+                Logger.DestroyTrackedLoggers();
+                Start();
+            }
+        }
+
         public void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            _logger.Info("Scene loaded: " + scene.name);
             if (scene.name == "menu_scene")
                 return;    
             Util.Status result = InitializeTaggedObjects();
             if (!result.Ok())
             {
-                Debug.Log(result);
+                _logger.Warn(result.ToString());
             }
         }
 
@@ -402,6 +422,11 @@ namespace Network
             else if (response.type == RoomResponseType.MAP_SAMPLE)
             {
                 _networkMapSource.ReceiveMapUpdate(response.map_update);
+                MessageFromServer map_update_message = new MessageFromServer();
+                map_update_message.type = MessageFromServer.MessageType.MAP_UPDATE;
+                map_update_message.map_update = response.map_update;
+                map_update_message.transmit_time = DateTime.Now.ToString();
+                _router.HandleMessage(map_update_message);
             }
             else
             {

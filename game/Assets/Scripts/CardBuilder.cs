@@ -117,6 +117,7 @@ public class CardBuilder
         GameObject cardSlot = new GameObject("CardSlot");
         GameObject card = LoadCard(_shape, _color, _count);
         card.transform.SetParent(cardSlot.transform);
+        cardSlot.transform.localScale = new Vector3(1.6f, 1, 1.6f);
         Prop prop = new Prop(cardSlot, BaseAssetId(_count));
         prop.AddAction(Init.InitAt(_location, _rotationDegrees));
         GameObject outline = card.transform.Find("outline").gameObject;

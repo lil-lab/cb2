@@ -2,6 +2,7 @@
 namespace Util
 {
 
+    [Serializable]
     public class Status
     {
         // Taken from https://abseil.io/docs/cpp/guides/status-codes.

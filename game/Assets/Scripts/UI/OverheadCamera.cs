@@ -11,9 +11,9 @@ public class OverheadCamera : MonoBehaviour
     private static readonly float OrthographicPrecalculatedDistance = 200;
 
     public float Theta = 90;
-    public float ScreenMarginFirstThreshold = 0.025f;
-    public float ScreenMarginSetpoint = 0.05f;
-    public float ScreenMarginSecondThreshold = 0.1f;
+    public float ScreenMarginFirstThreshold = 0.01f;
+    public float ScreenMarginSetpoint = 0.02f;
+    public float ScreenMarginSecondThreshold = 0.03f;
 
     private bool _zoomingIn = false;
     private bool _zoomingOut = false;
@@ -32,10 +32,10 @@ public class OverheadCamera : MonoBehaviour
 
     public OverheadCamera()
     {
-        _logger = Logger.GetTrackedLogger("NetworkRouter");
+        _logger = Logger.GetTrackedLogger("OverheadCamera");
         if (_logger == null)
         {
-            _logger = Logger.CreateTrackedLogger("NetworkRouter");
+            _logger = Logger.CreateTrackedLogger("OverheadCamera");
         }
     }
 
@@ -131,21 +131,16 @@ public class OverheadCamera : MonoBehaviour
         {
             _zoomingIn = false;
         }
-        _logger.Info("correctMarginClipped: " + correctMarginClipped);
-        _logger.Info("smallMarginClipped: " + smallMarginClipped);
-        _logger.Info("largeMarginClipped: " + largeMarginClipped);
         if (_zoomingOut)
         {
             if (camera.orthographic) {
                 camera.orthographicSize += Time.deltaTime * 10f;
-                _logger.Info("Camera is zooming out. Adjusting depth: " + camera.orthographicSize);
             } else {
                 _calculatedDistance += Time.deltaTime * 10f;
             }
         } else if (_zoomingIn) {
             if (camera.orthographic) {
                 camera.orthographicSize -= Time.deltaTime * 10f;
-                _logger.Info("Camera is zooming in. Adjusting depth: " + camera.orthographicSize);
             } else {
                 _calculatedDistance -= Time.deltaTime * 10f;
             }

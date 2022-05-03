@@ -1497,7 +1497,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Theta: 30
-  ScreenMargin: 0.05
+  ScreenMarginFirstThreshold: 0.025
+  ScreenMarginSetpoint: 0.05
+  ScreenMarginSecondThreshold: 0.1
   FollowPlayer: {fileID: 0}
   FollowDistance: 0
   MousePanning: 1

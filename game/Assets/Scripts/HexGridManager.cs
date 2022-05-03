@@ -42,17 +42,6 @@ public class HexGridManager
     // If true, draws debug lines showing boundaries in the edge map.
     public bool _debugEdges = false;
 
-    public HexGridManager(IMapSource mapSource, IAssetSource assetSource)
-    {
-        _mapSource = mapSource;
-        _assetSource = assetSource;
-        _logger = Logger.GetTrackedLogger("HexGridManager");
-        if (_logger == null)
-        {
-            _logger = Logger.CreateTrackedLogger("HexGridManager");
-        }
-    }
-
     public Vector3 CenterPosition()
     {
         var (rows, cols) = _mapSource.GetMapDimensions();
@@ -87,10 +76,12 @@ public class HexGridManager
             _logger.Info("Position requested outside of map. Returning (0, 0, 0). (" + i + ", " + j + ")");
             return Vector3.zero;
         }
-        int a = i % 2;
-        int r = i / 2;
-        int c = j;
-        Tile tile = _grid[a, r, c];
+        HecsCoord hecs = HecsCoord.FromOffsetCoordinates(i, j);
+        if (!in_grid(hecs)) {
+            _logger.Warn("Hecs Coordinates outside of grid. Returning (0, 0, 0). (" + i + ", " + j + ")");
+            return Vector3.zero;
+        }
+        Tile tile = _grid[hecs.a, hecs.r, hecs.c];
         return tile.Cell.Center();
     }
 
@@ -106,28 +97,29 @@ public class HexGridManager
 
     public void InitializeGrid()
     {
+        _logger.Info("Initializing HexGrid...");
         (int rows, int cols) = _mapSource.GetMapDimensions();
         _logger.Info("rows: " + rows + ", cols:" + cols);
-        _grid = new Tile[2, rows / 2, cols];
+        _grid = new Tile[2, rows / 2 + (rows % 2), cols];
 
         // Pre-initialize the edge map to be all-empty.
         for (int r = 0; r < rows; r++)
         {
             for (int c = 0; c < cols; c++)
             {
-                int hecsA = r % 2;
-                int hecsR = r / 2;
-                int hecsC = c;
+                HecsCoord hecs = HecsCoord.FromOffsetCoordinates(r, c);
 
-                _grid[hecsA, hecsR, hecsC] = new Tile();
-                _grid[hecsA, hecsR, hecsC].Cell = new HexCell(
-                    new HecsCoord(hecsA, hecsR, hecsC), new HexBoundary());
+                _grid[hecs.a, hecs.r, hecs.c] = new Tile();
+                _grid[hecs.a, hecs.r, hecs.c].Cell = new HexCell(hecs, new HexBoundary());
             }
         }
     }
 
-    public void Start()
+    public void Start(IMapSource mapSource, IAssetSource assetSource)
     {
+        _mapSource = mapSource;
+        _assetSource = assetSource;
+        _logger = Logger.GetOrCreateTrackedLogger("HexGridManager");
         InitializeGrid();
     }
 
@@ -264,13 +256,16 @@ public class HexGridManager
         DateTime mapLoadStart = DateTime.Now;
         _logger.Info("Map available, performing update!");
 
-        foreach (var tile in _grid)
+        if (_grid != null)
         {
-            if (tile == null) continue;
-            if (tile.Model)
-                GameObject.Destroy(tile.Model);
-            HecsCoord c = tile.Cell.coord;
-            _grid[c.a, c.r, c.c] = null;
+            foreach (var tile in _grid)
+            {
+                if (tile == null) continue;
+                if (tile.Model)
+                    GameObject.Destroy(tile.Model);
+                HecsCoord c = tile.Cell.coord;
+                _grid[c.a, c.r, c.c] = null;
+            }
         }
 
         InitializeGrid();
@@ -296,6 +291,7 @@ public class HexGridManager
         }
         foreach (Tile t in _grid)
         {
+            if (t == null) continue;
             UpdateCellEdges(t.Cell);
         }
         OverheadCamera camera = OverheadCamera.TaggedOverheadInstance();

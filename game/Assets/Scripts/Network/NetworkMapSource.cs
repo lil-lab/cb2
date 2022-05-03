@@ -17,11 +17,7 @@ namespace Network
 
         public NetworkMapSource()
         { 
-            _logger = Logger.GetTrackedLogger("NetworkMapSource");
-            if (_logger == null)
-            {
-                _logger = Logger.CreateTrackedLogger("NetworkRouter");
-            }
+            _logger = Logger.GetOrCreateTrackedLogger("NetworkMapSource");
         }
 
         public void ClearMapUpdate()

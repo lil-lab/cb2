@@ -5,6 +5,7 @@ using Util;
 using System.Runtime.InteropServices;
 
 
+[Serializable]
 public class Logger
 {
     private static readonly string DEBUG = "DEBUG";
@@ -43,6 +44,12 @@ public class Logger
         return MODULES[module];
     }
 
+    public static void DestroyTrackedLoggers()
+    {
+        MODULES = new Dictionary<string, Logger>();
+        MODULE_CONTEXTS = new Dictionary<string, UnityEngine.Object>();
+    }
+
     public static Logger CreateTrackedLogger(string module, UnityEngine.Object context = null, int max_log_capacity_mb=10)
     {
         if (MODULES == null)
@@ -53,7 +60,7 @@ public class Logger
         {
             MODULE_CONTEXTS = new Dictionary<string, UnityEngine.Object>();
         }
-        if (MODULES.ContainsKey(module))
+        if (MODULES.ContainsKey(module) && MODULES[module] != null)
         {
             UnityEngine.Debug.LogError("Logger already exists for module " + module);
             return null;
@@ -65,6 +72,16 @@ public class Logger
         Logger logger = new Logger(module, max_log_capacity_mb);
         MODULES[module] = logger;
         return logger;
+    }
+
+    public static Logger GetOrCreateTrackedLogger(string module)
+    {
+        Logger logger = GetTrackedLogger(module);
+        if (logger != null)
+        {
+            return logger;
+        }
+        return CreateTrackedLogger(module);
     }
 
     public Logger(string module="NOMODULE", int max_log_capacity_mb = 10)
