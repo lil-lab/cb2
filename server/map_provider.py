@@ -129,6 +129,8 @@ def place_lake(map, lake):
     covered_points = set()
     while not point_queue.empty():
         point = point_queue.get()
+        if (point.r, point.c) in covered_points:
+            continue
         covered_points.add((point.r, point.c))
         hc = HecsCoord.from_offset(point.r, point.c)
         for neighbor in hc.neighbors():
@@ -146,6 +148,36 @@ def place_lake(map, lake):
                     map[r][c] = WaterTile()
             if point.radius < lake.size:
                 point_queue.put(SearchPoint(r, c, point.radius + 1))
+
+def place_l_shaped_lake(map, lake):
+    r, c = lake.r, lake.c
+    lakes = [Lake(r, c, 1), Lake(r, c + 2, 1), Lake(r + 2, c, 1)]
+    for lake in lakes:
+        place_lake(map, lake)
+
+def place_island_lake(map, lake):
+    r, c = lake.r, lake.c
+    lake.size = 2
+    place_lake(map, lake)
+    point_queue = Queue()
+    point_queue.put(SearchPoint(r, c, 0))
+    covered_points = set()
+    while not point_queue.empty():
+        point = point_queue.get()
+        if (point.r, point.c) in covered_points:
+            continue
+        covered_points.add((point.r, point.c))
+        if map[point.r][point.c].asset_id in [AssetId.WATER_TILE]:
+            map[point.r][point.c] = random.choice([RandomNatureTile, GroundTile, GroundTile, GroundTile, GroundTileStreetLight])()
+        hc = HecsCoord.from_offset(point.r, point.c)
+        for neighbor in hc.neighbors():
+            r,c = neighbor.to_offset_coordinates()
+            if point.radius < 1:
+                point_queue.put(SearchPoint(r, c, point.radius + 1))
+
+def place_random_lake(map, lake):
+    lake_placer = random.choice([place_l_shaped_lake, place_island_lake, place_lake])
+    lake_placer(map, lake)
 
 def lake_connection_points(lake):
     """ Returns the HecsCoord coordinates of the lake's connection points."""
@@ -440,7 +472,7 @@ def RandomMap():
             break
         lake_center = feature_center_candidates.pop()
         lake = Lake(lake_center[0], lake_center[1], random.randint(1, 2))
-        place_lake(map, lake)
+        place_random_lake(map, lake)
         new_connection_points = lake_connection_points(lake)
         connection_points.extend(new_connection_points)
         feature_id = ids.alloc()
