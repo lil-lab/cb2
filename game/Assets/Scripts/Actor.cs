@@ -31,6 +31,7 @@ public class Actor
     public Actor(GameObject prefab, IAssetSource.AssetId assetId)
     {
         _prop = new Prop(prefab, assetId);
+        _prop.SetScale(1.8f);
         _debuggingEnabled = false;
     }
 

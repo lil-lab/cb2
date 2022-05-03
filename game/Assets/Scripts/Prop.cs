@@ -42,6 +42,11 @@ public class Prop
         }
     }
 
+    public void SetScale(float scale)
+    {
+        _asset.transform.localScale = new Vector3(scale, scale, scale);
+    }
+
     public GameObject Find(string path)
     {
         Transform transform = _asset.transform.Find(path);
