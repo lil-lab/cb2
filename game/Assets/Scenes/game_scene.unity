@@ -4668,7 +4668,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Theta: 30
-  ScreenMargin: 0.05
+  ScreenMarginFirstThreshold: 0.01
+  ScreenMarginSetpoint: 0.02
+  ScreenMarginSecondThreshold: 0.03
   FollowPlayer: {fileID: 0}
   FollowDistance: 0
   MousePanning: 1
@@ -8481,7 +8483,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Theta: 30
-  ScreenMargin: 0.05
+  ScreenMarginFirstThreshold: 0.01
+  ScreenMarginSetpoint: 0.02
+  ScreenMarginSecondThreshold: 0.03
   FollowPlayer: {fileID: 2076507383}
   FollowDistance: 25
   MousePanning: 1

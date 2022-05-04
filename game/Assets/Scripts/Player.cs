@@ -28,6 +28,8 @@ public class Player : MonoBehaviour
 
     private int _playerId = -1;
 
+    private Logger _logger;
+
 
     public void SetAssetId(int id)
     {
@@ -45,8 +47,8 @@ public class Player : MonoBehaviour
         if (_network.Role() == Network.Role.LEADER)
         {
             _actor.SetScale(1.4f);
-        } else {
-            _actor.SetScale(1.8f);
+            _logger.Info("Player animation speed increased.");
+            _actor.SetWalkSpeed(1.3f);
         }
 
         GameObject cameraObj = _actor.Find("Parent/Main Camera");
@@ -71,8 +73,6 @@ public class Player : MonoBehaviour
         if (_network.Role() == Network.Role.LEADER)
         {
             _actor.SetScale(1.4f);
-        } else {
-            _actor.SetScale(1.8f);
         }
 
         if (OverheadCamera == null)
@@ -99,6 +99,7 @@ public class Player : MonoBehaviour
 
     void Start()
     {
+        _logger = Logger.GetOrCreateTrackedLogger(TAG);
         if (ForceStartingPosition)
         {
             _actor.AddAction(

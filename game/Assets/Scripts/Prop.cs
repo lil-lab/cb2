@@ -7,9 +7,13 @@ public class Prop
     private GameObject _asset;
     private IAssetSource.AssetId _assetId;
 
+    private float _walkSpeed = 1.0f;
+
     // If set (see SetOutline()), contains a reference to the outline geometry for this prop.
     // The outline geometry is only renderered if the State's BorderRadius is non-zero.
     private GameObject _outline;
+
+    private Logger _logger;
 
     public static Prop FromNetwork(Network.Prop netProp)
     {
@@ -28,6 +32,7 @@ public class Prop
 
     public Prop(GameObject obj, IAssetSource.AssetId assetId)
     {
+        _logger = Logger.GetOrCreateTrackedLogger("Prop");
         _actionQueue = new ActionQueue();
         _assetId = assetId;
         // If the GameObject we've been provided with is a prefab,
@@ -70,6 +75,12 @@ public class Prop
 
     // Returns the actor's current heading (or destination, if rotating).
     public float HeadingDegrees() { return _actionQueue.TargetState().HeadingDegrees; }
+
+    public void SetWalkSpeed(float speed)
+    {
+        _logger.Info("Setting [" + _assetId + "] walk speed to " + speed);
+        _walkSpeed = speed;
+    }
 
     public void SetParent(GameObject parent)
     {
@@ -127,7 +138,11 @@ public class Prop
         }
         if (state.Animation == ActionQueue.AnimationType.WALKING)
         {
-            animation.Play("Armature|Walking");
+            if (!animation.isPlaying || animation.clip.name != "Armature|Walking")
+            {
+                animation["Armature|Walking"].speed = _walkSpeed;
+                animation.Play("Armature|Walking");
+            }
         }
         else if (state.Animation == ActionQueue.AnimationType.IDLE)
         {

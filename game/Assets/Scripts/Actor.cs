@@ -34,6 +34,11 @@ public class Actor
         _debuggingEnabled = false;
     }
 
+    public void SetWalkSpeed(float speed)
+    {
+        _prop.SetWalkSpeed(speed);
+    }
+
     public void SetScale(float scale)
     {
         _prop.SetScale(scale);

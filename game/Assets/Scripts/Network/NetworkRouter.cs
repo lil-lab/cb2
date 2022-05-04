@@ -86,10 +86,12 @@ namespace Network
         {
             if (_entityManager == null) return false;
             _entityManager.DestroyActors();
-            foreach (Network.StateSync.Actor actor in stateSync.actors)
+            foreach (Network.StateSync.Actor netActor in stateSync.actors)
             {
-                if (actor.actor_id == stateSync.player_id) continue;
-                _entityManager.RegisterActor(actor.actor_id, Actor.FromStateSync(actor));
+                if (netActor.actor_id == stateSync.player_id) continue;
+                Actor actor = Actor.FromStateSync(netActor);
+                actor.SetScale(1.8f);
+                _entityManager.RegisterActor(netActor.actor_id, actor);
             }
             return true;
         }
