@@ -41,6 +41,14 @@ public class Player : MonoBehaviour
         }
         _actor = actor;
         _actor.SetParent(gameObject);
+
+        if (_network.Role() == Network.Role.LEADER)
+        {
+            _actor.SetScale(1.4f);
+        } else {
+            _actor.SetScale(1.8f);
+        }
+
         GameObject cameraObj = _actor.Find("Parent/Main Camera");
         if (cameraObj != null)
         {
@@ -59,6 +67,13 @@ public class Player : MonoBehaviour
 
         GameObject obj = GameObject.FindGameObjectWithTag(Network.NetworkManager.TAG);
         _network = obj.GetComponent<Network.NetworkManager>();
+
+        if (_network.Role() == Network.Role.LEADER)
+        {
+            _actor.SetScale(1.4f);
+        } else {
+            _actor.SetScale(1.8f);
+        }
 
         if (OverheadCamera == null)
         {
