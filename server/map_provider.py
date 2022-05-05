@@ -28,14 +28,14 @@ MAP_HEIGHT = 25
 MIN_NUMBER_OF_MOUNTAINS = 3
 MAX_NUMBER_OF_MOUNTAINS = 3
 
-MIN_NUMBER_OF_CITIES = 2
+MIN_NUMBER_OF_CITIES = 3
 MAX_NUMBER_OF_CITIES = 4
 
-MIN_NUMBER_OF_LAKES = 1
-MAX_NUMBER_OF_LAKES = 3
+MIN_NUMBER_OF_LAKES = 2
+MAX_NUMBER_OF_LAKES = 4
 
 MIN_NUMBER_OF_OUTPOSTS = 2
-MAX_NUMBER_OF_OUTPOSTS = 5
+MAX_NUMBER_OF_OUTPOSTS = 6
 
 PATH_CONNECTION_DISTANCE = 4
 
@@ -544,7 +544,7 @@ def RandomMap():
     for r in range(0, MAP_HEIGHT):
         for c in range(0, MAP_WIDTH):
             if map[r][c].asset_id == AssetId.EMPTY_TILE:
-                tile_generator = np.random.choice([GroundTile, RandomNatureTile, GroundTileStreetLight], size=1, p=[0.8, 0.18, 0.02])[0]
+                tile_generator = np.random.choice([GroundTile, RandomNatureTile, GroundTileStreetLight], size=1, p=[0.88, 0.10, 0.02])[0]
                 map[r][c] = tile_generator()
 
     # Make sure there's at least 23 walkable tiles (2 for spawn points, 21 for card placement). 
