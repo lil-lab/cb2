@@ -705,7 +705,8 @@ class MapProvider(object):
 
             self._potential_spawn_tiles = [tile 
                                         for tile in self._potential_spawn_tiles
-                                        if tile.asset_id in [AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH, AssetId.MOUNTAIN_TILE]]
+                                        if tile.asset_id in [AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH,
+                                                             AssetId.MOUNTAIN_TILE, AssetId.SNOWY_MOUNTAIN_TILE]]
 
             number_of_cards = 21
             number_of_sets = math.ceil(number_of_cards / 3)
