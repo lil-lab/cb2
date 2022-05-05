@@ -31,10 +31,10 @@ MAX_NUMBER_OF_MOUNTAINS = 3
 MIN_NUMBER_OF_CITIES = 3
 MAX_NUMBER_OF_CITIES = 4
 
-MIN_NUMBER_OF_LAKES = 2
+MIN_NUMBER_OF_LAKES = 3
 MAX_NUMBER_OF_LAKES = 4
 
-MIN_NUMBER_OF_OUTPOSTS = 2
+MIN_NUMBER_OF_OUTPOSTS = 3
 MAX_NUMBER_OF_OUTPOSTS = 6
 
 PATH_CONNECTION_DISTANCE = 4
@@ -161,34 +161,53 @@ def place_island_lake(map, lake):
     place_lake(map, lake)
     point_queue = Queue()
     point_queue.put(SearchPoint(r, c, 0))
-    island_center = HecsCoord.from_offset(r, c)
-    covered_points = set()
-    while not point_queue.empty():
-        point = point_queue.get()
-        if (point.r, point.c) in covered_points:
-            continue
-        covered_points.add((point.r, point.c))
-        if (point.r, point.c) == (r, c):
-            map[point.r][point.c] = np.random.choice([RandomNatureTile, GroundTile, GroundTileStreetLight], p=[0.45, 0.1, 0.45])()
-        elif map[point.r][point.c].asset_id in [AssetId.WATER_TILE]:
-            map[point.r][point.c] = np.random.choice([RandomNatureTile, GroundTile, GroundTileStreetLight], p=[0.025, 0.95, 0.025])()
-        hc = HecsCoord.from_offset(point.r, point.c)
-        for neighbor in hc.neighbors():
-            r,c = neighbor.to_offset_coordinates()
-            if point.radius < 1:
-                point_queue.put(SearchPoint(r, c, point.radius + 1))
-    center = HecsCoord.from_offset(lake.r, lake.c)
-    bridge_points = [center.up_left().up_left(), center.up_right().up_right(), center.down_left().down_left(), center.down_right().down_right()]
+    center = HecsCoord.from_offset(r, c)
+    map[r][c] = np.random.choice([GroundTile, RandomNatureTile, GroundTileStreetLight], size=1, p=[0.05, 0.45, 0.5])[0]()
+    lr, lc = center.left().to_offset_coordinates()
+    map[lr][lc] = np.random.choice([GroundTile, RandomNatureTile, GroundTileStreetLight], size=1, p=[0.9, 0.05, 0.05])[0]()
+    rr, rc = center.right().to_offset_coordinates()
+    map[rr][rc] = np.random.choice([GroundTile, RandomNatureTile, GroundTileStreetLight], size=1, p=[0.9, 0.05, 0.05])[0]()
+
+    # Each "bridge" consists of two tiles (tile_inner, tile_outer)
+    bridge_points = [(center.up_left(), center.up_left().up_left()), (center.up_right(), center.up_right().up_right()), (center.down_left(), center.down_left().down_left()), (center.down_right(), center.down_right().down_right())]
+    random.shuffle(bridge_points)
     number_of_bridges = random.randint(0, 4)
     for i in range(number_of_bridges):
-        r, c = random.choice(bridge_points).to_offset_coordinates()
-        map[r][c] = GroundTile()
+        if len(bridge_points) == 0:
+            continue
+        inner, outer = bridge_points.pop()
+        in_r, in_c = inner.to_offset_coordinates()
+        out_r, out_c = outer.to_offset_coordinates()
+        map[in_r][in_c] = GroundTile()
+        map[out_r][out_c] = GroundTile()
+    
+    for inner, outer in bridge_points:
+        in_r, in_c = inner.to_offset_coordinates()
+        map[in_r][in_c] = np.random.choice([GroundTile, RandomNatureTile, GroundTileStreetLight], size=1, p=[0.9, 0.05, 0.05])[0]()
+
 
 
 
 def place_random_lake(map, lake):
     lake_placer = random.choice([place_l_shaped_lake, place_island_lake, place_lake])
     lake_placer(map, lake)
+
+class LakeType(Enum):
+    """ The type of map to generate."""
+    RANDOM = 0
+    L_SHAPED = 1
+    ISLAND = 2
+    REGULAR = 3
+
+def place_lake_of_type(map, lake, type):
+    if type == LakeType.RANDOM:
+        place_random_lake(map, lake)
+    elif type == LakeType.L_SHAPED:
+        place_l_shaped_lake(map, lake)
+    elif type == LakeType.ISLAND:
+        place_island_lake(map, lake)
+    elif type == LakeType.REGULAR:
+        place_lake(map, lake)
 
 def lake_connection_points(lake):
     """ Returns the HecsCoord coordinates of the lake's connection points."""
@@ -478,12 +497,14 @@ def RandomMap():
 
 
     number_of_lakes = random.randint(MIN_NUMBER_OF_LAKES, MAX_NUMBER_OF_LAKES)
+    lake_types = [LakeType.ISLAND, LakeType.L_SHAPED, LakeType.REGULAR] * ((number_of_lakes // 3) + 1)
+    random.shuffle(lake_types)
     for i in range(number_of_lakes):
         if len(feature_center_candidates) == 0:
             break
         lake_center = feature_center_candidates.pop()
         lake = Lake(lake_center[0], lake_center[1], random.randint(1, 2))
-        place_random_lake(map, lake)
+        place_lake_of_type(map, lake, lake_types.pop())
         new_connection_points = lake_connection_points(lake)
         connection_points.extend(new_connection_points)
         feature_id = ids.alloc()

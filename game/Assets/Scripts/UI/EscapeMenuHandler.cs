@@ -16,6 +16,12 @@ public class EscapeMenuHandler : MonoBehaviour
 
     private MenuState _currentMenuState;
 
+    public void ReturnToMenu()
+    {
+        Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
+        networkManager.ReturnToMenu();
+    }
+
     Canvas FindCanvasWithTag(string tag)
     {
         GameObject obj = GameObject.FindGameObjectWithTag(tag);
