@@ -161,14 +161,17 @@ def place_island_lake(map, lake):
     place_lake(map, lake)
     point_queue = Queue()
     point_queue.put(SearchPoint(r, c, 0))
+    island_center = HecsCoord.from_offset(r, c)
     covered_points = set()
     while not point_queue.empty():
         point = point_queue.get()
         if (point.r, point.c) in covered_points:
             continue
         covered_points.add((point.r, point.c))
-        if map[point.r][point.c].asset_id in [AssetId.WATER_TILE]:
-            map[point.r][point.c] = random.choice([RandomNatureTile, GroundTile, GroundTile, GroundTile, GroundTile, GroundTile, GroundTileStreetLight])()
+        if (point.r, point.c) == (r, c):
+            map[point.r][point.c] = np.random.choice([RandomNatureTile, GroundTile, GroundTileStreetLight], p=[0.45, 0.1, 0.45])()
+        elif map[point.r][point.c].asset_id in [AssetId.WATER_TILE]:
+            map[point.r][point.c] = np.random.choice([RandomNatureTile, GroundTile, GroundTileStreetLight], p=[0.025, 0.95, 0.025])()
         hc = HecsCoord.from_offset(point.r, point.c)
         for neighbor in hc.neighbors():
             r,c = neighbor.to_offset_coordinates()
@@ -176,7 +179,7 @@ def place_island_lake(map, lake):
                 point_queue.put(SearchPoint(r, c, point.radius + 1))
     center = HecsCoord.from_offset(lake.r, lake.c)
     bridge_points = [center.up_left().up_left(), center.up_right().up_right(), center.down_left().down_left(), center.down_right().down_right()]
-    number_of_bridges = random.randint(0, 3)
+    number_of_bridges = random.randint(0, 4)
     for i in range(number_of_bridges):
         r, c = random.choice(bridge_points).to_offset_coordinates()
         map[r][c] = GroundTile()
