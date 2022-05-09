@@ -193,6 +193,7 @@ GameObject:
   - component: {fileID: 3757960116782678298}
   - component: {fileID: 1291783351074133405}
   - component: {fileID: 6242353400317784217}
+  - component: {fileID: 8057629271020769827}
   m_Layer: 0
   m_Name: Follower Camera (Leader View)
   m_TagString: Untagged
@@ -327,6 +328,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 618fb298e78b64bcd9d1bde36e59af98, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &8057629271020769827
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6706881707292140485}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b26f574bffd504ee4bb1e1eecd2cd61c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &7066889536093766121
@@ -871,14 +884,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: b665d36c87ebc4fa9a9b7acddd46dd0c, type: 3}
---- !u!1 &491712217881685694 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: b665d36c87ebc4fa9a9b7acddd46dd0c, type: 3}
-  m_PrefabInstance: {fileID: 726065225513800687}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &979877086296470532 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: b665d36c87ebc4fa9a9b7acddd46dd0c, type: 3}
+  m_PrefabInstance: {fileID: 726065225513800687}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &491712217881685694 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: b665d36c87ebc4fa9a9b7acddd46dd0c, type: 3}
   m_PrefabInstance: {fileID: 726065225513800687}
   m_PrefabAsset: {fileID: 0}
 --- !u!111 &726065224492083887

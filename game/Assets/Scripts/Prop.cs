@@ -12,6 +12,9 @@ public class Prop
     // If set (see SetOutline()), contains a reference to the outline geometry for this prop.
     // The outline geometry is only renderered if the State's BorderRadius is non-zero.
     private GameObject _outline;
+    // If set (see SetCover()), contains a reference to the cover geometry for this prop.
+    // The cover geometry is only rendered if the State's CoverRadius is == zero.
+    private GameObject _cover;
 
     private Logger _logger;
 
@@ -59,9 +62,15 @@ public class Prop
         return transform.gameObject;
     }
 
+    // The following two mutators (SetOutline and SetCover) are for card props only.
     public void SetOutline(GameObject outline)
     {
         _outline = outline;
+    }
+
+    public void SetCover(GameObject cover)
+    {
+        _cover = cover;
     }
 
     // Returns true if the actor is in the middle of an action.
@@ -127,6 +136,15 @@ public class Prop
             }
         }
 
+        if (_cover != null)
+        {
+            MeshRenderer renderer = _cover.GetComponent<MeshRenderer>();
+            if (renderer != null)
+            {
+                renderer.enabled = state.BorderRadius == 0;
+            }
+        }
+
         Animation animation = _asset.GetComponentInChildren<Animation>();
         if (animation == null)
             return;
@@ -169,6 +187,11 @@ public class Prop
         {
             GameObject.Destroy(_outline);
             _outline = null;
+        }
+        if (_cover != null)
+        {
+            GameObject.Destroy(_cover);
+            _cover = null;
         }
     }
 

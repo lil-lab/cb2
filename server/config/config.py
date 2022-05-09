@@ -40,6 +40,11 @@ class Config:
 
     comment: str = ""
 
+    # If true, then cards are rendered with covers. Covers block the follower
+    # from seeing what's on the card, but are invisible/transparent to the
+    # leader.
+    card_covers: bool = False
+
     # Data path accessors that add the requisite data_prefix.
     def record_directory(self):
         return pathlib.Path(self.data_prefix, self.record_directory_suffix).expanduser()

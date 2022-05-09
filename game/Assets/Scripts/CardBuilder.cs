@@ -121,7 +121,9 @@ public class CardBuilder
         Prop prop = new Prop(cardSlot, BaseAssetId(_count));
         prop.AddAction(Init.InitAt(_location, _rotationDegrees));
         GameObject outline = card.transform.Find("outline").gameObject;
+        GameObject cover = card.transform.Find("cover").gameObject;
         prop.SetOutline(outline);
+        prop.SetCover(cover);
         return prop;
     }
     private IAssetSource.AssetId BaseAssetId(int count)
@@ -149,6 +151,12 @@ public class CardBuilder
                 continue;
 
             if (loc.name == "outline")
+                continue;
+            
+            if (loc.name == "cover")
+                continue;
+            
+            if (!loc.name.StartsWith("location"))
                 continue;
 
             GameObject symbol = GameObject.Instantiate(LoadShape(shape), loc);

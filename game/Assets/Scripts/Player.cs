@@ -88,6 +88,20 @@ public class Player : MonoBehaviour
         {
             _fpvCamera = cameraObj.GetComponent<Camera>();
         }
+        if ((_network.ServerConfig() != null)
+            && (_fpvCamera != null)
+            && (_network.Role() == Network.Role.FOLLOWER))
+        {
+            if (_network.ServerConfig().card_covers)
+            {
+                _fpvCamera.cullingMask |= 1 << LayerMask.NameToLayer("card_covers");
+            } else {
+                _fpvCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("card_covers"));
+            }
+        } else {
+            // Probably not necessary... this block of logic could probably be cleaner.
+            _fpvCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("card_covers"));
+        }
         if ((OverheadCamera != null) && (_network.Role() == Network.Role.LEADER))
         {
             if (_fpvCamera != null) _fpvCamera.enabled = false;

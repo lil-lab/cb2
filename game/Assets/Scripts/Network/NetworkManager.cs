@@ -6,7 +6,9 @@ using System.Web;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.Networking;
 using System.Linq;
+using Newtonsoft.Json;
 
 
 namespace Network
@@ -17,7 +19,7 @@ namespace Network
 
         public static NetworkManager Instance;
 
-        public readonly static string URL = "ws://localhost:8080/player_endpoint";
+        public readonly static string URL = "localhost:8080";
 
         private ClientConnection _client;
         private NetworkMapSource _networkMapSource;
@@ -25,6 +27,8 @@ namespace Network
         private EntityManager _entityManager;
         private Player _player;
         private DateTime _lastStatsPoll;
+        private Network.Config _serverConfig;
+        private DateTime _lastServerConfigPoll = DateTime.MinValue;
         private Role _role = Network.Role.NONE;
         private Role _currentTurn = Network.Role.NONE;
 
@@ -45,7 +49,6 @@ namespace Network
             }
             return _networkMapSource;
         }
-
         public static NetworkManager TaggedInstance()
         {
             GameObject obj = GameObject.FindGameObjectWithTag(Network.NetworkManager.TAG);
@@ -57,8 +60,15 @@ namespace Network
         public static string BaseUrl(bool webSocket=true)
         {
             string url = URL;
-            if (Application.absoluteURL != "")
+            if (Application.absoluteURL == "")
             {
+                if (webSocket)
+                {
+                    url = "ws://" + url;
+                } else {
+                    url = "http://" + url;
+                }
+            } else {
                 // We can figure out the server's address based on Unity's API.
                 Uri servedUrl = new Uri(Application.absoluteURL);
 
@@ -96,6 +106,14 @@ namespace Network
             return urlParameters.AllKeys.ToDictionary(t => t, t => urlParameters[t]);
         }
 
+        public Network.Config ServerConfig()
+        {
+            if (_serverConfig == null)
+            {
+                _logger.Info("Retrieved server config before it was initialized.");
+            }
+            return _serverConfig;
+        }
 
         public Role Role()
         {
@@ -301,9 +319,10 @@ namespace Network
             }
             _networkMapSource = new NetworkMapSource();
 
-            string url = URL;
-            if (Application.absoluteURL != "")
-            {
+            string url = "";
+            if (Application.absoluteURL == "") {
+                url = "ws://" + URL + "/player_endpoint";
+            } else {
                 // We can figure out the server's address based on Unity's API.
                 Uri servedUrl = new Uri(Application.absoluteURL);
                 string websocketScheme = servedUrl.Scheme == "https" ? "wss" : "ws";
@@ -332,6 +351,9 @@ namespace Network
 
             _lastStatsPoll = DateTime.Now;
             _client.Start();
+
+            _lastServerConfigPoll = DateTime.Now;
+            StartCoroutine(FetchConfig());
         }
 
         public void OnEnable()
@@ -452,6 +474,14 @@ namespace Network
         // Update is called once per frame
         void Update()
         {
+            // If it's been more than 10 seconds since the last poll and _serverConfig is null, poll the server for the config.
+            // Alternatively, if _serverConfig is out of date and it's been > 10 seconds since the last poll, also poll the server.
+            if ((_serverConfig == null || (DateTime.Now.Subtract(_serverConfig.timestamp).TotalMinutes > 1))
+                 && DateTime.Now.Subtract(_lastServerConfigPoll).TotalSeconds > 10)
+            {
+                _lastServerConfigPoll = DateTime.Now;
+                StartCoroutine(FetchConfig());
+            }
             GameObject statsObj = GameObject.FindGameObjectWithTag("Stats");
             if (((DateTime.Now - _lastStatsPoll).Seconds > 1) && (statsObj != null) && (statsObj.activeInHierarchy))
             {
@@ -484,6 +514,33 @@ namespace Network
             }
 
             _client.Update();
+        }
+        private IEnumerator FetchConfig()
+        {
+            string base_url = Network.NetworkManager.BaseUrl(/*websocket=*/false);
+            string request_url = base_url + "/data/config";
+            _logger.Info("Fetching config from " + request_url);
+            using (UnityWebRequest webRequest = UnityWebRequest.Get(request_url))
+            {
+                // Request and wait for the desired page.
+                yield return webRequest.SendWebRequest();
+
+                switch (webRequest.result)
+                {
+                    case UnityWebRequest.Result.ConnectionError:
+                    case UnityWebRequest.Result.DataProcessingError:
+                        Debug.LogError("Error: " + webRequest.error);
+                        break;
+                    case UnityWebRequest.Result.ProtocolError:
+                        Debug.LogError("HTTP Error: " + webRequest.error);
+                        break;
+                    case UnityWebRequest.Result.Success:
+                        Debug.Log("Received: " + webRequest.downloadHandler.text);
+                        _serverConfig = JsonConvert.DeserializeObject<Network.Config>(webRequest.downloadHandler.text);
+                        _serverConfig.timestamp = DateTime.Now;
+                        break;
+                }
+            }
         }
     }
 }
