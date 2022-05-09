@@ -19,7 +19,7 @@ namespace Network
 
         public static NetworkManager Instance;
 
-        public readonly static string URL = "localhost:8080";
+        public readonly static string URL = "localhost:8080/";
 
         private ClientConnection _client;
         private NetworkMapSource _networkMapSource;
@@ -321,7 +321,7 @@ namespace Network
 
             string url = "";
             if (Application.absoluteURL == "") {
-                url = "ws://" + URL + "/player_endpoint";
+                url = "ws://" + URL + "player_endpoint";
             } else {
                 // We can figure out the server's address based on Unity's API.
                 Uri servedUrl = new Uri(Application.absoluteURL);
@@ -518,7 +518,7 @@ namespace Network
         private IEnumerator FetchConfig()
         {
             string base_url = Network.NetworkManager.BaseUrl(/*websocket=*/false);
-            string request_url = base_url + "/data/config";
+            string request_url = base_url + "data/config";
             _logger.Info("Fetching config from " + request_url);
             using (UnityWebRequest webRequest = UnityWebRequest.Get(request_url))
             {
