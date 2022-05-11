@@ -22,6 +22,11 @@ public class ReplayManager : MonoBehaviour
     public bool TestMode = false;
     public int TestModeId = 230;
 
+    void Awake()
+    {
+        Network.NetworkManager.TaggedInstance().InjectReplayRole(Network.Role.LEADER);
+    }
+
     void Start()
     {
         _replayStateMachine = new ReplayStateMachine();
@@ -77,21 +82,8 @@ public class ReplayManager : MonoBehaviour
         _replayStateMachine.Reset();
     }
 
-    private IEnumerator DownloadGameLogsFromServer()
+    public void ProcessGameLog(Network.GameLog log)
     {
-        _lastDownloadAttempt = DateTime.Now;
-        string url = Network.NetworkManager.BaseUrl(/*websocket=*/false);
-        UnityWebRequest www = new UnityWebRequest(url + "data/game_logs/" + GameId());
-        yield return www.SendWebRequest();
-
-        if (www.result != UnityWebRequest.Result.Success)
-        {
-            Debug.Log("Error downloading data.");
-            _requestFailed = true;
-            yield break;
-        }
-        string data = www.downloadHandler.text;
-        Network.GameLog log = JsonConvert.DeserializeObject<Network.GameLog>(data);
         _gameInfo = log.game_info;
         // Find the leader ID.
         int leader_id = -1;
@@ -107,7 +99,7 @@ public class ReplayManager : MonoBehaviour
         {
             Debug.Log("Error finding leader ID.");
             _requestFailed = true;
-            yield break;
+            return;
         }
         List<Network.LogEntry> leaderLogEntries = new List<Network.LogEntry>();
         for (int i = 0; i < log.log_entries.Count; ++i)
@@ -124,11 +116,48 @@ public class ReplayManager : MonoBehaviour
             {
                 Debug.Log("ERR: Encountered MessageToServer in game log!");
                 _requestFailed = true;
-                yield break;
+                return;
             }
             _messagesFromServer[i] = leaderLogEntries[i].message_from_server;
         }
         _dataDownloaded = true;
+    }
+
+    private IEnumerator DownloadGameLogsFromServer()
+    {
+        _lastDownloadAttempt = DateTime.Now;
+        string url = Network.NetworkManager.BaseUrl(/*websocket=*/false) + "data/game_logs/" + GameId();
+        Debug.Log("Downloading game logs from " + url);
+        using (UnityWebRequest webRequest = UnityWebRequest.Get(url))
+        {
+            // Request and wait for the desired page.
+            yield return webRequest.SendWebRequest();
+
+            switch (webRequest.result)
+            {
+                case UnityWebRequest.Result.ConnectionError:
+                case UnityWebRequest.Result.DataProcessingError:
+                    Debug.LogError("Error: " + webRequest.error);
+                    _requestFailed = true;
+                    break;
+                case UnityWebRequest.Result.ProtocolError:
+                    Debug.LogError("HTTP Error: " + webRequest.error);
+                    _requestFailed = true;
+                    break;
+                case UnityWebRequest.Result.Success:
+                    Debug.Log("Received: " + webRequest.downloadHandler.text);
+                    Debug.Log(webRequest.downloadHandler);
+                    string data = webRequest.downloadHandler.text;
+                    Network.GameLog log = JsonConvert.DeserializeObject<Network.GameLog>(data);
+                    ProcessGameLog(log);
+                    break;
+                default:
+                    Debug.LogError("Unknown Error: " + webRequest.error);
+                    _requestFailed = true;
+                    break;
+            }
+        }
+
     }
 
     private int GameId()

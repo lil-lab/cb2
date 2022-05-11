@@ -20,15 +20,18 @@ public class ReplayStateMachine
     public void Start()
     {
         _started = true;
+        NextTurn();
     }
 
     public void NextTurn()
     {
+        if (_turn >= _messagesFromServer.Length) return;
         _turn++;
     }
 
     public void PreviousTurn()
     {
+        if (_turn <= 0) return;
         SetTurn(_turn - 1);
     }
 
@@ -52,10 +55,28 @@ public class ReplayStateMachine
 
     public void Update()
     {
+        if (_messageFromIndex < 0)
+        {
+            _messageFromIndex = 0;
+        }
         if (_messageFromIndex < _messagesFromServer.Length)
         {
+            if (!_turnIndexMap.ContainsKey(_turn))
+            {
+                Debug.Log("Turn " + _turn + " not found.");
+                foreach (int key in _turnIndexMap.Keys)
+                {
+                    Debug.Log("Key: " + key);
+                }
+                return;
+            }
             while ((_messageFromIndex < _turnIndexMap[_turn]) && (_messageFromIndex < _messagesFromServer.Length))
             {
+                // Unexpire the message.
+                foreach(Network.Action action in _messagesFromServer[_messageFromIndex].Actions)
+                {
+                    action.Expiration = DateTime.Now.AddSeconds(10).ToString("o");
+                }
                 _replayRouter.HandleMessage(_messagesFromServer[_messageFromIndex]);
                 _messageFromIndex++;
             }
@@ -93,11 +114,12 @@ public class ReplayStateMachine
             {
                 if (_messagesFromServer[i].TurnState.TurnNumber > turn) {
                     turn = _messagesFromServer[i].TurnState.TurnNumber;
-                    _turnIndexMap[i] = turn;
+                    _turnIndexMap[turn] = i;
                 }
             }
         }
         _turnIndexMap[turn + 1] = _messagesFromServer.Length;
+        _turn = 0;
         return Util.Status.OkStatus();
     }
 }

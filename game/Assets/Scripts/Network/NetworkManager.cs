@@ -30,6 +30,7 @@ namespace Network
         private Network.Config _serverConfig;
         private DateTime _lastServerConfigPoll = DateTime.MinValue;
         private Role _role = Network.Role.NONE;
+        private Role _replayRole = Network.Role.NONE;
         private Role _currentTurn = Network.Role.NONE;
 
         private Logger _logger;
@@ -119,10 +120,28 @@ namespace Network
                 _logger.Info("Retrieved server config before it was initialized.");
             }
             return _serverConfig;
+
+        public bool IsReplay()
+        {
+            return SceneManager.GetActiveScene().name == "replay_scene";
+        }
+
+        public void InjectReplayRole(Role role)
+        {
+            if (IsReplay())
+            {
+                _replayRole = role;
+            } else {
+                Debug.LogWarning("Attempted to inject replay role when not in replay scene.");
+            }            
         }
 
         public Role Role()
         {
+            if (IsReplay())
+            {
+                return _replayRole;
+            }
             return _role;
         }
 
@@ -268,7 +287,11 @@ namespace Network
         // Display the Game Over screen, with an optional explanation.
         public void DisplayGameOverMenu(string reason="")
         {
-            MenuTransitionHandler.TaggedInstance().DisplayEndGameMenu(reason);
+            MenuTransitionHandler menu = MenuTransitionHandler.TaggedInstance();
+            if (menu != null)
+            {
+                menu.DisplayEndGameMenu(reason);
+            }
         }
 
         public Util.Status InitializeTaggedObjects()
