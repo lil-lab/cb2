@@ -65,7 +65,7 @@ def PingMessageFromServer():
 def LiveFeedbackFromServer(feedback):
     return MessageFromServer(datetime.now(), MessageType.LIVE_FEEDBACK, None, None, None, None, None, None, None, feedback)
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class MessageFromServer:
     transmit_time: datetime = field(

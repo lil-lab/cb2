@@ -4,7 +4,7 @@ from dataclasses_json import dataclass_json, config, LetterCase
 from messages.rooms import Role
 
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass
 class ObjectiveMessage:
     sender: Role = Role.NONE
@@ -12,7 +12,7 @@ class ObjectiveMessage:
     uuid: str = ""
     completed: bool = False
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class ObjectiveCompleteMessage:
     uuid: str = ""

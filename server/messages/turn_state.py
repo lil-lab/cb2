@@ -14,7 +14,7 @@ def GameOverMessage(game_start_date, sets_collected, score, turn_number):
 def TurnUpdate(turn_role, moves_remaining, turns_left, turn_end, game_start, sets_collected, score, turn_number):
     return TurnState(turn_role, moves_remaining, turns_left, turn_end, game_start, sets_collected, score, False, turn_number)
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass
 class TurnState:
     turn: Role
@@ -37,7 +37,7 @@ class TurnState:
     game_over: bool
     turn_number: int
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class TurnComplete:
     pass

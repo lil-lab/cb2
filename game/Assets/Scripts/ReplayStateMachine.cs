@@ -13,6 +13,8 @@ public class ReplayStateMachine
     private Dictionary<int, int> _turnIndexMap;
     private Network.NetworkRouter _replayRouter;
 
+    private bool _fastForward = false;
+
     public bool Started()
     {
         return _started;
@@ -32,6 +34,7 @@ public class ReplayStateMachine
     public void PreviousTurn()
     {
         if (_turn <= 0) return;
+        _fastForward = true;
         SetTurn(_turn - 1);
     }
 
@@ -72,14 +75,22 @@ public class ReplayStateMachine
             }
             while ((_messageFromIndex < _turnIndexMap[_turn]) && (_messageFromIndex < _messagesFromServer.Length))
             {
-                // Unexpire the message.
-                foreach(Network.Action action in _messagesFromServer[_messageFromIndex].actions)
+                // Unexpire actions, unless we're in FF mode. Then set them to expire immediately.
+                if (_messagesFromServer[_messageFromIndex].actions != null)
                 {
-                    action.expiration = DateTime.Now.AddSeconds(10).ToString("o");
+                    foreach(Network.Action action in _messagesFromServer[_messageFromIndex].actions)
+                    {
+                        if (_fastForward) {
+                            action.expiration = DateTime.Now.ToString("o");
+                            continue;
+                        }
+                        action.expiration = DateTime.Now.AddSeconds(10).ToString("o");
+                    }
                 }
                 _replayRouter.HandleMessage(_messagesFromServer[_messageFromIndex]);
                 _messageFromIndex++;
             }
+            _fastForward = false;
         }
     }
 
@@ -101,13 +112,26 @@ public class ReplayStateMachine
         _replayRouter = new Network.NetworkRouter(null, Network.NetworkManager.TaggedInstance().NetworkMapSource(), Network.NetworkManager.TaggedInstance(), entityManager, null, Network.NetworkRouter.Mode.REPLAY);
 
         // Calculate the time of the first message.
-        DateTime fromServerStart = DateTime.Parse(_messagesFromServer[0].transmit_time, null, System.Globalization.DateTimeStyles.RoundtripKind);
+        int firstTimestampedIndex = 0;
+        while (firstTimestampedIndex < _messagesFromServer.Length && _messagesFromServer[firstTimestampedIndex].transmit_time == null)
+        {
+            firstTimestampedIndex++;
+        }
+        DateTime fromServerStart = DateTime.Parse(_messagesFromServer[firstTimestampedIndex].transmit_time, null, System.Globalization.DateTimeStyles.RoundtripKind);
         _gameBegin = fromServerStart;
 
         _turnIndexMap = new Dictionary<int, int>();
 
         int turn = 0;
-        _turnIndexMap[0] = 0;
+        // The first turn starts with the first action message.
+        for (int i = 0; i < _messagesFromServer.Length; i++)
+        {
+            if (_messagesFromServer[i].actions != null)
+            {
+                _turnIndexMap[0] = i;
+                break;
+            }
+        }
         for (int i = 0; i < _messagesFromServer.Length; ++i)
         {
             if (_messagesFromServer[i].type == Network.MessageFromServer.MessageType.TURN_STATE)

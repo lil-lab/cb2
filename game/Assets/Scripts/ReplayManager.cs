@@ -84,6 +84,7 @@ public class ReplayManager : MonoBehaviour
 
     public void ProcessGameLog(Network.GameLog log)
     {
+        Network.NetworkManager.TaggedInstance().InjectReplayConfig(log.server_config);
         _gameInfo = log.game_info;
         // Find the leader ID.
         int leader_id = -1;

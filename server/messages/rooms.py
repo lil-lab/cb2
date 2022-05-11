@@ -25,7 +25,7 @@ class Role(Enum):
     LEADER = 2
 
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class JoinResponse:
     joined: bool
@@ -34,7 +34,7 @@ class JoinResponse:
     role: Role  # If joined == true.
 
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class LeaveRoomNotice:
     """ Used to notify a user that they have left the room. 
@@ -45,7 +45,7 @@ class LeaveRoomNotice:
     reason: str
 
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class StatsResponse:
     number_of_games: int
@@ -63,7 +63,7 @@ class RoomRequestType(Enum):
     MAP_SAMPLE = 5
 
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class RoomManagementRequest:
     type: RoomRequestType
@@ -79,7 +79,7 @@ class RoomResponseType(Enum):
     MAP_SAMPLE = 5
 
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class RoomManagementResponse:
     type: RoomResponseType

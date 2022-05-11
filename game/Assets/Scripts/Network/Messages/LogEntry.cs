@@ -34,5 +34,7 @@ namespace Network
     {
         public GameInfo game_info;
         public List<LogEntry> log_entries;
+        // The server's config when the game was played.
+        public Config server_config;
     }
 }

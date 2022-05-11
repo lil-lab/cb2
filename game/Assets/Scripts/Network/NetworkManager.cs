@@ -28,6 +28,7 @@ namespace Network
         private Player _player;
         private DateTime _lastStatsPoll;
         private Network.Config _serverConfig;
+        private Network.Config _replayConfig;
         private DateTime _lastServerConfigPoll = DateTime.MinValue;
         private Role _role = Network.Role.NONE;
         private Role _replayRole = Network.Role.NONE;
@@ -115,6 +116,9 @@ namespace Network
 
         public Network.Config ServerConfig()
         {
+            if (IsReplay()) {
+                return _replayConfig;
+            }
             if (_serverConfig == null)
             {
                 _logger.Info("Retrieved server config before it was initialized.");
@@ -135,6 +139,16 @@ namespace Network
             } else {
                 Debug.LogWarning("Attempted to inject replay role when not in replay scene.");
             }            
+        }
+
+        public void InjectReplayConfig(Network.Config config)
+        {
+            if (IsReplay())
+            {
+                _replayConfig = config;
+            } else {
+                Debug.LogWarning("Attempted to inject replay config when not in replay scene.");
+            }
         }
 
         public Role Role()

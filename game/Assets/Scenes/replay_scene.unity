@@ -747,7 +747,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Theta: 30
-  ScreenMargin: 0.05
+  ScreenMarginFirstThreshold: 0.01
+  ScreenMarginSetpoint: 0.02
+  ScreenMarginSecondThreshold: 0.03
   FollowPlayer: {fileID: 900616378}
   FollowDistance: 25
   MousePanning: 1
@@ -1700,7 +1702,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   TestMode: 1
-  TestModeId: 699
+  TestModeId: 705
 --- !u!1 &400268430
 GameObject:
   m_ObjectHideFlags: 0
@@ -3831,7 +3833,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Theta: 30
-  ScreenMargin: 0.05
+  ScreenMarginFirstThreshold: 0.01
+  ScreenMarginSetpoint: 0.02
+  ScreenMarginSecondThreshold: 0.03
   FollowPlayer: {fileID: 0}
   FollowDistance: 0
   MousePanning: 1

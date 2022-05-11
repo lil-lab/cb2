@@ -13,13 +13,13 @@ from typing import List, Optional
 
 import dateutil.parser
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class ModuleLog:
     module: str
     log: str
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class BugReport:
     map_update: MapUpdate

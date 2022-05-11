@@ -85,13 +85,13 @@ def RoleFromTutorialName(tutorial_name):
         logger.warn(f"Received invalid tutorial name: {tutorial_name}")
         return Role.NONE
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class TutorialRequest:
     type: TutorialRequestType
     tutorial_name: str
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class TutorialResponse:
     type: TutorialResponseType

@@ -13,7 +13,7 @@ class FeedbackType(Enum):
     POSITIVE = 1
     NEGATIVE = 2
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
+@dataclass_json
 @dataclass(frozen=True)
 class LiveFeedback(object):
     signal: FeedbackType = FeedbackType.NONE
