@@ -73,9 +73,9 @@ public class ReplayStateMachine
             while ((_messageFromIndex < _turnIndexMap[_turn]) && (_messageFromIndex < _messagesFromServer.Length))
             {
                 // Unexpire the message.
-                foreach(Network.Action action in _messagesFromServer[_messageFromIndex].Actions)
+                foreach(Network.Action action in _messagesFromServer[_messageFromIndex].actions)
                 {
-                    action.Expiration = DateTime.Now.AddSeconds(10).ToString("o");
+                    action.expiration = DateTime.Now.AddSeconds(10).ToString("o");
                 }
                 _replayRouter.HandleMessage(_messagesFromServer[_messageFromIndex]);
                 _messageFromIndex++;
@@ -101,7 +101,7 @@ public class ReplayStateMachine
         _replayRouter = new Network.NetworkRouter(null, Network.NetworkManager.TaggedInstance().NetworkMapSource(), Network.NetworkManager.TaggedInstance(), entityManager, null, Network.NetworkRouter.Mode.REPLAY);
 
         // Calculate the time of the first message.
-        DateTime fromServerStart = DateTime.Parse(_messagesFromServer[0].TransmitTime, null, System.Globalization.DateTimeStyles.RoundtripKind);
+        DateTime fromServerStart = DateTime.Parse(_messagesFromServer[0].transmit_time, null, System.Globalization.DateTimeStyles.RoundtripKind);
         _gameBegin = fromServerStart;
 
         _turnIndexMap = new Dictionary<int, int>();
@@ -110,10 +110,10 @@ public class ReplayStateMachine
         _turnIndexMap[0] = 0;
         for (int i = 0; i < _messagesFromServer.Length; ++i)
         {
-            if (_messagesFromServer[i].Type == Network.MessageFromServer.MessageType.TURN_STATE)
+            if (_messagesFromServer[i].type == Network.MessageFromServer.MessageType.TURN_STATE)
             {
-                if (_messagesFromServer[i].TurnState.TurnNumber > turn) {
-                    turn = _messagesFromServer[i].TurnState.TurnNumber;
+                if (_messagesFromServer[i].turn_state.turn_number > turn) {
+                    turn = _messagesFromServer[i].turn_state.turn_number;
                     _turnIndexMap[turn] = i;
                 }
             }

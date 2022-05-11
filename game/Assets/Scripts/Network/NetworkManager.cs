@@ -120,6 +120,7 @@ namespace Network
                 _logger.Info("Retrieved server config before it was initialized.");
             }
             return _serverConfig;
+        }
 
         public bool IsReplay()
         {

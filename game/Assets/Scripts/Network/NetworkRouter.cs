@@ -158,7 +158,7 @@ namespace Network
                 foreach (Network.Action networkAction in message.actions)
                 {
                     ActionQueue.IAction action = ActionFromNetwork(networkAction);
-                    if ((_mode == Mode.NETWORK) && (networkAction.Id == _player.PlayerId()))
+                    if ((_mode == Mode.NETWORK) && (networkAction.id == _player.PlayerId()))
                     {
                         _player.ValidateHistory(action);
                         continue;
@@ -168,7 +168,7 @@ namespace Network
             }
             if (message.type == MessageFromServer.MessageType.STATE_SYNC)
             {
-                if ((_mode == Mode.NETWORK) && (!ApplyStateSyncToPlayer(message.State)))
+                if ((_mode == Mode.NETWORK) && (!ApplyStateSyncToPlayer(message.state)))
                 {
                     _logger.Info("Player not set, yet received state sync.");
                     _pendingStateSync = message.state;
@@ -195,7 +195,7 @@ namespace Network
             }
             if (message.type == MessageFromServer.MessageType.ROOM_MANAGEMENT)
             {
-                if (_mode == Mode.NETWORK) _networkManager.HandleRoomManagement(message.RoomManagementResponse);
+                if (_mode == Mode.NETWORK) _networkManager.HandleRoomManagement(message.room_management_response);
             }
             if (message.type == MessageFromServer.MessageType.OBJECTIVE)
             {

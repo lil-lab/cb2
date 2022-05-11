@@ -281,11 +281,11 @@ public class MenuTransitionHandler : MonoBehaviour
 
     private void DisplayTurnStateReplayMode(DateTime transmitTime, Network.TurnState state)
     {
-        if (_lastTurn.Turn != state.Turn)
+        if (_lastTurn.turn != state.turn)
         {
-            Debug.Log("Changing turn animation. " + _lastTurn.Turn + " -> " + state.Turn);
+            Debug.Log("Changing turn animation. " + _lastTurn.turn + " -> " + state.turn);
             GameObject endTurnPanel = GameObject.FindGameObjectWithTag(END_TURN_PANEL);
-            if (state.Turn == Network.Role.LEADER)
+            if (state.turn == Network.Role.LEADER)
             {
                 followerTurnIndicatorFade.AddAction(Fade.FadeOut(0.5f));
                 leaderTurnIndicatorFade.AddAction(Instant.Pause(0.5f));
@@ -327,7 +327,7 @@ public class MenuTransitionHandler : MonoBehaviour
             return;
         }
 
-        if (_lastTurn.Turn != state.Turn)
+        if (_lastTurn.turn != state.turn)
         {
             Debug.Log("Changing turn animation. " + _lastTurn.turn + " -> " + state.turn);
             GameObject endTurnPanel = GameObject.FindGameObjectWithTag(END_TURN_PANEL);
@@ -554,19 +554,6 @@ public class MenuTransitionHandler : MonoBehaviour
                 Debug.Log("Closed esc menu");
             }
         }
-
-        // Handle UI animations.
-        ourTurnIndicatorFade.Update();
-        State.Continuous tS = ourTurnIndicatorFade.ContinuousState();
-        GameObject turn_obj = GameObject.FindWithTag(OUR_TURN_TAG);
-        CanvasGroup turn_group = turn_obj.GetComponent<CanvasGroup>();
-        turn_group.alpha = tS.Opacity;
-
-        notOurTurnIndicatorFade.Update();
-        State.Continuous nTS = notOurTurnIndicatorFade.ContinuousState();
-        GameObject not_turn_obj = GameObject.FindWithTag(NOT_OUR_TURN_TAG);
-        CanvasGroup not_turn_group = not_turn_obj.GetComponent<CanvasGroup>();
-        not_turn_group.alpha = nTS.Opacity;
 
         // Handle feedback UI.
         UnityEngine.Color feedbackColor = new UnityEngine.Color(1f, 1f, 1f, 100f / 255f);  // Neutral color.
