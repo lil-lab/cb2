@@ -9,6 +9,9 @@ public class ReplayStateMachine
     private DateTime _gameBegin = DateTime.MinValue;
     private int _messageFromIndex = 0;
     private int _turn = 0;
+
+    private int _numberOfTurns = 0;
+
     private Network.MessageFromServer[] _messagesFromServer;
     private Dictionary<int, int> _turnIndexMap;
     private Network.NetworkRouter _replayRouter;
@@ -27,13 +30,13 @@ public class ReplayStateMachine
 
     public void NextTurn()
     {
-        if (_turn >= _messagesFromServer.Length) return;
+        if (_turn >= _numberOfTurns) return;
         _turn++;
     }
 
     public void PreviousTurn()
     {
-        if (_turn <= 0) return;
+        if (_turn <= 1) return;
         _fastForward = true;
         SetTurn(_turn - 1);
     }
@@ -48,6 +51,16 @@ public class ReplayStateMachine
             Reset();
             _turn = turn;
         }
+    }
+
+    public int Turn()
+    {
+        return _turn;
+    }
+
+    public int TotalTurns()
+    {
+        return _numberOfTurns;
     }
 
     public void Reset()
@@ -108,7 +121,6 @@ public class ReplayStateMachine
         GameObject playerObj = GameObject.FindGameObjectWithTag(Player.TAG);
         if (playerObj != null)
         {
-            Debug.Log("YEEEEHAW");
             _replayRouter.SetPlayer(playerObj.GetComponent<Player>());
         }
 
@@ -123,7 +135,6 @@ public class ReplayStateMachine
 
         _turnIndexMap = new Dictionary<int, int>();
 
-        int turn = 0;
         // The first turn starts with the first action message.
         for (int i = 0; i < _messagesFromServer.Length; i++)
         {
@@ -133,17 +144,21 @@ public class ReplayStateMachine
                 break;
             }
         }
+        Network.Role currentTurnRole = Network.Role.NONE;
+        int turnNumber = 0;
         for (int i = 0; i < _messagesFromServer.Length; ++i)
         {
             if (_messagesFromServer[i].type == Network.MessageFromServer.MessageType.TURN_STATE)
             {
-                if (_messagesFromServer[i].turn_state.turn_number > turn) {
-                    turn = _messagesFromServer[i].turn_state.turn_number;
-                    _turnIndexMap[turn] = i;
+                if (_messagesFromServer[i].turn_state.turn != currentTurnRole) {
+                    turnNumber++;
+                    _turnIndexMap[turnNumber] = i;
+                    currentTurnRole = _messagesFromServer[i].turn_state.turn;
                 }
             }
         }
-        _turnIndexMap[turn + 1] = _messagesFromServer.Length;
+        _turnIndexMap[turnNumber + 1] = _messagesFromServer.Length;
+        _numberOfTurns = turnNumber;
         _turn = 0;
         return Util.Status.OkStatus();
     }

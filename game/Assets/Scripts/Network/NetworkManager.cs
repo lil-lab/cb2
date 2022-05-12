@@ -85,10 +85,6 @@ namespace Network
                 }
                 UriBuilder endpointUrlBuilder =
                     new UriBuilder(scheme, servedUrl.Host, servedUrl.Port);
-                if (servedUrl.Query.Length > 0)
-                {
-                    endpointUrlBuilder.Query = servedUrl.Query.Substring(1);  // Remove leading '?'
-                }
                 url = endpointUrlBuilder.Uri.AbsoluteUri;
             }
             return url;

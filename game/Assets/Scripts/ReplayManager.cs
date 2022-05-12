@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.Networking;
 using Newtonsoft.Json;
 
@@ -9,6 +10,7 @@ public class ReplayManager : MonoBehaviour
 {
     public static readonly string GAME_ID_PARAM = "game_id";
     public static readonly string ESCAPE_MENU_REPLAY_INFO_TAG = "ESCAPE_MENU_REPLAY_INFO";
+    public static readonly string REPLAY_TURN = "REPLAY_TURN";
     private Network.MessageFromServer[] _messagesFromServer;
     private ReplayStateMachine _replayStateMachine;
     private bool _requestFailed = false;
@@ -22,8 +24,11 @@ public class ReplayManager : MonoBehaviour
     public bool TestMode = false;
     public int TestModeId = 230;
 
+    private Logger _logger;
+
     void Awake()
     {
+        _logger = Logger.GetOrCreateTrackedLogger("ReplayManager");
         Network.NetworkManager.TaggedInstance().InjectReplayRole(Network.Role.LEADER);
     }
 
@@ -42,6 +47,16 @@ public class ReplayManager : MonoBehaviour
 
     void Update()
     {
+        // Call NextTurn() and PreviousTurn() when the user presses the left and right arrow keys.
+        if (Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            PreviousTurn();
+        }
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            NextTurn();
+        }
+
         if (_replayStateMachine.Started()){
             _replayStateMachine.Update();
         }
@@ -58,6 +73,7 @@ public class ReplayManager : MonoBehaviour
         {
             _replayStateMachine.Load(_messagesFromServer);
             _replayStateMachine.Start();
+            SetTurnDisplay();
         }
         if (_requestFailed && ((DateTime.Now - _lastDownloadAttempt).Seconds > 5))
         {
@@ -67,19 +83,32 @@ public class ReplayManager : MonoBehaviour
         }
     }
 
+    public void SetTurnDisplay()
+    {
+        GameObject obj = GameObject.FindGameObjectWithTag(REPLAY_TURN);
+        if (obj != null)
+        {
+            Text text = obj.GetComponent<Text>();
+            text.text = string.Format("{0} / {1}", _replayStateMachine.Turn(), _replayStateMachine.TotalTurns());
+        }
+    }
+
     public void PreviousTurn()
     {
         _replayStateMachine.PreviousTurn();
+        SetTurnDisplay();
     }
 
     public void NextTurn()
     {
         _replayStateMachine.NextTurn();
+        SetTurnDisplay();
     }
 
     public void Reset()
     {
         _replayStateMachine.Reset();
+        SetTurnDisplay();
     }
 
     public void ProcessGameLog(Network.GameLog log)
@@ -128,7 +157,7 @@ public class ReplayManager : MonoBehaviour
     {
         _lastDownloadAttempt = DateTime.Now;
         string url = Network.NetworkManager.BaseUrl(/*websocket=*/false) + "data/game_logs/" + GameId();
-        Debug.Log("Downloading game logs from " + url);
+        _logger.Info("Downloading game logs from " + url);
         using (UnityWebRequest webRequest = UnityWebRequest.Get(url))
         {
             // Request and wait for the desired page.
@@ -164,7 +193,7 @@ public class ReplayManager : MonoBehaviour
     private int GameId()
     {
         // Allow a hardcoded test ID to be injected for testing.
-        if (TestMode && Application.platform != RuntimePlatform.WebGLPlayer)
+        if (TestMode && (Application.platform != RuntimePlatform.WebGLPlayer))
         {
             return TestModeId;
         }
@@ -178,6 +207,7 @@ public class ReplayManager : MonoBehaviour
         {
             return -1;
         }
+        _logger.Info("Game ID: " + gameId);
         return gameId;
     }
 

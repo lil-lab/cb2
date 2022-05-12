@@ -32,6 +32,11 @@ public class SkipToScene : MonoBehaviour
             SceneManager.LoadScene("map_viewer");
         }
 
+        if (urlParams.ContainsKey("replay_game"))
+        {
+            SceneManager.LoadScene("replay_scene");
+        }
+
         foreach (var sceneKey in _sceneMap.Keys)
         {
             if (Input.GetKey(sceneKey.Item1) && Input.GetKey(sceneKey.Item2))

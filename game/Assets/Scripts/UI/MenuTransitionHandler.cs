@@ -290,18 +290,11 @@ public class MenuTransitionHandler : MonoBehaviour
                 followerTurnIndicatorFade.AddAction(Fade.FadeOut(0.5f));
                 leaderTurnIndicatorFade.AddAction(Instant.Pause(0.5f));
                 leaderTurnIndicatorFade.AddAction(Fade.FadeIn(0.5f));
-                if (endTurnPanel != null)
-                {
-                    endTurnPanel.transform.localScale = new Vector3(1f, 1f, 1f);
-                }
             } else {
+                Debug.Log("TURN follower fade in.");
                 leaderTurnIndicatorFade.AddAction(Fade.FadeOut(0.5f));
                 followerTurnIndicatorFade.AddAction(Instant.Pause(0.5f));
                 followerTurnIndicatorFade.AddAction(Fade.FadeIn(0.5f));
-                if (endTurnPanel != null)
-                {
-                    endTurnPanel.transform.localScale = new Vector3(0f, 0f, 0f);
-                }
             }
         }
         _lastTurnTransmitTime = transmitTime;
@@ -321,7 +314,7 @@ public class MenuTransitionHandler : MonoBehaviour
         textMeshPro.text = twoLineSummary;
 
         Scene scene = SceneManager.GetActiveScene();
-        if (scene.name == "replay-scene")
+        if (scene.name == "replay_scene")
         {
             DisplayTurnStateReplayMode(transmitTime, state);
             return;
@@ -480,7 +473,7 @@ public class MenuTransitionHandler : MonoBehaviour
     void Update()
     {
         Scene scene = SceneManager.GetActiveScene();
-        if (scene.name == "replay-scene")
+        if (scene.name == "replay_scene")
         {
             // Handle replay UI animations.
             leaderTurnIndicatorFade.Update();
@@ -490,7 +483,7 @@ public class MenuTransitionHandler : MonoBehaviour
             leader_turn_group.alpha = lTS.Opacity;
 
             followerTurnIndicatorFade.Update();
-            State.Continuous fTS = notOurTurnIndicatorFade.ContinuousState();
+            State.Continuous fTS = followerTurnIndicatorFade.ContinuousState();
             GameObject follower_turn_obj = GameObject.FindWithTag(FOLLOWER_TURN_TAG);
             CanvasGroup follower_turn_group = follower_turn_obj.GetComponent<CanvasGroup>();
             follower_turn_group.alpha = fTS.Opacity;
