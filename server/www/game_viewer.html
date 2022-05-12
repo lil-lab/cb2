@@ -6,14 +6,23 @@
 <script type="text/javascript" src="https://w2ui.com/src/w2ui-1.5.min.js"></script>
 </head>
 <body>
+<a id="replay-link" href="" target="_blank">Link to Replay</a>
 <div id="turn-grid" style="width: 100%; height: 250px;"></div>
 <div id="instruction-grid" style="width: 100%; height: 250px;"></div>
 <div id="move-grid" style="width: 100%; height: 250px;"></div>
 </body>
 <script>
+
+function WriteReplayLink(link_id, game_id) {
+    var link = document.getElementById(link_id);
+    var url = new URL('/?replay_game=true&game_id=' + game_id, window.location.origin);
+    link.href = url;
+}
+
 $(function () {
     var path = window.location.pathname
     var game_id = parseInt(window.location.pathname.split("/").at(-1));
+    WriteReplayLink("replay-link", game_id);
     $('#turn-grid').w2grid({
         name: 'turn-grid',
         header: 'Game Turns',
