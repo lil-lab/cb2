@@ -10,7 +10,6 @@ using UnityEngine.Networking;
 using System.Linq;
 using Newtonsoft.Json;
 
-
 namespace Network
 {
     public class NetworkManager : MonoBehaviour
