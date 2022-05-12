@@ -66,11 +66,6 @@ public class ReplayStateMachine
         {
             if (!_turnIndexMap.ContainsKey(_turn))
             {
-                Debug.Log("Turn " + _turn + " not found.");
-                foreach (int key in _turnIndexMap.Keys)
-                {
-                    Debug.Log("Key: " + key);
-                }
                 return;
             }
             while ((_messageFromIndex < _turnIndexMap[_turn]) && (_messageFromIndex < _messagesFromServer.Length))
@@ -110,6 +105,12 @@ public class ReplayStateMachine
         }
 
         _replayRouter = new Network.NetworkRouter(null, Network.NetworkManager.TaggedInstance().NetworkMapSource(), Network.NetworkManager.TaggedInstance(), entityManager, null, Network.NetworkRouter.Mode.REPLAY);
+        GameObject playerObj = GameObject.FindGameObjectWithTag(Player.TAG);
+        if (playerObj != null)
+        {
+            Debug.Log("YEEEEHAW");
+            _replayRouter.SetPlayer(playerObj.GetComponent<Player>());
+        }
 
         // Calculate the time of the first message.
         int firstTimestampedIndex = 0;

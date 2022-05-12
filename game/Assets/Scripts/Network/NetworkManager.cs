@@ -39,7 +39,6 @@ namespace Network
         public IMapSource MapSource()
         {
             Scene scene = SceneManager.GetActiveScene();
-            Debug.Log("[DEBUG] scene: " + scene.name);
             if (scene.name == "menu_scene")
             {
                 Debug.Log("Loading menu map");
@@ -218,6 +217,7 @@ namespace Network
         public void Awake()
         {
             gameObject.tag = TAG;
+            _logger = Logger.GetOrCreateTrackedLogger("NetworkManager");
         }
 
         // Called when a user clicks the "Join Game" menu button. Enters the game queue.
@@ -309,56 +309,48 @@ namespace Network
             }
         }
 
-        public Util.Status InitializeTaggedObjects()
+        public Util.Status InitializeEntityManager()
         {
             GameObject obj = GameObject.FindGameObjectWithTag(EntityManager.TAG);
-            Util.Status result = Util.Status.OkStatus();
-            if (obj != null)
-            {
-                _entityManager = obj.GetComponent<EntityManager>();
-            } else {
-                _entityManager = null;
-                result.Chain(Util.Status.NotFound("Could not find tag: " + EntityManager.TAG));
-            }
-            if (_entityManager != null)
-            {
-                _router.SetEntityManager(_entityManager);
-            } else {
+            if (obj == null)
+                return Util.Status.NotFound("Could not find tag: " + EntityManager.TAG);
+            _entityManager = obj.GetComponent<EntityManager>();
+            if (_entityManager == null)
                 return Util.Status.NotFound("Could not find component: " + EntityManager.TAG);
-            }
+            _router.SetEntityManager(_entityManager);
+            return Util.Status.OkStatus();
+        }
 
+        public Util.Status InitializePlayer()
+        {
             GameObject playerObj = GameObject.FindGameObjectWithTag(Player.TAG);
-            if (playerObj != null)
-            {
-                _player = playerObj.GetComponent<Player>();
-            } else {
-                _player = null;
-                result.Chain(Util.Status.NotFound("Could not find tag: " + Player.TAG));
-            }
-            if (_player != null)
-            {
-                _router.SetPlayer(_player);
-            } else {
-                result.Chain(Util.Status.NotFound("Could not find component: " + Player.TAG));
-            }
+            if (playerObj == null)
+                return Util.Status.NotFound("Could not find tag: " + Player.TAG);
+            _player = playerObj.GetComponent<Player>();
+            if (_player == null)
+                return Util.Status.NotFound("Could not find component: " + Player.TAG);
+            _router.SetPlayer(_player);
+            return Util.Status.OkStatus();
+        }
+
+        public Util.Status InitializeTaggedObjects()
+        {
+            Util.Status result = Util.Status.OkStatus();
+            result.Chain(InitializeEntityManager());
+            result.Chain(InitializePlayer());
             return result;
         }
 
         // Start is called before the first frame update
         private void Start()
         {
-            _logger = Logger.GetTrackedLogger("NetworkManager");
-            if (_logger == null)
-            {
-                _logger = Logger.CreateTrackedLogger("NetworkManager");
-            }
             if (Instance == null)
             {
                 Instance = this;
                 DontDestroyOnLoad(this);  // Persist network connection between scene changes.
             } else if (Instance != this) {
                 _logger.Warn("Tried to create duplicate network manager. Self-destructed game object.");
-                Destroy(gameObject);
+                DestroyImmediate(gameObject);
                 return;
             }
             _networkMapSource = new NetworkMapSource();
@@ -398,15 +390,6 @@ namespace Network
 
             _lastServerConfigPoll = DateTime.Now;
             StartCoroutine(FetchConfig());
-        }
-
-        public void OnEnable()
-        {
-            if (_networkMapSource == null)
-            {
-                Logger.DestroyTrackedLoggers();
-                Start();
-            }
         }
 
         public void OnSceneLoaded(Scene scene, LoadSceneMode mode)

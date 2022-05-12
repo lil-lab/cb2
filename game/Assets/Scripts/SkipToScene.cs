@@ -43,6 +43,7 @@ public class SkipToScene : MonoBehaviour
                 if (DateTime.Now - _sceneKeysHeldTime[sceneKey] > TimeSpan.FromSeconds(1))
                 {
                     SceneManager.LoadScene(_sceneMap[sceneKey]);
+                    _sceneKeysHeldTime[sceneKey] = DateTime.MinValue;
                 }
             } else {
                 _sceneKeysHeldTime[sceneKey] = DateTime.MinValue;

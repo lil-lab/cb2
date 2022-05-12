@@ -50,6 +50,11 @@ namespace Network
             if (_client != null) _client.RegisterHandler(this);
         }
 
+        public bool PlayerIsSet()
+        {
+            return _player != null;
+        }
+
         public void SetEntityManager(EntityManager entityManager)
         {
             _entityManager = entityManager;
@@ -67,6 +72,10 @@ namespace Network
 
         public void SetPlayer(Player player)
         {
+            Debug.Log("NetworkRouter SetPlayer()");
+            if (player == null) {
+                Debug.Log("NetworkRouter player is null.");
+            }
             _player = player;
             if (_pendingStateSync != null)
             {
@@ -150,7 +159,7 @@ namespace Network
             }
             if (message.type == MessageFromServer.MessageType.ACTIONS)
             {
-                if ((_player == null && (_mode == Mode.NETWORK)) || _entityManager == null)
+                if (((_player == null) && (_mode == Mode.NETWORK)) || (_entityManager == null))
                 {
                     _logger.Error("Player or entity manager not set, yet received state sync.");
                     return;
@@ -163,12 +172,24 @@ namespace Network
                         _player.ValidateHistory(action);
                         continue;
                     }
+                    if (_player == null)
+                    {
+                        _logger.Error("Player not set, yet received action.");
+                    }
+                    if ((_mode == Mode.REPLAY) && (_player != null) && (networkAction.id == _player.PlayerId()))
+                    {
+                        _logger.Info("Forwarding action to player! 3535");
+                        _player.AddAction(action);
+                        continue;
+                    } else {
+                        Debug.Log("Player ID: " + _player.PlayerId() + " networkAction.id: " + networkAction.id);
+                    }
                     _entityManager.AddAction(networkAction.id, action);
                 }
             }
             if (message.type == MessageFromServer.MessageType.STATE_SYNC)
             {
-                if ((_mode == Mode.NETWORK) && (!ApplyStateSyncToPlayer(message.state)))
+                if ((!ApplyStateSyncToPlayer(message.state)))
                 {
                     _logger.Info("Player not set, yet received state sync.");
                     _pendingStateSync = message.state;

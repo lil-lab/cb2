@@ -82,7 +82,7 @@ class Room(object):
         with open(pathlib.Path(self._log_directory, 'config.json'), 'w') as f:
             server_config = GlobalConfig()
             if server_config is not None:
-                f.write(orjson.dumps(server_config))
+                f.write(orjson.dumps(server_config).decode('utf-8'))
 
         self._map_update_count = 0
     
