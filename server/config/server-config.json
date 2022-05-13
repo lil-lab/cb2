@@ -3,6 +3,6 @@
     "comment": "This config is used for launching the server",
     "data_prefix": "/mnt/efs/fs1/cb2-game-data",
     "card_covers": true,
-    "fog_start": 10,
-    "fog_end": 17
+    "fog_start": 13,
+    "fog_end": 20
 }
