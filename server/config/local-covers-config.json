@@ -1,7 +1,7 @@
 
 {
     "name": "Local server config",
-    "comment": "This config is used for launching the server from your local machine.",
+    "comment": "Launches the server from your local machine. Card covers enabled.",
     "data_prefix": "~/cb2-game-data",
     "card_covers": true,
     "fog_start": 13,
