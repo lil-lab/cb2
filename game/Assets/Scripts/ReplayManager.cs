@@ -114,6 +114,8 @@ public class ReplayManager : MonoBehaviour
     public void ProcessGameLog(Network.GameLog log)
     {
         Network.NetworkManager.TaggedInstance().InjectReplayConfig(log.server_config);
+        RenderSettings.fogStartDistance = log.server_config.fog_start;
+        RenderSettings.fogEndDistance = log.server_config.fog_end;
         _gameInfo = log.game_info;
         // Find the leader ID.
         int leader_id = -1;
