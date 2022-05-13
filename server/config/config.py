@@ -54,6 +54,13 @@ class Config:
     # leader.
     card_covers: bool = False
 
+    # Everything is 100% visible if it's closer than fog_start units away.
+    fog_start: int = 13
+    # Everything is 100% opaque if it's farther than fog_end units away.
+    fog_end: int = 20
+    # RE fog: everything in between fog_start and fog_end is linearly
+    # interpolated to make a smooth transition.
+    
     # Data path accessors that add the requisite data_prefix.
     def record_directory(self):
         return pathlib.Path(self.data_prefix, self.record_directory_suffix).expanduser()

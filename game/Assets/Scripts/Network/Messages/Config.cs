@@ -25,5 +25,12 @@ namespace Network
         // Card covers block the follower from seeing what pattern is on the
         // card. Leaders can still see card patterns.
         public bool card_covers = false;
+
+        // Everything is 100% visible if it's closer than fog_start units away.
+        public int fog_start = 13;
+        // Everything is 100% opaque if it's farther than fog_end units away.
+        public int fog_end = 20;
+        // RE fog: everything in between fog_start and fog_end is linearly
+        // interpolated to make a smooth transition.
     }
 }

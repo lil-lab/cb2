@@ -496,10 +496,10 @@ namespace Network
         // Update is called once per frame
         void Update()
         {
-            // If it's been more than 10 seconds since the last poll and _serverConfig is null, poll the server for the config.
+            // If it's been more than 60 seconds since the last poll and _serverConfig is null, poll the server for the config.
             // Alternatively, if _serverConfig is out of date and it's been > 10 seconds since the last poll, also poll the server.
             if ((_serverConfig == null || (DateTime.Now.Subtract(_serverConfig.timestamp).TotalMinutes > 1))
-                 && DateTime.Now.Subtract(_lastServerConfigPoll).TotalSeconds > 10)
+                 && DateTime.Now.Subtract(_lastServerConfigPoll).TotalSeconds > 60)
             {
                 _lastServerConfigPoll = DateTime.Now;
                 StartCoroutine(FetchConfig());
