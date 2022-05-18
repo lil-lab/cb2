@@ -52,6 +52,7 @@ TagManager:
   - ESCAPE_MENU_REPLAY_INFO
   - LEADER_TURN_INDICATOR
   - FOLLOWER_TURN_INDICATOR
+  - CANCEL_LOADING_RING
   layers:
   - Default
   - TransparentFX

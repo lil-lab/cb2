@@ -24,6 +24,7 @@ namespace Network
             TUTORIAL_REQUEST,
             PONG,
             LIVE_FEEDBACK,
+            CANCEL_PENDING_OBJECTIVES,
         }
 
         // These fields are populated for every packet.

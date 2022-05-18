@@ -484,6 +484,10 @@ class State(object):
             logger.info(
                 f'Live feedback recvd. Room: {self._room_id}, Player: {id}')
             self.handle_live_feedback(id, message.live_feedback)
+        elif message.type == message_to_server.MessageType.CANCEL_PENDING_OBJECTIVES:
+            logger.info(
+                f'Cancel pending objectives recvd. Room: {self._room_id}, Player: {id}')
+            self.handle_cancel_pending_objectives(id)
         else:
             logger.warn(f'Received unknown packet type: {message.type}')
 
@@ -576,7 +580,7 @@ class State(object):
             return
         if self._actors[id].role() == Role.LEADER:
             if not self.has_instructions_todo():
-                logger.warn(f"Warning, turn complete received from ID: {str(id)} when it isn't their turn!")
+                logger.warn(f"Warning, turn complete received from leader ID: {str(id)} when there are no pending instructions!")
                 return
         self._recvd_log.info(f"player_id: {id} turn_complete received.")
         if len(self._turn_complete_queue) >= 1:
@@ -584,6 +588,24 @@ class State(object):
                 f"Warning, turn complete queued from ID: {str(id)}, but one was already received!")
             return
         self._turn_complete_queue.append("UserPrompted")
+    
+    def handle_cancel_pending_objectives(self, id):
+        if self._actors[id].role() != Role.LEADER:
+            logger.warn(
+                f'Warning, objective cancellation from non-leader ID: {str(id)}')
+            return
+        if self._actors[id].role() == self._turn_state.turn:
+            logger.warn(
+                f'Warning, objective cancellation from leader ID: {str(id)} when it is their turn!')
+            return
+        # Cancel all objectives.
+        for objective in self._objectives:
+            objective.completed = True
+        self._active_objective = None
+        for actor_id in self._actors:
+            self._objectives_stale[actor_id] = True
+        self._turn_complete_queue.append("UserPrompted")
+
 
     def create_actor(self, role):
         spawn_point = self._spawn_points.pop() if self._spawn_points else HecsCoord(0, 0, 0)

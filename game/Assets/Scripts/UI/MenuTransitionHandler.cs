@@ -214,6 +214,12 @@ public class MenuTransitionHandler : MonoBehaviour
         networkManager.TransmitObjectiveComplete(complete);
     }
 
+    public void CancelPendingObjectives()
+    {
+        Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
+        networkManager.TransmitCancelPendingObjectives();
+    }
+
     public void SendObjective()
     {
         Network.ObjectiveMessage objective = new Network.ObjectiveMessage();

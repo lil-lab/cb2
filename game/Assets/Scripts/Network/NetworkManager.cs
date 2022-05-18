@@ -173,6 +173,14 @@ namespace Network
             _client.TransmitMessage(toServer);
         }
 
+        public void TransmitCancelPendingObjectives()
+        {
+            MessageToServer toServer = new MessageToServer();
+            toServer.transmit_time = DateTime.Now.ToString("o");
+            toServer.type = MessageToServer.MessageType.CANCEL_PENDING_OBJECTIVES;
+            _client.TransmitMessage(toServer);
+        }
+
         public void TransmitObjective(ObjectiveMessage objective)
         {
             MessageToServer toServer = new MessageToServer();

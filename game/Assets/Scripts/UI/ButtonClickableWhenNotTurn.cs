@@ -1,0 +1,26 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class ButtonClickableWhenNotTurn : MonoBehaviour
+{
+    public Network.Role Turn = Network.Role.LEADER;
+
+    // Update is called once per frame
+    void Update()
+    {
+        Network.NetworkManager network = Network.NetworkManager.TaggedInstance();
+        if (network == null)
+            return;
+        Button b = gameObject.GetComponent<Button>();
+        b.interactable = false;
+        if (network.CurrentTurn() != Turn)
+        {
+            b.interactable = true;
+        }
+    }
+}
+
+
+

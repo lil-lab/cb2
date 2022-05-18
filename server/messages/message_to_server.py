@@ -29,6 +29,7 @@ class MessageType(Enum):
     TUTORIAL_REQUEST = 6
     PONG = 7
     LIVE_FEEDBACK = 8
+    CANCEL_PENDING_OBJECTIVES = 9
 
 
 @dataclass_json

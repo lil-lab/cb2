@@ -618,7 +618,6 @@ async def receive_agent_updates(request, ws):
             remote.latency = ((t3 - t0).total_seconds() - (t2 - t1).total_seconds()) / 2
             continue
 
-
         if room_manager.socket_in_room(ws):
             # Only handle in-game actions if we're in a room.
             (room_id, player_id, _) = astuple(room_manager.socket_info(
