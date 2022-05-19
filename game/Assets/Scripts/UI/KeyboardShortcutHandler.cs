@@ -40,6 +40,7 @@ public class KeyboardShortcutHandler : MonoBehaviour
         objective.text = textMeshPro.text;
         objective.sender = networkManager.Role();
         objective.completed = false;
+        objective.cancelled = false;
 
         networkManager.TransmitObjective(objective);
 

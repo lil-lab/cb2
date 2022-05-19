@@ -9,6 +9,12 @@ namespace Network
         public string text;
         public string uuid = "";
         public bool completed = false;
+        public bool cancelled = false;
+
+        public bool is_concluded()
+        {
+            return completed || cancelled;
+        }
     }
 
     [Serializable]

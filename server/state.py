@@ -600,7 +600,8 @@ class State(object):
             return
         # Cancel all objectives.
         for objective in self._objectives:
-            objective.completed = True
+            if not objective.completed:
+                objective.cancelled = True
         self._active_objective = None
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True

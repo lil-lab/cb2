@@ -81,6 +81,7 @@ public class UnityAssetSource : IAssetSource
         "Prefab/UI/ActiveObjective",
         "Prefab/UI/CompletedObjective",
         "Prefab/UI/PendingObjective",
+        "Prefab/UI/CancelledObjective",
     };
 
 

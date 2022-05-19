@@ -19,7 +19,7 @@ public class HideIfCannotEndTurn : MonoBehaviour
         List<Network.ObjectiveMessage> messages = MenuTransitionHandler.TaggedInstance().ObjectiveList();
         foreach (Network.ObjectiveMessage message in messages)
         {
-            if (!message.completed)
+            if (!message.is_concluded())
             {
                 gameObject.transform.localScale = new Vector3(1, 1, 1);
                 // Set rect height to 0.

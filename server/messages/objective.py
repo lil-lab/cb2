@@ -11,6 +11,7 @@ class ObjectiveMessage:
     text: str = ""
     uuid: str = ""
     completed: bool = False
+    cancelled: bool = False
 
 @dataclass_json
 @dataclass(frozen=True)

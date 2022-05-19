@@ -159,8 +159,9 @@ public class MenuTransitionHandler : MonoBehaviour
             if (objectives[i].completed)
             {
                 uiTemplate = source.LoadUi(IAssetSource.UiId.OBJECTIVE_COMPLETE);
-            } else if (activeIndex == -1)
-            {
+            } else if (objectives[i].cancelled) {
+                uiTemplate = source.LoadUi(IAssetSource.UiId.OBJECTIVE_CANCELLED);
+            } else if (activeIndex == -1) {
                 activeIndex = i;
                 uiTemplate = source.LoadUi(IAssetSource.UiId.OBJECTIVE_ACTIVE);
             } else {

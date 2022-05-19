@@ -81,6 +81,7 @@ public interface IAssetSource
         OBJECTIVE_ACTIVE,
         OBJECTIVE_COMPLETE,
         OBJECTIVE_PENDING,
+        OBJECTIVE_CANCELLED,
     }
 
     // Returns a prefab of the requested asset.
