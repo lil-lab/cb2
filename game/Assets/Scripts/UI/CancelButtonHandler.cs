@@ -11,17 +11,31 @@ public class CancelButtonHandler : MonoBehaviour, IPointerDownHandler, IPointerU
     private static readonly string CANCEL_RING_TAG = "CANCEL_LOADING_RING";
     private static readonly int CANCEL_HOLD_SECONDS = 2;
 
-
-    public void OnPointerDown(PointerEventData eventData)
+    private void StartHoldTimerIfAllowed()
     {
+        // Don't allow cancellation (interruption) if it's currently our turn.
+        Network.NetworkManager network = Network.NetworkManager.TaggedInstance();
+        if (network.Role() == network.CurrentTurn()) {
+            return;
+        }
         if (_onMouseDownTime == DateTime.MinValue) {
             _onMouseDownTime = DateTime.Now;
         }
     }
 
-    public void OnPointerUp(PointerEventData pointerEventData)
+    private void ClearHoldTimer()
     {
         _onMouseDownTime = DateTime.MinValue;
+    }
+
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        StartHoldTimerIfAllowed();
+    }
+
+    public void OnPointerUp(PointerEventData pointerEventData)
+    {
+        ClearHoldTimer();
         var cancelRing = GameObject.FindGameObjectWithTag(CANCEL_RING_TAG);
         if (cancelRing != null)
         {
@@ -33,11 +47,11 @@ public class CancelButtonHandler : MonoBehaviour, IPointerDownHandler, IPointerU
     {
         if (Input.GetKeyDown(KeyCode.Tab))
         {
-            _onMouseDownTime = DateTime.Now;
+            StartHoldTimerIfAllowed();
         }
         if (Input.GetKeyUp(KeyCode.Tab))
         {
-            _onMouseDownTime = DateTime.MinValue;
+            ClearHoldTimer();
             var cancelRing = GameObject.FindGameObjectWithTag(CANCEL_RING_TAG);
             if (cancelRing != null)
             {
@@ -55,7 +69,7 @@ public class CancelButtonHandler : MonoBehaviour, IPointerDownHandler, IPointerU
             if (timeSinceMouseDown.TotalSeconds > CANCEL_HOLD_SECONDS)
             {
                 MenuTransitionHandler.TaggedInstance().CancelPendingObjectives();
-                _onMouseDownTime = DateTime.MinValue;
+                ClearHoldTimer();
                 if (cancelRing != null)
                 {
                     cancelRing.GetComponent<Image>().fillAmount = 0.0f;
