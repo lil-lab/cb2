@@ -30,6 +30,14 @@ public class Player : MonoBehaviour
 
     private Logger _logger;
 
+    public static Player TaggedInstance()
+    {
+        GameObject obj = GameObject.FindGameObjectWithTag(Player.TAG);
+        if (obj == null)
+            return null;
+        return obj.GetComponent<Player>();
+    }
+
 
     public void SetAssetId(int id)
     {
@@ -155,6 +163,26 @@ public class Player : MonoBehaviour
     public void SetPlayerId(int playerId) { _playerId = playerId; }
     public int PlayerId() { return _playerId; }
 
+    public void ToggleCameraIfAllowed()
+    {
+            if ((_network.Role() != Network.Role.LEADER)
+                || (OverheadCamera == null)
+                || ((DateTime.Now - _lastCameraToggle).TotalMilliseconds <= 500))
+                return;
+            if (OverheadCamera.GetComponent<Camera>().enabled)
+            {
+                OverheadCamera.GetComponent<Camera>().enabled = false;
+                AngledOverheadCamera.GetComponent<Camera>().enabled = true;
+            }
+            else
+            {
+                OverheadCamera.GetComponent<Camera>().enabled = true;
+                AngledOverheadCamera.GetComponent<Camera>().enabled = false;
+            }
+            
+            _lastCameraToggle = DateTime.Now;
+    }
+
     void Update()
     {
         if (ShowHeading)
@@ -185,24 +213,7 @@ public class Player : MonoBehaviour
             return;
         }
 
-        if (CameraKey() &&
-            (_network.Role() == Network.Role.LEADER) &&
-            (OverheadCamera != null) &&
-            (DateTime.Now - _lastCameraToggle).TotalMilliseconds > 500)
-        {
-            if (OverheadCamera.GetComponent<Camera>().enabled)
-            {
-                OverheadCamera.GetComponent<Camera>().enabled = false;
-                AngledOverheadCamera.GetComponent<Camera>().enabled = true;
-            }
-            else
-            {
-                OverheadCamera.GetComponent<Camera>().enabled = true;
-                AngledOverheadCamera.GetComponent<Camera>().enabled = false;
-            }
-            
-            _lastCameraToggle = DateTime.Now;
-        }
+        if (CameraKey()) ToggleCameraIfAllowed();
 
         // Don't move until we've received a TurnState.
         if (_currentTurn == null) return;
