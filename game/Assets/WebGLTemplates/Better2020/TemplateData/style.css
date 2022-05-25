@@ -12,10 +12,12 @@ canvas {
 }
 body {
     margin: 0;
+    background: black;
 }
 #unity-container {
-    width: 100%;
+    aspect-ratio: 1000/600;
     height: 100%;
+    margin: auto;
 }
 #unity-canvas {
     width: 100%;
