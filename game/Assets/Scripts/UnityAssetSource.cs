@@ -84,7 +84,6 @@ public class UnityAssetSource : IAssetSource
         "Prefab/UI/Instruction_Prefabs/CancelledObjective",
     };
 
-
     public GameObject Load(IAssetSource.AssetId assetId)
     {
         int assetIndex = (int)assetId;
