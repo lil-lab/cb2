@@ -78,10 +78,10 @@ public class UnityAssetSource : IAssetSource
     // Maps IAssetSource.UiId to resource paths in Unity.
     // Must be kept in order with the enum definitions in IAssetSource.
     private static readonly string[] uiPaths = new string[] {
-        "Prefab/UI/ActiveObjective",
-        "Prefab/UI/CompletedObjective",
-        "Prefab/UI/PendingObjective",
-        "Prefab/UI/CancelledObjective",
+        "Prefab/UI/Instruction_Prefabs/ActiveObjective",
+        "Prefab/UI/Instruction_Prefabs/CompletedObjective",
+        "Prefab/UI/Instruction_Prefabs/PendingObjective",
+        "Prefab/UI/Instruction_Prefabs/CancelledObjective",
     };
 
 
