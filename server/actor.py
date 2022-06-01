@@ -1,6 +1,6 @@
 
 from assets import AssetId
-from messages.action import Action, Color, ActionType
+from messages.action import Action, Color, ActionType, Walk, Turn
 from messages.rooms import Role
 from messages import message_from_server
 from messages import message_to_server
@@ -62,6 +62,21 @@ class Actor(object):
     def peek(self):
         """ Peeks at the next action without consuming it. """
         return self._actions.queue[0]
+    
+    def WalkForwards(self):
+        displacement = HecsCoord.origin().neighbor_at_heading(self.heading_degrees())
+        self.add_action(Walk(self.actor_id(), displacement))
+    
+    def WalkBackwards(self):
+        # Note that the displacement is negated on the next line.
+        displacement = HecsCoord.origin().neighbor_at_heading(self.heading_degrees())
+        self.add_action(Walk(self.actor_id(), displacement.negate()))
+
+    def TurnLeft(self):
+        self.add_action(Turn(self.actor_id(), -60))
+
+    def TurnRight(self):
+        self.add_action(Turn(self.actor_id(), 60))
 
     def step(self):
         """ Executes & consumes an action from the queue."""

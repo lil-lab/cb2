@@ -53,6 +53,9 @@ TagManager:
   - LEADER_TURN_INDICATOR
   - FOLLOWER_TURN_INDICATOR
   - CANCEL_LOADING_RING
+  - CANCEL_BUTTON
+  - CAMERA_BUTTON
+  - SEND_BUTTON
   layers:
   - Default
   - TransparentFX

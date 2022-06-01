@@ -13,9 +13,13 @@ public class TutorialManager : MonoBehaviour
     public GameObject TooltipTextbox;
     public GameObject HighlightBox;
 
+    public float HighlightPadding = 0.5f;
+
     private Prop _indicator = null;
 
     private Network.Tooltip _lastTooltip = null;
+
+    private Logger _logger = null;
 
     public static TutorialManager TaggedInstance()
     {
@@ -56,13 +60,43 @@ public class TutorialManager : MonoBehaviour
 
     public void OverlayRectangle(RectTransform overlay, RectTransform uiElement)
     {
+        // Get the coordinates (corners) of uiElement in world space.
         Vector3[] corners = new Vector3[4];
         uiElement.GetWorldCorners(corners);
-        // Lower left and upper right coordinates in overlay space.
-        Vector3 ll = overlay.worldToLocalMatrix * corners[0];
-        Vector3 ur = overlay.worldToLocalMatrix * corners[2];
-        overlay.anchorMax = ur;
-        overlay.anchorMin = ll;
+
+        _logger.Info("uiElement: world corners: " + corners[0] + ", " + corners[1] + ", " + corners[2] + ", " + corners[3]);
+
+
+        // Convert the coordinates to screen space.
+        Vector3[] screenCorners = new Vector3[4];
+        for (int i = 0; i < 4; i++)
+        {
+            screenCorners[i] = RectTransformUtility.WorldToScreenPoint(Camera.main, corners[i]);
+        }
+
+        _logger.Info("uiElement: screen corners: " + screenCorners[0] + ", " + screenCorners[1] + ", " + screenCorners[2] + ", " + screenCorners[3]);
+
+        // Calculate the minimum and maximum x and y values.
+        float minX = Mathf.Min(screenCorners[0].x, screenCorners[1].x, screenCorners[2].x, screenCorners[3].x);
+        float maxX = Mathf.Max(screenCorners[0].x, screenCorners[1].x, screenCorners[2].x, screenCorners[3].x);
+        float minY = Mathf.Min(screenCorners[0].y, screenCorners[1].y, screenCorners[2].y, screenCorners[3].y);
+        float maxY = Mathf.Max(screenCorners[0].y, screenCorners[1].y, screenCorners[2].y, screenCorners[3].y);
+
+        _logger.Info("uiElement: minX: " + minX + ", maxX: " + maxX + ", minY: " + minY + ", maxY: " + maxY);
+
+        // Calculate the width and height of the overlay.
+        float width = maxX - minX;
+        float height = maxY - minY;
+
+        // Set the pivot and anchor to 0.
+        overlay.pivot = new Vector2(0, 0);
+        overlay.anchorMin = new Vector2(0, 0);
+        overlay.anchorMax = new Vector2(0, 0);
+
+        // Set the position and size of the overlay.
+        overlay.anchoredPosition = new Vector2(minX - HighlightPadding / 2.0f, minY - HighlightPadding / 2.0f);
+        overlay.sizeDelta = new Vector2(width + HighlightPadding, height + HighlightPadding);
+
     }
 
     public void SetTooltip(string text, string highlightedComponentTag)
@@ -77,8 +111,23 @@ public class TutorialManager : MonoBehaviour
             HighlightBox.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 0);
             return;
         }
+        _logger.Info("Highlighted component tag: " + highlightedComponentTag);
         GameObject highlightedComponent = GameObject.FindGameObjectWithTag(highlightedComponentTag);
+
+        if (highlightedComponent == null)
+        {
+            _logger.Warn("Could not find highlighted component with tag: " + highlightedComponentTag);
+            HighlightBox.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 0);
+            return;
+        }
+
         RectTransform highlightedComponentRect = highlightedComponent.GetComponent<RectTransform>();
+
+        if (highlightedComponentRect == null)
+        {
+            _logger.Warn("Highlighted component with tag \"" + highlightedComponentTag + "\" has no RectTransform");
+            return;
+        }
 
         OverlayRectangle(HighlightBox.GetComponent<RectTransform>(), highlightedComponentRect);
         HighlightBox.GetComponent<RectTransform>().ForceUpdateRectTransforms();
@@ -107,6 +156,7 @@ public class TutorialManager : MonoBehaviour
 
     public void Start()
     {
+        _logger = Logger.GetOrCreateTrackedLogger("TutorialManager");
         NextStep();
     }
 

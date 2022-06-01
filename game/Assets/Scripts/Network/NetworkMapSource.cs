@@ -45,12 +45,15 @@ namespace Network
             }
             _logger.Info("NetworkMapSource received map update.");
             
-            // Log the number of cities, lakes, mountains and outposts.
-            _logger.Info("Cities: " + mapInfo.metadata.num_cities);
-            _logger.Info("Lakes: " + mapInfo.metadata.num_lakes);
-            _logger.Info("Mountains: " + mapInfo.metadata.num_mountains);
-            _logger.Info("Outposts: " + mapInfo.metadata.num_outposts);
-            _logger.Info("Partitions: " + mapInfo.metadata.num_partitions);
+            if (mapInfo.metadata != null)
+            {
+                // Log the number of cities, lakes, mountains and outposts.
+                _logger.Info("Cities: " + mapInfo.metadata.num_cities);
+                _logger.Info("Lakes: " + mapInfo.metadata.num_lakes);
+                _logger.Info("Mountains: " + mapInfo.metadata.num_mountains);
+                _logger.Info("Outposts: " + mapInfo.metadata.num_outposts);
+                _logger.Info("Partitions: " + mapInfo.metadata.num_partitions);
+            }
 
             _networkMapReady = true;
             _lastMapReceived = mapInfo;

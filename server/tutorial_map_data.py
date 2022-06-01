@@ -1,6 +1,7 @@
 from card import Card, Shape, Color
 from hex import HecsCoord
 from map_utils import *
+from messages.map_update import MapMetadata
 
 MAP_WIDTH = 10
 MAP_HEIGHT = 10
@@ -125,4 +126,4 @@ def HardcodedMap():
     for i in range(len(map_tiles)):
         map_tiles[i].cell.height = LayerToHeight(map_tiles[i].cell.layer)
 
-    return MapUpdate(MAP_HEIGHT, MAP_WIDTH, map_tiles, [])
+    return MapUpdate(MAP_HEIGHT, MAP_WIDTH, map_tiles, [], MapMetadata())

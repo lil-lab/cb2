@@ -19,8 +19,9 @@ public class OverheadCamera : MonoBehaviour
     private bool _zoomingOut = false;
     private float _calculatedDistance = 0;
 
-    // If you assign a FollowPlayer instance, then the camera will center on the player with the provided distance.
-    public GameObject FollowPlayer;
+    // If you assign a FollowPlayer tag, then the camera will center on the gameobject with the provided tag.
+    public bool FollowPlayerEnabled = false;
+    public string FollowPlayerTag = "Player";
     public float FollowDistance = 10;
     public bool MousePanning = false;
     public float MousePanningSpeed = 0.01f;
@@ -257,8 +258,9 @@ public class OverheadCamera : MonoBehaviour
         }
         AdjustDepthIfClipped(GetCamera());
         HexGrid grid = HexGrid.TaggedInstance();
-        Vector3 center = (FollowPlayer != null) ? FollowPlayer.GetComponent<Player>().Position() : grid.CenterPosition();
-        float distance = (FollowPlayer != null) ? FollowDistance : _calculatedDistance;
+        GameObject followPlayer = FollowPlayerEnabled ? GameObject.FindGameObjectWithTag(FollowPlayerTag) : null;
+        Vector3 center = (followPlayer != null) ? followPlayer.GetComponent<Player>().Position() : grid.CenterPosition();
+        float distance = (followPlayer != null) ? FollowDistance : _calculatedDistance;
         float thetaRadians = Theta * Mathf.Deg2Rad;
         transform.position = new Vector3(
             center.x - distance * Mathf.Cos(thetaRadians) * Mathf.Cos(_phi), 

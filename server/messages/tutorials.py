@@ -19,6 +19,13 @@ import typing
 
 logger = logging.getLogger()
 
+class FollowerActions(Enum):
+    NONE = 0
+    FORWARDS = 1
+    BACKWARDS = 2
+    TURN_LEFT = 3
+    TURN_RIGHT = 4
+
 class TooltipType(Enum):
     NONE = 0
     # The tooltip disappears after the user clicks on the "Ok" button on the tooltip text window or hits shift.
@@ -29,6 +36,8 @@ class TooltipType(Enum):
     UNTIL_INDICATOR_REACHED = 4
     UNTIL_OBJECTIVES_COMPLETED = 5
     UNTIL_SET_COLLECTED = 6
+    UNTIL_TURN_ENDED = 7
+    FOLLOWER_TURN = 8
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
@@ -53,6 +62,7 @@ class TutorialStep:
     indicator: Indicator
     tooltip: Tooltip
     instruction: Instruction
+    other_player_turn: List[FollowerActions] = None
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)

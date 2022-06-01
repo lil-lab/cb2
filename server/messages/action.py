@@ -65,3 +65,30 @@ class Action:
             decoder=dateutil.parser.isoparse,
             mm_field=fields.DateTime(format='iso')
         ))
+
+
+def Turn(id, angle):
+    return Action(
+        id=id,
+        action_type=ActionType.ROTATE,
+        animation_type=AnimationType.ROTATE,
+        displacement=HecsCoord(0, 0),
+        rotation=angle,
+        border_radius=0,
+        border_color=Color(0, 0, 0, 0),
+        duration_s=0,
+        expiration=datetime.now() + datetime.timedelta(seconds=10)
+    )
+
+def Walk(id, displacement):
+    return Action(
+        id=id,
+        action_type=ActionType.TRANSLATE,
+        animation_type=AnimationType.WALKING,
+        displacement=displacement,
+        rotation=0,
+        border_radius=0,
+        border_color=Color(0, 0, 0, 0),
+        duration_s=0,
+        expiration=datetime.now() + datetime.timedelta(seconds=10)
+    )

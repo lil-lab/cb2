@@ -1,7 +1,9 @@
-from messages.tutorials import TutorialStep, Indicator, Instruction, Tooltip, TooltipType, LEADER_TUTORIAL, FOLLOWER_TUTORIAL
+from messages.tutorials import TutorialStep, Indicator, Instruction, Tooltip, TooltipType, LEADER_TUTORIAL, FOLLOWER_TUTORIAL, FollowerActions
 from hex import HecsCoord
 
 import logging
+
+from enum import Enum
 
 TOOLTIP_X = 0.3
 TOOLTIP_Y = 0.3
@@ -20,10 +22,10 @@ LEADER_TUTORIAL_STEPS = [
     ),
     TutorialStep(
         None,
-        Tooltip("",
+        Tooltip("CAMERA_BUTTON",
                 "You're playing as the Leader (blue circle). As the Leader, you"
-                " can see the entire map! Toggle your map view by hitting 'C' on"
-                " your keyboard.", TooltipType.UNTIL_CAMERA_TOGGLED),
+                " can see the entire map! Toggle your map view by hitting the"
+                " Camera button.", TooltipType.UNTIL_CAMERA_TOGGLED),
         None
     ),
     TutorialStep(
@@ -45,10 +47,10 @@ LEADER_TUTORIAL_STEPS = [
     ),
     TutorialStep(
         None,
-        Tooltip("",
+        Tooltip("CAMERA_BUTTON",
                 "Toggle the Camera again to return to the original view!"
-                " Do you remember how to do this? (Hit 'C' again to toggle the"
-                " Camera)", TooltipType.UNTIL_CAMERA_TOGGLED),
+                " By the way, you can hit 'C' again to toggle the"
+                " Camera as well", TooltipType.UNTIL_CAMERA_TOGGLED),
         None
     ),
     TutorialStep(
@@ -64,17 +66,30 @@ LEADER_TUTORIAL_STEPS = [
         Tooltip("MessageInputField",
                 "The yellow circle is indicating the Follower. You can send the"
                 " Follower commands using the text box in the bottom left corner."
-                " Try sending something now!", TooltipType.UNTIL_MESSAGE_SENT),
+                " Tell them to turn left and grab the 3 pink triangles.", TooltipType.UNTIL_MESSAGE_SENT),
         None
     ),
     TutorialStep(
+      None,
+      Tooltip("END_TURN_PANEL", "Great. Now end your turn so the"
+              " follower has a chance to move.", TooltipType.UNTIL_TURN_ENDED),
+      None,
+    ),
+    TutorialStep(
+      None,
+      Tooltip("", "Now it's the follower's turn! Wait for them to move...",
+      TooltipType.FOLLOWER_TURN),
+      None,
+      [FollowerActions.TURN_LEFT, FollowerActions.TURN_LEFT, FollowerActions.FORWARDS],
+    ),
+    TutorialStep(
         None,
-        Tooltip("INSTRUCTIONS",
-                "For now, the Follower won't do anything, but in the game, once"
-                " you end your turn, the Follower will see your instruction and"
-                " get a chance to move (Shift to continue).",
-                TooltipType.UNTIL_DISMISSED),
-        None
+        Tooltip("",
+                "Did you make a mistake? Is the follower lost? We added a cancel"
+                " button so that you can cancel all pending instructions and"
+                " interrupt the follower. This gives you a chance to correct for"
+                " mistakes. It's still the follower's turn, try it now!", TooltipType.UNTIL_DISMISSED),
+            None
     ),
     TutorialStep(
         Indicator(HecsCoord(0, 1, 3)),
