@@ -648,12 +648,12 @@ class TutorialGameState(object):
                 elif action == FollowerActions.TURN_RIGHT:
                     self._dummy_character.TurnRight()
                 elif action == FollowerActions.INSTRUCTION_DONE:
-                    uuid = None
+                    objective_hash = None
                     for objective in self._objectives:
                         if not objective.completed:
-                            uuid = objective.uuid
+                            objective_hash = objective.uuid
                             break
-                    objective_complete = ObjectiveCompleteMessage(uuid)
+                    objective_complete = ObjectiveCompleteMessage(objective_hash)
                     self.handle_objective_complete(self._dummy_character.actor_id(), objective_complete)
                 else:
                     logger.warn(f"Warning, unknown follower action: {action}")

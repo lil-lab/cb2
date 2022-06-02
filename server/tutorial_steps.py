@@ -256,12 +256,12 @@ FOLLOWER_TUTORIAL_STEPS = [
                 "You've received your first instruction. Follow it, then click"
                 " \"Done\" in the top left.",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
-        Instruction("Move onto the orange star on the hill next to you."),
+        Instruction("Go up the steps and stand on the first card you see on the platform."),
     ),
     TutorialStep(
         None,
         Tooltip("",
-                "Great! Let's see if you can collect a set of 3 cards. (Shift to"
+                "Great! Let's see if you can collect 3 cards. (Shift to"
                 " continue).", TooltipType.UNTIL_DISMISSED),
         None,
     ),
@@ -278,15 +278,14 @@ FOLLOWER_TUTORIAL_STEPS = [
         Tooltip("INSTRUCTIONS",
                 "Follow the instructions...",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
-        Instruction("Turn around and go back down the mountain. Move onto the two"
-                    " diamonds on the right at the base of the mountain.") ),
+        Instruction("Turn around and go back down the steps. Move onto the card"
+                    " on the right at the base of the mountain.") ),
     TutorialStep(
         Indicator(HecsCoord(0, 2, 2)),
         Tooltip("INSTRUCTIONS",
                 "Follow the instructions...",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
-        Instruction("Behind you, look for the two blue plusses near where you"
-                    " started.") ),
+        Instruction("Behind you, near where you started, you'll see a cluster of 3 cards in a V-shape. Move onto the closest card.") ),
     TutorialStep(
         Indicator(HecsCoord(0, 2, 2)),
         Tooltip("INSTRUCTIONS",
@@ -300,8 +299,7 @@ FOLLOWER_TUTORIAL_STEPS = [
         Tooltip("INSTRUCTIONS",
                 "Last instruction!",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
-        Instruction("Now finish up the set by picking up the 3 pink triangles"
-                    " next to you."), ),
+        Instruction("Now finish up the set by picking up the center card in that v-shaped group of 3 cards."), ),
     TutorialStep(
         None,
         Tooltip("SCORE",
