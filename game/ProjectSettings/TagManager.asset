@@ -56,6 +56,7 @@ TagManager:
   - CANCEL_BUTTON
   - CAMERA_BUTTON
   - SEND_BUTTON
+  - FOLLOWER_VIEW
   layers:
   - Default
   - TransparentFX

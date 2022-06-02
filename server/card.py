@@ -11,6 +11,8 @@ import messages.prop
 import messages.action as action
 from schemas.cards import CardSelections
 
+from dateutil import tz
+
 
 class Shape(Enum):
     NONE = 0
@@ -63,9 +65,10 @@ def CardBlink(card_id, number_blinks, duration_s, color):
     ])
 
 def CardSelectAction(card_id, selected, color=action.Color(0, 0, 1, 1), duration_s=0.2):
+    NYC = tz.gettz('America/New_York')
     action_type = ActionType.OUTLINE
     radius = OUTLINE_RADIUS if selected else 0
-    expiration = datetime.datetime.now() + datetime.timedelta(seconds=10)
+    expiration = datetime.datetime.now(NYC) + datetime.timedelta(seconds=10)
     return Action(card_id, action_type, AnimationType.NONE, HecsCoord(0, 0, 0),
                   0, radius, color, duration_s, expiration)
 

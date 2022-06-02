@@ -25,6 +25,7 @@ class FollowerActions(Enum):
     BACKWARDS = 2
     TURN_LEFT = 3
     TURN_RIGHT = 4
+    INSTRUCTION_DONE = 5
 
 class TooltipType(Enum):
     NONE = 0

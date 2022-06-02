@@ -8,12 +8,11 @@ public class TutorialManager : MonoBehaviour
 {
     public static readonly string TAG = "TutorialManager";
     private static readonly string CANVAS_TAG = "TOOLTIP_CANVAS";
-    private static TutorialManager _instance;
 
     public GameObject TooltipTextbox;
     public GameObject HighlightBox;
 
-    public float HighlightPadding = 0.5f;
+    public float HighlightPadding = 2.0f;
 
     private Prop _indicator = null;
 
@@ -23,12 +22,12 @@ public class TutorialManager : MonoBehaviour
 
     public static TutorialManager TaggedInstance()
     {
-        if (_instance == null)
+        GameObject tutorialManager = GameObject.FindGameObjectWithTag(TAG);
+        if (tutorialManager == null)
         {
-            GameObject tutorialManager = GameObject.FindGameObjectWithTag(TutorialManager.TAG);
-            _instance = tutorialManager.GetComponent<TutorialManager>();
+            return null;
         }
-        return _instance;
+        return tutorialManager.GetComponent<TutorialManager>();
     }
 
     private Canvas TaggedCanvas()
@@ -160,15 +159,19 @@ public class TutorialManager : MonoBehaviour
         NextStep();
     }
 
+    public void CameraToggled()
+    {
+        if ((_lastTooltip != null) && (_lastTooltip.type == Network.TooltipType.UNTIL_CAMERA_TOGGLED))
+        {
+            NextStep();
+        }
+    }
+
     public void Update()
     {
         if (_lastTooltip != null)
         {
             if ((Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.RightShift)) && (_lastTooltip.type == Network.TooltipType.UNTIL_DISMISSED))
-            {
-                NextStep();
-            }
-            if (Input.GetKeyDown(KeyCode.C) && (_lastTooltip.type == Network.TooltipType.UNTIL_CAMERA_TOGGLED))
             {
                 NextStep();
             }

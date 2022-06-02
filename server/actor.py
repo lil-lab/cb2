@@ -22,6 +22,8 @@ import random
 import time
 import uuid
 
+logger = logging.getLogger(__name__)
+
 class Actor(object):
     def __init__(self, actor_id, asset_id, role, spawn):
         self._actor_id = actor_id
@@ -29,6 +31,8 @@ class Actor(object):
         self._actions = Queue()
         self._location = spawn
         self._heading_degrees = 0
+        self._projected_location = spawn
+        self._projected_heading = 0
         self._role = role
 
     def turn():
@@ -44,6 +48,8 @@ class Actor(object):
         return self._role
 
     def add_action(self, action):
+        self._projected_location = HecsCoord.add(self._location, action.displacement)
+        self._projected_heading += action.rotation
         self._actions.put(action)
 
     def has_actions(self):
@@ -64,12 +70,12 @@ class Actor(object):
         return self._actions.queue[0]
     
     def WalkForwards(self):
-        displacement = HecsCoord.origin().neighbor_at_heading(self.heading_degrees())
+        displacement = HecsCoord.origin().neighbor_at_heading(self._projected_heading)
         self.add_action(Walk(self.actor_id(), displacement))
     
     def WalkBackwards(self):
         # Note that the displacement is negated on the next line.
-        displacement = HecsCoord.origin().neighbor_at_heading(self.heading_degrees())
+        displacement = HecsCoord.origin().neighbor_at_heading(self._projected_heading)
         self.add_action(Walk(self.actor_id(), displacement.negate()))
 
     def TurnLeft(self):

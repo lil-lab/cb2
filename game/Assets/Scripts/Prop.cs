@@ -36,7 +36,7 @@ public class Prop
     public Prop(GameObject obj, IAssetSource.AssetId assetId)
     {
         _logger = Logger.GetOrCreateTrackedLogger("Prop");
-        _actionQueue = new ActionQueue();
+        _actionQueue = new ActionQueue("Prop (" + assetId.ToString() + ")");
         _assetId = assetId;
         // If the GameObject we've been provided with is a prefab,
         // instantiate it in the game world.

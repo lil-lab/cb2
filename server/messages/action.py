@@ -3,10 +3,12 @@ from hex import HecsCoord
 
 from dataclasses import dataclass, field, replace
 from dataclasses_json import dataclass_json, config, LetterCase
-from datetime import datetime
+from datetime import datetime, timedelta
 from marshmallow import fields
 
 import dateutil.parser
+
+from dateutil import tz
 
 class ActionType(Enum):
     INIT = 0
@@ -66,21 +68,36 @@ class Action:
             mm_field=fields.DateTime(format='iso')
         ))
 
+def Delay(id, duration):
+    NYC = tz.gettz('America/New_York')
+    return Action(
+        id=id,
+        action_type=ActionType.INSTANT,
+        animation_type=AnimationType.INSTANT,
+        displacement=HecsCoord.origin(),
+        rotation=0,
+        border_radius=0,
+        border_color=Color(0, 0, 0, 0),
+        duration_s=duration,
+        expiration=datetime.now(NYC) + timedelta(seconds=10)
+    )
 
 def Turn(id, angle):
+    NYC = tz.gettz('America/New_York')
     return Action(
         id=id,
         action_type=ActionType.ROTATE,
         animation_type=AnimationType.ROTATE,
-        displacement=HecsCoord(0, 0),
+        displacement=HecsCoord.origin(),
         rotation=angle,
         border_radius=0,
         border_color=Color(0, 0, 0, 0),
-        duration_s=0,
-        expiration=datetime.now() + datetime.timedelta(seconds=10)
+        duration_s=0.7,
+        expiration=datetime.now(NYC) + timedelta(seconds=10)
     )
 
 def Walk(id, displacement):
+    NYC = tz.gettz('America/New_York')
     return Action(
         id=id,
         action_type=ActionType.TRANSLATE,
@@ -89,6 +106,6 @@ def Walk(id, displacement):
         rotation=0,
         border_radius=0,
         border_color=Color(0, 0, 0, 0),
-        duration_s=0,
-        expiration=datetime.now() + datetime.timedelta(seconds=10)
+        duration_s=0.7,
+        expiration=datetime.now(NYC) + timedelta(seconds=10)
     )

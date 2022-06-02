@@ -1,12 +1,14 @@
+from multiprocessing import dummy
+from async_timeout import current_task
 from numpy import select
 from actor import Actor
 from assets import AssetId
-from messages.action import Action, Color, ActionType, CensorActionForFollower
+from messages.action import Action, Color, ActionType, CensorActionForFollower, Delay
 from messages.rooms import Role
 from messages import message_from_server
 from messages import message_to_server
 from messages import state_sync
-from messages.objective import ObjectiveMessage
+from messages.objective import ObjectiveMessage, ObjectiveCompleteMessage
 from hex import HecsCoord
 from queue import Queue
 from map_provider import MapProvider, MapType
@@ -102,9 +104,11 @@ class TutorialGameState(object):
         self._done = False
 
         if (self._player_role == Role.LEADER):
-            self._dummy_character = self.create_actor(Role.FOLLOWER)
+            dummy_character_id = self.create_actor(Role.FOLLOWER)
+            self._dummy_character = self._actors[dummy_character_id]
         elif (self._player_role == Role.FOLLOWER):
-            self._dummy_character = self.create_actor(Role.LEADER)
+            dummy_character_id = self.create_actor(Role.LEADER)
+            self._dummy_character = self._actors[dummy_character_id]
 
     def turn_duration(self, role):
         return timedelta(seconds=60) if role == Role.LEADER else timedelta(seconds=45)
@@ -130,7 +134,7 @@ class TutorialGameState(object):
 
     def end_game(self):
         logging.info(f"Game ending.")
-        self.free_actor(self._dummy_character)
+        self.free_actor(self._dummy_character.actor_id())
         self._done = True
 
     def record_action(self, action):
@@ -207,6 +211,12 @@ class TutorialGameState(object):
     def done(self):
         return self._done
 
+    def has_instructions_todo(self):
+        for objective in self._objectives:
+            if not objective.completed:
+                return True
+        return False
+
     async def update(self):
         last_loop = time.time()
         current_set_invalid = False
@@ -230,7 +240,7 @@ class TutorialGameState(object):
                 self.record_turn_state(game_over_message)
                 self.end_game()
                 continue
-            
+
             # Handle actor actions.
             for actor_id in self._actors:
                 actor = self._actors[actor_id]
@@ -269,16 +279,26 @@ class TutorialGameState(object):
             if self._turn_state.turn != self._player_role:
                 # If it's not the player's turn, then the dummy character is moving. If there's no actions left,
                 # then return control back to the player.
-                if not self._dummy_character.has_actions():
-                    self.update_turn(force_role_switch=True, end_reason="tutorial_dummy_move")
+                current_step = self._tutorial_steps[self._tutorial_step_index - 1]
+                if (current_step.tooltip.type == TooltipType.FOLLOWER_TURN) and not self._dummy_character.has_actions():
+                    logger.info(f"Dummy character has no actions. Advancing to next step.")
                     if self._tutorial_step_index > 0:
                         current_step = self._tutorial_steps[self._tutorial_step_index - 1]
                         if current_step.tooltip.type == TooltipType.FOLLOWER_TURN:
                             self.send_next_tutorial_step()
 
             if len(self._turn_complete_queue) > 0:
+                logger.info(f"Turn complete queue has {len(self._turn_complete_queue)} items.")
                 reason = self._turn_complete_queue.pop()
-                self.update_turn(force_role_switch=True, end_reason=reason)
+                if self._tutorial_step_index != 0:
+                    current_step = self._tutorial_steps[self._tutorial_step_index - 1]
+                    # In the tutorial, only allow the player to switch roles if the current step is a role switch.
+                    if current_step.tooltip.type != TooltipType.UNTIL_TURN_ENDED:
+                        logger.info(f"Not sending next tutorial step. current step: {current_step.tooltip}")
+                        continue
+                    self.update_turn(force_role_switch=True, end_reason=reason)
+                    logger.info(f"Sending next tutorial step.")
+                    self.send_next_tutorial_step()
 
             # Check to see if the indicator has been reached.
             if self._tutorial_step_index > 0:
@@ -382,13 +402,6 @@ class TutorialGameState(object):
         await asyncio.sleep(1)
 
     def update_turn(self, force_role_switch=False, end_reason=""):
-        if self._tutorial_step_index == 0:
-            return
-        current_step = self._tutorial_steps[self._tutorial_step_index - 1]
-        if current_step.tooltip.type != TooltipType.UNTIL_TURN_COMPLETE:
-            return
-        self.send_next_tutorial_step()
-
         opposite_role = Role.LEADER if self._turn_state.turn == Role.FOLLOWER else Role.FOLLOWER
         role_switch = force_role_switch
         next_role = opposite_role if role_switch else self._turn_state.turn
@@ -397,13 +410,11 @@ class TutorialGameState(object):
         if next_role == Role.FOLLOWER and not self.has_instructions_todo():
             next_role = Role.LEADER
             turn_skipped = True
-        moves_remaining = max(self._turn_state.moves_remaining - 1, 0)
         turns_left = self._turn_state.turns_left
         turn_end = self._turn_state.turn_end
         turn_number = self._turn_state.turn_number
         if role_switch:
             end_of_turn = (next_role == Role.LEADER)
-            moves_remaining = self.moves_per_turn(next_role)
             turn_end = datetime.now() + self.turn_duration(next_role)
             if end_of_turn:
                 turns_left -= 1
@@ -415,7 +426,7 @@ class TutorialGameState(object):
 
         turn_update = TurnUpdate(
             next_role,
-            moves_remaining,
+            10,
             turns_left,
             turn_end,
             self._turn_state.game_start,
@@ -453,6 +464,14 @@ class TutorialGameState(object):
             self._map_provider.set_selected(stepped_on_card.id, selected)
             self._map_provider.set_color(stepped_on_card.id, color)
             card_select_action = CardSelectAction(stepped_on_card.id, selected, color)
+            # If the actor is a dummy then we need to add a delay so that the
+            # card selection occurs after the move. This is a hack.
+            if actor_id == self._dummy_character.actor_id():
+                current_step = self._tutorial_steps[self._tutorial_step_index - 1]
+                if current_step.other_player_turn != None:
+                    duration = 0.7 * len(current_step.other_player_turn)
+                    delay_action = Delay(stepped_on_card.id, duration)
+                    self.record_action(delay_action)
             self.record_action(card_select_action)
             selection_record = schemas.cards.CardSelections()
             selection_record.game = self._tutorial_record
@@ -476,9 +495,6 @@ class TutorialGameState(object):
             logger.info(
                 f'Objective Compl received. Room: {self._room_id}, Text: {message.objective_complete.uuid}')
             self.handle_objective_complete(id, message.objective_complete)
-        elif message.type == message_to_server.MessageType.TURN_COMPLETE:
-            logger.info(f'Turn Complete received. Ignoring -- this is a tutorial.')
-            return
         elif message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
             logger.info(
                 f'Sync request recvd. Room: {self._room_id}, Player: {id}')
@@ -533,7 +549,7 @@ class TutorialGameState(object):
         self._recvd_log.info(f"player_id: {id} turn_complete received.")
         if len(self._turn_complete_queue) >= 1:
             logger.warn(
-                f"Warning, turn complete queued from ID: {str(id)}, but one was already received!")
+                f"Warning, turn complete queued from ID: {str(id)}, but one was already received! queue size: {len(self._turn_complete_queue)}")
             return
         self._turn_complete_queue.append("UserPrompted")
 
@@ -570,6 +586,9 @@ class TutorialGameState(object):
                         if not (objective.completed or objective.cancelled):
                             logger.warn(f"Received request for next step, but the player hasn't completed the objective. ID: {id}, Objective: {objective}")
                             return
+                if (current_step.tooltip.type == TooltipType.FOLLOWER_TURN):
+                    logger.warn(f"Received request for next step, but still waiting on dummy character to move. ID: {id}")
+                    return
             self.send_next_tutorial_step()
         else:
             logger.warn(f"Received invalid tutorial request type {tutorial.type}")
@@ -590,7 +609,7 @@ class TutorialGameState(object):
         self._active_objective = None
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True
-        self._turn_complete_queue.append("UserPrompted")
+        self._turn_complete_queue.append("LeaderInterrupt")
 
     
     def send_next_tutorial_step(self):
@@ -617,7 +636,9 @@ class TutorialGameState(object):
         if next_step.indicator is not None:
             self._step_indicator_done = False
         if next_step.other_player_turn is not None:
+            logger.info(f"Sending {len(next_step.other_player_turn)} dummy actions...")
             for action in next_step.other_player_turn:
+                logger.info("Sending dummy action: " + str(action))
                 if action == FollowerActions.FORWARDS:
                     self._dummy_character.WalkForwards()
                 elif action == FollowerActions.BACKWARDS:
@@ -626,6 +647,14 @@ class TutorialGameState(object):
                     self._dummy_character.TurnLeft()
                 elif action == FollowerActions.TURN_RIGHT:
                     self._dummy_character.TurnRight()
+                elif action == FollowerActions.INSTRUCTION_DONE:
+                    uuid = None
+                    for objective in self._objectives:
+                        if not objective.completed:
+                            uuid = objective.uuid
+                            break
+                    objective_complete = ObjectiveCompleteMessage(uuid)
+                    self.handle_objective_complete(self._dummy_character.actor_id(), objective_complete)
                 else:
                     logger.warn(f"Warning, unknown follower action: {action}")
         self._tutorial_step_index += 1

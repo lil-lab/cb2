@@ -181,6 +181,10 @@ public class Player : MonoBehaviour
             }
             
             _lastCameraToggle = DateTime.Now;
+
+            // In the tutorial, this hooks camera events to the tutorial manager.
+            if (TutorialManager.TaggedInstance() != null)
+                TutorialManager.TaggedInstance().CameraToggled();
     }
 
     void Update()

@@ -24,7 +24,7 @@ public class OverheadCamera : MonoBehaviour
     public string FollowPlayerTag = "Player";
     public float FollowDistance = 10;
     public bool MousePanning = false;
-    public float MousePanningSpeed = 0.01f;
+    public float MousePanningSpeed = 0.50f;
     private Vector3 _mouseDragOrigin = Vector3.zero;
     private bool _isDraggingMouse = false;
     private float _phi = 0;  // the X-Z plane (Y-axis) rotation around the player. Controlled by the A and D keys.

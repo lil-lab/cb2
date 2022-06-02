@@ -11,7 +11,6 @@ using UnityEngine;
 public class ActionQueue
 {
     // Enable to get action queue debug messages.
-    public static readonly bool DebugActionQueue = false;
     [Serializable]
     public enum AnimationType
     {
@@ -70,6 +69,8 @@ public class ActionQueue
 
     private System.Object _animationLock = new System.Object();
 
+    private Logger _logger;
+
     public ActionQueue(string name="")
     {
         _actionQueue = new Queue<IAction>();
@@ -78,6 +79,7 @@ public class ActionQueue
         _state = new State.Discrete();
         _targetState = new State.Discrete();
         _name = name;
+        _logger = Logger.GetOrCreateTrackedLogger(name);
     }
 
     // Adds a move to the queue.
@@ -90,6 +92,8 @@ public class ActionQueue
             }
             _targetState = action.Transfer(_targetState);
             _actionQueue.Enqueue(action);
+            _logger.Debug("Enqueued action duration: " + action.DurationS());
+            _logger.Debug("Enqueued action expiration: " + action.Expiration());
         }
     }
 
@@ -150,8 +154,7 @@ public class ActionQueue
             // If there's no animation in progress, begin the next animation in the queue.
             if (_actionQueue.Count > 0 && !_actionInProgress)
             {
-                if (DebugActionQueue)
-                    Debug.Log(_name + " Q Start: " + _actionQueue.Peek());
+                _logger.Debug(_name + " Q Start: " + _actionQueue.Peek());
                 _progress = 0.0f;
                 _actionStarted = DateTime.Now;
                 _actionInProgress = true;
@@ -163,12 +166,9 @@ public class ActionQueue
             // Immediately skip any expired animations.
             if (_actionInProgress && (DateTime.Now > _actionQueue.Peek().Expiration()))
             {
-                if (DebugActionQueue)
-                {
-                    Debug.Log(_name + " Q Fast-forwarding expired action of duration " 
-                              + _actionQueue.Peek().DurationS() + "s. Duration: "
-                              + delta.Seconds);
-                }
+                _logger.Debug(_name + " Q Fast-forwarding expired action of duration " 
+                                + _actionQueue.Peek().DurationS() + "s. Duration: "
+                                + delta.Seconds);
                 _state = _actionQueue.Peek().Transfer(_state);
                 _actionQueue.Dequeue();
                 _actionInProgress = false;
@@ -186,8 +186,7 @@ public class ActionQueue
             if (_actionInProgress &&
                 (delta.TotalMilliseconds > (_actionQueue.Peek().DurationS() * 1000.0f)))
             {
-                if (DebugActionQueue)
-                    Debug.Log(_name + " Q Finish: " + _actionQueue.Peek());
+                _logger.Debug(_name + " Q Finish: " + _actionQueue.Peek());
                 _state = _actionQueue.Peek().Transfer(_state);
                 _actionQueue.Dequeue();
                 _actionInProgress = false;

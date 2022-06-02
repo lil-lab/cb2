@@ -178,7 +178,7 @@ namespace Network
                     }
                     if ((_mode == Mode.REPLAY) && (_player != null) && (networkAction.id == _player.PlayerId()))
                     {
-                        _logger.Info("Forwarding action to player! 3535");
+                        _logger.Info("Forwarding action to player!");
                         _player.AddAction(action);
                         continue;
                     } else {

@@ -784,6 +784,10 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7151152153704311688, guid: 67f3cd7629e3449bda01f8f894e793f0, type: 3}
+      propertyPath: m_TagString
+      value: FOLLOWER_VIEW
+      objectReference: {fileID: 0}
     - target: {fileID: 7151152153704311689, guid: 67f3cd7629e3449bda01f8f894e793f0, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -1634,7 +1638,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_Sprite: {fileID: 21300000, guid: 1dc4354f69d224dfcaf4ab79d5271877, type: 3}
-  m_Type: 2
+  m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -2262,6 +2266,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: AngledOverheadCamera
       objectReference: {fileID: 0}
+    - target: {fileID: 6140040725572061407, guid: 9f705b6f894394c128168ee780869b7d, type: 3}
+      propertyPath: MousePanningSpeed
+      value: 0.5
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 9f705b6f894394c128168ee780869b7d, type: 3}
 --- !u!1 &1518034722 stripped
@@ -2466,6 +2474,10 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 8953867425919117913, guid: ab5396ebe8af642868fde7b5e496839a, type: 3}
+      propertyPath: MousePanningSpeed
+      value: 0.5
+      objectReference: {fileID: 0}
     - target: {fileID: 8953867425919117914, guid: ab5396ebe8af642868fde7b5e496839a, type: 3}
       propertyPath: m_Name
       value: FollowerOverheadViewCam
@@ -2572,7 +2584,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.392}
+  m_Color: {r: 0.50980395, g: 0.50980395, b: 0.50980395, a: 0.90588236}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
