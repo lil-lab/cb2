@@ -67,6 +67,11 @@ LEADER_TUTORIAL_STEPS = [
         None
     ),
     TutorialStep(
+        None,
+        Tooltip("FOLLOWER_VIEW", "By the way, followers cannot see card patterns. Cards are covered with \"?\".", TooltipType.UNTIL_DISMISSED),
+        None
+    ),
+    TutorialStep(
       None,
       Tooltip("END_TURN_PANEL", "Great. Now end your turn so the"
               " follower has a chance to move.", TooltipType.UNTIL_TURN_ENDED),
@@ -74,14 +79,14 @@ LEADER_TUTORIAL_STEPS = [
     ),
     TutorialStep(
       None,
-      Tooltip("FOLLOWER_VIEW", "Now it's the follower's turn! Wait for them to move...",
+      Tooltip("", "Now it's the follower's turn! Wait for them to move...",
       TooltipType.FOLLOWER_TURN),
       None,
       [FollowerActions.TURN_LEFT, FollowerActions.TURN_LEFT, FollowerActions.FORWARDS],
     ),
     TutorialStep(
       None,
-      Tooltip("FOLLOWER_VIEW", "", 
+      Tooltip("", "", 
       TooltipType.FOLLOWER_TURN),
       None,
       [FollowerActions.INSTRUCTION_DONE],
@@ -93,7 +98,7 @@ LEADER_TUTORIAL_STEPS = [
     ),
     TutorialStep(
       None,
-      Tooltip("FOLLOWER_VIEW", "",
+      Tooltip("", "",
       TooltipType.FOLLOWER_TURN),
       None,
       [FollowerActions.TURN_LEFT, FollowerActions.FORWARDS, FollowerActions.FORWARDS],

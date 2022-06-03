@@ -98,11 +98,52 @@ public class TutorialManager : MonoBehaviour
 
     }
 
+
+    public void Shake(float duration, float speed, float rotMagnitude, float scaleMagnitude, string elementId)
+    {
+        if (elementId == "")
+        {
+            _logger.Warn("Shake: elementId is empty");
+            return;
+        }
+        GameObject element = GameObject.FindGameObjectWithTag(elementId);
+        if (element == null)
+        {
+            _logger.Warn("Shake: element not found: " + elementId);
+            return;
+        }
+        // Set the pivot of the element to the center.
+        element.GetComponent<RectTransform>().pivot = new Vector2(0.5f, 0.5f);
+        StartCoroutine(ShakeCoroutine(duration, speed, rotMagnitude, scaleMagnitude, elementId));
+    }
+
+    private IEnumerator ShakeCoroutine(float duration, float speed, float rotMagnitude, float scaleMagnitude, string elementId)
+    {
+        GameObject element = GameObject.FindGameObjectWithTag(elementId);
+        if (element == null)
+        {
+            _logger.Error("ShakeCoroutine: element not found: " + elementId);
+            yield break;
+        }
+        Vector3 originalPosition = element.transform.localPosition;
+        float elapsed = 0.0f;
+        while (elapsed < duration)
+        {
+            float rot = Mathf.Sin(elapsed * speed) * rotMagnitude;
+            float scale = Mathf.Sin(elapsed * speed) * scaleMagnitude + 1;
+            element.transform.rotation = Quaternion.Euler(0, 0, rot);
+            element.transform.localScale = new Vector3(scale, scale, 1.0f);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+        element.transform.rotation = Quaternion.Euler(0, 0, 0);
+        element.transform.localScale = new Vector3(1.0f, 1.0f, 1.0f);
+    }
+
+
     public void SetTooltip(string text, string highlightedComponentTag)
     {
         Canvas canvas = TaggedCanvas();
-        float canvasWidth = canvas.GetComponent<RectTransform>().rect.width;
-        float canvasHeight = canvas.GetComponent<RectTransform>().rect.height;
         TMPro.TMP_Text tooltip = TooltipTextbox.GetComponent<TMPro.TMP_Text>();
         tooltip.text = text;
         if (highlightedComponentTag == "")
@@ -128,7 +169,8 @@ public class TutorialManager : MonoBehaviour
             return;
         }
 
-        OverlayRectangle(HighlightBox.GetComponent<RectTransform>(), highlightedComponentRect);
+        _logger.Info("Highlighted component: " + highlightedComponentTag);
+        Shake(3, 5.0f, 2.0f, 0.2f, highlightedComponentTag);
         HighlightBox.GetComponent<RectTransform>().ForceUpdateRectTransforms();
     }
 
