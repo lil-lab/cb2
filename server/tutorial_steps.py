@@ -32,7 +32,7 @@ LEADER_TUTORIAL_STEPS = [
         None,
         Tooltip("SCORE",
                 "Information about the game is displayed in the bottom left. As the leader,"
-                " you are given 60 seconds per turn (shift to continue).", TooltipType.UNTIL_DISMISSED),
+                " you are given 60 seconds per turn (Shift to continue).", TooltipType.UNTIL_DISMISSED),
         None
     ),
     TutorialStep(
@@ -53,6 +53,16 @@ LEADER_TUTORIAL_STEPS = [
     ),
     TutorialStep(
         None,
+        Tooltip("FOLLOWER_VIEW", "This screen shows you what the follower can see. Followers cannot see card patterns. Cards are covered with \"?\" (Shift to continue).", TooltipType.UNTIL_DISMISSED),
+        None
+    ),
+    TutorialStep(
+        None,
+        Tooltip("FOLLOWER_VIEW", "The follower's view is limited by fog. They can't see far away objects (Shift to continue).", TooltipType.UNTIL_DISMISSED),
+        None
+    ),
+    TutorialStep(
+        None,
         Tooltip("MessageInputField",
                 "The yellow circle is indicating the Follower. You can send the"
                 " Follower commands using the text box in the bottom left corner."
@@ -64,11 +74,6 @@ LEADER_TUTORIAL_STEPS = [
         Tooltip("MessageInputField",
                 "Great! Now let's send a follow up command telling them to stand on the card at"
                 " the edge of the map.", TooltipType.UNTIL_MESSAGE_SENT),
-        None
-    ),
-    TutorialStep(
-        None,
-        Tooltip("FOLLOWER_VIEW", "By the way, followers cannot see card patterns. Cards are covered with \"?\".", TooltipType.UNTIL_DISMISSED),
         None
     ),
     TutorialStep(
@@ -93,7 +98,7 @@ LEADER_TUTORIAL_STEPS = [
     ),
     TutorialStep(
         None,
-        Tooltip("ScrollView", "Great! Notice that the follower marked your instruction as done. Shift to continue.", TooltipType.UNTIL_DISMISSED),
+        Tooltip("ScrollView", "Great! Notice that the follower marked your instruction as done (Shift to continue).", TooltipType.UNTIL_DISMISSED),
         None
     ),
     TutorialStep(
@@ -199,7 +204,7 @@ LEADER_TUTORIAL_STEPS = [
         None,
         Tooltip("",
                 "Once you've exhausted your moves, you have the rest of your "
-                "turn to leave instructions for the follower. (Shift to "
+                "turn to leave instructions for the follower (Shift to "
                 "continue).", TooltipType.UNTIL_DISMISSED),
         None
     ),
@@ -209,7 +214,7 @@ LEADER_TUTORIAL_STEPS = [
                 "If you haven't left any instructions for the follower, their "
                 "turn will be skipped. Make sure to leave instructions before the "
                 "time for your turn runs out! As the leader, you have a minute "
-                "per turn. " "(Shift to continue).",
+                "per turn (Shift to continue).",
                 TooltipType.UNTIL_DISMISSED),
         None
     ),
@@ -228,7 +233,7 @@ FOLLOWER_TUTORIAL_STEPS = [
         Tooltip("",
                 "Welcome to the follower tutorial. We'll walk "
                 "you through the rules of Cerealbar and how to "
-                "play the follower role. Press Shift to proceed.",
+                "play the follower role (Shift to continue).",
                 TooltipType.UNTIL_DISMISSED),
         None,
     ),
@@ -256,6 +261,13 @@ FOLLOWER_TUTORIAL_STEPS = [
         None,
     ),
     TutorialStep(
+        None,
+        Tooltip("",
+                "Since you're the follower, you cannot see card patterns. Cards are covered with a \"?\" (Shift to continue).",
+                TooltipType.UNTIL_DISMISSED),
+        None,
+    ),
+    TutorialStep(
         Indicator(HecsCoord(0, 1, 3)),
         Tooltip("INSTRUCTIONS",
                 "You've received your first instruction. Follow it, then click"
@@ -279,29 +291,30 @@ FOLLOWER_TUTORIAL_STEPS = [
         None,
     ),
     TutorialStep(
-        Indicator(HecsCoord(1, 0, 1)),
-        Tooltip("INSTRUCTIONS",
+        None,
+        Tooltip("",
                 "Follow the instructions...",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
         Instruction("Turn around and go back down the steps. Move onto the card"
-                    " on the right at the base of the mountain.") ),
+                    " on the right at the base of the mountain.")
+    ),
     TutorialStep(
-        Indicator(HecsCoord(0, 2, 2)),
-        Tooltip("INSTRUCTIONS",
+        None,
+        Tooltip("",
                 "Follow the instructions...",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
         Instruction("Behind you, near where you started, you'll see a cluster of 3 cards in a V-shape. Move onto the closest card.") ),
     TutorialStep(
-        Indicator(HecsCoord(0, 2, 2)),
-        Tooltip("INSTRUCTIONS",
+        None,
+        Tooltip("",
                 "Follow the instructions... To unselect a card, step off of it"
                 " and then back onto it.",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
         Instruction("Oops, sorry I messed up! Can you unselect that card by"
                     " walking off it and then back onto it?") ),
     TutorialStep(
-        Indicator(HecsCoord(1, 2, 1)),
-        Tooltip("INSTRUCTIONS",
+        None,
+        Tooltip("",
                 "Last instruction!",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
         Instruction("Now finish up the set by picking up the center card in that v-shaped group of 3 cards."), ),
@@ -316,7 +329,7 @@ FOLLOWER_TUTORIAL_STEPS = [
     ),
     TutorialStep(
         None,
-        Tooltip("SCORE",
+        Tooltip("",
                 "In a real game, you only have a certain number of movements per "
                 "turn, use them wisely! Your remaining moves are shown in the "
                 "bottom left. (Shift to continue).",
