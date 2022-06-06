@@ -277,15 +277,8 @@ FOLLOWER_TUTORIAL_STEPS = [
     ),
     TutorialStep(
         None,
-        Tooltip("",
-                "Great! Let's see if you can collect 3 cards. (Shift to"
-                " continue).", TooltipType.UNTIL_DISMISSED),
-        None,
-    ),
-    TutorialStep(
-        None,
         Tooltip("INSTRUCTIONS",
-                "Don't forget to click on \"Done\" once you finish an"
+                "Great! Don't forget to click on \"Done\" once you finish an"
                 " instruction. You won't be able to proceed until then (Shift to"
                 " continue).", TooltipType.UNTIL_DISMISSED),
         None,
