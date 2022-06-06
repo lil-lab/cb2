@@ -10,7 +10,6 @@ public class TutorialManager : MonoBehaviour
     private static readonly string CANVAS_TAG = "TOOLTIP_CANVAS";
 
     public GameObject TooltipTextbox;
-    public GameObject HighlightBox;
 
     public float HighlightPadding = 2.0f;
 
@@ -146,32 +145,8 @@ public class TutorialManager : MonoBehaviour
         Canvas canvas = TaggedCanvas();
         TMPro.TMP_Text tooltip = TooltipTextbox.GetComponent<TMPro.TMP_Text>();
         tooltip.text = text;
-        if (highlightedComponentTag == "")
-        {
-            HighlightBox.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 0);
-            return;
-        }
         _logger.Info("Highlighted component tag: " + highlightedComponentTag);
-        GameObject highlightedComponent = GameObject.FindGameObjectWithTag(highlightedComponentTag);
-
-        if (highlightedComponent == null)
-        {
-            _logger.Warn("Could not find highlighted component with tag: " + highlightedComponentTag);
-            HighlightBox.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 0);
-            return;
-        }
-
-        RectTransform highlightedComponentRect = highlightedComponent.GetComponent<RectTransform>();
-
-        if (highlightedComponentRect == null)
-        {
-            _logger.Warn("Highlighted component with tag \"" + highlightedComponentTag + "\" has no RectTransform");
-            return;
-        }
-
-        _logger.Info("Highlighted component: " + highlightedComponentTag);
         Shake(3, 5.0f, 2.0f, 0.2f, highlightedComponentTag);
-        HighlightBox.GetComponent<RectTransform>().ForceUpdateRectTransforms();
     }
 
     public void HandleTutorialStep(Network.TutorialStep step)

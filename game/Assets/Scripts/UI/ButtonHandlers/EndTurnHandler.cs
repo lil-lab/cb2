@@ -7,6 +7,7 @@ public class EndTurnHandler : MonoBehaviour, IPointerUpHandler
 {
     public void OnPointerUp(PointerEventData eventData)
     {
+        Logger.GetOrCreateTrackedLogger("EndTurnHandler").Info("OnPointerUp");
         MenuTransitionHandler.TaggedInstance().TurnComplete();
     }
 }
