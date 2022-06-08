@@ -194,16 +194,6 @@ async def GameLogs(request):
     return web.json_response(json.loads(game_log.to_json()))
 
 
-@routes.get('/data/download')
-async def DataDump(request):
-    record_base_dir = pathlib.Path(GlobalConfig().record_directory())
-    games = os.listdir(record_base_dir)
-    for game in games:
-        id = game.split("_")[1]
-        if game_id == id:
-            return record_base_dir / game
-    return None
-
 @routes.get('/data/username_from_id/{user_id}')
 async def GetUsername(request):
     user_id = request.match_info.get('user_id')
