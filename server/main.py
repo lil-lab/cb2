@@ -102,6 +102,10 @@ async def QualificationPage(request):
 async def Rules(request):
     return web.FileResponse("www/rules.html")
 
+@routes.get('/example_sets')
+async def Rules(request):
+    return web.FileResponse("www/example_sets.html")
+
 @routes.get('/oneoff')
 async def OneoffComp(request):
     return web.FileResponse("www/oneoff.html")
