@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -5,7 +6,7 @@ using UnityEngine;
 public class ShowCardCovers : MonoBehaviour
 {
     private bool _cardCoversSet = false;
-    private datetime _lastTry = datetime.MinValue;
+    private DateTime _lastTry = datetime.MinValue;
     private Logger _logger;
     // Start is called before the first frame update
     void Start()
