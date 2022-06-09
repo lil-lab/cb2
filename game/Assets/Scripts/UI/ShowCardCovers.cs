@@ -12,6 +12,7 @@ public class ShowCardCovers : MonoBehaviour
     void Start()
     {
         _logger = Logger.GetOrCreateTrackedLogger("ShowCardCovers");
+        _lastTry = DateTime.MinValue;
     }
 
     public void Update()
