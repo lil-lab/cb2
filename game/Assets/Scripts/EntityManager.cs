@@ -8,9 +8,17 @@ public class EntityManager : MonoBehaviour
 {
     public static string TAG = "EntityManager";
 
+    private Logger _logger;
+
+    public static EntityManager TaggedInstance()
+    {
+        return GameObject.FindGameObjectWithTag(TAG).GetComponent<EntityManager>();
+    }
+
     public void Awake()
     {
         gameObject.tag = TAG;
+        _logger = Logger.GetOrCreateTrackedLogger(TAG);
     }
 
     private Dictionary<int, Actor> _actors;
@@ -34,6 +42,19 @@ public class EntityManager : MonoBehaviour
         return _props.Count;
     }
 
+    public int NumberOfCards()
+    {
+        int numberOfCards = 0;
+        foreach(Prop p in _props.Values)
+        {
+            if (p.IsCard)
+            {
+                numberOfCards++;
+            }
+        }
+        return numberOfCards;
+    }
+
     public void AddAction(int id, ActionQueue.IAction action)
     {
         if (_actors.ContainsKey(id))
@@ -46,14 +67,14 @@ public class EntityManager : MonoBehaviour
             _props[id].AddAction(action);
             return;
         }
-        Debug.Log("Warning, invalid actor id received: " + id);
+        _logger.Warn("Warning, invalid actor id received: " + id);
     }
 
     public void RegisterProp(int id, Prop prop)
     {
         if (_props.ContainsKey(id))
         {
-            Debug.Log("Ignoring duplicate prop registration: " + id);
+            _logger.Info("Ignoring duplicate prop registration: " + id);
             return;
         }
         _props[id] = prop;
@@ -63,7 +84,7 @@ public class EntityManager : MonoBehaviour
     {
         if (_actors.ContainsKey(id))
         {
-            Debug.Log("Ignoring duplicate actor registration: " + id);
+            _logger.Info("Ignoring duplicate actor registration: " + id);
             return;
         }
         _actors[id] = actor;
@@ -122,7 +143,7 @@ public class EntityManager : MonoBehaviour
             _graveyard.Add(prop);
         }
         _props = new Dictionary<int, Prop>();
-        Debug.Log("Queued " + _graveyard.Count + " props for destruction.");
+        _logger.Info("Queued " + _graveyard.Count + " props for destruction.");
     }
 
     public void Update()
