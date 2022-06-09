@@ -6,7 +6,7 @@ using UnityEngine;
 public class ShowCardCovers : MonoBehaviour
 {
     private bool _cardCoversSet = false;
-    private DateTime _lastTry = datetime.MinValue;
+    private DateTime _lastTry = DateTime.MinValue;
     private Logger _logger;
     // Start is called before the first frame update
     void Start()
@@ -18,7 +18,7 @@ public class ShowCardCovers : MonoBehaviour
     {
         if (_cardCoversSet) return;
         // Try this every 3 seconds.
-        if (datetime.Now - _lastTry < TimeSpan.FromSeconds(3)) return;
+        if (DateTime.Now - _lastTry < TimeSpan.FromSeconds(3)) return;
 
         Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
         if (networkManager.ServerConfig() == null) return;
