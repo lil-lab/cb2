@@ -70,6 +70,7 @@ public class Player : MonoBehaviour
 
     public void Awake()
     {
+        _logger = Logger.GetOrCreateTrackedLogger(TAG);
         UnityAssetSource assets = new UnityAssetSource();
         IAssetSource.AssetId assetId = IAssetSource.AssetId.PLAYER_WITH_CAM;
         _actor = new Actor(assets.Load(assetId), assetId);
@@ -122,7 +123,6 @@ public class Player : MonoBehaviour
 
     void Start()
     {
-        _logger = Logger.GetOrCreateTrackedLogger(TAG);
         if (ForceStartingPosition)
         {
             _actor.AddAction(
