@@ -70,6 +70,11 @@ namespace Network
             }
         }
 
+        public void ClearEntityManager()
+        {
+            _entityManager = null;
+        }
+
         public void SetPlayer(Player player)
         {
             Debug.Log("NetworkRouter SetPlayer()");
@@ -82,6 +87,11 @@ namespace Network
                 _logger.Info("Player receiving pending state sync.");
                 ApplyStateSyncToPlayer(_pendingStateSync);
             }
+        }
+
+        public void ClearPlayer()
+        {
+            _player = null;
         }
 
         public bool ApplyStateSyncToPlayer(StateSync stateSync)

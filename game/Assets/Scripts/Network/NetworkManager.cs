@@ -297,8 +297,8 @@ namespace Network
             _networkMapSource.ClearMapUpdate();
             _role = Network.Role.NONE;
             _currentTurn = Network.Role.NONE;
-            _router.SetEntityManager(null);
-            _router.SetPlayer(null);
+            _router.ClearEntityManager();
+            _router.ClearPlayer();
             SceneManager.LoadScene("menu_scene");
         }
 
@@ -417,6 +417,8 @@ namespace Network
             if (tutorialResponse.type == TutorialResponseType.STARTED)
             {
                 Debug.Log("[DEBUG]Tutorial started.");
+                _router.ClearEntityManager();
+                _router.ClearPlayer();
                 SceneManager.LoadScene("tutorial_scene");
                 _role = tutorialResponse.Role();
             }
@@ -439,6 +441,8 @@ namespace Network
                 if (response.join_response.joined)
                 {
                     Debug.Log("Joined room as " + response.join_response.role + "!");
+                    _router.ClearEntityManager();
+                    _router.ClearPlayer();
                     SceneManager.LoadScene("game_scene");
                     _role = response.join_response.role;
                 }
