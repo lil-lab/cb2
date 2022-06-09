@@ -381,6 +381,10 @@ class State(object):
         turn_end = self._turn_state.turn_end
         turn_number = self._turn_state.turn_number
         if role_switch:
+            # This is a mitigation to the invisible cards glitch. Update the map on role switches.
+            self._map_update = self._map_provider.map()
+            for actor_id in self._actors:
+                self._map_stale[actor_id] = True
             end_of_turn = (next_role == Role.LEADER)
             moves_remaining = self.moves_per_turn(next_role)
             turn_end = datetime.now() + self.turn_duration(next_role)
