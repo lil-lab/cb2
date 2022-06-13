@@ -298,7 +298,7 @@ async def DataDownloader(room_manager):
         log_entry(f"DB backed up.")
         await asyncio.sleep(0.5)
         time_string = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
-        game_archive = shutil.make_archive(f"{GlobalConfig().record_directory()}-{time_string}", 'zip', GlobalConfig().record_directory())
+        game_archive = shutil.make_archive(f"{GlobalConfig().record_directory()}-{time_string}", 'gztar', GlobalConfig().record_directory())
         log_entry("Game files archived.")
         await asyncio.sleep(0.5)
         download_contents = io.BytesIO()
@@ -326,18 +326,22 @@ async def DownloadStatus(request):
 async def RetrieveData(request):
     global download_contents
     global download_status
+    NYC = tz.gettz('America/New_York')
+    timestamp =  lambda : datetime.now(NYC).strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = lambda x: download_status["log"].append(f"{timestamp()}: {x}")
     local_download_contents = download_contents
     if local_download_contents is None:
+        log_entry("Retrieval attempted, but no download available.")
         return web.HTTPNotFound()
-    download_contents = None
-    download_status["log"] = []
-    download_status["status"] = "idle"
-    return web.Response(body=local_download_contents.getvalue(), content_type="application/zip")
+    log_entry("Retrieved.")
+    download_status["status"] = "done"
+    return web.Response(body=local_download_contents.getvalue(), content_type="application/gzip")
 
 @routes.get('/data/download')
 async def DataDownloadStart(request):
     global download_requested
     download_requested = True
+    download_contents = None
     return web.FileResponse("www/download.html")
 
 @routes.get('/data/game-list')

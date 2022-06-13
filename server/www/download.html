@@ -32,13 +32,14 @@
                             clearInterval(interval);
                             setTimeout(function() {
                                 console.log("Redirecting to download link...");
+                                $("#download-link").css("display", "block");
                                 downloadFile("/data/download_retrieve");
                             }, 1000);
                         }
                     })
                     .fail(function(data) {
                         // If the request fails, update the status element with an error message.
-                        $("#status").text("Error: Could not check download status.");
+                        $("#status").text("Error: Could not check download status. Server bandwidth limits may have been reached, try refreshing the page.");
                     });
             }
 
@@ -46,14 +47,19 @@
                 // Trigger a check_download_status every second. Save the interval so it can be cancelled later.
                 interval = setInterval(check_download_status, 1000);
             }
+
+            function RetrieveDownload() {
+                downloadFile("/data/download_retrieve");
+            }
         </script>
         <div>
             <h1>Data Export Page</h1>
             <h2 id="status" style="background-color: aliceblue; display: block; width: 60%; margin: auto;">Status: starting...</h2>
             <pre id="download_log" style="color: green; background-color: black; display: block; margin: auto; width: 60%; height: 300px; overflow-y: scroll"></pre>
             <p style="background-color: rgb(255, 255, 170); font-size: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center; width: 60%;">
-                Visiting this page triggers the server to archive its current data for download. For performance reasons, the download won't begin while any users are actively playing games.
+                Visiting this page triggers the server to archive its current data for download. For performance reasons, the download won't begin while any users are actively playing games. Note that AWS bandwidth throttling can cause this process to fail. Solutions include deleting old games from the server, increasing the instance type
             </p>
+            <a href="#" onclick="RetrieveDownload();" style="display: none; margin: auto; width: 60%; text-align: center;" id="download-link">Download</a>
             <p style="background-color: rgb(255, 255, 170); font-size: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center; width: 60%;">
                 The download will begin automatically once the data is ready.
             </p>

@@ -205,16 +205,16 @@ class Room(object):
         self._messages_from_server_log.write(log_bytes + "\n")
 
         # Render map updates to a PNG.
-        if message.type == message_from_server.MessageType.MAP_UPDATE:
-            self._map_update_count += 1
-            map_path = pathlib.Path(self._log_directory, f"map_update_{self._map_update_count}_player_{player_id}.png")
-            map_update_file = map_path.open('w')
-            display = visualize.GameDisplay(600)
-            display.set_map(message.map_update)
-            display.set_game_state(self._game_state.state())
-            display.draw()
-            pygame.display.flip()
-            pygame.image.save(display.screen(), map_path)
+        # if message.type == message_from_server.MessageType.MAP_UPDATE:
+        #     self._map_update_count += 1
+        #     map_path = pathlib.Path(self._log_directory, f"map_update_{self._map_update_count}_player_{player_id}.png")
+        #     map_update_file = map_path.open('w')
+        #     display = visualize.GameDisplay(600)
+        #     display.set_map(message.map_update)
+        #     display.set_game_state(self._game_state.state())
+        #     display.draw()
+        #     pygame.display.flip()
+        #     pygame.image.save(display.screen(), map_path)
 
         return message
 

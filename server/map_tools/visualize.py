@@ -287,6 +287,7 @@ class GameDisplay(object):
         else:
             self._cell_height = self._cell_width * 1.5 / math.sqrt(3)
     
+    
     def set_trajectory(self, trajectory):
         self._trajectory = trajectory
     
