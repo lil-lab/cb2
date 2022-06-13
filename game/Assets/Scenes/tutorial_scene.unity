@@ -2208,7 +2208,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6140040725572061407, guid: 9f705b6f894394c128168ee780869b7d, type: 3}
       propertyPath: MousePanningSpeed
-      value: 0.5
+      value: 0.05
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 9f705b6f894394c128168ee780869b7d, type: 3}
@@ -2414,7 +2414,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 8953867425919117913, guid: ab5396ebe8af642868fde7b5e496839a, type: 3}
       propertyPath: MousePanningSpeed
-      value: 0.5
+      value: 0.05
       objectReference: {fileID: 0}
     - target: {fileID: 8953867425919117914, guid: ab5396ebe8af642868fde7b5e496839a, type: 3}
       propertyPath: m_Name
