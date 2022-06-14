@@ -15,11 +15,10 @@ public class InteractableOnTurn : MonoBehaviour
         Network.NetworkManager network = Network.NetworkManager.TaggedInstance();
         if (network == null)
             return;
-        
-        if (network.CurrentTurn() == _lastTurn)
-        {
+        if (network.IsReplay())
             return;
-        }
+        if (network.CurrentTurn() == _lastTurn)
+            return;
         _lastTurn = network.CurrentTurn();
         InputField input = gameObject.GetComponent<InputField>();
         TMPro.TMP_InputField tmpInput = gameObject.GetComponent<TMPro.TMP_InputField>();

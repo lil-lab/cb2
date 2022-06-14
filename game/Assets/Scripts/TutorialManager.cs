@@ -37,10 +37,7 @@ public class TutorialManager : MonoBehaviour
 
     public void SetIndicator(HecsCoord location)
     {
-        if (_indicator != null)
-        {
-            _indicator.Destroy();
-        }
+        ClearIndicator();
         UnityAssetSource assetSource = new UnityAssetSource();
         IAssetSource.AssetId assetId = IAssetSource.AssetId.TUTORIAL_INDICATOR;
         GameObject groundPulse = assetSource.Load(assetId);
@@ -62,9 +59,6 @@ public class TutorialManager : MonoBehaviour
         Vector3[] corners = new Vector3[4];
         uiElement.GetWorldCorners(corners);
 
-        _logger.Info("uiElement: world corners: " + corners[0] + ", " + corners[1] + ", " + corners[2] + ", " + corners[3]);
-
-
         // Convert the coordinates to screen space.
         Vector3[] screenCorners = new Vector3[4];
         for (int i = 0; i < 4; i++)
@@ -72,15 +66,12 @@ public class TutorialManager : MonoBehaviour
             screenCorners[i] = RectTransformUtility.WorldToScreenPoint(Camera.main, corners[i]);
         }
 
-        _logger.Info("uiElement: screen corners: " + screenCorners[0] + ", " + screenCorners[1] + ", " + screenCorners[2] + ", " + screenCorners[3]);
-
         // Calculate the minimum and maximum x and y values.
         float minX = Mathf.Min(screenCorners[0].x, screenCorners[1].x, screenCorners[2].x, screenCorners[3].x);
         float maxX = Mathf.Max(screenCorners[0].x, screenCorners[1].x, screenCorners[2].x, screenCorners[3].x);
         float minY = Mathf.Min(screenCorners[0].y, screenCorners[1].y, screenCorners[2].y, screenCorners[3].y);
         float maxY = Mathf.Max(screenCorners[0].y, screenCorners[1].y, screenCorners[2].y, screenCorners[3].y);
 
-        _logger.Info("uiElement: minX: " + minX + ", maxX: " + maxX + ", minY: " + minY + ", maxY: " + maxY);
 
         // Calculate the width and height of the overlay.
         float width = maxX - minX;
@@ -94,7 +85,6 @@ public class TutorialManager : MonoBehaviour
         // Set the position and size of the overlay.
         overlay.anchoredPosition = new Vector2(minX - HighlightPadding / 2.0f, minY - HighlightPadding / 2.0f);
         overlay.sizeDelta = new Vector2(width + HighlightPadding, height + HighlightPadding);
-
     }
 
 
@@ -151,14 +141,17 @@ public class TutorialManager : MonoBehaviour
 
     public void HandleTutorialStep(Network.TutorialStep step)
     {
+        _logger.Info("Received tutorial step.");
         if (step.tooltip != null)
         {
             Network.Tooltip tooltip = step.tooltip;
             _lastTooltip = tooltip;
+            _logger.Info("Setting tooltip: " + tooltip.text);
             SetTooltip(tooltip.text, tooltip.highlighted_component_tag);
         }
         if (step.indicator != null)
         {
+            _logger.Info("Setting indicator at: " + step.indicator.location.ToString());
             SetIndicator(step.indicator.location);
         } else {
             ClearIndicator();
@@ -167,6 +160,7 @@ public class TutorialManager : MonoBehaviour
 
     public void NextStep()
     {
+        _logger.Info("Requesting next tutorial step.");
         Network.NetworkManager.TaggedInstance().NextTutorialStep();
     }
 

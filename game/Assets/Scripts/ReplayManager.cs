@@ -22,7 +22,7 @@ public class ReplayManager : MonoBehaviour
 
 
     public bool TestMode = false;
-    public int TestModeId = 230;
+    public int TestModeId;
 
     private Logger _logger;
 
@@ -129,7 +129,7 @@ public class ReplayManager : MonoBehaviour
         }
         if (leader_id == -1)
         {
-            Debug.Log("Error finding leader ID.");
+            _logger.Error("Error finding leader ID.");
             _requestFailed = true;
             return;
         }
@@ -146,7 +146,7 @@ public class ReplayManager : MonoBehaviour
         {
             if (leaderLogEntries[i].message_direction != Network.Direction.FROM_SERVER)
             {
-                Debug.Log("ERR: Encountered MessageToServer in game log!");
+                _logger.Error("ERR: Encountered MessageToServer in game log!");
                 _requestFailed = true;
                 return;
             }
@@ -169,22 +169,21 @@ public class ReplayManager : MonoBehaviour
             {
                 case UnityWebRequest.Result.ConnectionError:
                 case UnityWebRequest.Result.DataProcessingError:
-                    Debug.LogError("Error: " + webRequest.error);
+                    _logger.Error("Error: " + webRequest.error);
                     _requestFailed = true;
                     break;
                 case UnityWebRequest.Result.ProtocolError:
-                    Debug.LogError("HTTP Error: " + webRequest.error);
+                    _logger.Error("HTTP Error: " + webRequest.error);
                     _requestFailed = true;
                     break;
                 case UnityWebRequest.Result.Success:
-                    Debug.Log("Received: " + webRequest.downloadHandler.text);
-                    Debug.Log(webRequest.downloadHandler);
+                    _logger.Info("Logs downloaded for game " + GameId());
                     string data = webRequest.downloadHandler.text;
                     Network.GameLog log = JsonConvert.DeserializeObject<Network.GameLog>(data);
                     ProcessGameLog(log);
                     break;
                 default:
-                    Debug.LogError("Unknown Error: " + webRequest.error);
+                    _logger.Error("Unknown Error: " + webRequest.error);
                     _requestFailed = true;
                     break;
             }

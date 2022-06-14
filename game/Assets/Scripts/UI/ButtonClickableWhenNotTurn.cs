@@ -13,6 +13,8 @@ public class ButtonClickableWhenNotTurn : MonoBehaviour
         Network.NetworkManager network = Network.NetworkManager.TaggedInstance();
         if (network == null)
             return;
+        if (network.IsReplay())
+            return;
         Button b = gameObject.GetComponent<Button>();
         b.interactable = false;
         if (network.CurrentTurn() != Turn)
