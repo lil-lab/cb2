@@ -24,10 +24,10 @@ namespace Network
             return "Time taken: " + gameDuration.ToString(@"mm\:ss") + "\nSets Collected: " + sets_collected + "\nScore: " + score;
         }
 
-        public string ShortStatus(DateTime transmitTime, Role role)
+        public string ShortStatus(DateTime transmitTime, Role role, bool is_replay = false)
         {
             DateTime turn_end_parsed = DateTime.Parse(turn_end, null, System.Globalization.DateTimeStyles.RoundtripKind);
-            TimeSpan timeLeftInTurn = (role == turn) ? turn_end_parsed - transmitTime : new TimeSpan(0);
+            TimeSpan timeLeftInTurn = ((role == turn) || (is_replay)) ? turn_end_parsed - transmitTime : new TimeSpan(0);
             int movesRemaining = (role == turn) ? moves_remaining : 0;
             string color = movesRemaining == 0 ? "red" : "#00ff00ff";
             string coloredMovesRemaining = "<color=" + color + ">" + movesRemaining + "</color>";

@@ -32,5 +32,8 @@ namespace Network
         public int fog_end = 20;
         // RE fog: everything in between fog_start and fog_end is linearly
         // interpolated to make a smooth transition.
+
+        // Client-side FPS limit. -1 means the browser controls FPS.
+        public int fps_limit = -1;
     }
 }

@@ -33,11 +33,11 @@ public class OverheadCamera : MonoBehaviour
 
     public OverheadCamera()
     {
-        _logger = Logger.GetTrackedLogger("OverheadCamera");
-        if (_logger == null)
-        {
-            _logger = Logger.CreateTrackedLogger("OverheadCamera");
-        }
+    }
+
+    public void Awake()
+    {
+        _logger = Logger.GetOrCreateTrackedLogger("OverheadCamera[" + gameObject.tag + "]");
     }
 
     public static OverheadCamera TaggedOverheadInstance()
@@ -259,6 +259,11 @@ public class OverheadCamera : MonoBehaviour
         AdjustDepthIfClipped(GetCamera());
         HexGrid grid = HexGrid.TaggedInstance();
         GameObject followPlayer = FollowPlayerEnabled ? GameObject.FindGameObjectWithTag(FollowPlayerTag) : null;
+        if (FollowPlayerEnabled && (followPlayer == null))
+        {
+            _logger.Warn("Could not find player to follow");
+            return;
+        }
         Vector3 center = (followPlayer != null) ? followPlayer.GetComponent<Player>().Position() : grid.CenterPosition();
         float distance = (followPlayer != null) ? FollowDistance : _calculatedDistance;
         float thetaRadians = Theta * Mathf.Deg2Rad;

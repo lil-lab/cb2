@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 
 public class ReplayManager : MonoBehaviour
 {
+    public static readonly string TAG = "ReplayManager";
     public static readonly string GAME_ID_PARAM = "game_id";
     public static readonly string ESCAPE_MENU_REPLAY_INFO_TAG = "ESCAPE_MENU_REPLAY_INFO";
     public static readonly string REPLAY_TURN = "REPLAY_TURN";
@@ -19,7 +20,6 @@ public class ReplayManager : MonoBehaviour
 
     private DateTime _lastInfoUpdate = DateTime.MinValue;
     private Network.GameInfo _gameInfo;
-
 
     public bool TestMode = false;
     public int TestModeId;
@@ -38,6 +38,14 @@ public class ReplayManager : MonoBehaviour
         StartCoroutine(DownloadGameLogsFromServer());
     }
 
+    public static ReplayManager TaggedInstance()
+    {
+        GameObject replayObj = GameObject.FindGameObjectWithTag(TAG);
+        if (replayObj == null)
+            return null;
+        return replayObj.GetComponent<ReplayManager>();
+    }
+
     string ReplayStatusInfo()
     {
         if (_gameInfo == null)
@@ -47,11 +55,14 @@ public class ReplayManager : MonoBehaviour
 
     void Update()
     {
+        SetTurnDisplay();
+
         // Call NextTurn() and PreviousTurn() when the user presses the left and right arrow keys.
         if (Input.GetKeyDown(KeyCode.LeftArrow))
         {
             PreviousTurn();
         }
+
         if (Input.GetKeyDown(KeyCode.RightArrow))
         {
             NextTurn();
@@ -95,20 +106,47 @@ public class ReplayManager : MonoBehaviour
 
     public void PreviousTurn()
     {
+        _logger.Info("PreviousTurn");
         _replayStateMachine.PreviousTurn();
-        SetTurnDisplay();
+        SetPlayButtonText("Play");
     }
 
     public void NextTurn()
     {
+        _logger.Info("NextTurn");
         _replayStateMachine.NextTurn();
-        SetTurnDisplay();
+        SetPlayButtonText("Play");
     }
 
     public void Reset()
     {
         _replayStateMachine.Reset();
-        SetTurnDisplay();
+    }
+
+    private void SetPlayButtonText(string text)
+    {
+        GameObject button_obj = GameObject.FindGameObjectWithTag("PLAYPAUSE");
+        Button button = button_obj.GetComponent<Button>();
+        button.GetComponentInChildren<Text>().text = text;
+    }
+
+    public void PlayPause()
+    {
+        if (_replayStateMachine.PlayMode() == ReplayStateMachine.PlaybackMode.PLAY)
+        {
+            _logger.Info("Paused");
+            SetPlayButtonText("Play");
+            _replayStateMachine.Pause();
+        } else {
+            _logger.Info("Play");
+            SetPlayButtonText("Pause");
+            _replayStateMachine.Play();
+        }
+    }
+
+    public void SetSpeed(float speed)
+    {
+        _replayStateMachine.SetSpeed(speed);
     }
 
     public void ProcessGameLog(Network.GameLog log)

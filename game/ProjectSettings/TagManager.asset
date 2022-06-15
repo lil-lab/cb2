@@ -57,6 +57,10 @@ TagManager:
   - CAMERA_BUTTON
   - SEND_BUTTON
   - FOLLOWER_VIEW
+  - PLAYPAUSE
+  - ReplayManager
+  - LEADER_SCORE_TEXT
+  - FOLLOWER_SCORE_TEXT
   layers:
   - Default
   - TransparentFX

@@ -60,6 +60,9 @@ class Config:
     fog_end: int = 20
     # RE fog: everything in between fog_start and fog_end is linearly
     # interpolated to make a smooth transition.
+
+    # Client-side FPS limit. -1 means the browser controls frame rate to optimize performance.
+    fps_limit: int = -1
     
     # Data path accessors that add the requisite data_prefix.
     def record_directory(self):

@@ -5,12 +5,25 @@ using UnityEngine;
 
 public class ReplayStateMachine
 {
+    public enum PlaybackMode {
+        NONE = 0,
+        STEP_THROUGH = 1,
+        PLAY = 2
+    }
+
     private bool _started = false;
     private DateTime _gameBegin = DateTime.MinValue;
     private int _messageFromIndex = 0;
     private int _turn = 0;
 
+    private PlaybackMode _mode;
+
+    private Logger _logger;
+
     private int _numberOfTurns = 0;
+
+    DateTime _lastMessageWallTime;
+    float _playbackSpeed;
 
     private Network.MessageFromServer[] _messagesFromServer;
     private Dictionary<int, int> _turnIndexMap;
@@ -18,24 +31,61 @@ public class ReplayStateMachine
 
     private bool _fastForward = false;
 
+    public ReplayStateMachine()
+    {
+        _logger = Logger.GetOrCreateTrackedLogger("ReplayStateMachine");
+    }
+
     public bool Started()
     {
         return _started;
     }
     public void Start()
     {
+        _playbackSpeed = 1.0f;
+        _mode = PlaybackMode.STEP_THROUGH;
         _started = true;
         NextTurn();
+        _lastMessageWallTime = DateTime.MinValue;
+    }
+
+    public PlaybackMode PlayMode()
+    {
+        return _mode;
+    }
+
+    public void Play()
+    {
+        _mode = PlaybackMode.PLAY;
+    }
+
+    public float Speed()
+    {
+        return _playbackSpeed;
+    }
+
+    public void SetSpeed(float speed)
+    {
+        _playbackSpeed = speed;
+    }
+
+    public void Pause()
+    {
+        _mode = PlaybackMode.STEP_THROUGH;
+        // Fast-forward to the end of the current turn before pausing.
+        _fastForward = true;
     }
 
     public void NextTurn()
     {
+        _mode = PlaybackMode.STEP_THROUGH;
         if (_turn >= _numberOfTurns) return;
         _turn++;
     }
 
     public void PreviousTurn()
     {
+        _mode = PlaybackMode.STEP_THROUGH;
         if (_turn <= 1) return;
         _fastForward = true;
         SetTurn(_turn - 1);
@@ -69,6 +119,66 @@ public class ReplayStateMachine
         _turn = 0;
     }
 
+    private DateTime ParseTimestamp(string timestamp_str)
+    {
+        return DateTime.Parse(timestamp_str, null, System.Globalization.DateTimeStyles.RoundtripKind);
+    }
+
+    public bool TimeForNextPacket()
+    {
+        DateTime nextTransmitTime = ParseTimestamp(_messagesFromServer[_messageFromIndex].transmit_time);
+        DateTime lastTransmitTime = (_messageFromIndex > 0) ? ParseTimestamp(_messagesFromServer[_messageFromIndex - 1].transmit_time) : DateTime.MinValue;
+        float gameTimeDurationMillis = (float) (nextTransmitTime.Subtract(lastTransmitTime)).TotalMilliseconds;
+        float wallTimeMillis = (float) (DateTime.Now.Subtract(_lastMessageWallTime)).TotalMilliseconds;
+        return (wallTimeMillis * _playbackSpeed >= gameTimeDurationMillis);
+    }
+
+    public void AdvanceMessage()
+    {
+        if ((_messageFromIndex < _turnIndexMap[_turn]) && (_messageFromIndex < _messagesFromServer.Length) && (TimeForNextPacket() || _fastForward))
+        {
+            // Unexpire actions, unless we're in FF mode. Then set them to expire immediately.
+            if (_messagesFromServer[_messageFromIndex].actions != null)
+            {
+                foreach(Network.Action action in _messagesFromServer[_messageFromIndex].actions)
+                {
+                    if (_fastForward) {
+                        action.expiration = DateTime.Now.ToString("o");
+                        action.duration_s = 0.0001f;
+                        continue;
+                    }
+                    action.expiration = DateTime.Now.AddSeconds(10).ToString("o");
+                    // Adjust action duration to match playback speed.
+                    if (_playbackSpeed != 0)
+                        action.duration_s /= _playbackSpeed;
+                }
+            }
+            _logger.Info("Replaying message. Timestamp: " + _messagesFromServer[_messageFromIndex].transmit_time + ", index: " + _messageFromIndex);
+            _replayRouter.HandleMessage(_messagesFromServer[_messageFromIndex]);
+            _lastMessageWallTime = DateTime.Now;
+            _messageFromIndex++;
+        } else {
+            if ((_messageFromIndex >= _turnIndexMap[_turn]) && _fastForward)
+            {
+                _logger.Info("Reached end of turn " + _turn + ".");
+                _fastForward = false;
+            }
+            if ((_mode == PlaybackMode.PLAY) && (_turn < _numberOfTurns) && (_messageFromIndex >= _turnIndexMap[_turn]))
+            {
+                // Advance play if speed > 0.
+                _turn++;
+            }
+        }
+    }
+
+    public void CatchUpFastForward()
+    {
+        while (_fastForward)
+        {
+            AdvanceMessage();
+        }
+    }
+
     public void Update()
     {
         if (_messageFromIndex < 0)
@@ -79,26 +189,14 @@ public class ReplayStateMachine
         {
             if (!_turnIndexMap.ContainsKey(_turn))
             {
+                _logger.Warn("Turn " + _turn + " not found in turn index map.");
                 return;
             }
-            while ((_messageFromIndex < _turnIndexMap[_turn]) && (_messageFromIndex < _messagesFromServer.Length))
-            {
-                // Unexpire actions, unless we're in FF mode. Then set them to expire immediately.
-                if (_messagesFromServer[_messageFromIndex].actions != null)
-                {
-                    foreach(Network.Action action in _messagesFromServer[_messageFromIndex].actions)
-                    {
-                        if (_fastForward) {
-                            action.expiration = DateTime.Now.ToString("o");
-                            continue;
-                        }
-                        action.expiration = DateTime.Now.AddSeconds(10).ToString("o");
-                    }
-                }
-                _replayRouter.HandleMessage(_messagesFromServer[_messageFromIndex]);
-                _messageFromIndex++;
+            if (_fastForward) {
+                CatchUpFastForward();
+            } else {
+                AdvanceMessage();
             }
-            _fastForward = false;
         }
     }
 
@@ -130,7 +228,7 @@ public class ReplayStateMachine
         {
             firstTimestampedIndex++;
         }
-        DateTime fromServerStart = DateTime.Parse(_messagesFromServer[firstTimestampedIndex].transmit_time, null, System.Globalization.DateTimeStyles.RoundtripKind);
+        DateTime fromServerStart = ParseTimestamp(_messagesFromServer[firstTimestampedIndex].transmit_time);
         _gameBegin = fromServerStart;
 
         _turnIndexMap = new Dictionary<int, int>();

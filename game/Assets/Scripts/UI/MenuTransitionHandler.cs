@@ -7,7 +7,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using UnityEngine.SceneManagement;
 
 public class MenuTransitionHandler : MonoBehaviour
 {
@@ -30,6 +29,8 @@ public class MenuTransitionHandler : MonoBehaviour
     private static readonly string GAME_OVER_REASON = "GAME_OVER_REASON";
 
     private static readonly string SCORE_TEXT_TAG = "SCORE_TEXT";
+    private static readonly string LEADER_SCORE_TEXT_TAG = "LEADER_SCORE_TEXT";
+    private static readonly string FOLLOWER_SCORE_TEXT_TAG = "FOLLOWER_SCORE_TEXT";
     private static readonly string OUR_TURN_TAG = "OUR_TURN_INDICATOR";
     private static readonly string NOT_OUR_TURN_TAG = "NOT_OUR_TURN_INDICATOR";
 
@@ -288,10 +289,28 @@ public class MenuTransitionHandler : MonoBehaviour
 
     private void DisplayTurnStateReplayMode(DateTime transmitTime, Network.TurnState state)
     {
+        NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
+        string twoLineSummary = state.ShortStatus(transmitTime, networkManager.Role(), networkManager.IsReplay());
+        if (state.turn == Network.Role.LEADER)
+        {
+            GameObject scoreObj = GameObject.FindWithTag(LEADER_SCORE_TEXT_TAG);
+            TMPro.TMP_Text textMeshPro = scoreObj.GetComponent<TMPro.TMP_Text>();
+            textMeshPro.text = twoLineSummary;
+        } else {
+            GameObject scoreObj = GameObject.FindWithTag(FOLLOWER_SCORE_TEXT_TAG);
+            TMPro.TMP_Text textMeshPro = scoreObj.GetComponent<TMPro.TMP_Text>();
+            textMeshPro.text = twoLineSummary;
+        }
+
         if (_lastTurn.turn != state.turn)
         {
             Debug.Log("Changing turn animation. " + _lastTurn.turn + " -> " + state.turn);
             GameObject endTurnPanel = GameObject.FindGameObjectWithTag(END_TURN_PANEL);
+            // If we're in fast forward mode, we don't want to queue up a bunch
+            // of turn transitions. Flush the queue so only the most recent one
+            // shows.
+            followerTurnIndicatorFade.Flush();
+            leaderTurnIndicatorFade.Flush();
             if (state.turn == Network.Role.LEADER)
             {
                 followerTurnIndicatorFade.AddAction(Fade.FadeOut(0.5f));
@@ -315,17 +334,16 @@ public class MenuTransitionHandler : MonoBehaviour
     {
         Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
 
-        string twoLineSummary = state.ShortStatus(transmitTime, networkManager.Role());
-        GameObject scoreObj = GameObject.FindWithTag(SCORE_TEXT_TAG);
-        TMPro.TMP_Text textMeshPro = scoreObj.GetComponent<TMPro.TMP_Text>();
-        textMeshPro.text = twoLineSummary;
-
-        Scene scene = SceneManager.GetActiveScene();
-        if (scene.name == "replay_scene")
+        if (networkManager.IsReplay())
         {
             DisplayTurnStateReplayMode(transmitTime, state);
             return;
         }
+
+        string twoLineSummary = state.ShortStatus(transmitTime, networkManager.Role(), networkManager.IsReplay());
+        GameObject scoreObj = GameObject.FindWithTag(SCORE_TEXT_TAG);
+        TMPro.TMP_Text textMeshPro = scoreObj.GetComponent<TMPro.TMP_Text>();
+        textMeshPro.text = twoLineSummary;
 
         if (_lastTurn.turn != state.turn)
         {
@@ -479,8 +497,8 @@ public class MenuTransitionHandler : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        Scene scene = SceneManager.GetActiveScene();
-        if (scene.name == "replay_scene")
+        NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
+        if (networkManager.IsReplay())
         {
             // Handle replay UI animations.
             leaderTurnIndicatorFade.Update();

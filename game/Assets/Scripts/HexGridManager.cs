@@ -294,18 +294,6 @@ public class HexGridManager
             if (t == null) continue;
             UpdateCellEdges(t.Cell);
         }
-        OverheadCamera camera = OverheadCamera.TaggedOverheadInstance();
-        if (camera != null)
-        {
-            _logger.Info("Updating overhead camera position.");
-            camera.CenterCameraOnGrid();
-        }
-        OverheadCamera angledCamera = OverheadCamera.TaggedAngledInstance();
-        if (angledCamera != null)
-        {
-            Debug.Log("Updating angled camera position.");
-            angledCamera.CenterCameraOnGrid();
-        }
         DateTime mapLoadEnd = DateTime.Now;
         _logger.Info("Map update took: " + (mapLoadEnd - mapLoadStart).TotalMilliseconds + "ms");
     }

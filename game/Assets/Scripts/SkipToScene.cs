@@ -13,7 +13,7 @@ public class SkipToScene : MonoBehaviour
     void Start()
     {
         _sceneMap.Add(new Tuple<KeyCode, KeyCode>(KeyCode.X, KeyCode.R), "replay_scene");
-        _sceneMap.Add(new Tuple<KeyCode, KeyCode>(KeyCode.X, KeyCode.M), "map_scene");
+        _sceneMap.Add(new Tuple<KeyCode, KeyCode>(KeyCode.X, KeyCode.M), "map_viewer");
         foreach (var key in _sceneMap.Keys)
         {
             _sceneKeysHeldTime.Add(key, DateTime.MinValue);

@@ -140,9 +140,17 @@ namespace Network
             if (IsReplay())
             {
                 _replayConfig = config;
+                OnConfigReceived(_replayConfig);
             } else {
                 Debug.LogWarning("Attempted to inject replay config when not in replay scene.");
             }
+        }
+
+        public void OnConfigReceived(Network.Config config)
+        {
+            // Applies any system settings the config might control.
+            Application.targetFrameRate = config.fps_limit;
+            _logger.Info("Setting target FPS to " + config.fps_limit);
         }
 
         public Role Role()
@@ -572,6 +580,7 @@ namespace Network
                         Debug.Log("Received: " + webRequest.downloadHandler.text);
                         _serverConfig = JsonConvert.DeserializeObject<Network.Config>(webRequest.downloadHandler.text);
                         _serverConfig.timestamp = DateTime.Now;
+                        OnConfigReceived(_serverConfig);
                         break;
                 }
             }
