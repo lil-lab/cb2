@@ -1002,6 +1002,22 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 34629593369404690, guid: 5c84871a83cdc423291e9b6987836aab, type: 3}
+      propertyPath: m_Pivot.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 34629593369404690, guid: 5c84871a83cdc423291e9b6987836aab, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 34629593369404690, guid: 5c84871a83cdc423291e9b6987836aab, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 34629593369404690, guid: 5c84871a83cdc423291e9b6987836aab, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 200
+      objectReference: {fileID: 0}
     - target: {fileID: 34629593492968455, guid: 5c84871a83cdc423291e9b6987836aab, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -2463,6 +2479,22 @@ PrefabInstance:
     - target: {fileID: 8194540248832069001, guid: 7576aa853dbd34dc8b370154655d2690, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8194540248999893714, guid: 7576aa853dbd34dc8b370154655d2690, type: 3}
+      propertyPath: m_Pivot.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8194540248999893714, guid: 7576aa853dbd34dc8b370154655d2690, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8194540248999893714, guid: 7576aa853dbd34dc8b370154655d2690, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8194540248999893714, guid: 7576aa853dbd34dc8b370154655d2690, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 200
       objectReference: {fileID: 0}
     - target: {fileID: 8194540249226056903, guid: 7576aa853dbd34dc8b370154655d2690, type: 3}
       propertyPath: m_Pivot.x
