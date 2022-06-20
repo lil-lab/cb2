@@ -699,7 +699,6 @@ class MapProvider(object):
             spaces = FloodFillPartitionTiles(self._tiles)
             sorted_spaces = sorted(spaces, key=len, reverse=True)
             # Only spawn cards in the largest contiguous region.
-            logger.info(f"NUMBER OF PARTITIONS: {len(sorted_spaces)}")
             self._map_metadata.num_partitions = len(sorted_spaces)
             self._potential_spawn_tiles = sorted_spaces[0]
 
@@ -895,6 +894,7 @@ async def MapGenerationTask(room_manager, config):
 
         # Add a map to the map cache.
         map_pool.append(MapProvider(MapType.RANDOM))
-        print(f"Generated map. Map pool size now: {len(map_pool)}")
+        if len(map_pool) % 10 == 0:
+            print(f"Map pool size: {len(map_pool)}")
         await asyncio.sleep(0.001)
 

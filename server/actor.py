@@ -25,9 +25,11 @@ import uuid
 logger = logging.getLogger(__name__)
 
 class Actor(object):
-    def __init__(self, actor_id, asset_id, role, spawn):
+    def __init__(self, actor_id, asset_id, role, spawn, realtime=False):
         self._actor_id = actor_id
         self._asset_id = asset_id
+        self._realtime = realtime
+        self._action_start_timestamp = datetime.min
         self._actions = Queue()
         self._location = spawn
         self._heading_degrees = 0
@@ -69,6 +71,12 @@ class Actor(object):
         """ Peeks at the next action without consuming it. """
         return self._actions.queue[0]
     
+    def is_realtime(self):
+        return self._realtime
+    
+    def peek_action_done(self):
+        return (datetime.now() - self._action_start_timestamp).total_seconds() >= self.peek().duration_s
+    
     def WalkForwards(self):
         displacement = HecsCoord.origin().neighbor_at_heading(self._projected_heading)
         self.add_action(Walk(self.actor_id(), displacement))
@@ -91,9 +99,11 @@ class Actor(object):
         action = self._actions.get()
         self._location = HecsCoord.add(self._location, action.displacement)
         self._heading_degrees += action.rotation
+        self._action_start_timestamp = datetime.now()
 
     def drop(self):
         """ Drops an action instead of acting upon it."""
         if not self.has_actions():
             return
         _ = self._actions.get()
+        self._action_start_timestamp = datetime.now()

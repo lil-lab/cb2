@@ -13,7 +13,7 @@ public class TutorialManager : MonoBehaviour
 
     public float HighlightPadding = 2.0f;
 
-    private Prop _indicator = null;
+    private List<Prop> _indicators = null;
 
     private Network.Tooltip _lastTooltip = null;
 
@@ -35,22 +35,40 @@ public class TutorialManager : MonoBehaviour
         return canvas;
     }
 
-    public void SetIndicator(HecsCoord location)
+    public void AddIndicator(HecsCoord location)
     {
-        ClearIndicator();
+        _logger.Info("Adding indicator at: " + location.ToString());
         UnityAssetSource assetSource = new UnityAssetSource();
         IAssetSource.AssetId assetId = IAssetSource.AssetId.TUTORIAL_INDICATOR;
         GameObject groundPulse = assetSource.Load(assetId);
-        _indicator = new Prop(groundPulse, assetId);
-        _indicator.AddAction(Init.InitAt(location, 0));
+        Prop indicator = new Prop(groundPulse, assetId);
+        indicator.AddAction(Init.InitAt(location, 0));
+        _indicators.Add(indicator);
     }
 
-    public void ClearIndicator()
+    public void ClearIndicator(HecsCoord location)
     {
-        if (_indicator != null)
+        if (_indicators != null)
         {
-            _indicator.Destroy();
+            foreach (Prop indicator in _indicators)
+            {
+                if (indicator.Location().Equals(location))
+                {
+                    indicator.Destroy();
+                    _indicators.Remove(indicator);
+                    break;
+                }
+            }
         }
+    }
+
+    public void ClearIndicators()
+    {
+        foreach (Prop indicator in _indicators)
+        {
+            indicator.Destroy();
+        }
+        _indicators.Clear();
     }
 
     public void OverlayRectangle(RectTransform overlay, RectTransform uiElement)
@@ -136,6 +154,8 @@ public class TutorialManager : MonoBehaviour
         TMPro.TMP_Text tooltip = TooltipTextbox.GetComponent<TMPro.TMP_Text>();
         tooltip.text = text;
         _logger.Info("Highlighted component tag: " + highlightedComponentTag);
+        if (highlightedComponentTag == "")
+            return;
         Shake(3, 5.0f, 2.0f, 0.2f, highlightedComponentTag);
     }
 
@@ -149,12 +169,13 @@ public class TutorialManager : MonoBehaviour
             _logger.Info("Setting tooltip: " + tooltip.text);
             SetTooltip(tooltip.text, tooltip.highlighted_component_tag);
         }
-        if (step.indicator != null)
+        ClearIndicators();
+        if (step.indicators != null)
         {
-            _logger.Info("Setting indicator at: " + step.indicator.location.ToString());
-            SetIndicator(step.indicator.location);
-        } else {
-            ClearIndicator();
+            foreach (Network.Indicator indicator in step.indicators)
+            {
+                AddIndicator(indicator.location);
+            }
         }
     }
 
@@ -167,6 +188,7 @@ public class TutorialManager : MonoBehaviour
     public void Start()
     {
         _logger = Logger.GetOrCreateTrackedLogger("TutorialManager");
+        _indicators = new List<Prop>();
         NextStep();
     }
 
@@ -187,9 +209,12 @@ public class TutorialManager : MonoBehaviour
                 NextStep();
             }
         }
-        if (_indicator != null)
+        if (_indicators != null)
         {
-            _indicator.Update();
+            foreach (Prop indicator in _indicators)
+            {
+                indicator.Update();
+            }
         }
     }
 }

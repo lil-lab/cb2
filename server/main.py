@@ -558,8 +558,8 @@ async def stream_game_state(request, ws):
             # await asyncio.sleep(1.0)
             continue
         
-        # If it's been a second, send a ping.
-        if (datetime.now(timezone.utc) - remote.last_ping).total_seconds() > 5.0:
+        # Send a ping every 10 seconds.
+        if (datetime.now(timezone.utc) - remote.last_ping).total_seconds() > 10.0:
             remote.last_ping = datetime.now(timezone.utc)
             await transmit_bytes(ws, orjson.dumps(message_from_server.PingMessageFromServer(), option=orjson.OPT_NAIVE_UTC))
 

@@ -82,7 +82,7 @@ def Delay(id, duration):
         expiration=datetime.now(NYC) + timedelta(seconds=10)
     )
 
-def Turn(id, angle):
+def Turn(id, angle, duration=0.33):
     NYC = tz.gettz('America/New_York')
     return Action(
         id=id,
@@ -92,11 +92,11 @@ def Turn(id, angle):
         rotation=angle,
         border_radius=0,
         border_color=Color(0, 0, 0, 0),
-        duration_s=0.7,
+        duration_s=duration,
         expiration=datetime.now(NYC) + timedelta(seconds=10)
     )
 
-def Walk(id, displacement):
+def Walk(id, displacement, duration=0.45):
     NYC = tz.gettz('America/New_York')
     return Action(
         id=id,
@@ -106,6 +106,6 @@ def Walk(id, displacement):
         rotation=0,
         border_radius=0,
         border_color=Color(0, 0, 0, 0),
-        duration_s=0.7,
+        duration_s=duration,
         expiration=datetime.now(NYC) + timedelta(seconds=10)
     )

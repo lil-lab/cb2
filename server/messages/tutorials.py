@@ -26,6 +26,7 @@ class FollowerActions(Enum):
     TURN_LEFT = 3
     TURN_RIGHT = 4
     INSTRUCTION_DONE = 5
+    END_TURN = 6
 
 class TooltipType(Enum):
     NONE = 0
@@ -34,6 +35,7 @@ class TooltipType(Enum):
     # The tooltip disappears once the player has sent a message.
     UNTIL_MESSAGE_SENT = 2
     UNTIL_CAMERA_TOGGLED = 3
+    # Only valid if there's exactly 1 indicator.
     UNTIL_INDICATOR_REACHED = 4
     UNTIL_OBJECTIVES_COMPLETED = 5
     UNTIL_SET_COLLECTED = 6
@@ -60,7 +62,7 @@ class Instruction:
 @dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
 class TutorialStep:
-    indicator: Indicator
+    indicators: List[Indicator]
     tooltip: Tooltip
     instruction: Instruction
     other_player_turn: List[FollowerActions] = None

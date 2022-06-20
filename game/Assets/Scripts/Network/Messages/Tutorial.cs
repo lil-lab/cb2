@@ -44,7 +44,7 @@ namespace Network
     public class TutorialStep
     {
         public Tooltip tooltip;
-        public Indicator indicator;
+        public List<Indicator> indicators;
         public Instruction instruction;
     }
 

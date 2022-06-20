@@ -67,7 +67,7 @@ class TutorialGameState(object):
 
         self._turn_complete_queue = []
 
-        self._step_indicator_done = True
+        self._step_indicators = set()
 
         # Maps from actor_id (prop id) to actor object (see definition below).
         self._actors = {}
@@ -104,10 +104,10 @@ class TutorialGameState(object):
         self._done = False
 
         if (self._player_role == Role.LEADER):
-            dummy_character_id = self.create_actor(Role.FOLLOWER)
+            dummy_character_id = self.create_actor(Role.FOLLOWER, True)
             self._dummy_character = self._actors[dummy_character_id]
         elif (self._player_role == Role.FOLLOWER):
-            dummy_character_id = self.create_actor(Role.LEADER)
+            dummy_character_id = self.create_actor(Role.LEADER, True)
             self._dummy_character = self._actors[dummy_character_id]
 
     def turn_duration(self, role):
@@ -259,7 +259,14 @@ class TutorialGameState(object):
                         logger.info(
                             f"Actor {actor_id} is out of moves. Dropping pending action.")
                         continue
-                    if self.valid_action(actor_id, proposed_action):
+
+                    if not self.valid_action(actor_id, proposed_action):
+                        actor.drop()
+                        self.desync(actor_id)
+                        self._record_log.error(f"Resyncing {actor_id} after invalid action.")
+                        continue
+
+                    if ((not actor.is_realtime()) or actor.peek_action_done()):
                         self.record_move(actor, proposed_action)
                         actor.step()
                         self.record_action(proposed_action)
@@ -267,14 +274,9 @@ class TutorialGameState(object):
                         self.check_for_stepped_on_cards(actor_id, proposed_action, color)
                         if self._tutorial_step_index > 0:
                             current_step = self._tutorial_steps[self._tutorial_step_index - 1]
-                            if (current_step.indicator is not None) and (current_step.indicator.location == actor.location()):
+                            if actor.location() in self._step_indicators:
                                 logger.info("STEPPED ON INDICATOR!!")
-                                self._step_indicator_done = True
-                    else:
-                        actor.drop()
-                        self.desync(actor_id)
-                        self._record_log.error(f"Resyncing {actor_id} after invalid action.")
-                        continue
+                                self._step_indicators.remove(actor.location())
             
             if self._turn_state.turn != self._player_role:
                 # If it's not the player's turn, then the dummy character is moving. If there's no actions left,
@@ -293,7 +295,7 @@ class TutorialGameState(object):
                 if self._tutorial_step_index != 0:
                     current_step = self._tutorial_steps[self._tutorial_step_index - 1]
                     # In the tutorial, only allow the player to switch roles if the current step is a role switch.
-                    if current_step.tooltip.type != TooltipType.UNTIL_TURN_ENDED:
+                    if current_step.tooltip.type not in [TooltipType.UNTIL_TURN_ENDED, TooltipType.FOLLOWER_TURN]:
                         logger.info(f"Not sending next tutorial step. current step: {current_step.tooltip}")
                         continue
                     self.update_turn(force_role_switch=True, end_reason=reason)
@@ -304,7 +306,7 @@ class TutorialGameState(object):
             if self._tutorial_step_index > 0:
                 current_step = self._tutorial_steps[self._tutorial_step_index - 1]
                 # Check to see if instructions have been followed.
-                if (current_step.indicator is not None) and self._step_indicator_done:
+                if (len(current_step.indicators) > 0) and len(self._step_indicators) == 0:
                     if current_step.tooltip.type == TooltipType.UNTIL_INDICATOR_REACHED:
                         logger.info("INDICATOR REACHED")
                         self.send_next_tutorial_step()
@@ -316,8 +318,8 @@ class TutorialGameState(object):
                             objectives_completed = False
                             break
                     next_step_ready = objectives_completed
-                    if current_step.indicator is not None:
-                        next_step_ready &= self._step_indicator_done
+                    if len(current_step.indicators) > 0:
+                        next_step_ready &= (len(self._step_indicators) == 0)
                     if next_step_ready:
                         self.send_next_tutorial_step()
 
@@ -464,14 +466,6 @@ class TutorialGameState(object):
             self._map_provider.set_selected(stepped_on_card.id, selected)
             self._map_provider.set_color(stepped_on_card.id, color)
             card_select_action = CardSelectAction(stepped_on_card.id, selected, color)
-            # If the actor is a dummy then we need to add a delay so that the
-            # card selection occurs after the move. This is a hack.
-            if actor_id == self._dummy_character.actor_id():
-                current_step = self._tutorial_steps[self._tutorial_step_index - 1]
-                if current_step.other_player_turn != None:
-                    duration = 0.7 * len(current_step.other_player_turn)
-                    delay_action = Delay(stepped_on_card.id, duration)
-                    self.record_action(delay_action)
             self.record_action(card_select_action)
             selection_record = schemas.cards.CardSelections()
             selection_record.game = self._tutorial_record
@@ -575,8 +569,8 @@ class TutorialGameState(object):
         if tutorial.type == TutorialRequestType.REQUEST_NEXT_STEP:
             if self._tutorial_step_index > 0:
                 current_step = self._tutorial_steps[self._tutorial_step_index - 1]
-                if (current_step.indicator is not None) and not self._step_indicator_done:
-                    logger.warn(f"Received request for next step, but the player hasn't visited the indicator. ID: {id}, Indicator location: {current_step.indicator.location}, Player location: {self._actors[id].location()}")
+                if (len(current_step.indicators) > 0) and len(self._step_indicators) > 0:
+                    logger.warn(f"Received request for next step, but the player hasn't visited the indicator. ID: {id}, Player location: {self._actors[id].location()}")
                     return
                 if (current_step.tooltip.type == TooltipType.UNTIL_MESSAGE_SENT):
                     logger.warn(f"Received request for next step, but the player hasn't sent a message yet. ID: {id}")
@@ -620,6 +614,7 @@ class TutorialGameState(object):
             self._tutorial_responses.put(TutorialCompletedResponse(self._tutorial_name))
             self.end_game()
             return
+        self.record_turn_state(self._turn_state)
         next_step = self._tutorial_steps[self._tutorial_step_index]
         logger.info(f"Preparing step {self._tutorial_step_index + 1} of {len(self._tutorial_steps)}.")
         self._tutorial_responses.put(TutorialResponseFromStep(self._tutorial_name, next_step))
@@ -633,8 +628,8 @@ class TutorialGameState(object):
             self.record_objective(objective)
             for actor_id in self._actors:
                 self._objectives_stale[actor_id] = True
-        if next_step.indicator is not None:
-            self._step_indicator_done = False
+        if next_step.indicators is not None and (next_step.tooltip.type == TooltipType.UNTIL_INDICATOR_REACHED):
+            self._step_indicators = set([i.location for i in next_step.indicators])
         if next_step.other_player_turn is not None:
             logger.info(f"Sending {len(next_step.other_player_turn)} dummy actions...")
             for action in next_step.other_player_turn:
@@ -650,20 +645,23 @@ class TutorialGameState(object):
                 elif action == FollowerActions.INSTRUCTION_DONE:
                     objective_hash = None
                     for objective in self._objectives:
-                        if not objective.completed:
+                        if not objective.completed and not objective.cancelled:
                             objective_hash = objective.uuid
                             break
                     objective_complete = ObjectiveCompleteMessage(objective_hash)
                     self.handle_objective_complete(self._dummy_character.actor_id(), objective_complete)
+                elif action == FollowerActions.END_TURN:
+                    if self._turn_state.turn == self._dummy_character.role():
+                        self._turn_complete_queue.append("Tutorial dummy cedes control.")
                 else:
                     logger.warn(f"Warning, unknown follower action: {action}")
         self._tutorial_step_index += 1
 
-    def create_actor(self, role):
+    def create_actor(self, role, realtime=False):
         spawn_point = self._spawn_points.pop() if self._spawn_points else HecsCoord(0, 0, 0)
         print(spawn_point)
         asset_id = AssetId.PLAYER if role == Role.LEADER else AssetId.FOLLOWER_BOT
-        actor = Actor(self._id_assigner.alloc(), asset_id, role, spawn_point)
+        actor = Actor(self._id_assigner.alloc(), asset_id, role, spawn_point, realtime)
         self._actors[actor.actor_id()] = actor
         self._action_history[actor.actor_id()] = []
         self._synced[actor.actor_id()] = False

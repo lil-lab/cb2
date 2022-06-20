@@ -12,157 +12,231 @@ logger = logging.getLogger
 
 LEADER_TUTORIAL_STEPS = [
     TutorialStep(
-        None,
+        [],
         Tooltip("",
-                "Welcome to the leader tutorial. We'll walk "
-                "you through the rules of Cerealbar and how to "
-                "play the leader role. Press Shift to proceed.",
+                "Welcome leader! This tutorial will walk you through the CerealBar game (press \"shift\" to continue)",
                 TooltipType.UNTIL_DISMISSED),
         None,
     ),
     TutorialStep(
+        [],
+        Tooltip("",
+                "You are the leader (blue circle). You see the entire map, decide card sets to collect with the follower (yellow circle), collect cards, and give the follower instructions. (press \"shift\" to continue)",
+                TooltipType.UNTIL_DISMISSED),
         None,
-        Tooltip("CAMERA_BUTTON",
-                "You're playing as the Leader (blue circle). As the Leader, you"
-                " can see the entire map! Toggle your map view by hitting the"
-                " Camera button.", TooltipType.UNTIL_CAMERA_TOGGLED),
-        None
     ),
     TutorialStep(
-        None,
-        Tooltip("SCORE",
-                "Information about the game is displayed in the bottom left. As the leader,"
-                " you are given 60 seconds per turn (Shift to continue).", TooltipType.UNTIL_DISMISSED),
-        None
-    ),
-    TutorialStep(
-        None,
+        [],
         Tooltip("CAMERA_BUTTON",
-                "Toggle the Camera again to return to the original view!"
-                " Try using the keyboard shortcut by hitting the 'C' key.",
+                "You have two camera views. Toggle them with the \"camera\" button (or the \"C\" key). Try it now.",
                 TooltipType.UNTIL_CAMERA_TOGGLED),
-        None
+        None,
     ),
     TutorialStep(
-        None,
-        Tooltip("",
-                "By the way, you can move the camera by clicking and dragging"
-                " the mouse (Or, use A/D) (Shift to continue).",
+        [],
+        Tooltip("SCORE",
+                "Game information is on the left panel. You have 60 seconds per turn. (press \"shift\" to continue)",
                 TooltipType.UNTIL_DISMISSED),
-        None
+        None,
     ),
     TutorialStep(
+        [],
+        Tooltip("CAMERA_BUTTON",
+                "You can drag the camera view with the mouse or the buttons A/D. Toggle the camera again to return to the first view.",
+                TooltipType.UNTIL_CAMERA_TOGGLED),
         None,
-        Tooltip("FOLLOWER_VIEW", "This screen shows you what the follower can see. Followers cannot see card patterns. Cards are covered with \"?\" (Shift to continue).", TooltipType.UNTIL_DISMISSED),
-        None
     ),
     TutorialStep(
+        [],
+        Tooltip("FOLLOWER_VIEW",
+                "The top-left window shows what the follower sees. Cards are covered with \"?\" and visibility is limited! (press \"shift\" to continue)",
+                TooltipType.UNTIL_DISMISSED),
         None,
-        Tooltip("FOLLOWER_VIEW", "The follower's view is limited by fog. They can't see far away objects (Shift to continue).", TooltipType.UNTIL_DISMISSED),
-        None
     ),
     TutorialStep(
+        [],
+        Tooltip("",
+                "The follower view is limited, so consider this when writing instructions. They can't see like you! (press \"shift\" to continue)",
+                TooltipType.UNTIL_DISMISSED),
         None,
+    ),
+    TutorialStep(
+        [Indicator(HecsCoord(0, 2, 0)), Indicator(HecsCoord(1, 0, 1)), Indicator(HecsCoord(0, 3, 2))],
+        Tooltip("",
+                "First, let's plan to collect this set of three cards. Each color, shape, and count is unique, so this set will give us a point. (press \"shift\" to continue)",
+                TooltipType.UNTIL_DISMISSED),
+        None,
+    ),
+    TutorialStep(
+        [],
         Tooltip("MessageInputField",
-                "The yellow circle is indicating the Follower. You can send the"
-                " Follower commands using the text box in the bottom left corner."
-                " Tell them to turn left and stand on the middle card", TooltipType.UNTIL_MESSAGE_SENT),
-        None
-    ),
-    TutorialStep(
+                "Let's write an instruction! Use the text box in the bottom-left (or press \"T\"). Tell them to turn left and grab the middle card in the trio of cards.",
+                TooltipType.UNTIL_MESSAGE_SENT),
         None,
-        Tooltip("MessageInputField",
-                "Great! Now let's send a follow up command telling them to stand on the card at"
-                " the edge of the map.", TooltipType.UNTIL_MESSAGE_SENT),
-        None
     ),
     TutorialStep(
-      None,
-      Tooltip("END_TURN_PANEL", "Great. Now end your turn so the"
-              " follower has a chance to move.", TooltipType.UNTIL_TURN_ENDED),
-      None,
+        [],
+        Tooltip("INSTRUCTIONS",
+                "The follower only sees the current instructions, but you can queue multiple instructions, so they can use their steps efficiently. (press \"shift\" to continue)",
+                TooltipType.UNTIL_DISMISSED),
+        None,
     ),
     TutorialStep(
-      None,
+        [],
+        Tooltip("",
+                "Tell the follower to get the card at the edge of the map. This card will be straight ahead of them once they finish the previous instruction.",
+                TooltipType.UNTIL_MESSAGE_SENT),
+        None,
+    ),
+    TutorialStep(
+        [Indicator(HecsCoord(1, 0, 1))],
+        Tooltip("",
+                "Now let's do some stuff ourselves. Pick up the two black diamonds ahead of you",
+                TooltipType.UNTIL_INDICATOR_REACHED),
+        None,
+    ),
+    TutorialStep(
+        [],
+        Tooltip("END_TURN_PANEL",
+                "Finish your turn by pressing \"End Turn\" or the key \"N\".",
+                TooltipType.UNTIL_TURN_ENDED),
+        None,
+    ),
+    TutorialStep(
+      [],
       Tooltip("", "Now it's the follower's turn! Wait for them to move...",
       TooltipType.FOLLOWER_TURN),
       None,
       [FollowerActions.TURN_LEFT, FollowerActions.TURN_LEFT, FollowerActions.FORWARDS],
     ),
     TutorialStep(
-      None,
+      [],
       Tooltip("", "", 
       TooltipType.FOLLOWER_TURN),
       None,
       [FollowerActions.INSTRUCTION_DONE],
     ),
     TutorialStep(
+        [],
+        Tooltip("",
+                "The follower completed one instruction. See how it's marked as done. They now get the second instruction. They still have steps, so they can start it (press \"shift\" continue)",
+                TooltipType.UNTIL_DISMISSED),
         None,
-        Tooltip("ScrollView", "Great! Notice that the follower marked your instruction as done (Shift to continue).", TooltipType.UNTIL_DISMISSED),
-        None
     ),
+
     TutorialStep(
-      None,
-      Tooltip("", "",
+      [],
+      Tooltip("", "Now it's the follower's turn! Wait for them to move...",
       TooltipType.FOLLOWER_TURN),
       None,
       [FollowerActions.TURN_LEFT, FollowerActions.FORWARDS, FollowerActions.FORWARDS],
     ),
     TutorialStep(
-        None,
-        Tooltip("CANCEL_BUTTON", "Uh oh! The follower is lost! Let's interrupt and"
-                " do it ourselves. Hold down the interrupt button for 2 seconds.", TooltipType.UNTIL_TURN_ENDED),
+        [],
+        Tooltip(
+            "CANCEL_BUTTON",
+            "Oh, no! The follower is confused. Let's stop them. Hold the \"Interrupt\" button for 1 second.",
+            TooltipType.UNTIL_TURN_ENDED),
         None
     ),
     TutorialStep(
-        Indicator(HecsCoord(0, 2, 0)),
-        Tooltip("",
-                "To move the Leader, use the arrow keys! Walk to the 1 green square"
-                " card nearby and move onto it.",
-                TooltipType.UNTIL_INDICATOR_REACHED),
+        [Indicator(HecsCoord(0, 2, 0))],
+        Tooltip(
+            "MessageInputField",
+            "Now let's rephrase our instruction so the follower will turn around and grab the green square card.",
+            TooltipType.UNTIL_MESSAGE_SENT),
         None
     ),
     TutorialStep(
-        Indicator(HecsCoord(0, 2, 2)),
+        [],
+        Tooltip(
+            "END_TURN_PANEL",
+            "Don't forget to end your turn!",
+            TooltipType.UNTIL_TURN_ENDED),
+        None
+    ),
+    TutorialStep(
+      [],
+      Tooltip("", "It's the follower's turn...", TooltipType.FOLLOWER_TURN),
+      None,
+      [FollowerActions.TURN_RIGHT, FollowerActions.TURN_RIGHT, FollowerActions.FORWARDS, FollowerActions.TURN_RIGHT, FollowerActions.FORWARDS, FollowerActions.TURN_LEFT, FollowerActions.FORWARDS],
+    ),
+    TutorialStep(
+      [],
+      Tooltip("", "It's the follower's turn...", TooltipType.FOLLOWER_TURN),
+      None,
+      [FollowerActions.INSTRUCTION_DONE, FollowerActions.END_TURN],
+    ),
+    TutorialStep(
+        [Indicator(HecsCoord(0, 2, 2))],
         Tooltip("",
                 "Good job! The goal is to collect as many sets of 3 cards as"
-                " possible before you run out of turns. Try picking up the two"
+                " possible before you run out of turns. Let's do another one. Try picking up the two"
                 " pink triangles near where you started.",
                 TooltipType.UNTIL_INDICATOR_REACHED),
         None
     ),
     TutorialStep(
-        None,
+        [],
         Tooltip("",
-                "Uh oh, looks like we picked up a bad set! Each card in a set"
-                " must have a unique color, shape, and number of items. If you"
-                " violate this rule, the cards turn red! (Shift to continue).",
+                "Each card in a set must have a unique color, shape, and number of items. If you"
+                " violate this rule, the cards turn red! Let's try it (Shift to continue).",
                 TooltipType.UNTIL_DISMISSED),
         None
     ),
     TutorialStep(
-        Indicator(HecsCoord(0, 2, 2)),
+        [Indicator(HecsCoord(1, 1, 3))],
         Tooltip("",
-                "To deselect a card, walk off the card and onto it again. Try it"
-                " now!", TooltipType.UNTIL_INDICATOR_REACHED),
+                "Go step on the two blue crosses. This isn't unique, since we already have a card with 2 shapes.",
+                TooltipType.UNTIL_INDICATOR_REACHED),
         None
     ),
     TutorialStep(
-        Indicator(HecsCoord(1, 1, 3)),
+        [Indicator(HecsCoord(1, 1, 3))],
         Tooltip("",
-                "Now try collecting your first set. Go to the final card, the 2"
-                " blue crosses nearby...", TooltipType.UNTIL_SET_COLLECTED),
+                "Now to fix the problem, let's unselect the two blue crosses. Step off and back onto the card. now!",
+                TooltipType.UNTIL_INDICATOR_REACHED),
         None
     ),
     TutorialStep(
-        None,
+        [Indicator(HecsCoord(0, 3, 2))],
+        Tooltip("",
+                "Continue with the set. Go to the next card, the 3 blue diamonds nearby...", TooltipType.UNTIL_INDICATOR_REACHED),
+        None
+    ),
+    TutorialStep(
+        [],
+        Tooltip("",
+                "Ask the follower to grab the last card, behind them at the corner of the map.", TooltipType.UNTIL_MESSAGE_SENT),
+        None
+    ),
+    TutorialStep(
+        [],
+        Tooltip("END_TURN_PANEL",
+                "Now end your turn to give the follower a chance to move.", TooltipType.UNTIL_TURN_ENDED),
+        None
+    ),
+    TutorialStep(
+      [],
+      Tooltip("", "It's the follower's turn...", TooltipType.FOLLOWER_TURN),
+      None,
+      [FollowerActions.TURN_LEFT, FollowerActions.TURN_LEFT, FollowerActions.TURN_LEFT, FollowerActions.FORWARDS, FollowerActions.FORWARDS, FollowerActions.FORWARDS, FollowerActions.TURN_RIGHT, FollowerActions.FORWARDS, FollowerActions.FORWARDS],
+    ),
+    TutorialStep(
+      [],
+      Tooltip("", "It's the follower's turn...", TooltipType.FOLLOWER_TURN),
+      None,
+      [FollowerActions.INSTRUCTION_DONE],
+    ),
+    TutorialStep(
+        [],
         Tooltip("SCORE",
                 "Good work! Your score is counted and displayed in the bottom"
                 " left screen (Shift to continue).", TooltipType.UNTIL_DISMISSED),
         None
     ),
     TutorialStep(
-        None,
+        [],
         Tooltip("SCORE",
                 "Each set will give you more turns to collect even more sets."
                 " The higher your score, the more credit you will receive at the"
@@ -171,28 +245,7 @@ LEADER_TUTORIAL_STEPS = [
         None
     ),
     TutorialStep(
-        None,
-        Tooltip("",
-                "Complete two more sets to finish the tutorial.",
-                TooltipType.UNTIL_SET_COLLECTED),
-        None
-    ),
-    TutorialStep(
-        None,
-        Tooltip("",
-                "One more set!",
-                TooltipType.UNTIL_SET_COLLECTED),
-        None
-    ),
-    TutorialStep(
-        None,
-        Tooltip("",
-                "Nice!!! You've completed the tutorial! Here are some parting words (Shift to continue).",
-                TooltipType.UNTIL_DISMISSED),
-        None
-    ),
-    TutorialStep(
-        None,
+        [],
         Tooltip("",
                 "Remember to leave useful instructions for the follower. You can "
                 "see the whole board, but the follower gets twice as many moves "
@@ -201,7 +254,7 @@ LEADER_TUTORIAL_STEPS = [
         None
     ),
     TutorialStep(
-        None,
+        [],
         Tooltip("",
                 "Once you've exhausted your moves, you have the rest of your "
                 "turn to leave instructions for the follower (Shift to "
@@ -209,17 +262,16 @@ LEADER_TUTORIAL_STEPS = [
         None
     ),
     TutorialStep(
-        None,
+        [],
         Tooltip("",
                 "If you haven't left any instructions for the follower, their "
-                "turn will be skipped. Make sure to leave instructions before the "
-                "time for your turn runs out! As the leader, you have a minute "
-                "per turn (Shift to continue).",
+                "turn will be skipped. In real games, you have a minute per turn. Make sure to leave instructions before the "
+                "time for your turn runs out! (Shift to continue).",
                 TooltipType.UNTIL_DISMISSED),
         None
     ),
     TutorialStep(
-        None,
+        [],
         Tooltip("",
                 "Good luck out there! (Shift to continue).",
                 TooltipType.UNTIL_DISMISSED),
