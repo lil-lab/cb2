@@ -61,6 +61,7 @@ TagManager:
   - ReplayManager
   - LEADER_SCORE_TEXT
   - FOLLOWER_SCORE_TEXT
+  - INSTRUCTION_TITLE_TEXT
   layers:
   - Default
   - TransparentFX

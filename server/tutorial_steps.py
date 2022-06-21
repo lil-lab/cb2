@@ -281,137 +281,106 @@ LEADER_TUTORIAL_STEPS = [
 
 FOLLOWER_TUTORIAL_STEPS = [
     TutorialStep(
-        None,
+        [],
         Tooltip("",
-                "Welcome to the follower tutorial. We'll walk "
-                "you through the rules of Cerealbar and how to "
-                "play the follower role (Shift to continue).",
+                "Welcome follower! This tutorial will walk you through the CerealBar game (press \"shift\" to continue)",
                 TooltipType.UNTIL_DISMISSED),
         None,
     ),
     TutorialStep(
-        Indicator(HecsCoord(0, 1, 1)),
+        [Indicator(HecsCoord(0, 1, 0))],
         Tooltip("",
-                "To move around, use the arrow keys. Try moving to the indicator"
-                " on the screen.", TooltipType.UNTIL_INDICATOR_REACHED),
+                "You move using the arrow keys. Move to the indicator ahead and to the left.",
+                TooltipType.UNTIL_INDICATOR_REACHED),
         None,
     ),
     TutorialStep(
-        None,
+        [],
         Tooltip("",
-                "Good! In this game, you and the leader are trying to collect"
-                " cards. You collect a card by stepping on it (Shift to"
-                " continue).", TooltipType.UNTIL_DISMISSED),
-        None,
-    ),
-    TutorialStep(
-        None,
-        Tooltip("",
-                "As the follower, your primary responsibility is to "
-                "follow the instructions of the leader (Shift to continue).",
+                "Your goal is to follow the Leader's instructions. Together, you will collect sets of cards. The Leader sees the patterns on cards and the entire environment, so you just need to follow their instructions (press \"Shift\" to continue).",
                 TooltipType.UNTIL_DISMISSED),
         None,
     ),
     TutorialStep(
-        None,
+        [],
         Tooltip("",
-                "Since you're the follower, you cannot see card patterns. Cards are covered with a \"?\" (Shift to continue).",
+                "When asked to select cards, you do so by stepping on them (press \"Shift\" to continue)",
                 TooltipType.UNTIL_DISMISSED),
         None,
     ),
     TutorialStep(
-        Indicator(HecsCoord(0, 1, 3)),
-        Tooltip("INSTRUCTIONS",
-                "You've received your first instruction. Follow it, then click"
-                " \"Done\" in the top left.",
-                TooltipType.UNTIL_OBJECTIVES_COMPLETED),
-        Instruction("Go up the steps and stand on the first card you see on the platform."),
+        [Indicator(HecsCoord(0, 1, 3))],
+        Tooltip("INSTRUCTION_TITLE_TEXT",
+                "You've received your first instruction! Follow it, then click \"Done\" (or the key \"D\") when you are done",
+                TooltipType.UNTIL_INDICATOR_REACHED),
+        Instruction("Go up the steps to the right, and select the first card on the mountain")
     ),
     TutorialStep(
-        None,
-        Tooltip("INSTRUCTIONS",
-                "Great! Don't forget to click on \"Done\" once you finish an"
-                " instruction. You won't be able to proceed until then (Shift to"
-                " continue).", TooltipType.UNTIL_DISMISSED),
+        [],
+        Tooltip("SCORE",
+                "You only have a few steps per turn, and limited time. Be efficient! Every move and turn counts. Remaining steps and time are shown in the bottom left window (press \"Shift\" to continue)",
+                TooltipType.UNTIL_DISMISSED),
         None,
     ),
     TutorialStep(
-        None,
+        [],
         Tooltip("",
-                "Follow the instructions...",
+                "Follow the instructions... Don't forget to mark them as done when complete!",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
-        Instruction("Turn around and go back down the steps. Move onto the card"
-                    " on the right at the base of the mountain.")
+        Instruction("Turn around and go back down the steps. Grab the card on the right.")
     ),
     TutorialStep(
-        None,
+        [],
         Tooltip("",
-                "Follow the instructions...",
+                "Follow the instructions... Don't forget to mark them as done when complete!",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
-        Instruction("Behind you, near where you started, you'll see a cluster of 3 cards in a V-shape. Move onto the closest card.") ),
+        Instruction("Behind you, near where you started, grab the closest card in the v-shaped set of three cards.")),
     TutorialStep(
-        None,
+        [],
         Tooltip("",
                 "Follow the instructions... To unselect a card, step off of it"
-                " and then back onto it.",
+                " and then back onto it. Don't forget to mark them as done when complete!",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
-        Instruction("Oops, sorry I messed up! Can you unselect that card by"
-                    " walking off it and then back onto it?") ),
+        Instruction("Oops, I messed up! Deselect the current card by"
+                    " walking off it, and then back onto it.") ),
     TutorialStep(
-        None,
+        [],
         Tooltip("",
                 "Last instruction!",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
-        Instruction("Now finish up the set by picking up the center card in that v-shaped group of 3 cards."), ),
+        Instruction("Pick up the center card in the v-shaped cluster.")),
     TutorialStep(
-        None,
+        [],
         Tooltip("SCORE",
-                "Look at that! You collected a set of 3 cards! Each is unique in "
-                "color, shape, and quantity. You've been rewarded 1 point. Your "
-                "score is displayed in the bottom left window (Shift to continue).",
+                "Hooray! We collected a set of 3 cards. We received a point, and more turns! Our score and turns left show in the bottom-left window. (press \"Shift\" to continue)",
                 TooltipType.UNTIL_DISMISSED),
         None,
     ),
     TutorialStep(
-        None,
+        [],
         Tooltip("",
-                "In a real game, you only have a certain number of movements per "
-                "turn, use them wisely! Your remaining moves are shown in the "
-                "bottom left. (Shift to continue).",
+                "Not sure what to do given an instruction? Do your best, and mark the instruction as done to get the next one. (press \"Shift\" to continue)",
                 TooltipType.UNTIL_DISMISSED),
         None,
     ),
     TutorialStep(
-        None,
+        [],
         Tooltip("",
-                "By the way, if you're not sure what to do, try your best to "
-                "follow the instructions. If you're really not sure, mark the "
-                "instruction as done and let the leader clarify on the next "
-                "turn. (Shift to continue).",
+                "When you run out of steps or instructions, your turn will automatically end. (press \"Shift\" to continue)",
                 TooltipType.UNTIL_DISMISSED),
         None,
     ),
     TutorialStep(
-        None,
+        [],
         Tooltip("",
-                "As the follower, if you run out of moves or instructions, your "
-                "turn will end immediately (Shift to continue).",
+                "Remember: follow the Leader's instructions! Don't go on your own! (press \"Shift\" to continue)",
                 TooltipType.UNTIL_DISMISSED),
         None,
     ),
     TutorialStep(
-        None,
+        [],
         Tooltip("",
-                "Remember, follow the instructions. Don't go off on your own! "
-                "The leader can see the entire board, but you can only see what's "
-                "around you. As the follower, you can move twice as far as the "
-                "leader per turn. Work together to succeed! (Shift to continue).",
-                TooltipType.UNTIL_DISMISSED), None,
-    ),
-    TutorialStep(
-        None,
-        Tooltip("",
-                "Best of luck on your first game! (Shift to finish).",
+                "You completed the tutorial. Good luck! (press \"Shift\" to continue)",
                 TooltipType.UNTIL_DISMISSED),
         None,
     ),

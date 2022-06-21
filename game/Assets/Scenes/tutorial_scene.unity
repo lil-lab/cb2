@@ -489,6 +489,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 5c84871a83cdc423291e9b6987836aab, type: 3}
+--- !u!1 &308458963 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 34629594450077714, guid: 5c84871a83cdc423291e9b6987836aab, type: 3}
+  m_PrefabInstance: {fileID: 308458962}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &308458964
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 308458963}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 618fb298e78b64bcd9d1bde36e59af98, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &355349010
 GameObject:
   m_ObjectHideFlags: 0
@@ -681,6 +698,10 @@ PrefabInstance:
     - target: {fileID: 7151152152975337222, guid: 67f3cd7629e3449bda01f8f894e793f0, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7151152153106668716, guid: 67f3cd7629e3449bda01f8f894e793f0, type: 3}
+      propertyPath: m_TagString
+      value: INSTRUCTION_TITLE_TEXT
       objectReference: {fileID: 0}
     - target: {fileID: 7151152153106668717, guid: 67f3cd7629e3449bda01f8f894e793f0, type: 3}
       propertyPath: m_AnchorMax.y
