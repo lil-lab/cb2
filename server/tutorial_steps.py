@@ -135,7 +135,7 @@ LEADER_TUTORIAL_STEPS = [
         [],
         Tooltip(
             "CANCEL_BUTTON",
-            "Oh, no! The follower is confused. Let's stop them. Hold the \"Interrupt\" button for 1 second.",
+            "Oh, no! The follower is confused. Let's stop them. Hold the \"Interrupt\" button for 1 second. It will cancel all queued instructions and end the follower's turn.",
             TooltipType.UNTIL_TURN_ENDED),
         None
     ),
