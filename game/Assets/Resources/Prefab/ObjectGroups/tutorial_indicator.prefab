@@ -43,7 +43,7 @@ GameObject:
   - component: {fileID: 6397423762676425791}
   - component: {fileID: 2947678561310892643}
   m_Layer: 0
-  m_Name: GroundPulse_yellow
+  m_Name: GroundPulse_red
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1392,10 +1392,10 @@ ParticleSystem:
       maxColor: {r: 1, g: 1, b: 1, a: 1}
       maxGradient:
         serializedVersion: 2
-        key0: {r: 1, g: 1, b: 1, a: 0}
-        key1: {r: 1, g: 1, b: 1, a: 0.14286244}
-        key2: {r: 0, g: 0, b: 0, a: 1}
-        key3: {r: 0, g: 0, b: 0, a: 0}
+        key0: {r: 1, g: 1, b: 1, a: 0.48235294}
+        key1: {r: 1, g: 1, b: 1, a: 0.6431373}
+        key2: {r: 0, g: 0, b: 0, a: 0.654902}
+        key3: {r: 0, g: 0, b: 0, a: 0.7764706}
         key4: {r: 0, g: 0, b: 0, a: 0}
         key5: {r: 0, g: 0, b: 0, a: 0}
         key6: {r: 0, g: 0, b: 0, a: 0}
@@ -1411,9 +1411,9 @@ ParticleSystem:
         atime0: 0
         atime1: 964
         atime2: 14649
-        atime3: 33924
+        atime3: 34310
         atime4: 65535
-        atime5: 0
+        atime5: 65535
         atime6: 0
         atime7: 0
         m_Mode: 0
@@ -4847,7 +4847,7 @@ ParticleSystemRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: f296f84ea3a2c401caade3a45794c024, type: 2}
+  - {fileID: 2100000, guid: 25112c30cd99349bfa1cd9ba000127c5, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
