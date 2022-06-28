@@ -143,7 +143,7 @@ class RoomManager(object):
     
     async def cleanup_rooms(self):
         while not self._is_done:
-            await asyncio.sleep(0.001)
+            await asyncio.sleep(0)
             self.delete_unused_rooms()
     
     def create_tutorial(self, player, tutorial_name):
@@ -182,7 +182,7 @@ class RoomManager(object):
         """ Runs asyncronously, creating rooms for pending followers and
         leaders. """
         while not self._is_done:
-            await asyncio.sleep(0.001)
+            await asyncio.sleep(0)
             leader, follower = self.get_leader_follower_match()
             if (leader is None) or (follower is None):
                 continue

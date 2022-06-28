@@ -221,9 +221,16 @@ class State(object):
                         self._record_log.error(f"Resyncing {actor_id} after invalid action.")
                         continue
             
-            if len(self._turn_complete_queue) > 0:
-                reason = self._turn_complete_queue.pop()
-                self.update_turn(force_role_switch=True, end_reason=reason)
+            while len(self._turn_complete_queue) > 0:
+                (id, reason) = self._turn_complete_queue.pop()
+                if id not in self._actors:
+                    continue
+                actor = self._actors[id]
+                if actor.role() == self._turn_state.turn:
+                    self.update_turn(force_role_switch=True, end_reason=reason)
+                # The leader can end the follower's turn via an interruption
+                if actor.role() == Role.LEADER and reason == "UserPromptedInterruption":
+                    self.update_turn(force_role_switch=True, end_reason=reason)
 
             selected_cards = list(self._map_provider.selected_cards())
             cards_changed = False
@@ -302,6 +309,7 @@ class State(object):
                 self._map_update = self._map_provider.map()
                 for actor_id in self._actors:
                     self._map_stale[actor_id] = True
+
         # Make sure to mark the game's end time.
         self._game_record.end_time = datetime.utcnow()
         self._game_record.save()
@@ -363,7 +371,7 @@ class State(object):
 
     def has_instructions_todo(self):
         for objective in self._objectives:
-            if not objective.completed:
+            if not objective.completed and not objective.cancelled:
                 return True
         return False
 
@@ -591,7 +599,10 @@ class State(object):
             logger.warn(
                 f"Warning, turn complete queued from ID: {str(id)}, but one was already received!")
             return
-        self._turn_complete_queue.append("UserPrompted")
+        if self._actors[id].role() == Role.FOLLOWER and self.has_instructions_todo():
+            logger.warn(f"Warning, turn complete received from ID: {str(id)} when there are pending instructions!")
+            return
+        self._turn_complete_queue.append((id, "UserPrompted"))
     
     def handle_cancel_pending_objectives(self, id):
         if self._actors[id].role() != Role.LEADER:
@@ -609,7 +620,7 @@ class State(object):
         self._active_objective = None
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True
-        self._turn_complete_queue.append("UserPrompted")
+        self._turn_complete_queue.append((id, "UserPromptedInterruption"))
 
 
     def create_actor(self, role):

@@ -793,9 +793,9 @@ def CreateDataDirectory(config):
 async def profiler():
     last_print = datetime.now()
     while True:
-        await asyncio.sleep(0)
+        await asyncio.sleep(1)
         if datetime.now() - last_print > timedelta(seconds=10):
-            print(f"====== Profiler ======")
+            # print(f"====== Profiler ======")
             # yappi.get_func_stats().print_all()
             # yappi.get_thread_stats().print_all()
             last_print = datetime.now()
@@ -826,6 +826,7 @@ def main(config_filepath="config/server-config.json"):
     # if gui:
     #   tasks = asyncio.gather(tasks, draw_gui())
     loop = asyncio.get_event_loop()
+    # loop.set_debug(enabled=True)
     try:
         loop.run_until_complete(tasks)
     except KeyboardInterrupt:
@@ -833,8 +834,13 @@ def main(config_filepath="config/server-config.json"):
     finally:
         room_manager.end_server()
         loop.close()
-        yappi.get_func_stats().print_all()
-        yappi.get_thread_stats().print_all()
+        
+        # yappi.stop()
+
+        # Export a pstats file.
+        # yappi.get_func_stats().save('yappi.pstat', type='pstat')
+        # yappi.get_func_stats().print_all()
+        # yappi.get_thread_stats().print_all()
 
 
 if __name__ == "__main__":
