@@ -14,18 +14,17 @@ body {
     margin: 0;
     background: black;
 }
+
 #unity-container {
-    aspect-ratio: 1000/600;
-    width: 100%;
-    max-height: 100%;
+    width: 100vw; 
+    height: 60vw; /* height:width ratio = 600/1000 = .6  */
+    background: black;
+    max-height: 100vh;
+    max-width: 166.67vh; /* 10/6 = 1.6667 */
+    margin: auto;
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    -ms-transform: translate(-50%, -50%);
-    -webkit-transform: translate(-50%, -50%);
-    -o-transform: translate(-50%, -50%);
-    -moz-transform: translate(-50%, -50%);
+    top:0;bottom:0; /* vertical center */
+    left:0;right:0; /* horizontal center */
 }
 #unity-canvas {
     width: 100%;
