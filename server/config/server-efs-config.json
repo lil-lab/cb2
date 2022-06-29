@@ -1,0 +1,8 @@
+{
+    "name": "Old server config",
+    "comment": "This config uses EFS for the sqlite database. Slower performance.",
+    "data_prefix": "/mnt/efs/fs1/cb2-game-data",
+    "card_covers": true,
+    "fog_start": 13,
+    "fog_end": 20
+}

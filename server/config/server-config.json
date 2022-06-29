@@ -1,7 +1,7 @@
 {
     "name": "Deployed server config",
     "comment": "This config is used for launching the server",
-    "data_prefix": "/mnt/efs/fs1/cb2-game-data",
+    "data_prefix": "/home/ubuntu/cb2-game-data",
     "card_covers": true,
     "fog_start": 13,
     "fog_end": 20
