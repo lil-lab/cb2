@@ -1,6 +1,7 @@
 import aiohttp
 import asyncio
 import fire
+import orjson
 import statistics as stats
 
 from datetime import datetime
@@ -27,7 +28,8 @@ async def connect_to_server(server_url):
 
 async def join_room(ws):
     message = JoinRoomToServer()
-    await ws.send_str(message.to_json())
+    binary_message = orjson.dumps(message, option=orjson.OPT_NAIVE_UTC)
+    await ws.send_str(binary_message.decode('utf-8'))
 
 async def wait_for_join_messages(ws):
     player_role = None
@@ -75,7 +77,7 @@ def TurnAction(player_id, rotation_degrees):
     return message
 
 def JoinRoomToServer():
-    message = message_to_server.MessageToServer(transmit_time=datetime.now(), type=message_to_server.MessageType.ROOM_MANAGEMENT, actions=None, room_request=message_to_server.RoomManagementRequest(messages.rooms.RoomRequestType.JOIN))
+    message = message_to_server.MessageToServer(transmit_time=datetime.utcnow(), type=message_to_server.MessageType.ROOM_MANAGEMENT, actions=None, room_request=message_to_server.RoomManagementRequest(messages.rooms.RoomRequestType.JOIN))
     print(f"Sending message: {message}")
     return message
 
