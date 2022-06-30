@@ -43,7 +43,7 @@ async def wait_for_join_messages(ws):
             continue
         if message.type != aiohttp.WSMsgType.TEXT:
             print(f"wait_for_join_messages received unexpected message type: {message.type}. data: {message.data}")
-            return
+            continue
         response = message_from_server.MessageFromServer.from_json(message.data)
         if response.type == message_from_server.MessageType.ROOM_MANAGEMENT:
             if response.room_management_response.type == messages.rooms.RoomResponseType.JOIN_RESPONSE:
@@ -163,7 +163,10 @@ async def handle_receive(ws):
     global receive_times
     while ws_state[ws] != State.JOIN_SENT:
         await asyncio.sleep(0.1)
-    player_role[ws], player_id[ws] = await wait_for_join_messages(ws)
+    result = await wait_for_join_messages(ws)
+    if (result == None):
+      return
+    player_role[ws], player_id[ws] = result
     print(f"Player JOINED.")
     print(f"Player role: {player_role[ws]}")
     print(f"Player id: {player_id[ws]}")
