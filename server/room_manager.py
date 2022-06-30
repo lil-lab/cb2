@@ -1,6 +1,6 @@
 """ Used to manage game rooms. """
 from collections import deque
-from dataclasses import dataclass, field, astuple
+from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from map_provider import CachedMapRetrieval
@@ -38,6 +38,16 @@ class SocketInfo:
     player_id: int
     role: Role
 
+    def as_tuple(self):
+        """ This is a bit of a hack, since it's sensitive to changes in the SocketInfo class.
+        
+            Reasons for doing this:
+            - SocketInfo is relatively unchanged and small over a long period of time.
+            - Dataclasses's astuple method is extremely inefficient (over half of stream_game_state execution time). This will save us 26us.
+            - I have higher priority things to be doing than finding the best way to do this. It's not within the scope of this paper.
+        """
+        return (self.room_id, self.player_id, self.role)
+
 
 class RoomManager(object):
     """ Used to manage game rooms. """
@@ -64,7 +74,7 @@ class RoomManager(object):
         if not ws in self._remotes:
             logging.info("Socket not found in self._remotes!")
             return
-        room_id, player_id, _ = astuple(self._remotes[ws])
+        room_id, player_id, _ = self._remotes[ws].as_tuple()
         if not room_id in self._rooms:
             # The room was already terminated by the other player.
             del self._remotes[ws]
@@ -130,7 +140,7 @@ class RoomManager(object):
         self._rooms[id].stop()
         player_endpoints = list(self._rooms[id].player_endpoints())
         for ws in player_endpoints:
-            room_id, player_id, _ = astuple(self._remotes[ws])
+            room_id, player_id, _ = self._remotes[ws].as_tuple()
             self._rooms[id].remove_player(player_id, ws)
             del self._remotes[ws]    
         del self._rooms[id]
@@ -257,7 +267,7 @@ class RoomManager(object):
     def handle_leave_request(self, request, ws):
         if not ws in self._remotes:
             return RoomManagementResponse(RoomResponseType.ERROR, None, None, None, None, "You are not in a room.")
-        room_id, player_id, _ = astuple(self._remotes[ws])
+        room_id, player_id, _ = self._remotes[ws].as_tuple()
         self.disconnect_socket(ws)
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(RoomResponseType.LEAVE_NOTICE, None, None, LeaveRoomNotice("Player requested leave."), None))

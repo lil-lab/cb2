@@ -32,7 +32,6 @@ import db_tools.db_utils as db_utils
 
 from aiohttp import web
 from config.config import Config, InitGlobalConfig, GlobalConfig
-from dataclasses import astuple
 from dateutil import parser
 from dateutil import tz
 
@@ -543,7 +542,7 @@ async def stream_game_state(request, ws):
                 return
             continue
 
-        (room_id, player_id, role) = astuple(room_manager.socket_info(ws))
+        (room_id, player_id, role) = room_manager.socket_info(ws).as_tuple()
         room = room_manager.get_room(room_id)
 
         if room is None:
@@ -622,8 +621,7 @@ async def receive_agent_updates(request, ws):
 
         if room_manager.socket_in_room(ws):
             # Only handle in-game actions if we're in a room.
-            (room_id, player_id, _) = astuple(room_manager.socket_info(
-                ws))
+            (room_id, player_id, _) = room_manager.socket_info(ws).as_tuple()
             room = room_manager.get_room(room_id)
             room.handle_packet(player_id, message)
         else:
