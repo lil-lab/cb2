@@ -1,5 +1,6 @@
 """ Defines tutorial messages. """
 from enum import Enum
+from mashumaro.mixins.json import DataClassJSONMixin
 from messages.action import Action
 from messages.rooms import RoomManagementRequest, Role
 from messages.objective import ObjectiveMessage, ObjectiveCompleteMessage
@@ -42,34 +43,29 @@ class TooltipType(Enum):
     UNTIL_TURN_ENDED = 7
     FOLLOWER_TURN = 8
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
-class Tooltip:
+class Tooltip(DataClassJSONMixin):
     highlighted_component_tag: str
     text: str
     type: TooltipType
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
-class Indicator:
+class Indicator(DataClassJSONMixin):
     location: HecsCoord
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
-class Instruction:
+class Instruction(DataClassJSONMixin):
     text: str
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
-class TutorialStep:
+class TutorialStep(DataClassJSONMixin):
     indicators: List[Indicator]
     tooltip: Tooltip
     instruction: Instruction
     other_player_turn: List[FollowerActions] = None
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
-class TutorialComplete:
+class TutorialComplete(DataClassJSONMixin):
     tutorial_name: str
     completion_date: str
 
@@ -98,15 +94,13 @@ def RoleFromTutorialName(tutorial_name):
         logger.warn(f"Received invalid tutorial name: {tutorial_name}")
         return Role.NONE
 
-@dataclass_json
 @dataclass(frozen=True)
-class TutorialRequest:
+class TutorialRequest(DataClassJSONMixin):
     type: TutorialRequestType
     tutorial_name: str
 
-@dataclass_json
 @dataclass(frozen=True)
-class TutorialResponse:
+class TutorialResponse(DataClassJSONMixin):
     type: TutorialResponseType
     tutorial_name: str
     step: TutorialStep

@@ -228,9 +228,12 @@ class State(object):
                 actor = self._actors[id]
                 if actor.role() == self._turn_state.turn:
                     self.update_turn(force_role_switch=True, end_reason=reason)
+                    continue
                 # The leader can end the follower's turn via an interruption
                 if actor.role() == Role.LEADER and reason == "UserPromptedInterruption":
+                    self.cancel_pending_objectives()
                     self.update_turn(force_role_switch=True, end_reason=reason)
+                    continue
 
             selected_cards = list(self._map_provider.selected_cards())
             cards_changed = False
@@ -605,6 +608,7 @@ class State(object):
         self._turn_complete_queue.append((id, "UserPrompted"))
     
     def handle_cancel_pending_objectives(self, id):
+        logger.info(f"Cancel pending objectives received from ID: {str(id)}.")
         if self._actors[id].role() != Role.LEADER:
             logger.warn(
                 f'Warning, objective cancellation from non-leader ID: {str(id)}')
@@ -613,6 +617,10 @@ class State(object):
             logger.warn(
                 f'Warning, objective cancellation from leader ID: {str(id)} when it is their turn!')
             return
+        # Queue up the cancellation.
+        self._turn_complete_queue.append((id, "UserPromptedInterruption"))
+
+    def cancel_pending_objectives(self):
         # Cancel all objectives.
         for objective in self._objectives:
             if not objective.completed:
@@ -620,8 +628,6 @@ class State(object):
         self._active_objective = None
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True
-        self._turn_complete_queue.append((id, "UserPromptedInterruption"))
-
 
     def create_actor(self, role):
         spawn_point = self._spawn_points.pop() if self._spawn_points else HecsCoord(0, 0, 0)

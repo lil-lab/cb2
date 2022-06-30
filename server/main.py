@@ -1,7 +1,9 @@
 from ast import Global
 from threading import local
+
 import aiohttp
 import asyncio
+import dateutil
 import fire
 import hashlib
 import io
@@ -554,18 +556,18 @@ async def stream_game_state(request, ws):
             # await asyncio.sleep(1.0)
             message = room_manager.drain_message(ws)
             if message is not None:
-                await transmit_bytes(ws, orjson.dumps(message, option=orjson.OPT_NAIVE_UTC))
+                await transmit_bytes(ws, orjson.dumps(message, option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat))
             # await asyncio.sleep(1.0)
             continue
         
         # Send a ping every 10 seconds.
         if (datetime.now(timezone.utc) - remote.last_ping).total_seconds() > 10.0:
             remote.last_ping = datetime.now(timezone.utc)
-            await transmit_bytes(ws, orjson.dumps(message_from_server.PingMessageFromServer(), option=orjson.OPT_NAIVE_UTC))
+            await transmit_bytes(ws, orjson.dumps(message_from_server.PingMessageFromServer(), option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat))
 
         msg_from_server = room.drain_message(player_id)
         while msg_from_server is not None:
-            await transmit_bytes(ws, orjson.dumps(msg_from_server, option=orjson.OPT_NAIVE_UTC))
+            await transmit_bytes(ws, orjson.dumps(msg_from_server, option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat))
             msg_from_server = room.drain_message(player_id)
 
 
@@ -599,7 +601,9 @@ async def receive_agent_updates(request, ws):
             continue
 
         logger.debug("Raw message: " + msg.data)
+        # message_dict = orjson.loads(msg.data)
         message = message_to_server.MessageToServer.from_json(msg.data)
+        # message = message_to_server.MessageToServer.from_json(msg.data)
 
         if message.type == message_to_server.MessageType.ROOM_MANAGEMENT:
             room_manager.handle_request(message, ws)

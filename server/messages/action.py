@@ -1,9 +1,12 @@
 from enum import Enum
+
+from mashumaro import pass_through
 from hex import HecsCoord
 
 from dataclasses import dataclass, field, replace
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime, timedelta
+from mashumaro.mixins.json import DataClassJSONMixin
 from marshmallow import fields
 
 import dateutil.parser
@@ -28,9 +31,8 @@ class AnimationType(Enum):
     SKIPPING = 6
     ROTATE = 7
 
-@dataclass_json
 @dataclass(frozen=True)
-class Color:
+class Color(DataClassJSONMixin):
     r: float
     g: float
     b: float
@@ -50,9 +52,8 @@ def CensorActionForFollower(action, follower):
         print(f"Censored action {action} for follower {follower}")
     return action
 
-@dataclass_json
 @dataclass(frozen=True)
-class Action:
+class Action(DataClassJSONMixin):
     id: int
     action_type: ActionType
     animation_type: AnimationType
@@ -62,11 +63,8 @@ class Action:
     border_color: Color
     duration_s: float
     expiration: datetime = field(
-        metadata=config(
-            encoder=datetime.isoformat,
-            decoder=dateutil.parser.isoparse,
-            mm_field=fields.DateTime(format='iso')
-        ))
+        metadata={"deserialize": "pendulum", "serialize": pass_through}
+    )
 
 def Delay(id, duration):
     NYC = tz.gettz('America/New_York')

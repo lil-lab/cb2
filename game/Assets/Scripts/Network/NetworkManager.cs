@@ -175,7 +175,7 @@ namespace Network
         public void RespondToPing()
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.transmit_time = DateTime.Now.ToString("o");
+            toServer.transmit_time = DateTime.Now.ToString("s");
             toServer.type = MessageToServer.MessageType.PONG;
             toServer.pong = new Pong{ping_receive_time = DateTime.Now.ToString("o")};
             _client.TransmitMessage(toServer);
@@ -184,7 +184,7 @@ namespace Network
         public void TransmitCancelPendingObjectives()
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.transmit_time = DateTime.Now.ToString("o");
+            toServer.transmit_time = DateTime.Now.ToString("s");
             toServer.type = MessageToServer.MessageType.CANCEL_PENDING_OBJECTIVES;
             _client.TransmitMessage(toServer);
         }
@@ -192,7 +192,7 @@ namespace Network
         public void TransmitObjective(ObjectiveMessage objective)
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.transmit_time = DateTime.Now.ToString("o");
+            toServer.transmit_time = DateTime.Now.ToString("s");
             toServer.type = MessageToServer.MessageType.OBJECTIVE;
             toServer.objective = objective;
             toServer.objective.sender = _role;
@@ -202,7 +202,7 @@ namespace Network
         public void TransmitLiveFeedback(LiveFeedback feedback)
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.transmit_time = DateTime.Now.ToString("o");
+            toServer.transmit_time = DateTime.Now.ToString("s");
             toServer.type = MessageToServer.MessageType.LIVE_FEEDBACK;
             toServer.live_feedback = feedback;
             _client.TransmitMessage(toServer);
@@ -211,7 +211,7 @@ namespace Network
         public void TransmitObjectiveComplete(ObjectiveCompleteMessage objectiveComplete)
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.transmit_time = DateTime.Now.ToString("o");
+            toServer.transmit_time = DateTime.Now.ToString("s");
             toServer.type = MessageToServer.MessageType.OBJECTIVE_COMPLETE;
             toServer.objective_complete = objectiveComplete;
             _client.TransmitMessage(toServer);
@@ -220,7 +220,7 @@ namespace Network
         public void TransmitTurnComplete()
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.transmit_time = DateTime.Now.ToString("o");
+            toServer.transmit_time = DateTime.Now.ToString("s");
             toServer.type = MessageToServer.MessageType.TURN_COMPLETE;
             _client.TransmitMessage(toServer);
         }
@@ -235,7 +235,7 @@ namespace Network
         public void JoinGame()
         {
             MessageToServer msg = new MessageToServer();
-            msg.transmit_time = DateTime.Now.ToString("o");
+            msg.transmit_time = DateTime.Now.ToString("s");
             msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
             msg.room_request = new RoomManagementRequest();
             msg.room_request.type = RoomRequestType.JOIN;
@@ -256,7 +256,7 @@ namespace Network
         public void StartTutorial(string tutorialName)
         {
             MessageToServer msg = new MessageToServer();
-            msg.transmit_time = DateTime.Now.ToString("o");
+            msg.transmit_time = DateTime.Now.ToString("s");
             msg.type = MessageToServer.MessageType.TUTORIAL_REQUEST;
             msg.tutorial_request = new TutorialRequest();
             msg.tutorial_request.type = TutorialRequestType.START_TUTORIAL;
@@ -268,7 +268,7 @@ namespace Network
         public void NextTutorialStep()
         {
             MessageToServer msg = new MessageToServer();
-            msg.transmit_time = DateTime.Now.ToString("o");
+            msg.transmit_time = DateTime.Now.ToString("s");
             msg.type = MessageToServer.MessageType.TUTORIAL_REQUEST;
             msg.tutorial_request = new TutorialRequest();
             msg.tutorial_request.type = Network.TutorialRequestType.REQUEST_NEXT_STEP;
@@ -280,7 +280,7 @@ namespace Network
         public void CancelGameQueue()
         {
             MessageToServer msg = new MessageToServer();
-            msg.transmit_time = DateTime.Now.ToString("o");
+            msg.transmit_time = DateTime.Now.ToString("s");
             msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
             msg.room_request = new RoomManagementRequest();
             msg.room_request.type = RoomRequestType.CANCEL;
@@ -291,7 +291,7 @@ namespace Network
         public void QuitGame()
         {
             MessageToServer msg = new MessageToServer();
-            msg.transmit_time = DateTime.Now.ToString("o");
+            msg.transmit_time = DateTime.Now.ToString("s");
             msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
             msg.room_request = new RoomManagementRequest();
             msg.room_request.type = RoomRequestType.LEAVE;
@@ -506,7 +506,7 @@ namespace Network
         public void RequestMapSample()
         {
             MessageToServer msg = new MessageToServer();
-            msg.transmit_time = DateTime.Now.ToString("o");
+            msg.transmit_time = DateTime.Now.ToString("s");
             msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
             msg.room_request = new RoomManagementRequest();
             msg.room_request.type = RoomRequestType.MAP_SAMPLE;
@@ -530,7 +530,7 @@ namespace Network
                 Debug.Log("Requesting stats..");
                 _lastStatsPoll = DateTime.Now;
                 MessageToServer msg = new MessageToServer();
-                msg.transmit_time = DateTime.Now.ToString("o");
+                msg.transmit_time = DateTime.Now.ToString("s");
                 msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
                 msg.room_request = new RoomManagementRequest();
                 msg.room_request.type = RoomRequestType.STATS;

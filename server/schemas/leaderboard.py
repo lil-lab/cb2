@@ -8,7 +8,7 @@ class Username(BaseModel):
     worker = ForeignKeyField(Worker, backref='username')
 
 class Leaderboard(BaseModel):
-    time = DateTimeField(default=datetime.datetime.now)
+    time = DateTimeField(default=datetime.datetime.utcnow)
     score = IntegerField()
     leader = ForeignKeyField(Worker, null=True, backref='leaderboard_entries')
     follower = ForeignKeyField(Worker, null=True, backref='leaderboard_entries')

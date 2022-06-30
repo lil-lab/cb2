@@ -10,5 +10,5 @@ class Remote(BaseModel):
 
 class ConnectionEvents(BaseModel):
     remote = ForeignKeyField(Remote, backref='connection_events')
-    timestamp = DateTimeField(default=datetime.datetime.now)
+    timestamp = DateTimeField(default=datetime.datetime.utcnow)
     event_type = TextField()

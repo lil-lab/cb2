@@ -19,7 +19,7 @@ class Game(BaseModel):
     number_cards = IntegerField(default=0)
     score = IntegerField(default=0)
     number_turns = IntegerField(default=0)
-    start_time = DateTimeField(default=datetime.datetime.now)
+    start_time = DateTimeField(default=datetime.datetime.utcnow)
     end_time = DateTimeField(default=datetime.datetime.max)
     completed = BooleanField(default=False)
     valid = BooleanField(default=True)  # Sqlite doesn't handle autoincrement so instead of deleting games, mark them as invalid.
@@ -28,7 +28,7 @@ class Game(BaseModel):
     follow_assignment = ForeignKeyField(Assignment, backref='follow_games', null=True)
     lead_remote = ForeignKeyField(Remote, backref='leader_games', null=True)
     follow_remote = ForeignKeyField(Remote, backref='follower_games', null=True)
-    server_software_commit = TextField(null=False)
+    server_software_commit = TextField(null=False, default="")
 
 class HecsCoordField(TextField):
     def db_value(self, value):
@@ -39,7 +39,7 @@ class HecsCoordField(TextField):
 
 class ActionField(TextField):
     def db_value(self, value):
-        return orjson.dumps(value, option=orjson.OPT_NAIVE_UTC).decode('utf-8')
+        return orjson.dumps(value, option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.datetime.isoformat).decode('utf-8')
     
     def python_value(self, db_val):
         return Action.from_json(db_val)
@@ -47,7 +47,7 @@ class ActionField(TextField):
 class Turn(BaseModel):
     game = ForeignKeyField(Game, backref='turns')
     role = TextField()  # 'Leader' or 'Follower'
-    time = DateTimeField(default=datetime.datetime.now)
+    time = DateTimeField(default=datetime.datetime.utcnow)
     turn_number = IntegerField(default=0)
     notes = TextField() # a CSV of 'UsedAllMoves', 'FinishedAllCommands', or 'SkippedTurnNoInstructionsTodo'
     end_method = TextField() # Something like 'RanOutOfTime' or 'UserPrompted', or 'FollowerOutOfMoves', or 'FollowerFinishedInstructions'
@@ -57,7 +57,7 @@ class Instruction(BaseModel):
     worker = ForeignKeyField(Worker, backref='moves', null=True)
     uuid = TextField()
     text = TextField()
-    time = DateTimeField(default=datetime.datetime.now)
+    time = DateTimeField(default=datetime.datetime.utcnow)
     instruction_number = IntegerField()
     turn_issued = IntegerField()
     turn_completed = IntegerField(default=-1)

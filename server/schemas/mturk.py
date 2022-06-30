@@ -26,4 +26,4 @@ class Assignment(BaseModel):
     worker = ForeignKeyField(Worker, backref='assignments')
     hit_id = TextField()
     submit_to_url = TextField()
-    time_used = DateTimeField(default=datetime.datetime.now)
+    time_used = DateTimeField(default=datetime.datetime.utcnow)

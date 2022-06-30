@@ -4,6 +4,8 @@
 <link rel="stylesheet" type="text/css" href="https://w2ui.com/src/w2ui-1.5.min.css" />
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.0/jquery.min.js"></script>
 <script type="text/javascript" src="https://w2ui.com/src/w2ui-1.5.min.js"></script>
+<!-- import google maps auto complete api-->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY&libraries=places"></script>
 </head>
 <body>
 <a id="replay-link" href="" target="_blank">Link to Replay</a>
@@ -18,6 +20,13 @@ function WriteReplayLink(link_id, game_id) {
     var url = new URL('/?replay_game=true&game_id=' + game_id, window.location.origin);
     link.href = url;
 }
+
+//Autocomplete for address input for google maps api
+function initAutocomplete() {
+  var input = document.getElementById('address-input');
+  var autocomplete = new google.maps.places.Autocomplete(input);
+}
+
 
 $(function () {
     var path = window.location.pathname

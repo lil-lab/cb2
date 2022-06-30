@@ -2,6 +2,7 @@
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
+from mashumaro.mixins.json import DataClassJSONMixin
 from marshmallow import fields
 from typing import List, Optional
 
@@ -23,9 +24,8 @@ def ReadConfigOrDie(config_path):
         config = Config.from_json(cfg_file.read())
         return config
 
-@dataclass_json
 @dataclass
-class Config:
+class Config(DataClassJSONMixin):
     name: str = ""  # The name of the config.
 
     # Data filepath configurations.

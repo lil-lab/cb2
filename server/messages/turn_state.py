@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
+from mashumaro.mixins.json import DataClassJSONMixin
 from messages.rooms import Role
 from datetime import datetime
 from marshmallow import fields
@@ -14,9 +15,8 @@ def GameOverMessage(game_start_date, sets_collected, score, turn_number):
 def TurnUpdate(turn_role, moves_remaining, turns_left, turn_end, game_start, sets_collected, score, turn_number):
     return TurnState(turn_role, moves_remaining, turns_left, turn_end, game_start, sets_collected, score, False, turn_number)
 
-@dataclass_json
 @dataclass
-class TurnState:
+class TurnState(DataClassJSONMixin):
     turn: Role
     moves_remaining: int  # Number of moves remaining this turn.
     turns_left: int # Number of turns until the game ends.
@@ -37,7 +37,6 @@ class TurnState:
     game_over: bool
     turn_number: int
 
-@dataclass_json
 @dataclass(frozen=True)
-class TurnComplete:
+class TurnComplete(DataClassJSONMixin):
     pass

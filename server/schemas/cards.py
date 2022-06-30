@@ -23,4 +23,4 @@ class CardSelections(BaseModel):
     move = ForeignKeyField(Move, backref='card_selections')
     card = ForeignKeyField(Card, backref='card_selections')
     type = TextField() # "select" or "unselect"
-    game_time = DateTimeField(default=datetime.datetime.now)
+    game_time = DateTimeField(default=datetime.datetime.utcnow)

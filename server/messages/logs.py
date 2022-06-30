@@ -4,6 +4,7 @@ from enum import Enum
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from typing import List, Optional
+from mashumaro.mixins.json import DataClassJSONMixin
 from marshmallow import fields
 from messages import message_to_server as mts
 from messages import message_from_server as mfs
@@ -25,17 +26,15 @@ def LogEntryFromIncomingMessage(player_id, message_to_server):
 def LogEntryFromOutgoingMessage(player_id, message_from_server):
     return LogEntry(Direction.FROM_SERVER, player_id, message_from_server, None)
 
-@dataclass_json
 @dataclass(frozen=True)
-class LogEntry:
+class LogEntry(DataClassJSONMixin):
     message_direction: Direction
     player_id: int
     message_from_server: mfs.MessageFromServer = field(default_factory=mfs.MessageFromServer)
     message_to_server: mts.MessageToServer = field(default_factory=mts.MessageToServer)
 
-@dataclass_json
 @dataclass(frozen=True)
-class GameInfo:
+class GameInfo(DataClassJSONMixin):
     start_time: datetime = field(
         metadata=config(
             encoder=datetime.isoformat,
@@ -47,9 +46,8 @@ class GameInfo:
     roles: List[Role]
     ids: List[int]
 
-@dataclass_json
 @dataclass
-class GameLog(object):
+class GameLog(DataClassJSONMixin):
     game_info: GameInfo
     log_entries: List[LogEntry]
     server_config: cfg.Config = field(default_factory=cfg.Config)

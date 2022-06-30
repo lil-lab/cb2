@@ -133,7 +133,7 @@ class Room(object):
         return len(self._players)
 
     def handle_packet(self, id, message):
-        log_message = orjson.dumps(LogEntryFromIncomingMessage(id, message), option=orjson.OPT_NAIVE_UTC).decode('utf-8')
+        log_message = orjson.dumps(LogEntryFromIncomingMessage(id, message), option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat).decode('utf-8')
         self._messages_to_server_log.write(log_message + "\n")
         self._game_state.handle_packet(id, message)
 
@@ -201,10 +201,11 @@ class Room(object):
         if message is None:
             return
 
-        log_bytes = orjson.dumps(LogEntryFromOutgoingMessage(player_id, message), option=orjson.OPT_NAIVE_UTC).decode('utf-8')
+        log_bytes = orjson.dumps(LogEntryFromOutgoingMessage(player_id, message), option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat).decode('utf-8')
         self._messages_from_server_log.write(log_bytes + "\n")
 
         # Render map updates to a PNG.
+        # Disabled for now until 
         # if message.type == message_from_server.MessageType.MAP_UPDATE:
         #     self._map_update_count += 1
         #     map_path = pathlib.Path(self._log_directory, f"map_update_{self._map_update_count}_player_{player_id}.png")

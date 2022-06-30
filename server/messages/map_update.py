@@ -1,3 +1,4 @@
+from mashumaro.mixins.json import DataClassJSONMixin
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
@@ -11,25 +12,22 @@ import typing
 import messages.prop
 
 
-@dataclass_json
 @dataclass(frozen=True)
-class Tile:
+class Tile(DataClassJSONMixin):
     asset_id: int
     cell: HexCell
     rotation_degrees: int
 
-@dataclass_json
 @dataclass
-class MapMetadata:
+class MapMetadata(DataClassJSONMixin):
     num_cities: int = 0
     num_lakes: int = 0
     num_mountains: int = 0
     num_outposts: int = 0
     num_partitions: int = 0
 
-@dataclass_json
 @dataclass(frozen=True)
-class MapUpdate:
+class MapUpdate(DataClassJSONMixin):
     rows: int
     cols: int
     tiles: List[Tile]

@@ -4,6 +4,7 @@ import card
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
+from mashumaro.mixins.json import DataClassJSONMixin
 from datetime import datetime
 from marshmallow import fields
 from messages import action
@@ -18,9 +19,8 @@ class PropType(Enum):
     CARD = 2
 
 
-@dataclass_json
 @dataclass
-class GenericPropInfo:
+class GenericPropInfo(DataClassJSONMixin):
     location: HecsCoord
     rotation_degrees: int
     collide: bool
@@ -28,24 +28,21 @@ class GenericPropInfo:
     border_color: action.Color = action.Color(0, 0, 1, 1)
 
 
-@dataclass_json
 @dataclass(frozen=True)
-class CardConfig:
+class CardConfig(DataClassJSONMixin):
     color: card.Color
     shape: card.Shape
     count: int
     selected: bool
 
 
-@dataclass_json
 @dataclass(frozen=True)
-class SimpleConfig:
+class SimpleConfig(DataClassJSONMixin):
     asset_id: int
 
 
-@dataclass_json
 @dataclass(frozen=True)
-class Prop:
+class Prop(DataClassJSONMixin):
     id: int
     prop_type: PropType
     prop_info: GenericPropInfo

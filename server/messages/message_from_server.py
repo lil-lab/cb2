@@ -1,6 +1,7 @@
 """ Defines message structure received from server.  """
 
 from enum import Enum
+from mashumaro.mixins.json import DataClassJSONMixin
 from messages import live_feedback
 from messages.action import Action
 from messages.turn_state import TurnState
@@ -65,9 +66,8 @@ def PingMessageFromServer():
 def LiveFeedbackFromServer(feedback):
     return MessageFromServer(datetime.now(), MessageType.LIVE_FEEDBACK, None, None, None, None, None, None, None, feedback)
 
-@dataclass_json
 @dataclass(frozen=True)
-class MessageFromServer:
+class MessageFromServer(DataClassJSONMixin):
     transmit_time: datetime = field(
         metadata=config(
             encoder=datetime.isoformat,

@@ -17,4 +17,4 @@ class MapUpdate(BaseModel):
     map_data = MapUpdateField()
     game = ForeignKeyField(Game, backref='map_updates', null=True)
     map_update_number = IntegerField()
-    time = DateTimeField(default=datetime.datetime.now)
+    time = DateTimeField(default=datetime.datetime.utcnow)

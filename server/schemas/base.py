@@ -12,7 +12,7 @@ def SetDatabase(db_path):
     database.init(
         db_path, 
         pragmas =
-            [ ('cache_size', -1024 * 64),  # 64MB page-cache.
+            [ ('cache_size', -1024 * 64),  # 64MB page-cache. Negative implies kibibytes as units... yeah lol.
               ('journal_mode', 'wal'),  # Use WAL-mode (you should always use this!).
               ('foreign_keys', 1)]
     )

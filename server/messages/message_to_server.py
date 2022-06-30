@@ -1,6 +1,8 @@
 """ Defines message structure sent to server.  """
 
 from enum import Enum
+from mashumaro import pass_through
+from mashumaro.mixins.json import DataClassJSONMixin
 from messages.action import Action
 from messages.rooms import RoomManagementRequest
 from messages.live_feedback import LiveFeedback
@@ -17,6 +19,7 @@ from typing import List, Optional
 
 import dateutil.parser
 import typing
+import pendulum
 
 
 class MessageType(Enum):
@@ -32,16 +35,12 @@ class MessageType(Enum):
     CANCEL_PENDING_OBJECTIVES = 9
 
 
-@dataclass_json
 @dataclass(frozen=True)
-class MessageToServer:
+class MessageToServer(DataClassJSONMixin):
     transmit_time: datetime = field(
-        metadata=config(
-            encoder=datetime.isoformat,
-            decoder=dateutil.parser.isoparse,
-            mm_field=fields.DateTime(format='iso')
-        ))
-    type: MessageType
+        metadata={"deserialize": "pendulum", "serialize": pass_through}
+    )
+    type: MessageType = MessageType.ACTIONS
     actions: Optional[List[Action]] = None
     room_request: Optional[RoomManagementRequest] = None
     objective: Optional[ObjectiveMessage] = None

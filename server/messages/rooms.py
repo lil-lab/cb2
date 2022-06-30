@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from marshmallow import fields
+from mashumaro.mixins.json import DataClassJSONMixin
 from typing import List, Optional
 
 import dateutil.parser
@@ -25,18 +26,16 @@ class Role(Enum):
     LEADER = 2
 
 
-@dataclass_json
 @dataclass(frozen=True)
-class JoinResponse:
+class JoinResponse(DataClassJSONMixin):
     joined: bool
 
     place_in_queue: Optional[int]  # If joined == false.
     role: Role  # If joined == true.
 
 
-@dataclass_json
 @dataclass(frozen=True)
-class LeaveRoomNotice:
+class LeaveRoomNotice(DataClassJSONMixin):
     """ Used to notify a user that they have left the room. 
 
         This is to allow the server to boot a player. Optionally,
@@ -45,9 +44,8 @@ class LeaveRoomNotice:
     reason: str
 
 
-@dataclass_json
 @dataclass(frozen=True)
-class StatsResponse:
+class StatsResponse(DataClassJSONMixin):
     number_of_games: int
     players_in_game: int
     players_waiting: int
@@ -63,9 +61,8 @@ class RoomRequestType(Enum):
     MAP_SAMPLE = 5
 
 
-@dataclass_json
 @dataclass(frozen=True)
-class RoomManagementRequest:
+class RoomManagementRequest(DataClassJSONMixin):
     type: RoomRequestType
 
 
@@ -79,9 +76,8 @@ class RoomResponseType(Enum):
     MAP_SAMPLE = 5
 
 
-@dataclass_json
 @dataclass(frozen=True)
-class RoomManagementResponse:
+class RoomManagementResponse(DataClassJSONMixin):
     type: RoomResponseType
 
     # Depending on the type above, the below are optionally populated.

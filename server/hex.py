@@ -1,7 +1,8 @@
 """ Utility file handling hex-related calculations. """
 
 from dataclasses import dataclass
-from dataclasses_json import dataclass_json, LetterCase
+from dataclasses_json import DataClassJsonMixin, dataclass_json, LetterCase
+from mashumaro.mixins.json import DataClassJSONMixin
 from enum import IntEnum
 
 import math
@@ -11,9 +12,8 @@ logger = logging.getLogger()
 
 # HECS-style coordinate class.
 # https://en.wikipedia.org/wiki/Hexagonal_Efficient_Coordinate_System
-@dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(frozen=True)
-class HecsCoord:
+class HecsCoord(DataClassJSONMixin):
     a: int
     r: int
     c: int
@@ -112,7 +112,6 @@ class HecsCoord:
         """ Converts HECS A, R, C coordinates to Hex offset coordinates. """
         return (self.r * 2 + self.a, self.c)
 
-@dataclass_json
 @dataclass(frozen=True)
 class Edges(IntEnum):
     UPPER_RIGHT = 0
@@ -122,9 +121,8 @@ class Edges(IntEnum):
     LEFT = 4
     UPPER_LEFT = 5
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(unsafe_hash=True)
-class HexBoundary:
+class HexBoundary(DataClassJSONMixin):
     edges: int
 
     DIR_TO_EDGE = {
@@ -178,9 +176,8 @@ class HexBoundary:
         return self.get_edge(edge)
 
 
-@dataclass_json(letter_case=LetterCase.PASCAL)
 @dataclass(unsafe_hash=True)
-class HexCell:
+class HexCell(DataClassJSONMixin):
     coord: HecsCoord
     boundary: HexBoundary
     height: float
