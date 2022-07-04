@@ -99,6 +99,11 @@ async def Index(request):
 async def QualificationPage(request):
     return web.FileResponse("www/qualification.html")
 
+@routes.get('/migration-qualification')
+async def QualificationPage(request):
+    return web.FileResponse("www/migration_qualification.html")
+
+
 @routes.get('/rules')
 async def Rules(request):
     return web.FileResponse("www/rules.html")
@@ -124,6 +129,12 @@ async def Images(request):
     if not request.match_info.get('filename'):
         return web.HTTPNotFound()
     return web.FileResponse(f"www/images/{request.match_info['filename']}")
+
+@routes.get('/js/{filename}')
+async def Js(request):
+    if not request.match_info.get('filename'):
+        return web.HTTPNotFound()
+    return web.FileResponse(f"www/js/{request.match_info['filename']}")
 
 @routes.get('/status')
 async def Status(request):
