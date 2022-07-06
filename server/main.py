@@ -11,10 +11,12 @@ import itertools
 import json
 import orjson
 import logging
+import multiprocessing as mp
 import os
 import pathlib
 import peewee
 import pygame
+import queue
 import shutil
 import sys
 import statistics
@@ -275,15 +277,20 @@ async def MessagesToServer(request):
     return web.FileResponse(game_dir / "messages_to_server.json")
 
 download_requested = False
-download_contents = None
+download_file_path = ""
 download_status = {
     "status": "idle",
     "log": [],
 }
+
 async def DataDownloader(room_manager):
-    global download_contents
     global download_requested
     global download_status
+    global download_file_path
+    download_process = None
+    download_time_started = None
+    download_path = mp.Queue()
+    logs = mp.Queue()
     NYC = tz.gettz('America/New_York')
     timestamp =  lambda : datetime.now(NYC).strftime("%Y-%m-%d %H:%M:%S")
     log_entry = lambda x: download_status["log"].append(f"{timestamp()}: {x}")
@@ -293,41 +300,94 @@ async def DataDownloader(room_manager):
         if not download_requested:
             continue
 
-        # Don't process downloads if someone is actively playing a game.
+        if download_process is not None:
+            try:
+                log = logs.get(False)
+                download_status["log"].append(log)
+            except queue.Empty:
+                pass
+
+        if download_process is not None and not download_process.is_alive():
+            try:
+                download_file_path = download_path.get(True, 15)
+                log_entry(f"Download ready in temp file at {download_file_path}.")
+                download_status["status"] = "ready"
+                download_requested = False
+                download_process.terminate()
+                download_process = None
+                download_path = mp.Queue()
+                logs = mp.Queue()
+            except queue.Empty:
+                download_process.terminate()
+                download_process = None
+                download_status["status"] = "error"
+                download_requested = False
+                download_file_path = ""
+                download_time_started = None
+                download_path = mp.Queue()
+                logs = mp.Queue()
+                download_status["log"] = []
+        
+        if download_process is not None and download_process.is_alive():
+            # If the process is still running, but we've waited 5 minutes, kill it.
+            if (datetime.now() - download_time_started).total_seconds() > 300:
+                log_entry("Download process timed out.")
+                download_process.terminate()
+                download_process = None
+                download_status["status"] = "error"
+                download_requested = False
+                download_file_path = ""
+                download_time_started = None
+                download_path = mp.Queue()
+                logs = mp.Queue()
+                download_status["log"] = []
+                continue
+
+        # Don't start downloads if someone is actively playing a game.
         if len(room_manager.room_ids()) > 0:
             download_status["status"] = "busy"
             log_entry(f"Waiting on {len(room_manager.room_ids())} active games to finish before downloading.")
             await asyncio.sleep(10)
             continue
+            
+        if download_process is None and download_status["status"] in ["done", "idle"]:
+            download_process = mp.Process(target=GatherDataForDownload, args=(GlobalConfig(), download_path, logs))
+            download_process.start()
+            download_status["status"] = "preparing"
+            download_status["log"] = []
+            download_time_started = datetime.now()
 
-        database = CSqliteExtDatabase(GlobalConfig().database_path(), pragmas =
-                [ ('cache_size', -1024 * 64),  # 64MB page-cache.
-                ('journal_mode', 'wal'),  # Use WAL-mode (you should always use this!).
-                ('foreign_keys', 1)])
-        log_entry(f"Starting...") 
-        download_status["status"] = "preparing"
-        database.backup_to_file(GlobalConfig().backup_database_path())
-        log_entry(f"DB backed up.")
-        await asyncio.sleep(0.5)
-        time_string = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
-        game_archive = shutil.make_archive(f"{GlobalConfig().record_directory()}-{time_string}", 'gztar', GlobalConfig().record_directory())
-        log_entry("Game files archived.")
-        await asyncio.sleep(0.5)
-        download_contents = io.BytesIO()
-        with zipfile.ZipFile(download_contents, "a", False) as zip_file:
-            with open(GlobalConfig().backup_database_path(), "rb") as db_file:
-                zip_file.writestr("game_data.db", db_file.read())
-                log_entry(f"DB file added to download ZIP.")
-                await asyncio.sleep(0.5)
-            with open(game_archive, "rb") as game_file:
-                zip_file.writestr("game_record.zip", game_file.read())
-                log_entry(f"Game archive added to download ZIP.")
-                await asyncio.sleep(0.5)
-        # Delete the game archive now that we've read it into memory and added it to the zip file.
-        os.remove(game_archive)
-        log_entry("Download ready.")
-        download_status["status"] = "ready"
-        download_requested = False
+def GatherDataForDownload(config, response, logs):
+    """ Zips up player data for download in a separate thread. Param response is a queue to put the zip file path into. """
+    NYC = tz.gettz('America/New_York')
+    timestamp =  lambda : datetime.now(NYC).strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = lambda x: logs.put(f"{timestamp()}: {x}")
+    database = CSqliteExtDatabase(config.database_path(), pragmas =
+            [ ('cache_size', -1024 * 64),  # 64MB page-cache.
+            ('journal_mode', 'wal'),  # Use WAL-mode (you should always use this!).
+            ('foreign_keys', 1)])
+    log_entry(f"Starting...") 
+    database.backup_to_file(config.backup_database_path())
+    log_entry(f"DB backed up. Archiving game files...")
+    time_string = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
+    game_archive = shutil.make_archive(f"{config.record_directory()}-{time_string}", 'gztar', config.record_directory())
+    log_entry("Game files archived. Compressing to zip...")
+    download_file = tempfile.NamedTemporaryFile(delete=False, prefix="game_data_", suffix=".zip")
+    download_file_path = download_file.name
+    with zipfile.ZipFile(download_file, "a", False) as zip_file:
+        with open(config.backup_database_path(), "rb") as db_file:
+            zip_file.writestr("game_data.db", db_file.read())
+            log_entry(f"DB file added to download ZIP.")
+        with open(game_archive, "rb") as game_file:
+            zip_file.writestr("game_record.zip", game_file.read())
+            log_entry(f"Game archive added to download ZIP.")
+    # Delete the game archive now that we've read it into memory and added it to the zip file.
+    os.remove(game_archive)
+    download_file.close()
+    log_entry("Zip file written to disk.")
+    log_entry(f"Download ready in temp file at {download_file_path}.")
+    response.put(download_file_path)
+
 
 @routes.get('/data/download_status')
 async def DownloadStatus(request):
@@ -336,18 +396,22 @@ async def DownloadStatus(request):
 
 @routes.get('/data/download_retrieve')
 async def RetrieveData(request):
-    global download_contents
     global download_status
+    global download_file_path
     NYC = tz.gettz('America/New_York')
     timestamp =  lambda : datetime.now(NYC).strftime("%Y-%m-%d %H:%M:%S")
     log_entry = lambda x: download_status["log"].append(f"{timestamp()}: {x}")
-    local_download_contents = download_contents
-    if local_download_contents is None:
+    # Make sure download_file_path is a file.
+    if not os.path.isfile(download_file_path):
         log_entry("Retrieval attempted, but no download available.")
         return web.HTTPNotFound()
     log_entry("Retrieved download.")
     download_status["status"] = "done"
-    return web.Response(body=local_download_contents.getvalue(), content_type="application/zip")
+    local_download_file_path = download_file_path
+    download_file_path = ""
+    return web.FileResponse(local_download_file_path, headers={
+        'Content-Disposition': f"attachment;filename={os.path.basename(download_file_path)}"
+    })
 
 @routes.get('/data/download')
 async def DataDownloadStart(request):

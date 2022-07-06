@@ -16,6 +16,7 @@
             }
 
             var interval = undefined;
+            var fetched_download = false;
             function check_download_status() {
                 // Make a jquery GET request to "/data/download_status" to check if the download is complete.
                 // The response is a JSON object with "status" and "log" keys. Update the elements with ids "status" and "download_log" accordingly.
@@ -29,12 +30,19 @@
                         // If the download is complete, then redirect to the download link after a delay.
                         if (data.status == "ready") {
                             $("#status").text("Status: " + data.status + ". Downloading...");
-                            clearInterval(interval);
-                            setTimeout(function() {
-                                console.log("Redirecting to download link...");
-                                $("#download-link").css("display", "block");
-                                downloadFile("/data/download_retrieve");
-                            }, 1000);
+                            if (interval != undefined) {
+                                console.log("Clearing download status interval");
+                                clearInterval(interval);
+                            }
+                            interval = undefined;
+                            if (!fetched_download) {
+                                setTimeout(function() {
+                                    fetched_download = true;
+                                    console.log("Redirecting to download link...");
+                                    $("#download-link").css("display", "block");
+                                    downloadFile("/data/download_retrieve");
+                                }, 1000);
+                            }
                         }
                     })
                     .fail(function(data) {
