@@ -310,8 +310,7 @@ async def DataDownloader(room_manager):
         log_entry(f"DB backed up.")
         await asyncio.sleep(0.5)
         time_string = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
-        game_archive =
-        shutil.make_archive(f"{GlobalConfig().record_directory()}-{time_string}", 'gztar', GlobalConfig().record_directory())
+        game_archive = shutil.make_archive(f"{GlobalConfig().record_directory()}-{time_string}", 'gztar', GlobalConfig().record_directory())
         log_entry("Game files archived.")
         await asyncio.sleep(0.5)
         download_contents = io.BytesIO()
