@@ -310,7 +310,8 @@ async def DataDownloader(room_manager):
         log_entry(f"DB backed up.")
         await asyncio.sleep(0.5)
         time_string = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
-        game_archive = shutil.make_archive(f"{GlobalConfig().record_directory()}-{time_string}", 'gztar', GlobalConfig().record_directory())
+        game_archive =
+        shutil.make_archive(f"{GlobalConfig().record_directory()}-{time_string}", 'gztar', GlobalConfig().record_directory())
         log_entry("Game files archived.")
         await asyncio.sleep(0.5)
         download_contents = io.BytesIO()
@@ -345,9 +346,9 @@ async def RetrieveData(request):
     if local_download_contents is None:
         log_entry("Retrieval attempted, but no download available.")
         return web.HTTPNotFound()
-    log_entry("Retrieved.")
+    log_entry("Retrieved download.")
     download_status["status"] = "done"
-    return web.Response(body=local_download_contents.getvalue(), content_type="application/gzip")
+    return web.Response(body=local_download_contents.getvalue(), content_type="application/zip")
 
 @routes.get('/data/download')
 async def DataDownloadStart(request):
