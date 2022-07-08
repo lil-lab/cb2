@@ -18,6 +18,7 @@ from config.config import Config
 from db_tools import db_utils
 
 import fire
+import itertools
 import pathlib
 import random
 import pygame
@@ -86,6 +87,11 @@ def main(number=-1, search_term="", research_only=True, config_filepath="config/
     base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
 
     games = db_utils.ListResearchGames() if research_only else db_utils.ListMturkGames()
+    if len(config.analysis_game_id_ranges) > 0:
+        valid_ids = set(itertools.chain(*[range(x, y) for x,y in config.analysis_game_id_ranges]))
+        print(f"Filtered to {valid_ids}")
+        games = [game for game in games if game.id in valid_ids]
+        print(f"Number of games after filter: {len(games)}")
     words = set()
     instruction_list = []
     for game in games:

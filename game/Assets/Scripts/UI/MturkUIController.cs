@@ -10,6 +10,7 @@ public class MturkUIController : MonoBehaviour
     private const string SKIP_TO_TASK_PARAM = "skipToTask";
     private const string ASSIGNMENT_ID_PARAM = "assignmentId";
     private const string JOIN_QUEUE_TASK = "joinGameQueue";
+    private const string JOIN_FOLLOWER_QUEUE_TASK = "joinGameFollowerQueue";
     private const string LEADER_TUTORIAL_TASK = "leaderTutorial";
     private const string FOLLOWER_TUTORIAL_TASK = "followerTutorial";
 
@@ -42,6 +43,12 @@ public class MturkUIController : MonoBehaviour
                 queue_ui.SetActive(true);
                 Debug.Log("[DEBUG] MTURK: Jumping to JoinGameQueue task.");
                 Network.NetworkManager.TaggedInstance().JoinGame();
+                break;
+            case JOIN_FOLLOWER_QUEUE_TASK:
+                mturk_ui.SetActive(false);
+                queue_ui.SetActive(true);
+                Debug.Log("[DEBUG] MTURK: Jumping to JoinGameFollowerQueue task.");
+                Network.NetworkManager.TaggedInstance().JoinAsFollower();
                 break;
             case LEADER_TUTORIAL_TASK:
                 mturk_ui.SetActive(false);

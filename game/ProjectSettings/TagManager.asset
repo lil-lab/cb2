@@ -62,6 +62,7 @@ TagManager:
   - LEADER_SCORE_TEXT
   - FOLLOWER_SCORE_TEXT
   - INSTRUCTION_TITLE_TEXT
+  - QUEUE_TIMEOUT_UI
   layers:
   - Default
   - TransparentFX

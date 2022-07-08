@@ -32,6 +32,7 @@ class JoinResponse(DataClassJSONMixin):
 
     place_in_queue: Optional[int]  # If joined == false.
     role: Role  # If joined == true.
+    booted_from_queue: bool = False
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,7 @@ class RoomRequestType(Enum):
     CANCEL = 3
     LEAVE = 4
     MAP_SAMPLE = 5
+    JOIN_FOLLOWER_ONLY = 6
 
 
 @dataclass(frozen=True)

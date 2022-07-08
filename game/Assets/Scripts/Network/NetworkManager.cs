@@ -243,6 +243,17 @@ namespace Network
             _client.TransmitMessage(msg);
         }
 
+        public void JoinAsFollower()
+        {
+            MessageToServer msg = new MessageToServer();
+            msg.transmit_time = DateTime.Now.ToString("s");
+            msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
+            msg.room_request = new RoomManagementRequest();
+            msg.room_request.type = RoomRequestType.JOIN_FOLLOWER_ONLY;
+            Debug.Log("[DEBUG]Joining game as follower ...");
+            _client.TransmitMessage(msg);
+        }
+
         public void StartLeaderTutorial()
         {
             StartTutorial(TutorialRequest.LEADER_TUTORIAL);
@@ -453,9 +464,12 @@ namespace Network
                     _router.ClearPlayer();
                     SceneManager.LoadScene("game_scene");
                     _role = response.join_response.role;
-                }
-                else
-                {
+                } else if (response.join_response.booted_from_queue) {
+                    Debug.Log("Booted from queue.");
+                    GameObject bootedUi = GameObject.FindGameObjectWithTag("QUEUE_TIMEOUT_UI");
+                    Canvas bootedCanvas = bootedUi.GetComponent<Canvas>();
+                    bootedCanvas.enabled = true;
+                } else {
                     Debug.Log("Waiting for room. Position in queue: " + response.join_response.place_in_queue);
                 }
             }

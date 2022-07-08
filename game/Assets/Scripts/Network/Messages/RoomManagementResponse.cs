@@ -36,6 +36,7 @@ namespace Network
         // These are optionally populated depending on the value of Joined.
         public int place_in_queue;  // If Joined == false.
         public Role role;  // If Joined == true.
+        public bool booted_from_queue; // Did the player get booted from the queue?
     }
 
     [Serializable]
