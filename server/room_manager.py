@@ -25,6 +25,7 @@ import aiohttp
 import asyncio
 import logging
 import messages.rooms
+import orjson
 import pathlib
 import random
 import schemas.game
@@ -230,7 +231,8 @@ class RoomManager(object):
             game_info_path = pathlib.Path(log_directory, "game_info.jsonl.log")
             game_info_log = game_info_path.open("w")
             game_info = GameInfo(datetime.now(), game_id, game_name, [Role.LEADER, Role.FOLLOWER], [leader_id, follower_id])
-            game_info_log.write(game_info.to_json() + "\n")
+            json_str = orjson.dumps(game_info, option=orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat).decode('utf-8')
+            game_info_log.write(json_str + "\n")
             game_info_log.close()
 
             self._pending_room_management_responses[leader].put(
@@ -353,12 +355,25 @@ class RoomManager(object):
                 logger.info("Removed socket from queue.")
                 removed = True
                 continue
-            logger.info(f"{element}(element) != {ws}(ws -- to be deleted)")
+            logger.debug(f"{element}(element) != {ws}(ws -- to be deleted)")
             player_queue.append((ts, element))
         if not removed:
             logger.warning("Socket not found in queue!")
         self._player_queue = player_queue
 
+        follower_queue = deque()
+        removed = False
+        for ts, element in self._follower_queue:
+            if element == ws:
+                logger.info("Removed socket from follower queue.")
+                removed = True
+                continue
+            logger.debug(f"{element}(element) != {ws}(ws -- to be deleted)")
+            follower_queue.append((ts, element))
+        if not removed:
+            logger.warning("Socket not found in follower queue!")
+        self._follower_queue = follower_queue
+    
     def handle_cancel_request(self, request, ws):
         # Iterate through the queue of followers and leaders,
         # removing the given socket.

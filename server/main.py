@@ -122,6 +122,14 @@ async def OneoffComp(request):
 async def TaskPage(request):
     return web.FileResponse("www/mturk-task.html")
 
+@routes.get('/follower-task')
+async def TaskPage(request):
+    return web.FileResponse("www/follower-task.html")
+
+@routes.get('/follower-qual')
+async def TaskPage(request):
+    return web.FileResponse("www/follower-qual.html")
+
 @routes.get('/changelist')
 async def Changelist(request):
     return web.FileResponse("www/changelist.html")
