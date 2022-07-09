@@ -5,6 +5,7 @@ from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from typing import List, Optional
 from mashumaro.mixins.json import DataClassJSONMixin
+from mashumaro import pass_through
 from marshmallow import fields
 from messages import message_to_server as mts
 from messages import message_from_server as mfs
@@ -36,11 +37,8 @@ class LogEntry(DataClassJSONMixin):
 @dataclass(frozen=True)
 class GameInfo(DataClassJSONMixin):
     start_time: datetime = field(
-        metadata=config(
-            encoder=datetime.isoformat,
-            decoder=dateutil.parser.isoparse,
-            mm_field=fields.DateTime(format='iso')
-        ))
+        metadata={"deserialize": "pendulum", "serialize": pass_through}
+    )
     game_id: int
     game_name: str
     roles: List[Role]

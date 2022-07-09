@@ -143,7 +143,8 @@ async def Status(request):
     global assets_map
     global room_manager
     remote_table = GetRemoteTable()
-    player_queue = {str(x):str(remote_table[x]) for x in room_manager.player_queue()}
+    player_queue = {str(x):str(remote_table[x]) for _,x in room_manager.player_queue()}
+    follower_queue = {str(x):str(remote_table[x]) for _,x in room_manager.follower_queue()}
 
     server_state = {
         "assets": assets_map,
@@ -154,6 +155,7 @@ async def Status(request):
         "rooms": [room_manager.get_room(room_id).state() for room_id in room_manager.room_ids()],
         "room_selected_cards": [str(room_manager.get_room(room_id).selected_cards()) for room_id in room_manager.room_ids()],
         "player_queue": player_queue,
+        "follower_queue": follower_queue,
         "room_debug_info": [room_manager.get_room(room_id).debug_status() for room_id in room_manager.room_ids()],
     }
     pretty_dumper = lambda x: orjson.dumps(x, option=orjson.OPT_NAIVE_UTC | orjson.OPT_INDENT_2).decode('utf-8')
@@ -205,7 +207,8 @@ async def GameLogs(request):
     if (game_dir / "config.json").exists():
         with open(game_dir / "config.json", "r") as f:
             game_log.config = orjson.loads(f.read())
-    return web.json_response(json.loads(game_log.to_json()))
+    json_str = orjson.dumps(game_log, option=orjson.OPT_NAIVE_UTC | orjson.OPT_INDENT_2 | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat)
+    return web.Response(text=json_str.decode('utf-8'), content_type="application/json")
 
 
 @routes.get('/data/username_from_id/{user_id}')
