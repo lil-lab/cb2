@@ -252,28 +252,37 @@ class RoomManager(object):
             Leaders and followers are removed from their respective queues. If
             either queue is empty, leaves the other untouched.
         """
-        # First of all, if the player queue is empty and the first follower has been waiting for 5m, remove them from the queue.
-        if len(self._player_queue) == 0 and len(self._follower_queue) > 0:
+        # First of all, if the first follower has been waiting for 5m, remove them from the queue.
+        if len(self._follower_queue) > 0:
             (ts, follower) = self._follower_queue[0]
             if datetime.now() - ts > timedelta(minutes=5):
                 self._follower_queue.popleft()
                 # Queue a room management response to notify the follower that they've been removed from the queue.
                 self._pending_room_management_responses[follower].put(
                     RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, -1, Role.NONE, True), None, None,))
+        
+        # If a general player has been waiting alone for 5m, remove them from the queue.
+        if len(self._player_queue) > 0:
+            (ts, player) = self._player_queue[0]
+            if datetime.now() - ts > timedelta(minutes=5):
+                self._player_queue.popleft()
+                # Queue a room management response to notify the player that they've been removed from the queue.
+                self._pending_room_management_responses[player].put(
+                    RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, -1, Role.NONE, True), None, None))
 
         # If there's no general players, a match can't be made.
         if len(self._player_queue) < 1:
             return None, None
         
         # If there's a follower waiting, match them with the first general player.
-        if len(self._follower_queue) > 1:
+        if len(self._follower_queue) >= 1:
             (_, leader) = self._player_queue.popleft()
             (_, follower) = self._follower_queue.popleft()
             return leader, follower
 
         # If there's no follower waiting, check if there's two general players...
         if len(self._player_queue) < 2:
-            return
+            return (None, None)
 
         # If a general player has been waiting for >= 10 seconds with no follower, match them with another general player.
         (ts, _) = self._player_queue[0] 
@@ -281,14 +290,6 @@ class RoomManager(object):
             (_, leader) = self._player_queue.popleft()
             (_, follower) = self._player_queue.popleft()
             return leader, follower
-        
-        # If a general player has been waiting alone for 5m, remove them from the queue.
-        (ts, player) = self._player_queue[0]
-        if datetime.now() - ts > timedelta(minutes=5):
-            self._player_queue.popleft()
-            # Queue a room management response to notify the player that they've been removed from the queue.
-            self._pending_room_management_responses[player].put(
-                RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, -1, Role.NONE, True), None, None))
         
         return None, None
     
@@ -376,7 +377,7 @@ class RoomManager(object):
 
         if request.type == RoomRequestType.JOIN:
             self.handle_join_request(request, ws)
-        elif request.type == RoomRequestType.FOLLOWER_ONLY_JOIN:
+        elif request.type == RoomRequestType.JOIN_FOLLOWER_ONLY:
             self.handle_follower_only_join_request(request, ws)
         elif request.type == RoomRequestType.LEAVE:
             self.handle_leave_request(request, ws)
