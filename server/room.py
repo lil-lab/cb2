@@ -189,11 +189,18 @@ class Room(object):
         game_state = self._game_state.state(-1)
         map = self._game_state.map()
         turn_state = self._game_state.turn_state()
+
+        # Serialize state to json.
+        game_state_json = orjson.dumps(game_state, option=orjson.OPT_PASSTHROUGH_DATETIME | orjson.OPT_INDENT_2, default=datetime.isoformat).decode('utf-8')
+        map_json = orjson.dumps(map, option=orjson.OPT_PASSTHROUGH_DATETIME | orjson.OPT_INDENT_2, default=datetime.isoformat).decode('utf-8')
+        turn_state_json = orjson.dumps(turn_state, option=orjson.OPT_PASSTHROUGH_DATETIME | orjson.OPT_INDENT_2, default=datetime.isoformat).decode('utf-8')
+
         return {
             'is_done': str(is_done),
-            'game_state': game_state.to_json(),
-            'map': map.to_json(),
-            'turn_state': turn_state.to_json(),
+            'game_state': game_state_json,
+
+            'map': map_json,
+            'turn_state': turn_state_json,
         }
 
     def drain_message(self, player_id):

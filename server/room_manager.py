@@ -189,7 +189,8 @@ class RoomManager(object):
         game_info_log = game_info_path.open("w")
         print(player_remote)
         game_info = GameInfo(datetime.now(), game_id, game_name, [role], [player_id])
-        game_info_log.write(game_info.to_json() + "\n")
+        json_str = orjson.dumps(game_info, option=orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat).decode('utf-8')
+        game_info_log.write(json_str + "\n")
         game_info_log.close()
         return room
 
