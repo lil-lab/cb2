@@ -860,8 +860,11 @@ class MapProvider(object):
         return self._cards_by_location.get(location, None)
 
     def map(self):
-        logger.info(str(self._map_metadata))
-        return MapUpdate(self._rows, self._cols, self._tiles, [card.prop() for card in self._cards], self._map_metadata)
+        if self._map_metadata:
+            return MapUpdate(self._rows, self._cols, self._tiles, [card.prop() for card in self._cards], self._map_metadata)
+        else:
+            return MapUpdate(self._rows, self._cols, self._tiles, [card.prop() for card in self._cards])
+
     
     def coord_in_map(self, coord):
         offset_coords = coord.to_offset_coordinates()

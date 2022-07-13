@@ -58,10 +58,10 @@ class Outpost(DataClassJSONMixin):
 
 @dataclass
 class MapMetadata(DataClassJSONMixin):
-    lakes: List[Lake]
-    mountains: List[Mountain]
-    cities: List[City]
-    outposts: List[Outpost]
+    lakes: List[Lake] = field(default_factory=list)
+    mountains: List[Mountain] = field(default_factory=list)
+    cities: List[City] = field(default_factory=list)
+    outposts: List[Outpost] = field(default_factory=list)
     num_partitions: int = 0
     partition_locations: List[HecsCoord] = field(default_factory=list)
     partition_sizes: List[int] = field(default_factory=list)

@@ -346,8 +346,8 @@ FOLLOWER_TUTORIAL_STEPS = [
     TutorialStep(
         [],
         Tooltip("",
-                "Last instruction!",
-                TooltipType.UNTIL_OBJECTIVES_COMPLETED),
+                "Last instruction! If you followed all the previous instructions, this should result in you collecting a set.",
+                TooltipType.UNTIL_SET_COLLECTED),
         Instruction("Pick up the center card in the v-shaped cluster.")),
     TutorialStep(
         [],
@@ -359,7 +359,14 @@ FOLLOWER_TUTORIAL_STEPS = [
     TutorialStep(
         [],
         Tooltip("",
-                "Not sure what to do given an instruction? Do your best, and mark the instruction as done to get the next one. (press \"Shift\" to continue)",
+                "Don't forget to hit the \"Done\" button when you're done with an instruction!",
+                TooltipType.UNTIL_OBJECTIVES_COMPLETED),
+        None,
+    ),
+    TutorialStep(
+        [],
+        Tooltip("",
+                "Advice: If you're not sure what to do with an instruction, do your best, and mark the instruction as done to get the next one. (press \"Shift\" to continue)",
                 TooltipType.UNTIL_DISMISSED),
         None,
     ),
