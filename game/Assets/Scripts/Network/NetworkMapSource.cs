@@ -34,7 +34,7 @@ namespace Network
             _rows = mapInfo.rows;
             _cols = mapInfo.cols;
 
-            foreach (Network.MapUpdate.Tile tile in mapInfo.tiles)
+            foreach (Network.Tile tile in mapInfo.tiles)
             {
                 _map.Add(new HexGridManager.TileInformation
                 {
@@ -48,11 +48,45 @@ namespace Network
             if (mapInfo.metadata != null)
             {
                 // Log the number of cities, lakes, mountains and outposts.
-                _logger.Info("Cities: " + mapInfo.metadata.num_cities);
-                _logger.Info("Lakes: " + mapInfo.metadata.num_lakes);
-                _logger.Info("Mountains: " + mapInfo.metadata.num_mountains);
-                _logger.Info("Outposts: " + mapInfo.metadata.num_outposts);
+                _logger.Info("Cities: " + mapInfo.metadata.cities.Count);
+                _logger.Info("Lakes: " + mapInfo.metadata.lakes.Count);
+                _logger.Info("Mountains: " + mapInfo.metadata.mountains.Count);
+                _logger.Info("Outposts: " + mapInfo.metadata.outposts.Count);
                 _logger.Info("Partitions: " + mapInfo.metadata.num_partitions);
+
+                _logger.Info("Cities: ");
+                foreach (Network.City city in mapInfo.metadata.cities)
+                {
+                    _logger.Info("r: " + city.r + ", c: " + city.c + ", size: " + city.size);
+                }
+
+                _logger.Info("Lakes: ");
+                foreach (Network.Lake lake in mapInfo.metadata.lakes)
+                {
+                    _logger.Info("r: " + lake.r + ", c: " + lake.c + ", size: " + lake.size + ", type: " + lake.type.ToString());
+                }
+
+                _logger.Info("Mountains: ");
+                foreach (Network.Mountain mountain in mapInfo.metadata.mountains)
+                {
+                    _logger.Info("r: " + mountain.r + ", c: " + mountain.c + ", type: " + mountain.type.ToString() + ", snowy: " + mountain.snowy);
+                }
+
+                _logger.Info("Outposts: ");
+                foreach (Network.Outpost outpost in mapInfo.metadata.outposts)
+                {
+                    _logger.Info("r: " + outpost.r + ", c: " + outpost.c + ", connection_a: " + outpost.connection_a.ToString() + ", connection_b: " + outpost.connection_b.ToString());
+                }
+
+                _logger.Info("Partitions: ");
+                foreach (HecsCoord location in mapInfo.metadata.partition_locations)
+                {
+                    // Print each locations' offset coordinates using ToOffsetCoordinates.
+                    _logger.Info("(r, c): " + location.ToOffsetCoordinates().ToString());
+                }
+
+                // Print the size of each partition on one line:
+                _logger.Info("Partition sizes: " + string.Join(", ", mapInfo.metadata.partition_sizes));
             }
 
             _networkMapReady = true;

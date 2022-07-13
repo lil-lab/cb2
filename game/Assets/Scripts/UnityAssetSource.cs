@@ -48,6 +48,8 @@ public class UnityAssetSource : IAssetSource
         "Prefab/Cards/CardBase_1",
         "Prefab/Cards/CardBase_2",
         "Prefab/Cards/CardBase_3",
+        "Prefab/Mountain/Mountain_Tree",
+        "Prefab/Mountain/Snowy_Mountain_Tree",
         // These are 2D shapes that appear on card faces.
         "Prefab/Cards/Shapes/Square",
         "Prefab/Cards/Shapes/Star",

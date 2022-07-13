@@ -1,12 +1,12 @@
 """ This utility streams a hardcoded map to clients. """
 from pathlib import Path
-from assets import AssetId
+from assets import AssetId, is_snowy, SnowifyAssetId
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from enum import Enum
 from hex import HecsCoord, HexCell, HexBoundary
 from map_utils import *
-from messages.map_update import MapMetadata, MapUpdate, Tile
+from messages.map_update import MapMetadata, MapUpdate, City, Lake, Mountain, Outpost, MountainType, LakeType
 from queue import Queue
 from typing import List, Optional
 
@@ -40,13 +40,6 @@ MAX_NUMBER_OF_OUTPOSTS = 6
 PATH_CONNECTION_DISTANCE = 4
 
 logger = logging.getLogger()
-
-@dataclass_json
-@dataclass
-class City:
-    r: int
-    c: int
-    size: int
 
 # A point in a BFS or DFS search from a certain origin.
 @dataclass_json
@@ -112,14 +105,7 @@ def city_connection_points(city):
         connections.append(HecsCoord.from_offset(r, c))
     return connections
 
-@dataclass_json
-@dataclass
-class Lake:
-    r: int
-    c: int
-    size: int
-
-def place_lake(map, lake):
+def place_circular_lake(map, lake):
     """ Places a lake on the map."""
     # Place the center tile.
     map[lake.r][lake.c] = WaterTile()
@@ -151,14 +137,23 @@ def place_lake(map, lake):
 
 def place_l_shaped_lake(map, lake):
     r, c = lake.r, lake.c
-    lakes = [Lake(r, c, 1), Lake(r, c + 2, 1), Lake(r + 2, c, 1)]
-    for lake in lakes:
-        place_lake(map, lake)
+    # Each lake configuration is a list of smaller lake epicenters. They are combined to make the larger lake.
+    lake_configurations = [
+        [Lake(r, c, 1), Lake(r, c + 2, 1), Lake(r + 2, c, 1)],
+        [Lake(r, c, 1), Lake(r, c - 2, 1), Lake(r - 2, c, 1)],
+        [Lake(r, c, 1), Lake(r, c + 2, 1), Lake(r - 2, c, 1)],
+        [Lake(r, c, 1), Lake(r, c - 2, 1), Lake(r + 2, c, 1)],
+    ]
+    lake_positions = random.choice(lake_configurations)
+    for lake in lake_positions:
+        if not offset_coord_in_map(map, (lake.r, lake.c)):
+            continue
+        place_circular_lake(map, lake)
 
 def place_island_lake(map, lake):
     r, c = lake.r, lake.c
     lake.size = 2
-    place_lake(map, lake)
+    place_circular_lake(map, lake)
     point_queue = Queue()
     point_queue.put(SearchPoint(r, c, 0))
     center = HecsCoord.from_offset(r, c)
@@ -185,29 +180,30 @@ def place_island_lake(map, lake):
         in_r, in_c = inner.to_offset_coordinates()
         map[in_r][in_c] = np.random.choice([GroundTile, RandomNatureTile, GroundTileStreetLight], size=1, p=[0.9, 0.05, 0.05])[0]()
 
+def random_lake_type():
+    # Do NOT put RANDOM as a return option in this function, or it causes an infinite recursive loop in place_lake below.
+    # Just in case you were inattentive and didn't read this, I placed a guard if-statement below it.
+    lake_type = random.choice([LakeType.REGULAR, LakeType.L_SHAPED, LakeType.ISLAND])
+    if lake_type == LakeType.RANDOM:
+        logger.warning("RANDOM lake type cannot be returned from random_lake_type().")
+        return LakeType.REGULAR
+    return lake_type
 
-
-
-def place_random_lake(map, lake):
-    lake_placer = random.choice([place_l_shaped_lake, place_island_lake, place_lake])
-    lake_placer(map, lake)
-
-class LakeType(Enum):
-    """ The type of map to generate."""
-    RANDOM = 0
-    L_SHAPED = 1
-    ISLAND = 2
-    REGULAR = 3
-
-def place_lake_of_type(map, lake, type):
+def place_lake(map, lake):
+    type = lake.type
     if type == LakeType.RANDOM:
-        place_random_lake(map, lake)
+        # Recursive, but guaranteed to terminate.
+        lake.type = random_lake_type()
+        if lake.type == LakeType.RANDOM:
+            logger.warning("RANDOM lake type cannot be returned from random_lake_type().")
+            lake.type = LakeType.REGULAR
+        place_lake(map, lake)
     elif type == LakeType.L_SHAPED:
         place_l_shaped_lake(map, lake)
     elif type == LakeType.ISLAND:
         place_island_lake(map, lake)
     elif type == LakeType.REGULAR:
-        place_lake(map, lake)
+        place_circular_lake(map, lake)
 
 def lake_connection_points(lake):
     """ Returns the HecsCoord coordinates of the lake's connection points."""
@@ -224,20 +220,6 @@ def is_walkable(map, hecs_coord):
     r,c = hecs_coord.to_offset_coordinates()
     return map[r][c].asset_id in [AssetId.EMPTY_TILE, AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH]
 
-class MountainType(Enum):
-    NONE = 0
-    SMALL = 1
-    MEDIUM = 2
-    LARGE = 3
-
-@dataclass_json
-@dataclass
-class Mountain:
-    r: int
-    c: int
-    type: MountainType
-    snowy: bool
-
 def offset_coord_in_map(map, offset):
     return (offset[0] in range(0, len(map)) and
             offset[1] in range(0, len(map[offset[0]])))
@@ -253,9 +235,15 @@ def place_small_mountain(map, mountain):
     mountain_coords.append(start.down_left())
     mountain_coords.append(start.down_right())
 
+    potential_trees = [start.right(), start.down_left()]
+    trees = random.sample(potential_trees, random.randint(0, len(potential_trees) - 1))
+
     for coord in mountain_coords:
         offset = coord.to_offset_coordinates()
         if offset_coord_in_map(map, offset):
+            if coord in trees:
+                map[offset[0]][offset[1]] = MountainTileTree(rotation_degrees=0, snowy=mountain.snowy)
+                continue
             map[offset[0]][offset[1]] = MountainTile(rotation_degrees=0, snowy=mountain.snowy)
 
     first_ramp_offset = start.left().to_offset_coordinates()
@@ -270,7 +258,8 @@ def place_small_mountain(map, mountain):
         ramp_locations.append(HecsCoord.from_offset(*second_ramp_offset))
         map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=180, snowy=mountain.snowy)
 
-    placed_coords = mountain_coords + ramp_locations
+    # Tiles around ramps are always kept clear (walkable).
+    placed_coords = ramp_locations
     for coord in placed_coords:
         for neighbor in coord.neighbors():
             offset = neighbor.to_offset_coordinates()
@@ -290,9 +279,15 @@ def place_medium_mountain(map, mountain):
     mountain_coords.append(start.down_right().down_right())
     mountain_coords.append(start.down_right().down_left())
 
+    potential_trees = [start, start.down_right(), start.down_right().down_right()]
+    trees = random.sample(potential_trees, random.randint(0, len(potential_trees) - 1))
+
     for coord in mountain_coords:
         offset = coord.to_offset_coordinates()
         if offset_coord_in_map(map, offset):
+            if coord in trees:
+                map[offset[0]][offset[1]] = MountainTileTree(rotation_degrees=0, snowy=mountain.snowy)
+                continue
             map[offset[0]][offset[1]] = MountainTile(rotation_degrees=0, snowy=mountain.snowy)
 
     first_ramp_offset = start.left().to_offset_coordinates()
@@ -307,7 +302,8 @@ def place_medium_mountain(map, mountain):
         ramp_locations.append(HecsCoord.from_offset(*second_ramp_offset))
         map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=240, snowy=mountain.snowy)
 
-    placed_coords = mountain_coords + ramp_locations
+    # Tiles around ramps are always kept clear (walkable).
+    placed_coords = ramp_locations
     for coord in placed_coords:
         for neighbor in coord.neighbors():
             offset = neighbor.to_offset_coordinates()
@@ -324,10 +320,16 @@ def place_large_mountain(map, mountain):
     mountain_coords.append(start)
     for coord in start.neighbors():
         mountain_coords.append(coord)
+    
+    potential_trees = [start.down_left(), start.down_right(), start.up_left(), start.up_right()]
+    trees = random.sample(potential_trees, random.randint(0, len(potential_trees) - 1))
 
     for coord in mountain_coords:
         offset = coord.to_offset_coordinates()
         if offset_coord_in_map(map, offset):
+            if coord in trees:
+                map[offset[0]][offset[1]] = MountainTileTree(rotation_degrees=0, snowy=mountain.snowy)
+                continue
             map[offset[0]][offset[1]] = MountainTile(rotation_degrees=0, snowy=mountain.snowy)
 
     first_ramp_offset = start.left().left().to_offset_coordinates()
@@ -342,7 +344,8 @@ def place_large_mountain(map, mountain):
         ramp_locations.append(HecsCoord.from_offset(*second_ramp_offset))
         map[second_ramp_offset[0]][second_ramp_offset[1]] = RampToMountain(rotation_degrees=180, snowy=mountain.snowy)
 
-    placed_coords = mountain_coords + ramp_locations
+    # Tiles around ramps are always kept clear (walkable).
+    placed_coords = ramp_locations
     for coord in placed_coords:
         for neighbor in coord.neighbors():
             offset = neighbor.to_offset_coordinates()
@@ -409,16 +412,6 @@ def path_find(map, start, end):
                     visited.add(neighbor)
     return None
 
-# A collection of 3-4 tiles that are path-connected (BFS) to two other features. 
-@dataclass_json
-@dataclass
-class Outpost:
-    r: int
-    c: int
-    connection_a: HecsCoord
-    connection_b: HecsCoord
-    tiles: List[Tile]  # Tiles. HECS coordinates will be ignored.
-
 def place_outpost(map, outpost):
     """ Place tiles at (r, c), (r + 1, c), (r, c + 2), (r + 1, c + 2) """
     coords = [(outpost.r, outpost.c), (outpost.r + 1, outpost.c), (outpost.r + 1, outpost.c + 1), (outpost.r+3, outpost.c + 1)] 
@@ -450,15 +443,6 @@ def place_outpost(map, outpost):
             if offset_coord_in_map(map, offset):
                 map[offset[0]][offset[1]] = PathTile()
             
-
-# # A point in a BFS or DFS search from a certain origin.
-# @dataclass_json
-# @dataclass
-# class SearchPoint:
-#     r: int
-#     c: int
-#     radius: int
-    
 def RandomMap():
     """ Random map of Tile objects, each with HECS coordinates and locations."""
     map = []
@@ -468,6 +452,8 @@ def RandomMap():
             tile = EmptyTile()
             row.append(tile)
         map.append(row)
+
+    map_metadata = MapMetadata([], [], [], [], 0)
     
     # Generate candidates for feature centers.
     rows = list(range(1, MAP_HEIGHT - 2, 6))
@@ -489,6 +475,7 @@ def RandomMap():
         city = City(city_center[0], city_center[1], 2)
         cities.append(city)
         place_city(map, city)
+        map_metadata.cities.append(city)
         new_connection_points = city_connection_points(city)
         connection_points.extend(new_connection_points)
         feature_id = ids.alloc()
@@ -503,8 +490,9 @@ def RandomMap():
         if len(feature_center_candidates) == 0:
             break
         lake_center = feature_center_candidates.pop()
-        lake = Lake(lake_center[0], lake_center[1], random.randint(1, 2))
-        place_lake_of_type(map, lake, lake_types.pop())
+        lake = Lake(lake_center[0], lake_center[1], random.randint(1, 2), lake_types.pop())
+        place_lake(map, lake)
+        map_metadata.lakes.append(lake)
         new_connection_points = lake_connection_points(lake)
         connection_points.extend(new_connection_points)
         feature_id = ids.alloc()
@@ -519,8 +507,9 @@ def RandomMap():
         if len(feature_center_candidates) == 0:
             break
         mountain_center = feature_center_candidates.pop()
-        mountain = Mountain(mountain_center[0], mountain_center[1], mountain_types.pop(), np.random.choice([True, False], p=[0.3, 0.7]))
+        mountain = Mountain(mountain_center[0], mountain_center[1], mountain_types.pop(), bool(np.random.choice([True, False], p=[0.3, 0.7])))
         place_mountain(map, mountain)
+        map_metadata.mountains.append(mountain)
         new_connection_points = mountain_connection_points(map, mountain)
         connection_points.extend(new_connection_points)
         feature_id = ids.alloc()
@@ -538,6 +527,7 @@ def RandomMap():
         first_connection_point = nearest_connection_points.pop(0) if len(nearest_connection_points) > 0 else None
         second_connection_point = nearest_connection_points.pop(0) if len(nearest_connection_points) > 0 else None
         outpost = Outpost(outpost_center[0], outpost_center[1], first_connection_point, second_connection_point, [RandomNatureTile(), UrbanHouseTile(), RandomNatureTile()])
+        map_metadata.outposts.append(outpost)
         if random.randint(0, 1) == 0:
             outpost.tiles.append(UrbanHouseTile(rotation_degrees=180))
         place_outpost(map, outpost)
@@ -565,11 +555,21 @@ def RandomMap():
                     connected[entity_j][entity_i] = 1
 
     # Fill empty tiles with random ground tiles.
+    snow_tiles = set([(r, c) for r in range(MAP_HEIGHT) for c in range(MAP_WIDTH) if is_snowy(map[r][c].asset_id)])
     for r in range(0, MAP_HEIGHT):
         for c in range(0, MAP_WIDTH):
             if map[r][c].asset_id == AssetId.EMPTY_TILE:
+                is_near_snow = False
+                hecs = HecsCoord.from_offset(r, c)
+                for neighbor in hecs.neighbors():
+                    neighbor_rc = neighbor.to_offset_coordinates()
+                    if offset_coord_in_map(map, neighbor_rc) and neighbor_rc in snow_tiles:
+                        is_near_snow = True
+                        break
                 tile_generator = np.random.choice([GroundTile, RandomNatureTile, GroundTileStreetLight], size=1, p=[0.88, 0.10, 0.02])[0]
-                map[r][c] = tile_generator()
+                tile = tile_generator()
+                snowify_tile = is_near_snow and tile.asset_id in TreeAssets()
+                map[r][c] = SnowifyTile(tile) if snowify_tile else tile
 
     # Make sure there's at least 23 walkable tiles (2 for spawn points, 21 for card placement). 
     walkable_tiles = 0
@@ -601,8 +601,7 @@ def RandomMap():
     for i in range(len(map_tiles)):
         map_tiles[i].cell.height = LayerToHeight(map_tiles[i].cell.layer)
 
-    return MapUpdate(MAP_HEIGHT, MAP_WIDTH, map_tiles, [],
-            MapMetadata(number_of_cities, number_of_lakes, number_of_mountains, number_of_outposts))
+    return MapUpdate(MAP_HEIGHT, MAP_WIDTH, map_tiles, [], map_metadata)
 
 class CardGenerator(object):
     def __init__(self, id_assigner):
@@ -700,6 +699,8 @@ class MapProvider(object):
             sorted_spaces = sorted(spaces, key=len, reverse=True)
             # Only spawn cards in the largest contiguous region.
             self._map_metadata.num_partitions = len(sorted_spaces)
+            self._map_metadata.partition_locations = [space[0] for space in sorted_spaces]
+            self._map_metadata.partition_sizes = [len(space) for space in sorted_spaces]
             self._potential_spawn_tiles = sorted_spaces[0]
 
             self._potential_spawn_tiles = [tile 
@@ -859,6 +860,7 @@ class MapProvider(object):
         return self._cards_by_location.get(location, None)
 
     def map(self):
+        logger.info(str(self._map_metadata))
         return MapUpdate(self._rows, self._cols, self._tiles, [card.prop() for card in self._cards], self._map_metadata)
     
     def coord_in_map(self, coord):

@@ -1,4 +1,4 @@
-from assets import AssetId, TreeAssets, NatureAssets, SnowifyAssetId, TreeFrequencies
+from assets import AssetId, TreeAssets, NatureAssets, SnowifyAssetId, TreeFrequencies, SnowAssets
 from hex import HecsCoord, HexCell, HexBoundary
 from messages.map_update import MapUpdate, Tile
 from enum import Enum
@@ -34,6 +34,14 @@ def EmptyTile():
                 0,  # Z-Layer (int)
                 ),
         0
+    )
+
+def SnowifyTile(tile):
+    """ Creates a snowy version of a tile. """
+    return Tile(
+        SnowifyAssetId(tile.asset_id),
+        tile.cell,
+        tile.rotation_degrees
     )
 
 def GroundTile(rotation_degrees=0):
@@ -197,6 +205,18 @@ def RandomNatureTile(rotation_degrees=0):
         rotation_degrees
     )
 
+def RandomSnowTile(rotation_degrees = 0):
+    """ Creates a single tile of nature. """
+    snow_asset_id = random.choice(SnowAssets())
+    return Tile(
+        snow_asset_id,
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
+                LayerToHeight(0),  # Height (float)
+                0  # Z-Layer (int)
+        ),
+        rotation_degrees
+    )
+
 def GroundTileTreeRocks(rotation_degrees=0):
     """ Creates a single tile of ground with a tree."""
     return Tile(
@@ -344,6 +364,19 @@ def MountainTile(rotation_degrees=0, snowy=False):
         rotation_degrees
     )
 
+def MountainTileTree(rotation_degrees=0, snowy=False):
+    """ Creates a single tile of mountain with an optionally snowy tree."""
+    asset_id = AssetId.MOUNTAIN_TILE_TREE
+    if snowy:
+        asset_id = SnowifyAssetId(asset_id)
+    return Tile(
+        asset_id,
+        HexCell(HecsCoord.from_offset(0, 0), HexBoundary(0x3F),
+                LayerToHeight(2),  # Height (float)
+                2  # Z-Layer (int)
+                ),
+        rotation_degrees
+    )
 
 def RampToMountain(rotation_degrees=0, snowy=False):
     """ Creates a single tile of ramp."""

@@ -42,7 +42,13 @@ class AssetId(IntEnum):
     CARD_BASE_4 = 38
     CARD_BASE_5 = 39
     CARD_BASE_6 = 40
+    MOUNTAIN_TILE_TREE = 41
+    SNOWY_MOUNTAIN_TILE_TREE = 42
     EMPTY_TILE = 100 # Used for map gen, should never appear in network protocol.
+
+def TreeAssets():
+    """ Returns a list of snow-themed assets. """
+    return [AssetId.GROUND_TILE_TREE, AssetId.GROUND_TILE_TREE_BROWN, AssetId.GROUND_TILE_TREES_2, AssetId.GROUND_TILE_TREE_DARKGREEN, AssetId.GROUND_TILE_TREE_SOLIDBROWN]
 
 def SnowifyAssetId(asset_id):
     if asset_id == AssetId.GROUND_TILE:
@@ -59,16 +65,25 @@ def SnowifyAssetId(asset_id):
         return AssetId.SNOWY_RAMP_TO_MOUNTAIN
     elif asset_id == AssetId.GROUND_TILE_TREES_2:
         return AssetId.SNOWY_GROUND_TILE_TREES_2
+    elif asset_id == AssetId.MOUNTAIN_TILE_TREE:
+        return AssetId.SNOWY_MOUNTAIN_TILE_TREE
+    elif asset_id == AssetId.GROUND_TILE_TREE_BROWN:
+        return asset_id
+    elif asset_id in TreeAssets():
+        return AssetId.GROUND_TILE_TREE_SNOW
     else:
         return asset_id
 
-def TreeAssets():
-    """ Returns a list of snow-themed assets. """
-    return [AssetId.GROUND_TILE_TREE, AssetId.GROUND_TILE_TREE_BROWN, AssetId.GROUND_TILE_TREE_SNOW, AssetId.GROUND_TILE_TREES_2, AssetId.GROUND_TILE_TREE_DARKGREEN, AssetId.GROUND_TILE_TREE_SOLIDBROWN]
+def is_snowy(asset_id):
+    return asset_id in [AssetId.SNOWY_GROUND_TILE, AssetId.SNOWY_GROUND_TILE_TREES_2, AssetId.SNOWY_GROUND_TILE_ROCKY, AssetId.SNOWY_GROUND_TILE_STONES, AssetId.SNOWY_MOUNTAIN_TILE, AssetId.SNOWY_RAMP_TO_MOUNTAIN, AssetId.GROUND_TILE_TREE_SNOW, AssetId.SNOWY_MOUNTAIN_TILE_TREE]
+
+def SnowAssets():
+    """ Snowy tiles. """
+    return [AssetId.SNOWY_GROUND_TILE, AssetId.SNOWY_GROUND_TILE_TREES_2, AssetId.SNOWY_GROUND_TILE_ROCKY, AssetId.SNOWY_GROUND_TILE_STONES, AssetId.GROUND_TILE_TREE_SNOW]
 
 def TreeFrequencies():
     """ Returns a list of len(TreeAssets()) with the "proper" frequency of each asset. """
-    return [0.3, 0.1, 0.05, 0.15, 0.2, 0.2]
+    return [0.3, 0.1, 0.15, 0.2, 0.2]
 
 def NatureAssets():
     """ Trees, stones, or any other sort of blocking tile that would fit in a forest. """
