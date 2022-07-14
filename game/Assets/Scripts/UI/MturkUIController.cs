@@ -14,6 +14,8 @@ public class MturkUIController : MonoBehaviour
     private const string LEADER_TUTORIAL_TASK = "leaderTutorial";
     private const string FOLLOWER_TUTORIAL_TASK = "followerTutorial";
 
+    private const string CANCEL_QUEUE_BTN_TAG = "CANCEL_QUEUE_BTN";
+
     void Start()
     {
         // Only applies to WebGL contexts...
@@ -39,17 +41,33 @@ public class MturkUIController : MonoBehaviour
         switch(taskName)
         {
             case JOIN_QUEUE_TASK:
+            {
                 mturk_ui.SetActive(false);
                 queue_ui.SetActive(true);
                 Debug.Log("[DEBUG] MTURK: Jumping to JoinGameQueue task.");
                 Network.NetworkManager.TaggedInstance().JoinGame();
+                // Hide the cancel button to prevent players from doing the wrong task.
+                GameObject cancelQueueBtn = GameObject.FindGameObjectWithTag(CANCEL_QUEUE_BTN_TAG);
+                if (cancelQueueBtn != null)
+                {
+                    cancelQueueBtn.SetActive(false);
+                }
                 break;
+            }
             case JOIN_FOLLOWER_QUEUE_TASK:
+            {
                 mturk_ui.SetActive(false);
                 queue_ui.SetActive(true);
                 Debug.Log("[DEBUG] MTURK: Jumping to JoinGameFollowerQueue task.");
                 Network.NetworkManager.TaggedInstance().JoinAsFollower();
+                // Hide the cancel button to prevent players from doing the wrong task.
+                GameObject cancelQueueBtn = GameObject.FindGameObjectWithTag(CANCEL_QUEUE_BTN_TAG);
+                if (cancelQueueBtn != null)
+                {
+                    cancelQueueBtn.SetActive(false);
+                }
                 break;
+            }
             case LEADER_TUTORIAL_TASK:
                 mturk_ui.SetActive(false);
                 Network.NetworkManager.TaggedInstance().StartLeaderTutorial();
