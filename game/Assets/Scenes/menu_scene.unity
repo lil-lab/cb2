@@ -5106,7 +5106,7 @@ GameObject:
   - component: {fileID: 1359208415}
   m_Layer: 5
   m_Name: Cancel
-  m_TagString: Untagged
+  m_TagString: CANCEL_QUEUE_BTN
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

@@ -63,6 +63,7 @@ TagManager:
   - FOLLOWER_SCORE_TEXT
   - INSTRUCTION_TITLE_TEXT
   - QUEUE_TIMEOUT_UI
+  - CANCEL_QUEUE_BTN
   layers:
   - Default
   - TransparentFX
