@@ -63,7 +63,7 @@ class MapMetadata(DataClassJSONMixin):
     cities: List[City] = field(default_factory=list)
     outposts: List[Outpost] = field(default_factory=list)
     num_partitions: int = 0
-    partition_locations: List[HecsCoord] = field(default_factory=list)
+    partition_locations: List[Tile] = field(default_factory=list)
     partition_sizes: List[int] = field(default_factory=list)
 
 @dataclass(frozen=True)
