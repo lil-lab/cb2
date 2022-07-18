@@ -11,7 +11,7 @@ TABLES = [
     Remote, ConnectionEvents,
     Game, Turn, Instruction, Move, LiveFeedback,
     MapUpdate,
-    Worker, Assignment,
+    Worker, Assignment, WorkerExperience,
     Leaderboard, Username
 ]
 

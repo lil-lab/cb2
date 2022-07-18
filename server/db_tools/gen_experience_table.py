@@ -1,22 +1,16 @@
-from schemas.mturk import Worker
-from schemas.leaderboard import Username
+from schemas.mturk import Worker, WorkerExperience
+from schemas.game import Game
+from db_tools import db_utils
 
 import config.config as config
-import leaderboard
+import experience
 import schemas.defaults
 from schemas import base
 
 import fire
+import peewee
 
 from tqdm import tqdm
-
-def InitWorkerDefaultUsernameIfNotExists(worker):
-    username = leaderboard.LookupUsername(worker)
-    if username is None:
-        leaderboard.SetDefaultUsername(worker)
-        print(f"Set username for {worker.hashed_id} ({leaderboard.LookupUsername(worker)})")
-    else:
-        print(f"Username exists for {worker.hashed_id} ({username})")
 
 def main(config_filepath="config/server-config.json"):
     cfg = config.ReadConfigOrDie(config_filepath)
@@ -27,9 +21,13 @@ def main(config_filepath="config/server-config.json"):
     base.ConnectDatabase()
     base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
 
-    workers = Worker.select()
+    workers = Worker.select().join(schemas.mturk.WorkerExperience)
     for worker in tqdm(workers):
-        InitWorkerDefaultUsernameIfNotExists(worker)
+        experience.InitWorkerExperience(worker)
+
+    games = db_utils.ListMturkGames().join(Worker, join_type=peewee.JOIN.LEFT_OUTER, on=((Game.leader == Worker.id) or (Game.follower == Worker.id)))
+    for game in tqdm(games):
+        experience.UpdateWorkerExperienceTable(game)
 
 if __name__ == "__main__":
     fire.Fire(main)
