@@ -130,6 +130,10 @@ async def TaskPage(request):
 async def TaskPage(request):
     return web.FileResponse("www/follower-qual.html")
 
+@routes.get('/leader-qual')
+async def TaskPage(request):
+    return web.FileResponse("www/leader-qual.html")
+
 @routes.get('/changelist')
 async def Changelist(request):
     return web.FileResponse("www/changelist.html")
