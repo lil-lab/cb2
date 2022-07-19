@@ -10,8 +10,6 @@ from schemas import base
 import fire
 import peewee
 
-from tqdm import tqdm
-
 def main(config_filepath="config/server-config.json"):
     cfg = config.ReadConfigOrDie(config_filepath)
 
@@ -21,13 +19,17 @@ def main(config_filepath="config/server-config.json"):
     base.ConnectDatabase()
     base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
 
-    workers = Worker.select().join(schemas.mturk.WorkerExperience)
-    for worker in tqdm(workers):
+    workers = Worker.select().join(schemas.mturk.WorkerExperience, join_type=peewee.JOIN.LEFT_OUTER)
+    for worker in workers:
         experience.InitWorkerExperience(worker)
+    
+    print("Done initializing worker experience table.")
 
     games = db_utils.ListMturkGames().join(Worker, join_type=peewee.JOIN.LEFT_OUTER, on=((Game.leader == Worker.id) or (Game.follower == Worker.id)))
-    for game in tqdm(games):
+    for game in games:
         experience.UpdateWorkerExperienceTable(game)
+
+    print("Done updating worker experience table.")
 
 if __name__ == "__main__":
     fire.Fire(main)

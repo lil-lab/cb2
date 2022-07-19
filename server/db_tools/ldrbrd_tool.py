@@ -9,6 +9,8 @@ from schemas.leaderboard import Username, Leaderboard
 from schemas import base
 from db_tools import db_utils
 
+from datetime import datetime
+
 import fire
 import humanhash
 import hashlib
@@ -32,7 +34,7 @@ COMMANDS = [
     "workers_by_experience",  # Ranks workers by # of games played.
     "hopeless_leaders",  # Prints workers who have played > 10 lead games but have a low lead score. (bottom 30%)
     "prodigious_leaders", # Prints workers who haven't played much (< 3 lead games), but have a high lead score. (top 30%)
-    "good_followers",     # Prints workers who have played > N follower games with > N points (threshold).
+    "good_followers",     # Prints workers who have played >= N follower games with average >= N points (threshold).
 ]
 
 def PrintUsage():
@@ -79,7 +81,7 @@ def PrintWorkerExperienceEntries(entries, role, no_sparklines):
     for entry in entries:
         avg_metric = {
             "leader": entry.lead_score_avg,
-            "follower": entry.follower_score_avg,
+            "follower": entry.follow_score_avg,
             "both": entry.total_score_avg
         }.get(role, "ERR")
         num_games_metric = {
@@ -88,32 +90,35 @@ def PrintWorkerExperienceEntries(entries, role, no_sparklines):
             "both": entry.total_games_played
         }.get(role, "ERR")
         recent_games = {
-            "leader": entry.last_100_lead_scores,
-            "follower": entry.last_100_follow_scores,
-            "both": entry.last_100_scores
+            "leader": entry.last_1k_lead_scores,
+            "follower": entry.last_1k_follow_scores,
+            "both": entry.last_1k_scores
         }.get(role, [])
-        print(f"hash: {entry.worker.hashed_id[0:6]}, role: {role}, avg score: {avg_metric:.2f}, num games: {num_games_metric}")
+        print(f"hash: {entry.worker.get().hashed_id}, role: {role}, avg score: {avg_metric:.2f}, num games: {num_games_metric}")
         if not no_sparklines:
             for line in sparklines(recent_games, num_lines=2):
                 print(line)
 
-def PrintWorkersRanked(role, no_sparklines):
+def PrintWorkersRanked(role, no_sparklines, since):
     """ Prints workers by avg score. """
     experience_entries = []
     if role == "leader":
         experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.lead_score_avg.desc())
     elif role == "follower":
-        experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.follower_score_avg.desc())
+        experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.follow_score_avg.desc())
     elif role == "both":
         experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.total_score_avg.desc())
     else:
         print("Invalid role: " + role)
         return
+
+    # Filter out non-active workers.
+    experience_entries = [entry for entry in experience_entries if entry.last_game_time >= since]
     
     PrintWorkerExperienceEntries(experience_entries, role, no_sparklines)
         
 
-def PrintWorkersByExperience(role, no_sparklines):
+def PrintWorkersByExperience(role, no_sparklines, since):
     """ Prints workers by # of games rather than avg score. """
     experience_entries = []
     if role == "leader":
@@ -126,9 +131,12 @@ def PrintWorkersByExperience(role, no_sparklines):
         print("Invalid role: " + role)
         return
 
+    # Filter out non-active workers.
+    experience_entries = [entry for entry in experience_entries if entry.last_game_time >= since]
+
     PrintWorkerExperienceEntries(experience_entries, role, no_sparklines)
 
-def PrintHopelessLeaders(no_sparklines):
+def PrintHopelessLeaders(no_sparklines, since):
     """ Prints workers who have played > 10 lead games but have a low lead score. (bottom 30% of *all* players)."""
     # Get workers by avg lead score (ascending).
     experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.lead_score_avg)
@@ -138,12 +146,12 @@ def PrintHopelessLeaders(no_sparklines):
     experience_entries = experience_entries[:bottom_30_percent]
 
     # Filter out new workers.
-    experience_entries = [entry for entry in experience_entries if entry.lead_games_played > 10]
+    experience_entries = [entry for entry in experience_entries if entry.lead_games_played > 10 and entry.last_lead_time >= since]
 
     print("Hopeless leaders:")
     PrintWorkerExperienceEntries(experience_entries, "leader", no_sparklines)
 
-def PrintProdigiousLeaders(no_sparklines):
+def PrintProdigiousLeaders(no_sparklines, since):
     """ Prints workers who haven't played much (< 3 games) but have a high lead score. (top 30% of *all* players)."""
     # Get workers by avg lead score (descending).
     experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.lead_score_avg.desc())
@@ -153,23 +161,23 @@ def PrintProdigiousLeaders(no_sparklines):
     experience_entries = experience_entries[:top_30_percent]
 
     # Filter out old workers.
-    experience_entries = [entry for entry in experience_entries if entry.lead_games_played < 3]
+    experience_entries = [entry for entry in experience_entries if entry.lead_games_played < 3 and entry.last_lead_time >= since]
 
     print("Prodigious workers:")
     PrintWorkerExperienceEntries(experience_entries, "leader", no_sparklines)
 
-def PrintGoodFollowers(no_sparklines, threshold):
+def PrintGoodFollowers(no_sparklines, threshold, since):
     """ Prints out followers that have more than threshold games with score >= threshold. """
     # Get workers by avg follower score (descending).
-    experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.follower_score_avg.desc())
+    experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.follow_score_avg.desc())
 
     # Filter out old workers.
-    experience_entries = [entry for entry in experience_entries if entry.follow_games_played > threshold]
+    experience_entries = [entry for entry in experience_entries if entry.follow_games_played >= threshold and entry.follow_score_avg >= threshold and entry.last_follow_time >= since]
 
     print("Good followers:")
     PrintWorkerExperienceEntries(experience_entries, "follower", no_sparklines)
 
-def main(command, id="", hash="", name="", workers_file = "", item="", role="both", nosparklines=False, threshold=3, config_filepath="config/server-config.json"):
+def main(command, id="", hash="", name="", workers_file = "", item="", role="both", since_game=0, nosparklines=False, threshold=3, config_filepath="config/server-config.json"):
     cfg = config.ReadConfigOrDie(config_filepath)
 
     print(f"Reading database from {cfg.database_path()}")
@@ -230,15 +238,15 @@ def main(command, id="", hash="", name="", workers_file = "", item="", role="bot
         md5sum = hashlib.md5(id.encode('utf-8')).hexdigest()
         print(md5sum)
     elif command == "workers_ranked":
-        PrintWorkersRanked(role, nosparklines)
+        PrintWorkersRanked(role, nosparklines, since_game)
     elif command == "workers_by_experience":
-        PrintWorkersByExperience(role, nosparklines)
+        PrintWorkersByExperience(role, nosparklines, since_game)
     elif command == "hopeless_leaders":
-        PrintHopelessLeaders(nosparklines)
+        PrintHopelessLeaders(nosparklines, since_game)
     elif command == "prodigious_leaders":
-        PrintProdigiousLeaders(nosparklines)
+        PrintProdigiousLeaders(nosparklines, since_game)
     elif command == "good_followers":
-        PrintGoodFollowers(nosparklines, threshold)
+        PrintGoodFollowers(nosparklines, threshold, since_game)
     else:
         PrintUsage()
 

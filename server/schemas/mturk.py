@@ -5,9 +5,11 @@ import orjson
 from peewee import *
 from schemas.base import *
 
+import schemas
+
 class RecentScoresField(TextField):
     def __init__(self, *args, **kwargs):
-        super().__init__(default="[]", *args, **kwargs)
+        super().__init__(default="", *args, **kwargs)
 
     def db_value(self, value):
         return orjson.dumps(value, option=orjson.OPT_NAIVE_UTC).decode('utf-8')
@@ -31,9 +33,14 @@ class WorkerExperience(BaseModel):
     total_score_sum = IntegerField(default=0)
     total_games_played = IntegerField(default=0)
 
-    last_100_lead_scores = RecentScoresField()
-    last_100_follow_scores = RecentScoresField()
-    last_100_scores = RecentScoresField()
+    last_1k_lead_scores = RecentScoresField()
+    last_1k_follow_scores = RecentScoresField()
+    last_1k_scores = RecentScoresField()
+
+    # Deferred to resolve the circular dependency (game -> worker (lead/follower) -> worker_experience -> game)
+    last_lead = DeferredForeignKey('Game', null=True, deferrable='INITIALLY DEFERRED')
+    last_follow = DeferredForeignKey('Game', null=True, deferrable='INITIALLY DEFERRED')
+    last_game = DeferredForeignKey('Game', null=True, deferrable='INITIALLY DEFERRED')
 
 """
     Worker qual level is an integer that follows these rules:

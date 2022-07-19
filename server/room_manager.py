@@ -251,6 +251,9 @@ class RoomManager(object):
             Follower-only players must wait for a general player to become
             available. If a follower has waited for > 5m, they're expired from
             the queue.
+
+            If multiple matches are available, selects the most-experienced
+            leader and least-experienced follower.
             
             Leaders and followers are removed from their respective queues. If
             either queue is empty, leaves the other untouched.
