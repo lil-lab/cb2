@@ -304,7 +304,7 @@ FOLLOWER_TUTORIAL_STEPS = [
     TutorialStep(
         [],
         Tooltip("",
-                "Remember!! Follow the Leader's instructions! Don't go on your own! (press \"Shift\" to continue)",
+                "Remember! Follow the Leader's instructions! DO NOT act on your own! (press \"Shift\" to continue)",
                 TooltipType.UNTIL_DISMISSED),
         None,
     ),
