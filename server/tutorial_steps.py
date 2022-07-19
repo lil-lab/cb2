@@ -56,7 +56,7 @@ LEADER_TUTORIAL_STEPS = [
     TutorialStep(
         [],
         Tooltip("",
-                "The follower view is limited, so consider this when writing instructions. They can't see like you! (press \"shift\" to continue)",
+                "REPEATED FOR CLARITY: The follower view is limited, so consider this when writing instructions. They CAN NOT see card patterns! (press \"shift\" to continue)",
                 TooltipType.UNTIL_DISMISSED),
         None,
     ),
@@ -82,7 +82,7 @@ LEADER_TUTORIAL_STEPS = [
         None,
     ),
     TutorialStep(
-        [],
+        [Indicator(HecsCoord(0, 2, 0))],
         Tooltip("",
                 "Tell the follower to get the card at the edge of the map. This card will be straight ahead of them once they finish the previous instruction.",
                 TooltipType.UNTIL_MESSAGE_SENT),
@@ -119,7 +119,7 @@ LEADER_TUTORIAL_STEPS = [
     TutorialStep(
         [],
         Tooltip("",
-                "The follower completed one instruction. See how it's marked as done. They now get the second instruction. They still have steps, so they can start it (press \"shift\" continue)",
+                "The follower completed one instruction. See how it's crossed out now? They now see the second instruction. They still have steps, so they can start it (press \"shift\" continue)",
                 TooltipType.UNTIL_DISMISSED),
         None,
     ),
@@ -172,7 +172,7 @@ LEADER_TUTORIAL_STEPS = [
         Tooltip("",
                 "Good job! The goal is to collect as many sets of 3 cards as"
                 " possible before you run out of turns. Let's do another one. Try picking up the two"
-                " pink triangles near where you started.",
+                " pink triangles near where you started. Do it yourself!",
                 TooltipType.UNTIL_INDICATOR_REACHED),
         None
     ),
@@ -180,21 +180,21 @@ LEADER_TUTORIAL_STEPS = [
         [],
         Tooltip("",
                 "Each card in a set must have a unique color, shape, and number of items. If you"
-                " violate this rule, the cards turn red! Let's try it (Shift to continue).",
+                " violate this rule, the cards turn red! Let's try breaking the rules... (Shift to continue).",
                 TooltipType.UNTIL_DISMISSED),
         None
     ),
     TutorialStep(
-        [Indicator(HecsCoord(1, 1, 3))],
+        [Indicator(HecsCoord(0, 2, 4))],
         Tooltip("",
                 "Go step on the two blue crosses. This isn't unique, since we already have a card with 2 shapes.",
                 TooltipType.UNTIL_INDICATOR_REACHED),
         None
     ),
     TutorialStep(
-        [Indicator(HecsCoord(1, 1, 3))],
+        [Indicator(HecsCoord(0, 2, 4))],
         Tooltip("",
-                "Now to fix the problem, let's unselect the two blue crosses. Step off and back onto the card. now!",
+                "Oh no! Now to fix the problem, let's unselect the two blue crosses. Step off and back onto the card. now!",
                 TooltipType.UNTIL_INDICATOR_REACHED),
         None
     ),
@@ -205,9 +205,9 @@ LEADER_TUTORIAL_STEPS = [
         None
     ),
     TutorialStep(
-        [],
+        [Indicator(HecsCoord(1, 4, 5))],
         Tooltip("",
-                "Ask the follower to grab the last card, behind them at the corner of the map.", TooltipType.UNTIL_MESSAGE_SENT),
+                "Ask the follower to grab the last card. Instruct them to turn around and follow the road to the end, then grab the first card on the snowy mountain.", TooltipType.UNTIL_MESSAGE_SENT),
         None
     ),
     TutorialStep(
@@ -220,7 +220,7 @@ LEADER_TUTORIAL_STEPS = [
       [],
       Tooltip("", "It's the follower's turn...", TooltipType.FOLLOWER_TURN),
       None,
-      [FollowerActions.TURN_LEFT, FollowerActions.TURN_LEFT, FollowerActions.TURN_LEFT, FollowerActions.FORWARDS, FollowerActions.FORWARDS, FollowerActions.FORWARDS, FollowerActions.TURN_RIGHT, FollowerActions.FORWARDS, FollowerActions.FORWARDS],
+      [FollowerActions.TURN_LEFT, FollowerActions.TURN_LEFT, FollowerActions.TURN_LEFT, FollowerActions.FORWARDS, FollowerActions.FORWARDS, FollowerActions.FORWARDS, FollowerActions.FORWARDS, FollowerActions.TURN_LEFT, FollowerActions.FORWARDS, FollowerActions.TURN_RIGHT, FollowerActions.FORWARDS, FollowerActions.TURN_LEFT, FollowerActions.FORWARDS, FollowerActions.FORWARDS],
     ),
     TutorialStep(
       [],
@@ -288,9 +288,9 @@ FOLLOWER_TUTORIAL_STEPS = [
         None,
     ),
     TutorialStep(
-        [Indicator(HecsCoord(0, 1, 0))],
+        [Indicator(HecsCoord(1, 1, 1))],
         Tooltip("",
-                "You move using the arrow keys. Move to the indicator ahead and to the left.",
+                "You move using the arrow keys. Move to the indicator on your right.",
                 TooltipType.UNTIL_INDICATOR_REACHED),
         None,
     ),
@@ -316,11 +316,11 @@ FOLLOWER_TUTORIAL_STEPS = [
         None,
     ),
     TutorialStep(
-        [Indicator(HecsCoord(0, 1, 3))],
+        [Indicator(HecsCoord(0, 1, 4))],
         Tooltip("INSTRUCTION_TITLE_TEXT",
                 "You've received your first instruction! Follow it, then click \"Done\" (or the key \"D\") when you are done",
                 TooltipType.UNTIL_INDICATOR_REACHED),
-        Instruction("Go up the steps to the right, and select the first card on the mountain")
+        Instruction("Go up the steps ahead, and you'll see two cards on the mountain. Select the card on your left")
     ),
     TutorialStep(
         [],
@@ -334,14 +334,14 @@ FOLLOWER_TUTORIAL_STEPS = [
         Tooltip("",
                 "Follow the instructions... Don't forget to mark them as done when complete!",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
-        Instruction("Turn around and go back down the steps. Grab the card on the right.")
+        Instruction("Turn around and go back down the steps. Grab the card by the orange house on the right.")
     ),
     TutorialStep(
         [],
         Tooltip("",
                 "Follow the instructions... Don't forget to mark them as done when complete!",
                 TooltipType.UNTIL_OBJECTIVES_COMPLETED),
-        Instruction("Behind you, near where you started, grab the closest card in the v-shaped set of three cards.")),
+        Instruction("Behind you there should be a v-shaped cluster of cards along the road. Grab the closest card in the cluster.")),
     TutorialStep(
         [],
         Tooltip("",
