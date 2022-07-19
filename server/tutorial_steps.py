@@ -304,6 +304,13 @@ FOLLOWER_TUTORIAL_STEPS = [
     TutorialStep(
         [],
         Tooltip("",
+                "Remember!! Follow the Leader's instructions! Don't go on your own! (press \"Shift\" to continue)",
+                TooltipType.UNTIL_DISMISSED),
+        None,
+    ),
+    TutorialStep(
+        [],
+        Tooltip("",
                 "When asked to select cards, you do so by stepping on them (press \"Shift\" to continue)",
                 TooltipType.UNTIL_DISMISSED),
         None,
@@ -374,13 +381,6 @@ FOLLOWER_TUTORIAL_STEPS = [
         [],
         Tooltip("",
                 "When you run out of steps or instructions, your turn will automatically end. (press \"Shift\" to continue)",
-                TooltipType.UNTIL_DISMISSED),
-        None,
-    ),
-    TutorialStep(
-        [],
-        Tooltip("",
-                "Remember: follow the Leader's instructions! Don't go on your own! (press \"Shift\" to continue)",
                 TooltipType.UNTIL_DISMISSED),
         None,
     ),
