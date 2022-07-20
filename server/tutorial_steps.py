@@ -70,7 +70,14 @@ LEADER_TUTORIAL_STEPS = [
     TutorialStep(
         [],
         Tooltip("MessageInputField",
-                "Let's write an instruction! Use the text box in the bottom-left (or press \"T\"). Tell them to turn left and grab the middle card in the trio of cards.",
+                "Let’s write an instruction! Use the environment to describe to the follower what to do, including the lakes, mountains, grass, snow, paths, trees, houses, lights, rocks, etc” (shift to continue)",
+                TooltipType.UNTIL_DISMISSED),
+        None,
+    ),
+    TutorialStep(
+        [],
+        Tooltip("MessageInputField",
+                "Use the text box in the bottom-left (or press “T”). Tell them to turn left and grab the middle card in the trio of cards.",
                 TooltipType.UNTIL_MESSAGE_SENT),
         None,
     ),
