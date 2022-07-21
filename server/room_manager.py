@@ -262,16 +262,11 @@ class RoomManager(object):
         if exp1.last_1k_lead_scores is None or exp2.last_1k_lead_scores is None:
             logger.info(f"No data to determine either player.")
             return None, None
-        if len(exp1.last_1k_lead_scores) < 5 and len(exp2.last_1k_lead_scores) < 5:
-            logger.info(f"Not enough data to determine either player.")
-            return None, None
-        # If we only have enough data to determine one player, return an arbitrary order (whoever connected first -- player1).
-        if (len(exp1.last_1k_lead_scores) < 5) or (len(exp2.last_1k_lead_scores) < 5):
-            logger.info(f"Only have enough data to determine one player.")
-            return None, None
         # We have enough data on both players!
-        leader1_score = sum(exp1.last_1k_lead_scores[-5:]) / 5
-        leader2_score = sum(exp2.last_1k_lead_scores[-5:]) / 5
+        exp1_lead_games = min(len(exp1.last_1k_lead_scores), 10)
+        leader1_score = sum(exp1.last_1k_lead_scores[-10:]) / exp1_lead_games
+        exp2_lead_games = min(len(exp2.last_1k_lead_scores), 10)
+        leader2_score = sum(exp2.last_1k_lead_scores[-10:]) / exp2_lead_games
         if leader1_score > leader2_score:
             return player1, player2
         elif leader1_score < leader2_score:
