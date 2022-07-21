@@ -116,7 +116,7 @@ def PrintWorkersRanked(role, no_sparklines, since):
         return
 
     # Filter out non-active workers.
-    experience_entries = [entry for entry in experience_entries if entry.last_game_time >= since]
+    experience_entries = [entry for entry in experience_entries]
     
     PrintWorkerExperienceEntries(experience_entries, role, no_sparklines)
         
@@ -137,7 +137,7 @@ def PrintWorkersByExperience(role, no_sparklines, since):
         return
 
     # Filter out non-active workers.
-    experience_entries = [entry for entry in experience_entries if entry.last_game_time >= since]
+    experience_entries = [entry for entry in experience_entries]
 
     PrintWorkerExperienceEntries(experience_entries, role, no_sparklines)
 
@@ -151,7 +151,7 @@ def PrintHopelessLeaders(no_sparklines, since):
     experience_entries = experience_entries[:bottom_30_percent]
 
     # Filter out new workers.
-    experience_entries = [entry for entry in experience_entries if entry.lead_games_played > 10 and entry.last_lead_time >= since]
+    experience_entries = [entry for entry in experience_entries if entry.lead_games_played > 10]
 
     print("Hopeless leaders:")
     PrintWorkerExperienceEntries(experience_entries, "leader", no_sparklines)
@@ -166,7 +166,7 @@ def PrintProdigiousLeaders(no_sparklines, since):
     experience_entries = experience_entries[:top_30_percent]
 
     # Filter out old workers.
-    experience_entries = [entry for entry in experience_entries if entry.lead_games_played < 3 and entry.last_lead_time >= since]
+    experience_entries = [entry for entry in experience_entries if entry.lead_games_played < 3]
 
     print("Prodigious workers:")
     PrintWorkerExperienceEntries(experience_entries, "leader", no_sparklines)
@@ -177,7 +177,7 @@ def PrintGoodFollowers(no_sparklines, threshold, since):
     experience_entries = WorkerExperience.select().order_by(WorkerExperience.follow_score_avg.desc())
 
     # Filter out old workers.
-    experience_entries = [entry for entry in experience_entries if entry.follow_games_played >= threshold and entry.follow_score_avg >= threshold and entry.last_follow_time >= since]
+    experience_entries = [entry for entry in experience_entries if entry.follow_games_played >= threshold and entry.follow_score_avg >= threshold]
 
     print("Good followers:")
     PrintWorkerExperienceEntries(experience_entries, "follower", no_sparklines)
