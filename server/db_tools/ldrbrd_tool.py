@@ -1,15 +1,11 @@
-from schemas.mturk import Worker
-from schemas.leaderboard import Username
-
 import config.config as config
-import experience
 import leaderboard
 import schemas.defaults
-from schemas.leaderboard import Username, Leaderboard
-from schemas import base
-from db_tools import db_utils
 
-from datetime import datetime
+from db_tools import db_utils
+from schemas import base
+from schemas.leaderboard import Username
+from schemas.mturk import WorkerQualLevel, Worker, WorkerExperience
 
 import fire
 import humanhash
@@ -17,6 +13,7 @@ import hashlib
 import pathlib
 import sys
 
+from datetime import datetime
 from sparklines import sparklines
 
 COMMANDS = [
@@ -54,6 +51,7 @@ def PrintUsage():
     print("  ldrbrd hopeless_leaders [--nosparklines]")
     print("  ldrbrd prodigious_leaders [--nosparklines]")
     print("  ldrbrd good_followers --threshold=N [--nosparklines]")
+    print("  ldrbrd qual --role=expert|leader|follower|none|noop --workers_file=<filepath>")
     print("  ldrbrd help")
 
 def ReverseHash(worker_hash, workers_file):
@@ -82,17 +80,20 @@ def PrintWorkerExperienceEntries(entries, role, no_sparklines):
         avg_metric = {
             "leader": entry.lead_score_avg,
             "follower": entry.follow_score_avg,
-            "both": entry.total_score_avg
+            "both": entry.total_score_avg,
+            "noop": entry.total_score_avg
         }.get(role, "ERR")
         num_games_metric = {
             "leader": entry.lead_games_played,
             "follower": entry.follow_games_played,
-            "both": entry.total_games_played
+            "both": entry.total_games_played,
+            "noop": entry.total_games_played
         }.get(role, "ERR")
         recent_games = {
             "leader": entry.last_1k_lead_scores,
             "follower": entry.last_1k_follow_scores,
-            "both": entry.last_1k_scores
+            "both": entry.last_1k_scores,
+            "noop": entry.last_1k_scores
         }.get(role, [])
         print(f"hash: {entry.worker.get().hashed_id}, role: {role}, avg score: {avg_metric:.2f}, num games: {num_games_metric}")
         if not no_sparklines:
@@ -103,11 +104,13 @@ def PrintWorkersRanked(role, no_sparklines, since):
     """ Prints workers by avg score. """
     experience_entries = []
     if role == "leader":
-        experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.lead_score_avg.desc())
+        experience_entries = WorkerExperience.select().order_by(WorkerExperience.lead_score_avg.desc())
     elif role == "follower":
-        experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.follow_score_avg.desc())
+        experience_entries = WorkerExperience.select().order_by(WorkerExperience.follow_score_avg.desc())
     elif role == "both":
-        experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.total_score_avg.desc())
+        experience_entries = WorkerExperience.select().order_by(WorkerExperience.total_score_avg.desc())
+    elif role == "noop":
+        experience_entries = WorkerExperience.select().order_by(WorkerExperience.total_score_avg.desc())
     else:
         print("Invalid role: " + role)
         return
@@ -122,11 +125,13 @@ def PrintWorkersByExperience(role, no_sparklines, since):
     """ Prints workers by # of games rather than avg score. """
     experience_entries = []
     if role == "leader":
-        experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.lead_games_played.desc())
+        experience_entries = WorkerExperience.select().order_by(WorkerExperience.lead_games_played.desc())
     elif role == "follower":
-        experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.follow_games_played.desc())
+        experience_entries = WorkerExperience.select().order_by(WorkerExperience.follow_games_played.desc())
     elif role == "both":
-        experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.total_games_played.desc())
+        experience_entries = WorkerExperience.select().order_by(WorkerExperience.total_games_played.desc())
+    elif role == "noop":
+        experience_entries = WorkerExperience.select().order_by(WorkerExperience.total_games_played.desc())
     else:
         print("Invalid role: " + role)
         return
@@ -139,7 +144,7 @@ def PrintWorkersByExperience(role, no_sparklines, since):
 def PrintHopelessLeaders(no_sparklines, since):
     """ Prints workers who have played > 10 lead games but have a low lead score. (bottom 30% of *all* players)."""
     # Get workers by avg lead score (ascending).
-    experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.lead_score_avg)
+    experience_entries = WorkerExperience.select().order_by(WorkerExperience.lead_score_avg)
 
     # Determine the bottom 30% of workers by avg lead score.
     bottom_30_percent = int(len(experience_entries) * 0.3)
@@ -154,7 +159,7 @@ def PrintHopelessLeaders(no_sparklines, since):
 def PrintProdigiousLeaders(no_sparklines, since):
     """ Prints workers who haven't played much (< 3 games) but have a high lead score. (top 30% of *all* players)."""
     # Get workers by avg lead score (descending).
-    experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.lead_score_avg.desc())
+    experience_entries = WorkerExperience.select().order_by(WorkerExperience.lead_score_avg.desc())
 
     # Determine the top 30% of workers by avg lead score.
     top_30_percent = int(len(experience_entries) * 0.3)
@@ -169,7 +174,7 @@ def PrintProdigiousLeaders(no_sparklines, since):
 def PrintGoodFollowers(no_sparklines, threshold, since):
     """ Prints out followers that have more than threshold games with score >= threshold. """
     # Get workers by avg follower score (descending).
-    experience_entries = schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.follow_score_avg.desc())
+    experience_entries = WorkerExperience.select().order_by(WorkerExperience.follow_score_avg.desc())
 
     # Filter out old workers.
     experience_entries = [entry for entry in experience_entries if entry.follow_games_played >= threshold and entry.follow_score_avg >= threshold and entry.last_follow_time >= since]
@@ -177,7 +182,58 @@ def PrintGoodFollowers(no_sparklines, threshold, since):
     print("Good followers:")
     PrintWorkerExperienceEntries(experience_entries, "follower", no_sparklines)
 
-def main(command, id="", hash="", name="", workers_file = "", item="", role="both", since_game=0, nosparklines=False, threshold=3, config_filepath="config/server-config.json"):
+def PrintWorkerQualification(worker_hashes):
+    """ Prints out the qualification status of the provided worker hashes. """
+    print("Printing Worker Qualifications...")
+    for hash in worker_hashes:
+        worker = Worker.select().where(Worker.hashed_id == hash)
+        if worker.count() == 0:
+            print(f"Worker {hash} not found.")
+            continue
+        worker = worker.get()
+        qual_level = worker.qual_level
+        if qual_level == None:
+            print(f"Worker {hash} has no qual level.")
+            continue
+        qual = WorkerQualLevel(qual_level)
+        print(f"{hash}: {qual.name}")
+
+def SetUserQualifications(role, workers_file):
+    """ Sets the given qualification for the given workers. """
+    path = pathlib.PosixPath(workers_file).expanduser()
+    with path.open() as wlist:
+        worker_ids = [line.strip() for line in wlist]
+
+    worker_hashes = [ hashlib.md5(worker_id.encode("utf-8")).hexdigest() for worker_id in worker_ids ]
+
+    if role == "noop":
+        PrintWorkerQualification(worker_hashes)
+        return
+    
+    qual_level = {
+        "leader": WorkerQualLevel.LEADER,
+        "follower": WorkerQualLevel.FOLLOWER,
+        "expert": WorkerQualLevel.EXPERT,
+        "none": WorkerQualLevel.NONE,
+    }[role]
+    
+    for worker_hash in worker_hashes:
+        worker = Worker.select().where(Worker.hashed_id==worker_hash)
+        if worker.count() == 0:
+            print(f"Worker {worker_hash} not found! Created.")
+            worker = Worker.create(hashed_id=worker_hash, qual_level=int(qual_level))
+            worker.save()
+        else:
+            worker = worker.get()
+            worker.qual_level = int(qual_level)
+            worker.save()
+        print(f"Set {worker.hashed_id} qual_level to {qual_level.name}")
+
+
+def main(command, id="", hash="", name="",
+         workers_file = "", item="", role="noop",
+         since_game=0, nosparklines=False, threshold=3,
+         config_filepath="config/server-config.json"):
     cfg = config.ReadConfigOrDie(config_filepath)
 
     print(f"Reading database from {cfg.database_path()}")
@@ -247,6 +303,8 @@ def main(command, id="", hash="", name="", workers_file = "", item="", role="bot
         PrintProdigiousLeaders(nosparklines, since_game)
     elif command == "good_followers":
         PrintGoodFollowers(nosparklines, threshold, since_game)
+    elif command == "qual":
+        SetUserQualifications(role, workers_file)
     else:
         PrintUsage()
 

@@ -12,6 +12,7 @@ from card import CardSelectAction, SetCompletionActions
 from datetime import datetime, timedelta
 from messages.turn_state import TurnState, GameOverMessage, TurnUpdate
 import leaderboard
+import experience
 
 
 import aiohttp
@@ -317,6 +318,9 @@ class State(object):
         self._game_record.end_time = datetime.utcnow()
         self._game_record.save()
         leaderboard.UpdateLeaderboard(self._game_record)
+        experience.UpdateWorkerExperienceTable(self._game_record)
+
+
     
     def record_objective(self, objective):
         instruction = schemas.game.Instruction()

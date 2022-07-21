@@ -662,20 +662,14 @@ async def stream_game_state(request, ws):
 
 async def receive_agent_updates(request, ws):
     global room_manager
-    last_loop = time.time()
     async for msg in ws:
         remote = GetRemote(ws)
-        poll_period = time.time() - last_loop
-        if (poll_period) > 0.1:
-            logging.warn(
-                f"Receive socket for iphash {remote.hashed_ip} port {remote.client_port}, slow poll period of {poll_period}s")
-        last_loop = time.time()
         if ws.closed:
             return
         if msg.type == aiohttp.WSMsgType.ERROR:
             closed = True
             await ws.close()
-            print('ws connection closed with exception %s' % ws.exception())
+            logger.error('ws connection closed with exception %s' % ws.exception())
             continue
 
         if msg.type != aiohttp.WSMsgType.TEXT:
@@ -690,9 +684,7 @@ async def receive_agent_updates(request, ws):
             continue
 
         logger.debug("Raw message: " + msg.data)
-        # message_dict = orjson.loads(msg.data)
         message = message_to_server.MessageToServer.from_json(msg.data)
-        # message = message_to_server.MessageToServer.from_json(msg.data)
 
         if message.type == message_to_server.MessageType.ROOM_MANAGEMENT:
             room_manager.handle_request(message, ws)

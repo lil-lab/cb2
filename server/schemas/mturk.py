@@ -1,11 +1,13 @@
 import datetime
-from typing import Text
 import orjson
 
+from enum import IntEnum
 from peewee import *
-from schemas.base import *
+from typing import Text
 
 import schemas
+
+from schemas.base import *
 
 class RecentScoresField(TextField):
     def __init__(self, *args, **kwargs):
@@ -42,17 +44,21 @@ class WorkerExperience(BaseModel):
     last_follow = DeferredForeignKey('Game', null=True, deferrable='INITIALLY DEFERRED')
     last_game = DeferredForeignKey('Game', null=True, deferrable='INITIALLY DEFERRED')
 
+
+
 """
     Worker qual level is an integer that follows these rules:
     0 - No qualifications passed.
-    1 - only follower tutorial passed.
-    2 - only leader tutorial passed.
-    3 - both tutorials passed.
-    4 - only follower quiz passed.
-    5 - only leader quiz passed.
-    6 - quiz and tutorials passed. ready for playing.
-    7+ increasing levels of "quality" of games not yet defined.
+    1 - only follower qual.
+    2 - follower & leader qual.
+    3 - Expert qual.
 """
+class WorkerQualLevel(IntEnum):
+    NONE = 0
+    FOLLOWER = 1
+    LEADER = 2
+    EXPERT = 3
+
 class Worker(BaseModel):
     hashed_id = TextField()
     qual_level = IntegerField(default=0)

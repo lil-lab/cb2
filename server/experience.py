@@ -68,6 +68,11 @@ def InitWorkerExperience(worker):
     worker.experience.last_1k_lead_scores = []
     worker.experience.last_1k_follow_scores = []
     worker.experience.last_1k_scores = []
+
+    worker.experience.last_lead = None
+    worker.experience.last_follow = None
+    worker.experience.last_game = None
+
     worker.experience.save()
     worker.save()
 
@@ -75,9 +80,10 @@ def UpdateLeaderExperience(game_record):
     # Update leader lead & total scores.
     if game_record.leader is None:
         return
-    leader_experience = GetOrCreateWorkerExperienceEntry(game_record.leader.hashed_id).select().join(schemas.game.Game, join_type=peewee.JOIN.LEFT_OUTER, on=((schemas.mturk.WorkerExperience.last_game == game_record.id) or (schemas.mturk.WorkerExperience.last_lead == game_record.id))).get()
+    leader_experience = GetOrCreateWorkerExperienceEntry(game_record.leader.hashed_id)
     if leader_experience is None:
         return
+    print(f"Leader EXP ID: {leader_experience.id}")
 
     if len(leader_experience.last_1k_lead_scores) > 1000:
         logger.warning(f"Leader experience entry {game_record.leader.hashed_id} has more than 1000 lead scores. Truncating.")
@@ -98,9 +104,10 @@ def UpdateFollowerExperience(game_record):
     # Update follower follow & total scores.
     if game_record.follower is None:
         return
-    follower_experience = GetOrCreateWorkerExperienceEntry(game_record.follower.hashed_id).select().join(schemas.game.Game, join_type=peewee.JOIN.LEFT_OUTER, on=((schemas.mturk.WorkerExperience.last_game == game_record.id) or (schemas.mturk.WorkerExperience.last_follow == game_record.id))).get()
+    follower_experience = GetOrCreateWorkerExperienceEntry(game_record.follower.hashed_id)
     if follower_experience is None:
         return
+    print(f"Follower EXP ID: {follower_experience.id}")
 
     if len(follower_experience.last_1k_follow_scores) > 1000:
         logger.warning(f"Follower experience entry {game_record.follower.hashed_id} has more than 1000 follow scores. Truncating.")

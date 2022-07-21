@@ -3,6 +3,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime, timedelta
+from experience import GetWorkerExperienceEntry 
 from map_provider import CachedMapRetrieval
 from messages import message_from_server
 from messages import message_to_server
@@ -17,8 +18,9 @@ from messages.rooms import RoomManagementResponse
 from messages.rooms import RoomResponseType
 from messages.tutorials import RoleFromTutorialName, TutorialRequestType, TutorialResponse, TutorialResponseType
 from queue import Queue
-from remote_table import GetRemote 
+from remote_table import GetRemote, GetWorkerFromRemote
 from room import Room, RoomType
+from schemas.mturk import Worker, WorkerQualLevel
 from util import IdAssigner, GetCommitHash
 
 import aiohttp
@@ -27,6 +29,7 @@ import logging
 import messages.rooms
 import orjson
 import pathlib
+import queue
 import random
 import schemas.game
 
@@ -240,6 +243,34 @@ class RoomManager(object):
                 RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.LEADER), None, None))
             self._pending_room_management_responses[follower].put(
                 RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.FOLLOWER), None, None))
+    
+    def assign_leader_follower(self, player1, player2):
+        """ Assigns roles to a pair of players. Returns (leader, follower) or (None, None) if missing data on either player. """
+        worker1 = GetWorkerFromRemote(player1)
+        worker2 = GetWorkerFromRemote(player2)
+        if worker1 is None or worker2 is None:
+            return None, None
+        exp1 = GetWorkerExperienceEntry(worker1.hashed_id)
+        exp2 = GetWorkerExperienceEntry(worker2.hashed_id)
+        # For each exp entry, calculate the average score of the last 10 lead games from last_1k_lead_scores and use that to determine the leader.
+        if exp1 is None or exp2 is None:
+            return None, None
+        if exp1.last_1k_lead_scores is None or exp2.last_1k_lead_scores is None:
+            return None, None
+        if len(exp1.last_1k_lead_scores) < 10 and len(exp2.last_1k_lead_scores) < 10:
+            return None, None
+        # If we only have enough data to determine one player, return that player as the leader.
+        if len(exp1.last_1k_lead_scores) < 10:
+            return player2, player1
+        if len(exp2.last_1k_lead_scores) < 10:
+            return player1, player2
+        # We have enough data on both players!
+        leader1_score = sum(exp1.last_1k_lead_scores[-10:]) / 10
+        leader2_score = sum(exp2.last_1k_lead_scores[-10:]) / 10
+        if leader1_score > leader2_score:
+            return player1, player2
+        else:
+            return player2, player1
 
     def get_leader_follower_match(self):
         """ Returns a pair of leader, follower.
@@ -293,10 +324,13 @@ class RoomManager(object):
         # If a general player has been waiting for >= 10 seconds with no follower, match them with another general player.
         (ts, _) = self._player_queue[0] 
         if datetime.now() - ts > timedelta(seconds=10):
-            (_, leader) = self._player_queue.popleft()
-            (_, follower) = self._player_queue.popleft()
+            (_, player1) = self._player_queue.popleft()
+            (_, player2) = self._player_queue.popleft()
+            leader, follower = self.assign_leader_follower(player1, player2)
+            if leader is None or follower is None:
+                logger.warning("Could not assign leader and follower based on experience. Using random assignment.")
+                return (player1, player2)
             return leader, follower
-        
         return None, None
     
     def handle_tutorial_request(self, tutorial_request, ws):
@@ -308,19 +342,19 @@ class RoomManager(object):
                 TutorialResponse(TutorialResponseType.STARTED, tutorial_request.tutorial_name, None, None))
         else:
             logger.warning(f'Room manager received incorrect tutorial request type {tutorial_request.type}.')
-
-    def handle_join_request(self, request, ws):
-        # Assign a role depending on which role queue is smaller.
-        logger.info(f"Received join request from : {str(ws)}. Queue size: {len(self._player_queue)}")
+    
+    def join_player_queue(self, ws):
         if ws in self._player_queue:
             logger.info(f"Join request is from socket which is already in the wait queue. Ignoring.")
+            return
+        if ws in self._follower_queue:
+            logger.info(f"Join request is from socket which is already in the follow wait queue. Ignoring.")
             return
         self._player_queue.append((datetime.now(), ws))
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, len(self._player_queue), Role.NONE), None, None))
-    
-    def handle_follower_only_join_request(self, request, ws):
-        logger.info(f"Received follower only join request from : {str(ws)}. Queue size: {len(self._follower_queue)}")
+
+    def join_follower_queue(self, ws):
         if ws in self._follower_queue:
             logger.info(f"Join request is from socket which is already in the follower wait queue. Ignoring.")
             return
@@ -331,6 +365,27 @@ class RoomManager(object):
         self._follower_queue.append((datetime.now(), ws))
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, len(self._follower_queue), Role.NONE), None, None))
+
+    def handle_join_request(self, request, ws):
+        logger.info(f"Received join request from : {str(ws)}. Queue size: {len(self._player_queue)}")
+        worker = GetWorkerFromRemote(ws)
+        if worker is None:
+            logger.warning(f"Could not get worker from remote. Joining.")
+            self.join_player_queue(ws)
+            return
+        if worker.qual_level in [WorkerQualLevel.EXPERT, WorkerQualLevel.LEADER]:
+            self.join_player_queue(ws)
+        elif worker.qual_level == WorkerQualLevel.FOLLOWER:
+            self.join_follower_queue(ws)
+        else:
+            logger.warning(f"Worker has invalid qual level: {worker.qual_level}.")
+            self._pending_room_management_responses[ws].put(
+                RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, -1, Role.NONE, True), None, None))
+            return
+    
+    def handle_follower_only_join_request(self, request, ws):
+        logger.info(f"Received follower only join request from : {str(ws)}. Queue size: {len(self._follower_queue)}")
+        self.join_follower_queue(ws)
 
     def handle_leave_request(self, request, ws):
         if not ws in self._remotes:
@@ -413,15 +468,22 @@ class RoomManager(object):
         if ws not in self._pending_room_management_responses:
             self._pending_room_management_responses[ws] = Queue()
         if not self._pending_room_management_responses[ws].empty():
-            management_response = self._pending_room_management_responses[ws].get()
-            logger.info(f"Drained Room Management message type {management_response.type} for {ws}.")
-            return message_from_server.RoomResponseFromServer(management_response)
+            try:
+                management_response = self._pending_room_management_responses[ws].get(False)
+                logger.info(f"Drained Room Management message type {management_response.type} for {ws}.")
+                logger.info(f"Remaining messages in queue: {self._pending_room_management_responses[ws].qsize()}")
+                return message_from_server.RoomResponseFromServer(management_response)
+            except queue.Empty:
+                pass
         
         if ws not in self._pending_tutorial_messages:
             self._pending_tutorial_messages[ws] = Queue()
         if not self._pending_tutorial_messages[ws].empty():
-            tutorial_response = self._pending_tutorial_messages[ws].get()
-            logger.info(f"Drained tutorial response type {tutorial_response.type} for {ws}.")
-            return message_from_server.TutorialResponseFromServer(tutorial_response)
+            try:
+                tutorial_response = self._pending_tutorial_messages[ws].get(False)
+                logger.info(f"Drained tutorial response type {tutorial_response.type} for {ws}.")
+                return message_from_server.TutorialResponseFromServer(tutorial_response)
+            except queue.Empty:
+                pass
         
         return None

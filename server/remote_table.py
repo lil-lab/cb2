@@ -15,13 +15,19 @@ import schemas.mturk
 # to Remote (defined below).
 remote_table = {}
 
+remote_worker_table = {}
+
 def AddRemote(web_socket_response, remote, assignment=None):
     remote_record, _ = (schemas.clients.Remote.get_or_create(hashed_ip=remote.hashed_ip, remote_port=remote.client_port))
     if assignment is not None:
         remote_record.worker = assignment.worker
         remote_record.assignment = assignment
+        remote_worker_table[web_socket_response] = assignment.worker
     remote_record.save()
     remote_table[web_socket_response] = remote
+
+def GetWorkerFromRemote(web_socket_response):
+    return remote_worker_table.get(web_socket_response, None)
 
 def GetRemote(web_socket_response):
     return remote_table.get(web_socket_response, None)
