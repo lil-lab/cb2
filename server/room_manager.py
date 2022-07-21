@@ -248,29 +248,36 @@ class RoomManager(object):
         """ Assigns roles to a pair of players. Returns (leader, follower) or (None, None) if missing data on either player. """
         worker1 = GetWorkerFromRemote(player1)
         worker2 = GetWorkerFromRemote(player2)
-        if worker1 is None or worker2 is None:
+        if worker1 is None and worker2 is None:
             return None, None
+        elif worker1 is None:
+            return player2, player1
+        elif worker2 is None:
+            return player1, player2
         exp1 = GetWorkerExperienceEntry(worker1.hashed_id)
         exp2 = GetWorkerExperienceEntry(worker2.hashed_id)
-        # For each exp entry, calculate the average score of the last 10 lead games from last_1k_lead_scores and use that to determine the leader.
+        # For each exp entry, calculate the average score of the last 5 lead games from last_1k_lead_scores and use that to determine the leader.
         if exp1 is None or exp2 is None:
             return None, None
         if exp1.last_1k_lead_scores is None or exp2.last_1k_lead_scores is None:
+            logger.info(f"No data to determine either player.")
             return None, None
-        if len(exp1.last_1k_lead_scores) < 10 and len(exp2.last_1k_lead_scores) < 10:
+        if len(exp1.last_1k_lead_scores) < 5 and len(exp2.last_1k_lead_scores) < 5:
+            logger.info(f"Not enough data to determine either player.")
             return None, None
-        # If we only have enough data to determine one player, return that player as the leader.
-        if len(exp1.last_1k_lead_scores) < 10:
-            return player2, player1
-        if len(exp2.last_1k_lead_scores) < 10:
-            return player1, player2
+        # If we only have enough data to determine one player, return an arbitrary order (whoever connected first -- player1).
+        if (len(exp1.last_1k_lead_scores) < 5) or (len(exp2.last_1k_lead_scores) < 5):
+            logger.info(f"Only have enough data to determine one player.")
+            return None, None
         # We have enough data on both players!
-        leader1_score = sum(exp1.last_1k_lead_scores[-10:]) / 10
-        leader2_score = sum(exp2.last_1k_lead_scores[-10:]) / 10
+        leader1_score = sum(exp1.last_1k_lead_scores[-5:]) / 5
+        leader2_score = sum(exp2.last_1k_lead_scores[-5:]) / 5
         if leader1_score > leader2_score:
             return player1, player2
-        else:
+        elif leader1_score < leader2_score:
             return player2, player1
+        else:
+            return player1, player2
 
     def get_leader_follower_match(self):
         """ Returns a pair of leader, follower.
