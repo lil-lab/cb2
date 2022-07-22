@@ -218,7 +218,7 @@ async def GameLogs(request):
         game_log.game_info = GameInfo.from_json(line)
     if (game_dir / "config.json").exists():
         with open(game_dir / "config.json", "r") as f:
-            game_log.config = orjson.loads(f.read())
+            game_log.server_config = orjson.loads(f.read())
     json_str = orjson.dumps(game_log, option=orjson.OPT_NAIVE_UTC | orjson.OPT_INDENT_2 | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat)
     return web.Response(text=json_str.decode('utf-8'), content_type="application/json")
 
@@ -531,12 +531,15 @@ async def GameData(request):
 
 @routes.get('/data/stats')
 async def stats(request):
-    games = db_utils.ListResearchGames()
-    if len(GlobalConfig().analysis_game_id_ranges) > 0:
-        valid_ids = set(itertools.chain(*[range(x, y) for x,y in GlobalConfig().analysis_game_id_ranges]))
-        print(f"Filtered to {valid_ids}")
-        print(f"Number of valid IDs: {len(valid_ids)}")
-        games = [game for game in games if game.id in valid_ids]
+    games = db_utils.ListAnalysisGames(GlobalConfig())
+    since_game_id = request.rel_url.query.get('since_game_id', 0)
+    try:
+        since_game_id = int(since_game_id)
+        if since_game_id > 0:
+            games = [game for game in games if game.id >= since_game_id]
+            logger.info(f"Filtered games to those after game {since_game_id}. Remaining: {len(games)}")
+    except ValueError:
+        pass
     durations = []
     scores = []
     instruction_counts = []
@@ -559,6 +562,16 @@ async def stats(request):
     instruction_word_count = [len(instruction.split(" ")) for instruction in instructions]
 
     json_stats = []
+
+    if len(games) == 0:
+        json_stats.append(
+            {
+                "name": "Games",
+                "count": 0,
+            }
+        )
+        return web.json_response(json_stats)
+
     json_stats.append({
         "name": "Total Game Time(m:s)",
         "mean": str(timedelta(seconds=statistics.mean(durations))),
@@ -603,7 +616,6 @@ async def stats(request):
         "name": "Vocabulary Size",
         "count": len(vocab)
     })
-
     return web.json_response(json_stats)
 
 

@@ -24,6 +24,10 @@ def ReadConfigOrDie(config_path):
         config = Config.from_json(cfg_file.read())
         return config
 
+# For backwards compatibility, the members of this class are ordered by when they were added rather than by relevancy.
+# This is unfortunate, I should probably group config members by category
+# (analysis, server, database, etc) and then have a wrapper which breaks them
+# out that way.
 @dataclass
 class Config(DataClassJSONMixin):
     name: str = ""  # The name of the config.
@@ -35,8 +39,9 @@ class Config(DataClassJSONMixin):
     database_path_suffix: str = "game_data.db"  # Where to store the sqlite3 record database.
     backup_db_path_suffix: str = "game_data.bk.db"
 
-    # These are not server configurations. They're data configurations. Once game data is downloaded via server URL '/data/download',
-    # this property can be used to specify which game IDs are used for analysis scripts.
+    # This is not a server configuration. They're data configurations. Once game
+    # data is downloaded via server URL '/data/download', this property can be
+    # used to specify which game IDs are used for analysis scripts.
     # For example, [[1, 3], [5, 6]] would include games 1, 2, 3, 5, and 6.
     analysis_game_id_ranges: List[List[int]] = field(default_factory=list)
 
@@ -64,6 +69,8 @@ class Config(DataClassJSONMixin):
     # Client-side FPS limit. -1 means the browser controls frame rate to optimize performance.
     fps_limit: int = -1
     
+    analytics_since_game_id: int = -1 # The game ID to start all statistical/research calculations from (discard before this).
+
     # Data path accessors that add the requisite data_prefix.
     def record_directory(self):
         return pathlib.Path(self.data_prefix, self.record_directory_suffix).expanduser()

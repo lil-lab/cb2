@@ -100,7 +100,7 @@ def PrintWorkerExperienceEntries(entries, role, no_sparklines):
             for line in sparklines(recent_games, num_lines=2):
                 print(line)
 
-def PrintWorkersRanked(role, no_sparklines, since):
+def PrintWorkersRanked(role, no_sparklines):
     """ Prints workers by avg score. """
     experience_entries = []
     if role == "leader":
@@ -121,7 +121,7 @@ def PrintWorkersRanked(role, no_sparklines, since):
     PrintWorkerExperienceEntries(experience_entries, role, no_sparklines)
         
 
-def PrintWorkersByExperience(role, no_sparklines, since):
+def PrintWorkersByExperience(role, no_sparklines):
     """ Prints workers by # of games rather than avg score. """
     experience_entries = []
     if role == "leader":
@@ -141,7 +141,7 @@ def PrintWorkersByExperience(role, no_sparklines, since):
 
     PrintWorkerExperienceEntries(experience_entries, role, no_sparklines)
 
-def PrintHopelessLeaders(no_sparklines, since):
+def PrintHopelessLeaders(no_sparklines):
     """ Prints workers who have played > 10 lead games but have a low lead score. (bottom 30% of *all* players)."""
     # Get workers by avg lead score (ascending).
     experience_entries = WorkerExperience.select().order_by(WorkerExperience.lead_score_avg)
@@ -156,7 +156,7 @@ def PrintHopelessLeaders(no_sparklines, since):
     print("Hopeless leaders:")
     PrintWorkerExperienceEntries(experience_entries, "leader", no_sparklines)
 
-def PrintProdigiousLeaders(no_sparklines, since):
+def PrintProdigiousLeaders(no_sparklines):
     """ Prints workers who haven't played much (< 3 games) but have a high lead score. (top 30% of *all* players)."""
     # Get workers by avg lead score (descending).
     experience_entries = WorkerExperience.select().order_by(WorkerExperience.lead_score_avg.desc())
@@ -171,7 +171,7 @@ def PrintProdigiousLeaders(no_sparklines, since):
     print("Prodigious workers:")
     PrintWorkerExperienceEntries(experience_entries, "leader", no_sparklines)
 
-def PrintGoodFollowers(no_sparklines, threshold, since):
+def PrintGoodFollowers(no_sparklines, threshold):
     """ Prints out followers that have more than threshold games with score >= threshold. """
     # Get workers by avg follower score (descending).
     experience_entries = WorkerExperience.select().order_by(WorkerExperience.follow_score_avg.desc())
@@ -232,7 +232,7 @@ def SetUserQualifications(role, workers_file):
 
 def main(command, id="", hash="", name="",
          workers_file = "", item="", role="noop",
-         since_game=0, nosparklines=False, threshold=3,
+         nosparklines=False, threshold=3,
          config_filepath="config/server-config.json"):
     cfg = config.ReadConfigOrDie(config_filepath)
 
@@ -294,15 +294,15 @@ def main(command, id="", hash="", name="",
         md5sum = hashlib.md5(id.encode('utf-8')).hexdigest()
         print(md5sum)
     elif command == "workers_ranked":
-        PrintWorkersRanked(role, nosparklines, since_game)
+        PrintWorkersRanked(role, nosparklines)
     elif command == "workers_by_experience":
-        PrintWorkersByExperience(role, nosparklines, since_game)
+        PrintWorkersByExperience(role, nosparklines)
     elif command == "hopeless_leaders":
-        PrintHopelessLeaders(nosparklines, since_game)
+        PrintHopelessLeaders(nosparklines)
     elif command == "prodigious_leaders":
-        PrintProdigiousLeaders(nosparklines, since_game)
+        PrintProdigiousLeaders(nosparklines)
     elif command == "good_followers":
-        PrintGoodFollowers(nosparklines, threshold, since_game)
+        PrintGoodFollowers(nosparklines, threshold)
     elif command == "qual":
         SetUserQualifications(role, workers_file)
     else:

@@ -105,12 +105,7 @@ def main(max_instructions=-1, config_filepath="config/server-config.json", outpu
     words = set()
     instruction_list = []
 
-    games = db_utils.ListMturkGames()
-    if len(cfg.analysis_game_id_ranges) > 0:
-        valid_ids = set(itertools.chain(*[range(x, y) for x,y in cfg.analysis_game_id_ranges]))
-        games = games.select().where(Game.id.in_(valid_ids))
-        print(f"Filtering to games {valid_ids}")
-        print(f"{games.count()} games remaining")
+    games = db_utils.ListAnalysisGames(cfg)
     # For each game.
     for game in games:
         # Create a directory for the game.
