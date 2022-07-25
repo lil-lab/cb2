@@ -33,6 +33,9 @@ import map_utils
 LEADER_MOVES_PER_TURN = 5
 FOLLOWER_MOVES_PER_TURN = 10
 
+LEADER_SECONDS_PER_TURN = 50
+FOLLOWER_SECONDS_PER_TURN = 15
+
 logger = logging.getLogger()
 
 class State(object):
@@ -98,7 +101,7 @@ class State(object):
         self._game_record.save()
 
     def turn_duration(self, role):
-        return timedelta(seconds=60) if role == Role.LEADER else timedelta(seconds=45)
+        return timedelta(seconds=LEADER_SECONDS_PER_TURN) if role == Role.LEADER else timedelta(seconds=FOLLOWER_SECONDS_PER_TURN)
 
     def record_turn_state(self, turn_state):
         # Record a copy of the current turn state.
