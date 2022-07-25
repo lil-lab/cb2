@@ -36,10 +36,12 @@ def main(config_path="config/latest-analysis.json", no_i_totally_know_what_im_do
     cfg = config.ReadConfigOrDie(config_path)
     print(f"Reading database from {cfg.database_path()}")
 
+    # Warning to make sure the person running this reads this script first.
     if not no_i_totally_know_what_im_doing_i_swear:
-        print("This script is a total hack. It was made once to recover lost orientation values. If you're relying on it, then you're probably in a bad spot. To make this work, run via :\n\tpython3 -m db_tools.integrate_orientation --no_i_totally_know_what_im_doing_i_swear")
+        print("This script is a total hack. It was made once to recover lost orientation values. If you're relying on it, at least read the code first. To make this work, run via :\n\tpython3 -m db_tools.integrate_orientation --no_i_totally_know_what_im_doing_i_swear")
         sys.exit(1)
 
+    # Warning to make sure the person running this actually reads this script before running it. Don't worry toooo much, I ran this once and it worked perfectly.
     print("You brave cookie. Overwriting all 'orientation_before' values in the move table. You have 15 seconds to regret this decision and ctrl-c out before it starts...")
     time.sleep(15)
     print("Starting...")
@@ -57,9 +59,11 @@ def main(config_path="config/latest-analysis.json", no_i_totally_know_what_im_do
         follower_moves = Move.select().join(Game).where(Move.game == game, Move.character_role == "Role.FOLLOWER").order_by(Move.id)
         print(f"Processing game {game.id}")
         if leader_moves.count() != 0:
+            # In peewee, get() gives you the first item in a query. Queries are ordered by ID above so this should be the first move.
             leader_spawn = leader_moves.get().position_before
             leader =  Actor(0, 0, Role.LEADER, leader_spawn)
             for move in leader_moves:
+                # Should hopefully never happen, but just in case ;)
                 if leader.location() != move.position_before:
                     print(f"Leader desynced from {leader.location()} to {move.position_before}")
                 move.orientation_before = leader.heading_degrees()
