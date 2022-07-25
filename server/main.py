@@ -491,6 +491,7 @@ async def GameData(request):
             "time": str(turn.time.replace(tzinfo=tz.tzutc()).astimezone(NYC)),
             "notes": turn.notes,
             "end_method": turn.end_method,
+            "role": turn.role,
         })
     return web.json_response(turns)
 
