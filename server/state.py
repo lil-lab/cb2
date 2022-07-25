@@ -319,8 +319,6 @@ class State(object):
         self._game_record.save()
         leaderboard.UpdateLeaderboard(self._game_record)
         experience.UpdateWorkerExperienceTable(self._game_record)
-
-
     
     def record_objective(self, objective):
         instruction = schemas.game.Instruction()
@@ -803,8 +801,6 @@ class State(object):
         feedback = live_feedback.LiveFeedbackFromType(self._live_feedback[actor_id])
         self._live_feedback[actor_id] = live_feedback.FeedbackType.NONE
         return feedback
-
-
 
     # Returns the current state of the game.
     def state(self, actor_id=-1):

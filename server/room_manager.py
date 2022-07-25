@@ -264,9 +264,9 @@ class RoomManager(object):
             return None, None
         # We have enough data on both players!
         exp1_lead_games = min(len(exp1.last_1k_lead_scores), 10)
-        leader1_score = sum(exp1.last_1k_lead_scores[-10:]) / exp1_lead_games
+        leader1_score = sum(exp1.last_1k_lead_scores[-10:]) / exp1_lead_games if exp1_lead_games > 0 else 0
         exp2_lead_games = min(len(exp2.last_1k_lead_scores), 10)
-        leader2_score = sum(exp2.last_1k_lead_scores[-10:]) / exp2_lead_games
+        leader2_score = sum(exp2.last_1k_lead_scores[-10:]) / exp2_lead_games if exp2_lead_games > 0 else 0
         if leader1_score > leader2_score:
             return player1, player2
         elif leader1_score < leader2_score:
