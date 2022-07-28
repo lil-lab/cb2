@@ -13,9 +13,16 @@
 $(function () {
     var mturkParameters = new URLSearchParams(window.location.search);
     var postData = {}
-    if (mturkParameters.has('since_game_id'))
+    if (mturkParameters.has('from_game_id'))
     {
-      postData['since_game_id'] = mturkParameters.get('since_game_id');
+      console.log("from_game_id: " + mturkParameters.get('from_game_id'));
+      postData['from_game_id'] = mturkParameters.get('from_game_id');
+    }
+
+    if (mturkParameters.has('to_game_id'))
+    {
+      console.log("to_game_id: " + mturkParameters.get('to_game_id'));
+      postData['to_game_id'] = mturkParameters.get('to_game_id');
     }
 
     $('#grid').w2grid({

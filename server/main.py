@@ -533,13 +533,22 @@ async def GameData(request):
 @routes.get('/data/stats')
 async def stats(request):
     games = db_utils.ListAnalysisGames(GlobalConfig())
-    since_game_id = request.rel_url.query.get('since_game_id', 0)
+    post_data = request.query.get('request', 0)
     try:
-        since_game_id = int(since_game_id)
-        if since_game_id > 0:
-            games = [game for game in games if game.id >= since_game_id]
-            logger.info(f"Filtered games to those after game {since_game_id}. Remaining: {len(games)}")
+        post_data = json.loads(post_data)
+    except:
+        logger.info(f"Unable to parse JSON: {post_data}")
+    from_game_id = post_data.get('from_game_id', 0)
+    to_game_id = post_data.get('to_game_id', 0)
+    try:
+        from_game_id = int(from_game_id)
+        to_game_id = int(to_game_id)
+        if (from_game_id > 0) or (to_game_id > 0) and (from_game_id < to_game_id):
+            games = [game for game in games if game.id >= from_game_id]
+            games = [game for game in games if game.id <= to_game_id]
+            logger.info(f"Filtered games to those >= game {from_game_id} and <= {to_game_id}. Remaining: {len(games)}")
     except ValueError:
+        logger.info(f"Invalid game IDs: {from_game_id} and {to_game_id}")
         pass
     durations = []
     scores = []
