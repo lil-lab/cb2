@@ -29,8 +29,9 @@ def ListAnalysisGames(config):
     #   analysis_game_id_ranges: A list of tuples of the form (start_id, end_id).
     #   analytics_since_game_id: The game ID to start the analysis from (discard all games before this).
     games = ListResearchGames()
+    print(f"Number of research games: {len(games)}")
     if len(config.analysis_game_id_ranges) > 0:
-        valid_ids = set(itertools.chain(*[range(x, y) for x,y in config.analysis_game_id_ranges]))
+        valid_ids = set(itertools.chain(*[range(x, y + 1) for x,y in config.analysis_game_id_ranges]))
         print(f"Filtered to game IDs: {valid_ids}")
         games = [game for game in games if game.id in valid_ids]
         print(f"Number of valid games after filter: {len(games)}")

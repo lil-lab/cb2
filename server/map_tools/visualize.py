@@ -85,6 +85,14 @@ def asset_id_to_color(asset_id):
         return pygame.Color("green")
     elif asset_id == AssetId.GROUND_TILE_HOUSE_TRIPLE_BLUE:
         return pygame.Color("green")
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_GREEN:
+        return pygame.Color("green")
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_PINK:
+        return pygame.Color("green")
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_ORANGE:
+        return pygame.Color("green")
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_YELLOW:
+        return pygame.Color("green")
     elif asset_id == AssetId.GROUND_TILE_STREETLIGHT:
         return pygame.Color("yellow")
     elif asset_id == AssetId.MOUNTAIN_TILE:
@@ -97,8 +105,29 @@ def asset_id_to_color(asset_id):
         return pygame.Color("black")
     elif asset_id == AssetId.WATER_TILE:
         return pygame.Color("blue")
+    elif asset_id == AssetId.SNOWY_GROUND_TILE:
+        return pygame.Color("white")
+    elif asset_id == AssetId.SNOWY_MOUNTAIN_TILE:
+        return pygame.Color("white")
+    elif asset_id == AssetId.SNOWY_RAMP_TO_MOUNTAIN:
+        return pygame.Color("white")
+    elif asset_id == AssetId.SNOWY_MOUNTAIN_TILE_TREE:
+        return pygame.Color("white")
+    elif asset_id == AssetId.GROUND_TILE_TREE_SNOW:
+        return pygame.Color("green")
+    elif asset_id == AssetId.GROUND_TILE_STONES_GREENBUSH:
+        return pygame.Color("grey")
+    elif asset_id == AssetId.GROUND_TILE_STONES_BROWNBUSH:
+        return pygame.Color("grey")
+    elif asset_id == AssetId.GROUND_TILE_STONES_GREYBUSH:
+        return pygame.Color("grey")
+    elif asset_id in [AssetId.GROUND_TILE_TREE, AssetId.GROUND_TILE_TREE_BROWN,
+                      AssetId.GROUND_TILE_TREE, AssetId.SNOWY_GROUND_TILE_TREES_2,
+                      AssetId.GROUND_TILE_TREE_SOLIDBROWN, AssetId.MOUNTAIN_TILE_TREE,
+                      AssetId.GROUND_TILE_TREE_DARKGREEN]:
+        return pygame.Color("green")
     else:
-        print("Unknown asset ID encountered: " + str(asset_id))
+        print("Unknown asset ID encountered (color): " + str(asset_id))
         return pygame.Color("white")
 
 def asset_id_to_icon(asset_id):
@@ -106,8 +135,6 @@ def asset_id_to_icon(asset_id):
         return ""
     elif asset_id == AssetId.GROUND_TILE_ROCKY:
         return "map_tools/asset_icons/rocks.png"
-    elif asset_id == AssetId.GROUND_TILE_STONES:
-        return "map_tools/asset_icons/stones.png"
     elif asset_id == AssetId.GROUND_TILE_TREES:
         return "map_tools/asset_icons/trees.png"
     elif asset_id == AssetId.GROUND_TILE_TREES_2:
@@ -118,6 +145,14 @@ def asset_id_to_icon(asset_id):
         return "map_tools/asset_icons/house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_RED:
         return "map_tools/asset_icons/red_house.png"
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_PINK:
+        return "map_tools/asset_icons/pink_house.png"
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_GREEN:
+        return "map_tools/asset_icons/green_house.png"
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_ORANGE:
+        return "map_tools/asset_icons/orange_house.png"
+    elif asset_id == AssetId.GROUND_TILE_HOUSE_YELLOW:
+        return "map_tools/asset_icons/yellow_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_BLUE:
         return "map_tools/asset_icons/blue_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_TRIPLE:
@@ -138,8 +173,38 @@ def asset_id_to_icon(asset_id):
         return ""
     elif asset_id == AssetId.WATER_TILE:
         return ""
+    elif asset_id == AssetId.SNOWY_MOUNTAIN_TILE:
+        return ""
+    elif asset_id == AssetId.SNOWY_MOUNTAIN_TILE_TREE:
+        return "map_tools/asset_icons/snow_mountain_tree.png"
+    elif asset_id == AssetId.SNOWY_RAMP_TO_MOUNTAIN:
+        return ""
+    elif asset_id == AssetId.MOUNTAIN_TILE_TREE:
+        return "map_tools/asset_icons/tree.png"
+    elif asset_id == AssetId.GROUND_TILE_TREE:
+        return "map_tools/asset_icons/tree.png"
+    elif asset_id == AssetId.GROUND_TILE_TREE_BROWN:
+        return "map_tools/asset_icons/withered_tree.png"
+    elif asset_id == AssetId.GROUND_TILE_TREE_SOLIDBROWN:
+        return "map_tools/asset_icons/brown_tree.png"
+    elif asset_id == AssetId.GROUND_TILE_TREE_DARKGREEN:
+        return "map_tools/asset_icons/dark_green_tree.png"
+    elif asset_id == AssetId.GROUND_TILE_TREE_SNOW:
+        return "map_tools/asset_icons/snow_tree.png"
+    elif asset_id == AssetId.GROUND_TILE_TREES_2:
+        return "map_tools/asset_icons/tree_2.png"
+    elif asset_id == AssetId.SNOWY_GROUND_TILE_TREES_2:
+        return "map_tools/asset_icons/snow_tree_2.png"
+    elif asset_id == AssetId.GROUND_TILE_STONES:
+        return "map_tools/asset_icons/bush_stone.png"
+    elif asset_id == AssetId.GROUND_TILE_STONES_GREENBUSH:
+        return "map_tools/asset_icons/green_bush_stone.png"
+    elif asset_id == AssetId.GROUND_TILE_STONES_BROWNBUSH:
+        return "map_tools/asset_icons/brown_bush_stone.png"
+    elif asset_id == AssetId.GROUND_TILE_STONES_GREYBUSH:
+        return "map_tools/asset_icons/grey_bush_stone.png"
     else:
-        print("Unknown asset ID encountered: " + str(asset_id))
+        print("Unknown asset ID encountered (img): " + str(asset_id))
         return ""
 
 def get_hexagon_vertices(x, y, width, height, rotation):
