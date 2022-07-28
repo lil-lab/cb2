@@ -65,7 +65,7 @@
             <h2 id="status" style="background-color: aliceblue; display: block; width: 60%; margin: auto;">Status: starting...</h2>
             <pre id="download_log" style="color: green; background-color: black; display: block; margin: auto; width: 60%; height: 300px; overflow-y: scroll"></pre>
             <p style="background-color: rgb(255, 255, 170); font-size: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center; width: 60%;">
-                Visiting this page triggers the server to archive its current data for download. For performance reasons, the download won't begin while any users are actively playing games. Note that AWS bandwidth throttling can cause this process to fail. You can ssh into the server directly and then SCP the data (see config/server-config.json for the data_prefix which is where all data is stored).
+                Visiting this page triggers the server to archive its current data for download. For performance reasons, the download won't begin while any users are actively playing games. The process takes ~3-5 minutes. Note that AWS bandwidth throttling can cause this process to fail. You can ssh into the server directly and then SCP the data (see config/server-config.json for the data_prefix which is where all data is stored).
             </p>
             <a href="#" onclick="RetrieveDownload();" style="display: none; margin: auto; width: 60%; text-align: center;" id="download-link">Download</a>
             <p style="background-color: rgb(255, 255, 170); font-size: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center; width: 60%;">
