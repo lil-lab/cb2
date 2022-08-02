@@ -4,6 +4,9 @@ import itertools
 import logging
 import peewee
 
+from enum import Enum
+from numpy import number
+
 from schemas.game import Turn
 from schemas.game import Game
 from schemas.game import Instruction
@@ -16,10 +19,11 @@ from schemas.mturk import Assignment
 # - Mturk Games (ListMturkGames): Games where at least one player is an mturk worker.
 # - Research Games (ListResearchGames): Games that have research-quality language
 #   data. These games are chosen based on the criteria in IsGameResearchData.
+# - Config games: Games filtered by the provided server configuration. This
+#   allows us to filter out old games that used separate rules, and to pool mturk
+#   games together by trial (server config).
 # - Analysis Games (ListAnalysisGames): Games selected from the pool of research
-#   games filtered by the provided configuration. This allows us to filter out
-#   old games that used different game rules, different pools of workers, or are
-#   otherwise not relevant to the analysis.
+#   games filtered by the provided configuration. (Research & Config).
 
 logger = logging.getLogger(__name__)
 
@@ -41,13 +45,23 @@ def ListAnalysisGames(config):
 
 def IsGameAnalysisData(config, game):
     if len(config.analysis_game_id_ranges) > 0:
-        valid_ids = set(itertools.chain(*[range(x, y) for x,y in config.analysis_game_id_ranges]))
+        valid_ids = set(itertools.chain(*[range(x, y + 1) for x,y in config.analysis_game_id_ranges]))
         if game.id not in valid_ids:
             return False
     if config.analytics_since_game_id > 0:
         if game.id < config.analytics_since_game_id:
             return False
     return IsGameResearchData(game)
+
+def IsConfigGame(config, game):
+    if len(config.analysis_game_id_ranges) > 0:
+        valid_ids = set(itertools.chain(*[range(x, y + 1) for x,y in config.analysis_game_id_ranges]))
+        if game.id not in valid_ids:
+            return False
+    if config.analytics_since_game_id > 0:
+        if game.id < config.analytics_since_game_id:
+            return False
+    return True
 
 def ListResearchGames():
     games = ListMturkGames()
@@ -65,6 +79,80 @@ def ListMturkGames():
             .switch(Game))
     return games
 
+def is_mturk(game):
+    return game.type == "game-mturk"
+
+def is_mturk_sandbox(game):
+    has_leader_submit_url = game.lead_assignment is not None and game.lead_assignment.submit_to_url == "https://www.mturk.com"
+    has_follower_submit_url = game.follow_assignment is not None and game.follow_assignment.submit_to_url == "https://www.mturk.com"
+    return (not has_leader_submit_url) and (not has_follower_submit_url)
+
+def high_percent_instructions_incomplete(game_instructions):
+    # Make sure there weren't too many instructions that never got completed.
+    unfinished_instructions = game_instructions.where(Instruction.turn_completed == -1)
+    high_percent_instructions_incomplete = unfinished_instructions.count() / game_instructions.count() >= 0.2 if game_instructions.count() > 0 else True
+    return high_percent_instructions_incomplete
+
+def follower_got_lost(game_instructions):
+    # Make sure the follower didn't get stuck on an instruction.
+    finished_instructions = game_instructions.where(Instruction.turn_completed != -1)
+    follower_got_lost = False
+    for instruction in finished_instructions:
+        moves = instruction.moves
+        if moves.count() >= 25:
+            follower_got_lost = True
+            break
+
+def short_game(game):
+    # Make sure the game wasn't just given up on in the first 2 turns.
+    number_of_turns = Turn.select().join(Game).where(Turn.game == game).count()
+    short_game = False
+    if number_of_turns <= 2:
+        return short_game
+
+class GameDiagnosis(Enum):
+    NONE = 0
+    DB_INVALID = 1
+    NOT_MTURK = 2
+    MTURK_SANDBOX = 3
+    GAME_INCOMPLETE = 4
+    SHORT_GAME = 5
+    HIGH_PERCENT_INSTRUCTIONS_INCOMPLETE = 6
+    FOLLOWER_GOT_LOST = 7
+    GOOD = 8
+
+def DiagnoseGame(game):
+    """Returns a string explaining why the game is invalid for research.
+
+    Provided object must be joined with the Assignment table on both the lead_assignment and follow_assignment fields.
+    It's easier to use ListResearchGames() above, which filters all games on this condition.
+
+    A game is considered research data if it satisfies the following conditions:
+    - The game's "valid" column is true (in the games table).
+    - The game's "type" column is "game-mturk".
+    - Either the game's "leader_assignment" or "follower_assignment" column is not null and has a submit URL of "https://www.mturk.com".
+    - Low percentage of incomplete instructions (something like < 20%).
+    - Any instruction with more than 25 moves invalidates the game (the follower clearly just got lost and never recovered). 
+    """
+    # Join the game 
+    if not game.valid: # Bool field in the db to manually filter out bad games.
+        return GameDiagnosis.DB_INVALID
+    if not is_mturk(game): # Only mturk games are considered research data.
+        return GameDiagnosis.NOT_MTURK
+    if is_mturk_sandbox(game): # Only non-sandbox mturk games are considered research data.
+        return GameDiagnosis.MTURK_SANDBOX
+    if not game.completed: # Filter games where someone disconnected.
+        return GameDiagnosis.GAME_INCOMPLETE
+    if short_game(game): # Filter games that were just given up on.
+        return GameDiagnosis.SHORT_GAME
+
+    game_instructions = Instruction.select().join(Game).where(Instruction.game == game)
+    if follower_got_lost(game_instructions):
+        return GameDiagnosis.FOLLOWER_GOT_LOST
+    if high_percent_instructions_incomplete(game_instructions): # > % of instructions incomplete.
+        return GameDiagnosis.HIGH_PERCENT_INSTRUCTIONS_INCOMPLETE
+    return GameDiagnosis.GOOD
+
 def IsGameResearchData(game):
     """Returns True if the game is usable as research data.
 
@@ -78,42 +166,4 @@ def IsGameResearchData(game):
     - Low percentage of incomplete instructions (something like < 20%).
     - Any instruction with more than 25 moves invalidates the game (the follower clearly just got lost and never recovered). 
     """
-    # Join the game 
-    is_valid = game.valid
-    is_mturk = game.type == "game-mturk"
-    has_leader_submit_url = game.lead_assignment is not None and game.lead_assignment.submit_to_url == "https://www.mturk.com"
-    has_follower_submit_url = game.follow_assignment is not None and game.follow_assignment.submit_to_url == "https://www.mturk.com"
-    is_complete = game.completed
-
-    # Filter out non-mturk games.
-    if not is_mturk:
-        return False
-
-    game_instructions = Instruction.select().join(Game).where(Instruction.game == game)
-
-    # Make sure there weren't too many instructions that never got completed.
-    unfinished_instructions = game_instructions.where(Instruction.turn_completed == -1)
-    high_percent_instructions_incomplete = unfinished_instructions.count() / game_instructions.count() >= 0.2 if game_instructions.count() > 0 else True
-
-    # Make sure the follower didn't get stuck on an instruction.
-    finished_instructions = game_instructions.where(Instruction.turn_completed != -1)
-    follower_got_lost = False
-    for instruction in finished_instructions:
-        moves = instruction.moves
-        if moves.count() >= 25:
-            follower_got_lost = True
-            break
-    
-    # Make sure the game wasn't just given up on in the first 2 turns.
-    number_of_turns = Turn.select().join(Game).where(Turn.game == game).count()
-    short_game = False
-    if number_of_turns <= 2:
-        return short_game
-
-    return (is_valid  # Bool field in the game DB to manually filter out bad games.
-            and is_mturk  # At least one worker was an mturk worker.
-            and is_complete # The game is complete.
-            and (has_leader_submit_url or has_follower_submit_url) # Non-sandboxed mturk.
-            and not high_percent_instructions_incomplete # < 20% of instructions are incomplete.
-            and not follower_got_lost  # No instruction with > 25 moves 
-            and not short_game) # > 2 turns.
+    return DiagnoseGame(game) == GameDiagnosis.GOOD

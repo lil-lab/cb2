@@ -394,7 +394,7 @@ def GatherDataForDownload(config, response, logs):
             zip_file.writestr("game_data.db", db_file.read())
             log_entry(f"DB file added to download ZIP.")
         with open(game_archive, "rb") as game_file:
-            zip_file.writestr("game_record.zip", game_file.read())
+            zip_file.writestr("game_records.zip", game_file.read())
             log_entry(f"Game archive added to download ZIP.")
     # Delete the game archive now that we've read it into memory and added it to the zip file.
     os.remove(game_archive)
@@ -626,6 +626,27 @@ async def stats(request):
         "name": "Vocabulary Size",
         "count": len(vocab)
     })
+
+    game_outcomes = {}
+    mturk_games = db_utils.ListMturkGames()
+    logger.info(f"Number of games total: {len(mturk_games)}")
+    for game in db_utils.ListMturkGames():
+        if db_utils.IsConfigGame(GlobalConfig(), game):
+            game_diagnosis = db_utils.DiagnoseGame(game)
+            if game_diagnosis == db_utils.GameDiagnosis.HIGH_PERCENT_INSTRUCTIONS_INCOMPLETE:
+                logger.info(f"Game {game.id} is incomplete")
+            if game_diagnosis not in game_outcomes:
+                game_outcomes[game_diagnosis] = 0
+            game_outcomes[game_diagnosis] += 1
+        else:
+            logger.info(f"Game {game.id} is not analysis data")
+
+    for game_diagnosis, count in game_outcomes.items():
+        json_stats.append({
+            "name": game_diagnosis.name,
+            "count": count
+        })
+
     return web.json_response(json_stats)
 
 

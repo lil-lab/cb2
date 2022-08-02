@@ -10,7 +10,6 @@ from marshmallow import fields
 from messages import message_to_server as mts
 from messages import message_from_server as mfs
 from messages.rooms import Role
-from remote_table import Remote
 from config import config as cfg
 
 import dateutil

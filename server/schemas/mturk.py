@@ -44,8 +44,6 @@ class WorkerExperience(BaseModel):
     last_follow = DeferredForeignKey('Game', null=True, deferrable='INITIALLY DEFERRED')
     last_game = DeferredForeignKey('Game', null=True, deferrable='INITIALLY DEFERRED')
 
-
-
 """
     Worker qual level is an integer that follows these rules:
     0 - No qualifications passed.
