@@ -545,6 +545,12 @@ class State(object):
         for i, objective in enumerate(self._objectives):
             if objective.uuid == objective_complete.uuid:
                 self._record_log.info(objective_complete)
+                if self._objectives[i].cancelled:
+                    logger.warn(
+                        f'Warning, obj complete received for cancelled objective: {objective_complete.uuid}')
+                    for actor_id in self._actors:
+                        self._objectives_stale[actor_id] = True
+                    return
                 self._objectives[i].completed = True
                 break
         # Mark the next "active" objective.
@@ -630,6 +636,10 @@ class State(object):
         for objective in self._objectives:
             if not objective.completed:
                 objective.cancelled = True
+                instruction = schemas.game.Instruction.select().where(
+                    schemas.game.Instruction.uuid==objective.uuid).get()
+                instruction.turn_cancelled = self._turn_state.turn_number
+                instruction.save()
         self._active_objective = None
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True

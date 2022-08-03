@@ -84,6 +84,7 @@ class Card:
     count: int
     selected: bool
     border_color: action.Color = action.Color(0, 0, 1, 1)
+    hidden: bool = False
 
     def prop(self):
         return messages.prop.Prop(self.id,
@@ -94,5 +95,6 @@ class Card:
                                       self.color,
                                       self.shape,
                                       self.count,
-                                      self.selected),
+                                      self.selected,
+                                      self.hidden),
                                   None)

@@ -18,6 +18,12 @@ namespace Network
         public CardBuilder.Color color;
         public int count;
         public bool selected;
+
+        // If true, hides the card's state with a cover. This is used for
+        // fine-grained control over which cards are visible.  If you just want
+        // to disable all card covers, use the configuration option in
+        // config/config.py.
+        public bool hidden = false;
     }
 
     [Serializable]

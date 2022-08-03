@@ -71,6 +71,12 @@ class Actor(object):
         """ Peeks at the next action without consuming it. """
         return self._actions.queue[0]
     
+    # This is used for the tutorial automated agent. A realtime actor processes
+    # actions in realtime. Instead of actions occuring immediately (and leaving
+    # the delay + animation up to the client), they wait in the queue until the
+    # duration of the action is complete. This is to orchestrate multiple
+    # different actions on different actors/props s.t. they are not all
+    # simultaneous.
     def is_realtime(self):
         return self._realtime
     

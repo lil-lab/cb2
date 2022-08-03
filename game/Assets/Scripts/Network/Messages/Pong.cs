@@ -8,5 +8,4 @@ namespace Network
     {
         public string ping_receive_time;  // ISO 8601 format.
     }
-
 }

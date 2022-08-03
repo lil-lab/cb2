@@ -432,12 +432,15 @@ def FloodFillPartitionTiles(tiles):
 def CensorMapForFollower(map_update, follower):
     """ Censors information from a map that the follower isn't supposed to have.
 
-        For now, just hides red card edges. 
+        Hides red card edges and marks non-selected cards as hidden.
     """
     map_update_clone = dataclasses.replace(map_update)
     for i, prop in enumerate(map_update_clone.props):
         if map_update_clone.props[i].prop_type == messages.prop.PropType.CARD:
             if map_update_clone.props[i].prop_info.border_color == action.Color(1, 0, 0, 1):
                 map_update_clone.props[i].prop_info.border_color = action.Color(0, 0, 1, 1)
+            if not map_update_clone.props[i].card_init.selected:
+                card_is_red = map_update_clone.props[i].card_init.color == card.Color.RED
+                map_update_clone.props[i].card_init.hidden = not card_is_red
     return map_update_clone
 

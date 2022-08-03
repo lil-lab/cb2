@@ -70,6 +70,16 @@ public class Prop
 
     public void SetCover(GameObject cover)
     {
+        // If swapping out a non-null cover, disable the previous one.
+        if (_cover != null)
+        {
+            MeshRenderer renderer = _cover.GetComponent<MeshRenderer>();
+            if (renderer != null)
+            {
+                renderer.enabled = false;
+            }
+            GameObject.Destroy(_cover);
+        }
         _cover = cover;
     }
 

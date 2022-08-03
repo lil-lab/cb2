@@ -28,12 +28,13 @@ class GenericPropInfo(DataClassJSONMixin):
     border_color: action.Color = action.Color(0, 0, 1, 1)
 
 
-@dataclass(frozen=True)
+@dataclass
 class CardConfig(DataClassJSONMixin):
     color: card.Color
     shape: card.Shape
     count: int
     selected: bool
+    hidden: bool # Whether the client should show the card.
 
 
 @dataclass(frozen=True)

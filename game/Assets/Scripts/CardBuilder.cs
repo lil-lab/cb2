@@ -39,6 +39,7 @@ public class CardBuilder
     private Shape _shape;
     private Color _color;
     private int _count;
+    private bool _covered;
     private HecsCoord _location;
     private GameObject _cardAssembly;
 
@@ -55,7 +56,8 @@ public class CardBuilder
                    .SetLocation(netProp.prop_info.location)
                    .SetShape(netProp.card_init.shape)
                    .SetColor(netProp.card_init.color)
-                   .SetCount(netProp.card_init.count);
+                   .SetCount(netProp.card_init.count)
+                   .SetCovered(netProp.card_init.hidden);
         return cardBuilder;
     }
 
@@ -109,6 +111,12 @@ public class CardBuilder
         return this;
     }
 
+    public CardBuilder SetCovered(bool covered)
+    {
+        _covered = covered;
+        return this;
+    }
+
     public Prop Build()
     {
         // Adding a parent object to the Card GameObject allows the card's asset local transform
@@ -121,9 +129,16 @@ public class CardBuilder
         Prop prop = new Prop(cardSlot, BaseAssetId(_count));
         prop.AddAction(Init.InitAt(_location, _rotationDegrees));
         GameObject outline = card.transform.Find("outline").gameObject;
-        GameObject cover = card.transform.Find("cover").gameObject;
         prop.SetOutline(outline);
-        prop.SetCover(cover);
+        GameObject cover = card.transform.Find("cover").gameObject;
+        if (_covered)
+        {
+            cover.SetActive(true);
+            prop.SetCover(cover);
+        } else {
+            cover.SetActive(false);
+            prop.SetCover(null);
+        }
         return prop;
     }
     private IAssetSource.AssetId BaseAssetId(int count)
