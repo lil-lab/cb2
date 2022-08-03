@@ -440,7 +440,6 @@ def CensorMapForFollower(map_update, follower):
             if map_update_clone.props[i].prop_info.border_color == action.Color(1, 0, 0, 1):
                 map_update_clone.props[i].prop_info.border_color = action.Color(0, 0, 1, 1)
             if not map_update_clone.props[i].card_init.selected:
-                card_is_red = map_update_clone.props[i].card_init.color == card.Color.RED
-                map_update_clone.props[i].card_init.hidden = not card_is_red
+                map_update_clone.props[i].card_init.hidden = True
     return map_update_clone
 
