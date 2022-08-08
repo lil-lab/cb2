@@ -36,12 +36,20 @@ from playhouse.sqlite_ext import CSqliteExtDatabase
 
 logger = logging.getLogger(__name__)
 
-def LookupMainWorkerId(hashed_id, workers):
-    for worker in workers:
-        if worker.hashed_id == hashed_id:
-            return worker.id
-    logger.warning(f"Could not find worker with hashed mturk id {hashed_id}")
-    return None
+class MainFromBranchWorkerIdTranslater(object):
+    def __init__(self, branch_id_to_hash, main_worker_id_by_hash):
+        self.branch_id_to_hash = branch_id_to_hash
+        self.main_worker_id_by_hash = main_worker_id_by_hash
+
+    def LookupMainId(self, branch_worker_id):
+        # Not all games have an associated mturk worker.
+        if branch_worker_id == None:
+            return None
+        if branch_worker_id in self.branch_id_to_hash:
+            hash = self.branch_id_to_hash[branch_worker_id]
+            if hash in self.main_worker_id_by_hash:
+                return self.main_worker_id_by_hash[hash]
+        raise ValueError(f"Could not find worker with branch mturk id {branch_worker_id}")
 
 def SwitchToDatabase(db):
     base.SetDatabase(db)
@@ -54,17 +62,25 @@ def main(db_main_path, db_branch_path):
 
     logging.basicConfig(level=logging.INFO)
 
-    worker_id_by_hash = {}
+    main_worker_id_by_hash = {}
     worker_exp_id_by_hash = {}
 
     with db_main.connection_context():
         for worker in Worker.select():
-            worker_id_by_hash[worker.hashed_id] = worker.id
+            main_worker_id_by_hash[worker.hashed_id] = worker.id
             worker_exp_id_by_hash[worker.hashed_id] = worker.experience_id
 
     SwitchToDatabase(db_branch_path)
     db_branch = base.GetDatabase()
+
+    branch_worker_id_to_hash = {}
+
+    with db_branch.connection_context():
+        for worker in Worker.select():
+            branch_worker_id_to_hash[worker.id] = worker.hashed_id
         
+    worker_id_translator = MainFromBranchWorkerIdTranslater(branch_worker_id_to_hash, main_worker_id_by_hash)
+
     games_from_db_b = None
     workers_from_db_b = None
 
@@ -80,14 +96,14 @@ def main(db_main_path, db_branch_path):
     branch_cards = []
     branch_card_selections = []
 
+    # TODO sharf move all the ID translation here. It'll be safer as we're in branch context.
     with db_branch.connection_context():
         workers = Worker.select().order_by(Worker.id)
         for worker in workers:
-            if worker.hashed_id not in worker_id_by_hash:
+            if worker.hashed_id not in main_worker_id_by_hash:
                 logger.info(f"Worker {worker.id} not in {db_main}")
                 sys.exit(1)
-            if worker.hashed_id in worker_id_by_hash:
-                worker.id = worker_id_by_hash[worker.hashed_id]
+            if worker.hashed_id in main_worker_id_by_hash:
                 worker.experience_id = worker_exp_id_by_hash[worker.hashed_id]
             branch_workers.append(worker)
         
@@ -95,8 +111,8 @@ def main(db_main_path, db_branch_path):
 
         # Query all assignments and inner join with workers.
         for assignment in Assignment.select().join(Worker):
-            if assignment.worker.hashed_id in worker_id_by_hash:
-                assignment.worker_id = worker_id_by_hash[assignment.worker.hashed_id]
+            if assignment.worker.hashed_id in main_worker_id_by_hash:
+                assignment.worker_id = main_worker_id_by_hash[assignment.worker.hashed_id]
             branch_assignments.append(assignment)
         
         # Query all games.
@@ -106,11 +122,11 @@ def main(db_main_path, db_branch_path):
                     .order_by(Game.id))
         for game in games:
             if game.leader != None:
-                leader_id = LookupMainWorkerId(game.leader.hashed_id, branch_workers)
+                leader_id = worker_id_translator.LookupMainId(game.leader_id)
             else:
                 leader_id = None
             if game.follower != None: 
-                follower_id = LookupMainWorkerId(game.follower.hashed_id, branch_workers)
+                follower_id = worker_id_translator.LookupMainId(game.follower_id)
             else:
                 follower_id = None
             game.leader_id = leader_id
@@ -142,6 +158,7 @@ def main(db_main_path, db_branch_path):
             branch_card_selections.append(card_selection)
 
         for instruction in Instruction.select():
+
             branch_instructions.append(instruction)
         
         for turn in Turn.select():
@@ -222,7 +239,7 @@ def main(db_main_path, db_branch_path):
         for instruction in branch_instructions:
             main_instruction = Instruction(
                 game_id = branch_to_main_game_id[instruction.game_id],
-                worker_id = LookupMainWorkerId(instruction.worker.hashed_id, branch_workers),
+                worker_id = worker_id_translator.LookupMainId(instruction.worker_id),
                 uuid = instruction.uuid,
                 text = instruction.text,
                 time = instruction.time,
@@ -232,12 +249,11 @@ def main(db_main_path, db_branch_path):
             main_instruction.save()
             branch_to_main_instruction_id[instruction.id] = main_instruction.id
         for move in branch_moves:
-            worker_id_hash = LookupMainWorkerId(move.worker.hashed_id, branch_workers) if move.worker else None
             main_move = Move(
                 game_id = branch_to_main_game_id[move.game_id],
                 instruction_id = branch_to_main_instruction_id[move.instruction_id] if move.instruction_id != None else None,
                 character_role = move.character_role,
-                worker_id = worker_id_hash,
+                worker_id = worker_id_translator.LookupMainId(move.worker_id),
                 turn_number = move.turn_number,
                 action = move.action,
                 position_before = move.position_before,
