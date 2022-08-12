@@ -196,6 +196,7 @@ def main(db_main_path, db_branch_path):
     branch_to_main_card_set_id = {}
     branch_to_main_card_id = {}
     branch_to_main_card_selection_id = {}
+    branch_to_main_assignment_id = {}
     
     SwitchToDatabase(db_main_path)
     db_main = base.GetDatabase()
@@ -203,8 +204,9 @@ def main(db_main_path, db_branch_path):
     with db_main.connection_context():
         for assignment in branch_assignments:
             # Create a new assignment in the main DB with the same values.
-            assignment = Assignment(assignment_id = assignment.assignment_id, worker=assignment.worker, hit_id=assignment.hit_id, submit_to_url=assignment.submit_to_url, time_used=assignment.time_used)
-            assignment.save()
+            main_assignment = Assignment(assignment_id = assignment.assignment_id, worker=assignment.worker, hit_id=assignment.hit_id, submit_to_url=assignment.submit_to_url, time_used=assignment.time_used)
+            main_assignment.save()
+            branch_to_main_assignment_id[assignment.id] = main_assignment.id
         for game in branch_games:
             main_game = Game(
                     type=game.type, 
@@ -220,8 +222,8 @@ def main(db_main_path, db_branch_path):
                     completed = game.completed,
                     valid = game.valid,
                     who_is_agent = game.who_is_agent,
-                    lead_assignment=game.lead_assignment,
-                    follow_assignment=game.follow_assignment,
+                    lead_assignment=branch_to_main_assignment_id[game.lead_assignment_id] if game.lead_assignment_id != None else None,
+                    follow_assignment=branch_to_main_assignment_id[game.follow_assignment_id] if game.follow_assignment_id != None else None,
                     server_software_commit = game.server_software_commit)
             main_game.save()
             branch_to_main_game_id[game.id] = main_game.id
