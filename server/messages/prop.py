@@ -12,7 +12,6 @@ from typing import Optional
 
 import dateutil.parser
 
-
 class PropType(Enum):
     NONE = 0
     SIMPLE = 1
@@ -34,7 +33,7 @@ class CardConfig(DataClassJSONMixin):
     shape: card.Shape
     count: int
     selected: bool
-    hidden: bool # Whether the client should show the card.
+    hidden: Optional[bool] # Whether the client should show the card.
 
 
 @dataclass(frozen=True)
