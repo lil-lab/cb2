@@ -89,8 +89,15 @@ def is_mturk_sandbox(game):
 
 def high_percent_instructions_incomplete(game_instructions):
     # Make sure there weren't too many instructions that never got completed.
-    unfinished_instructions = game_instructions.where(Instruction.turn_completed == -1)
-    high_percent_instructions_incomplete = unfinished_instructions.count() / game_instructions.count() >= 0.2 if game_instructions.count() > 0 else True
+    # Count the number of continuous incomplete instructions at the end of the game.
+    unfinished_instructions = 0
+    for instruction in game_instructions.order_by(Instruction.turn_issued.desc()):
+        if instruction.turn_completed == -1:
+            unfinished_instructions += 1
+        else:
+            break
+
+    high_percent_instructions_incomplete = unfinished_instructions / game_instructions.count() >= 0.2 if game_instructions.count() > 0 else True
     return high_percent_instructions_incomplete
 
 def follower_got_lost(game_instructions):
@@ -115,7 +122,7 @@ class GameDiagnosis(Enum):
     DB_INVALID = 1
     NOT_MTURK = 2
     MTURK_SANDBOX = 3
-    GAME_INCOMPLETE = 4
+    GAME_INCOMPLETE = 4  # No longer used. Incomplete games are still considered research data.
     SHORT_GAME = 5
     HIGH_PERCENT_INSTRUCTIONS_INCOMPLETE = 6
     FOLLOWER_GOT_LOST = 7
@@ -141,8 +148,6 @@ def DiagnoseGame(game):
         return GameDiagnosis.NOT_MTURK
     if is_mturk_sandbox(game): # Only non-sandbox mturk games are considered research data.
         return GameDiagnosis.MTURK_SANDBOX
-    if not game.completed: # Filter games where someone disconnected.
-        return GameDiagnosis.GAME_INCOMPLETE
     if short_game(game): # Filter games that were just given up on.
         return GameDiagnosis.SHORT_GAME
 

@@ -630,8 +630,11 @@ async def stats(request):
     game_outcomes = {}
     mturk_games = db_utils.ListMturkGames()
     logger.info(f"Number of games total: {len(mturk_games)}")
-    for game in db_utils.ListMturkGames():
+    total_config_games = 0
+    for game in mturk_games:
         if db_utils.IsConfigGame(GlobalConfig(), game):
+            logger.info(f"Game {game.id} is a config game")
+            total_config_games += 1
             game_diagnosis = db_utils.DiagnoseGame(game)
             if game_diagnosis == db_utils.GameDiagnosis.HIGH_PERCENT_INSTRUCTIONS_INCOMPLETE:
                 logger.info(f"Game {game.id} is incomplete")
@@ -639,13 +642,19 @@ async def stats(request):
                 game_outcomes[game_diagnosis] = 0
             game_outcomes[game_diagnosis] += 1
         else:
-            logger.info(f"Game {game.id} is not analysis data")
+            logger.info(f"Game {game.id} is not config data")
+    
 
     for game_diagnosis, count in game_outcomes.items():
         json_stats.append({
             "name": game_diagnosis.name,
             "count": count
         })
+    
+    json_stats.append({
+        "name": "Total MTurk Games in this config",
+        "count": total_config_games
+    })
 
     return web.json_response(json_stats)
 

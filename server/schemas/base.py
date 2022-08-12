@@ -20,6 +20,12 @@ def SetDatabase(db_path):
 def ConnectDatabase():
     database.connect()
 
+def GetDatabase():
+    return database
+
+def CloseDatabase():
+    database.close()
+
 def CreateTablesIfNotExists(tables):
     # Peewee injects an IF NOT EXISTS check in their create_tables command.
     # It's good to create a function name that explicitly mentions this.
