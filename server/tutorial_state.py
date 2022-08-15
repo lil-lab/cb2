@@ -85,6 +85,9 @@ class TutorialGameState(object):
         self._map_stale = {} # Maps from player_id -> bool if their map is stale.
         self._map_update_count = 0
 
+        self._prop_update = self._map_provider.prop_update() # Maps from player_id -> list of props to update.
+        self._prop_stale = {} # Maps from player_id -> bool if their prop list is stale.
+
         self._synced = {}
         self._action_history = {}
         self._last_tick = datetime.now() # Used to time 1s ticks for turn state updates.
@@ -394,9 +397,9 @@ class TutorialGameState(object):
 
             if cards_changed:
                 # We've changed cards, so we need to mark the map as stale for all players.
-                self._map_update = self._map_provider.map()
+                self._prop_update = self._map_provider.prop_update()
                 for actor_id in self._actors:
-                    self._map_stale[actor_id] = True
+                    self._prop_stale[actor_id] = True
         # Make sure to mark the game's end time.
         self._tutorial_record.end_time = datetime.now()
         self._tutorial_record.save()
@@ -748,6 +751,13 @@ class TutorialGameState(object):
                 f'Room {self._room_id} drained map update {map_update} for player_id {player_id}')
             return message_from_server.MapUpdateFromServer(map_update)
 
+        prop_update = self.drain_prop_update(player_id)
+        if prop_update is not None:
+            logger.debug(
+                f'Room {self._room_id} drained prop update {prop_update} for player_id {player_id}')
+            return message_from_server.PropUpdateFromServer(prop_update)
+
+
         if not self.is_synced(player_id):
             state_sync = self.sync_message_for_transmission(player_id)
             logger.info(
@@ -832,6 +842,26 @@ class TutorialGameState(object):
         self._map_stale[actor_id] = False
         self._sent_log.info(f"to: {actor_id} map: {map_update}")
         return map_update
+
+    def drain_prop_update(self, actor_id):
+        if not actor_id in self._prop_stale:
+            self._prop_stale[actor_id] = True
+        
+        if not self._prop_stale[actor_id]:
+            return None
+        
+        prop_update = self._prop_update
+
+        if self._actors[actor_id].role() == Role.FOLLOWER:
+            prop_update = map_utils.CensorPropForFollower(prop_update, self._actors[actor_id])
+        
+        # Record the prop update to the database.
+        prop_record = schemas.prop.PropUpdate()
+        prop_record.prop_data = prop_update
+        prop_record.game = self._game_record
+        prop_record.save()
+        
+        return prop_update
 
     def drain_tutorial_response(self, actor_id):
         if self._tutorial_responses.empty():

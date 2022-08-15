@@ -11,6 +11,7 @@ from messages.rooms import RoomManagementResponse
 from messages.objective import ObjectiveMessage
 from messages.tutorials import TutorialResponse
 from messages.live_feedback import LiveFeedback
+from messages.prop import PropUpdate
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
@@ -32,7 +33,7 @@ class MessageType(Enum):
     TUTORIAL_RESPONSE = 6
     PING = 7
     LIVE_FEEDBACK = 8
-
+    PROP_UPDATE = 9
 
 def ActionsFromServer(actions):
     return MessageFromServer(datetime.now(), MessageType.ACTIONS, actions, None, None, None, None, None, None)
@@ -66,6 +67,9 @@ def PingMessageFromServer():
 def LiveFeedbackFromServer(feedback):
     return MessageFromServer(datetime.now(), MessageType.LIVE_FEEDBACK, None, None, None, None, None, None, None, feedback)
 
+def PropUpdateFromServer(props):
+    return MessageFromServer(datetime.now(), MessageType.PROP_UPDATE, None, None, None, None, None, None, None, None, props)
+
 @dataclass(frozen=True)
 class MessageFromServer(DataClassJSONMixin):
     transmit_time: datetime = field(
@@ -83,3 +87,4 @@ class MessageFromServer(DataClassJSONMixin):
     turn_state: Optional[TurnState]
     tutorial_response: Optional[TutorialResponse]
     live_feedback: Optional[LiveFeedback] = LiveFeedback()
+    prop_update: Optional[PropUpdate] = PropUpdate()

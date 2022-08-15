@@ -54,6 +54,7 @@ public class EntityManager : MonoBehaviour
 
     public void RegisterProp(int id, Prop prop)
     {
+        _logger.Info("Registering prop: " + id);
         if (_props.ContainsKey(id))
         {
             _logger.Info("Ignoring duplicate prop registration: " + id);
@@ -64,6 +65,7 @@ public class EntityManager : MonoBehaviour
 
     public void RegisterActor(int id, Actor actor)
     {
+        _logger.Info("Registering actor: " + id);
         if (_actors.ContainsKey(id))
         {
             _logger.Info("Ignoring duplicate actor registration: " + id);
@@ -92,6 +94,7 @@ public class EntityManager : MonoBehaviour
 
     public void DestroyActors()
     {
+        _logger.Info("Destroying actors");
         FlushActors();
         foreach (var kvPair in _actors)
         {
@@ -104,6 +107,7 @@ public class EntityManager : MonoBehaviour
 
     public void DestroyProps()
     {
+        _logger.Info("Destroying props");
         FlushProps();
         foreach (var kvPair in _props)
         {
@@ -117,6 +121,7 @@ public class EntityManager : MonoBehaviour
     // Queue all current props to eventually self-destruct. Move them to a separate graveyard collection until then.
     public void QueueDestroyProps()
     {
+        _logger.Info("Queuing props for destruction");
         foreach (var kvPair in _props)
         {
             int propId = kvPair.Key;

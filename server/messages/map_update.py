@@ -71,5 +71,4 @@ class MapUpdate(DataClassJSONMixin):
     rows: int
     cols: int
     tiles: List[Tile]
-    props: List[messages.prop.Prop]
     metadata: MapMetadata = field(default_factory=MapMetadata)

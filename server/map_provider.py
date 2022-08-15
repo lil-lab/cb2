@@ -7,6 +7,7 @@ from enum import Enum
 from hex import HecsCoord, HexCell, HexBoundary
 from map_utils import *
 from messages.map_update import MapMetadata, MapUpdate, City, Lake, Mountain, Outpost, MountainType, LakeType
+from messages.prop import PropUpdate
 from queue import Queue
 from typing import List, Optional
 
@@ -601,7 +602,7 @@ def RandomMap():
     for i in range(len(map_tiles)):
         map_tiles[i].cell.height = LayerToHeight(map_tiles[i].cell.layer)
 
-    return MapUpdate(MAP_HEIGHT, MAP_WIDTH, map_tiles, [], map_metadata)
+    return MapUpdate(MAP_HEIGHT, MAP_WIDTH, map_tiles, map_metadata)
 
 class CardGenerator(object):
     def __init__(self, id_assigner):
@@ -861,10 +862,12 @@ class MapProvider(object):
 
     def map(self):
         if self._map_metadata:
-            return MapUpdate(self._rows, self._cols, self._tiles, [card.prop() for card in self._cards], self._map_metadata)
+            return MapUpdate(self._rows, self._cols, self._tiles, self._map_metadata)
         else:
-            return MapUpdate(self._rows, self._cols, self._tiles, [card.prop() for card in self._cards])
+            return MapUpdate(self._rows, self._cols, self._tiles)
 
+    def prop_update(self):
+        return PropUpdate([card.prop() for card in self._cards])
     
     def coord_in_map(self, coord):
         offset_coords = coord.to_offset_coordinates()

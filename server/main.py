@@ -966,7 +966,8 @@ def main(config_filepath="config/server-config.json"):
     try:
         loop.run_until_complete(tasks)
     except KeyboardInterrupt:
-        pass
+        logger.info(f"Keyboard interrupt received. Exiting.")
+        sys.exit(0)
     finally:
         room_manager.end_server()
         loop.close()

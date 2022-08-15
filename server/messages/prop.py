@@ -8,7 +8,7 @@ from mashumaro.mixins.json import DataClassJSONMixin
 from datetime import datetime
 from marshmallow import fields
 from messages import action
-from typing import Optional
+from typing import List, Optional
 
 import dateutil.parser
 
@@ -40,7 +40,6 @@ class CardConfig(DataClassJSONMixin):
 class SimpleConfig(DataClassJSONMixin):
     asset_id: int
 
-
 @dataclass(frozen=True)
 class Prop(DataClassJSONMixin):
     id: int
@@ -50,3 +49,7 @@ class Prop(DataClassJSONMixin):
     # Only one of these is populated, depending on this prop's prop_type.
     card_init: Optional[CardConfig]  # Only used for Card props.
     simple_init: Optional[SimpleConfig]  # Only used for Simple props.
+
+@dataclass(frozen=True)
+class PropUpdate(DataClassJSONMixin):
+    props: List[Prop] = field(default_factory=list)

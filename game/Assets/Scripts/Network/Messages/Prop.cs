@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+
 namespace Network
 {
     [Serializable]
@@ -51,5 +53,11 @@ namespace Network
         // (see PropUpdate class).
         public CardConfig card_init;
         public SimpleConfig simple_init;
+    }
+
+    [Serializable]
+    public class PropUpdate
+    {
+        public List<Prop> props;
     }
 }

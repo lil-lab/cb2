@@ -22,6 +22,7 @@ namespace Network
 
         private StateSync _pendingStateSync;
         private MapUpdate _pendingMapUpdate;
+        public PropUpdate _pendingPropUpdate;
 
         public enum Mode
         {
@@ -63,10 +64,10 @@ namespace Network
                 _logger.Info("EntityManager receiving pending state sync.");
                 ApplyStateSyncToEntityManager(_pendingStateSync);
             }
-            if (_pendingMapUpdate != null)
+            if (_pendingPropUpdate != null)
             {
                 _logger.Info("EntityManager receiving pending map update.");
-                ApplyMapUpdateToEntityManager(_pendingMapUpdate);
+                ApplyPropUpdateToEntityManager(_pendingPropUpdate);
             }
         }
 
@@ -126,16 +127,17 @@ namespace Network
             return true;
         }
 
-        public bool ApplyMapUpdateToEntityManager(MapUpdate mapUpdate)
+        public bool ApplyPropUpdateToEntityManager(PropUpdate propUpdate)
         {
-            _logger.Info("ApplyMapUpdateToEntityManager()");
+            _logger.Info("ApplyPropUpdateToEntityManager()");
             if (_entityManager == null) return false;
-            _logger.Info("Applying map update to entity manager...");
+            _logger.Info("Applying prop update with " + propUpdate.props.Count + " props to entity manager...");
             _entityManager.QueueDestroyProps();
-            foreach (Network.Prop netProp in mapUpdate.props)
+            foreach (Network.Prop netProp in propUpdate.props)
             {
                 if (netProp.prop_type == PropType.CARD)
                 {
+                    _logger.Info("Registering card " + netProp.id);
                     CardBuilder cardBuilder = CardBuilder.FromNetwork(netProp);
                     _entityManager.RegisterProp(netProp.id, cardBuilder.Build());
                     if (netProp.card_init.selected)
@@ -150,6 +152,7 @@ namespace Network
                 }
                 if (netProp.prop_type == PropType.SIMPLE)
                 {
+                    _logger.Info("Registering prop " + netProp.id);
                     global::Prop prop = global::Prop.FromNetwork(netProp);
                     _entityManager.RegisterProp(netProp.id, prop);
                     continue;
@@ -158,6 +161,7 @@ namespace Network
             }
             return true;
         }
+
         public void HandleMessage(MessageFromServer message)
         {
             _logger.Info("Received message of type: " + message.type);
@@ -218,10 +222,13 @@ namespace Network
                     return;
                 }
                 _mapSource.ReceiveMapUpdate(message.map_update);
-                if(!ApplyMapUpdateToEntityManager(message.map_update))
+            }
+            if (message.type == MessageFromServer.MessageType.PROP_UPDATE)
+            {
+                if(!ApplyPropUpdateToEntityManager(message.prop_update))
                 {
-                    _logger.Info("Unable to apply map update to entity manager... Saved for later.");
-                    _pendingMapUpdate = message.map_update;
+                    _logger.Info("Unable to apply prop update to entity manager... Saved for later.");
+                    _pendingPropUpdate = message.prop_update;
                 }
             }
             if (message.type == MessageFromServer.MessageType.ROOM_MANAGEMENT)

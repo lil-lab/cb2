@@ -18,6 +18,7 @@ namespace Network
             TUTORIAL_RESPONSE,
             PING,
             LIVE_FEEDBACK,
+            PROP_UPDATE,
         }
 
         // These fields are always provided with any packet.
@@ -35,5 +36,6 @@ namespace Network
         public TurnState turn_state;
         public TutorialResponse tutorial_response;
         public LiveFeedback live_feedback;
+        public PropUpdate prop_update;
     }
 }  // namespace Network

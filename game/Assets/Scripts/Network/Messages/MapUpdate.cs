@@ -97,8 +97,6 @@ namespace Network
         // Tiles.
         public Tile[] tiles;
 
-        // Prop initial states.
-        public List<Network.Prop> props;
         public MapMetadata metadata;
     }
 }  // namespace Network
