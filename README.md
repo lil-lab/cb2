@@ -42,9 +42,9 @@ git submodule init
 git submodule update
 ```
 
-### Server 
+### Python Dependencies
 
-We recommend you setup a separate virtual environment for the server. Here's a quick intro:
+We recommend you setup a virtual environment for the python dependencies. Here's a quick intro:
 
 * Create the venv with: `python3 -m venv <env_name>` (run once).
 * Enter the venv with: `source <env_name>/bin/activate`
@@ -54,15 +54,36 @@ Dependencies can be installed with:
 
 ```python3 -m pip install -r requirements.txt```
 
-Launch the server with:
 
-```python3 -m main```
+### Server 
+
+Launch the server on your desktop with:
+
+```
+cd server/
+python3 -m main --config_filepath="config/local-config.json"
+```
+
+To launch the server on a deployment machine, you'll want to use the SystemD
+daemon. This can be installed with the `deploy/deploy.sh` script. It makes use
+of the special config file `config/server-config.json`.
 
 When you're done, you can quit the python venv with `deactivate` on the command line.
 
 ### Client
 
 The client is a Unity project developed using `Version 2020.3.25f1`. This is contained in the `game/` directory. No setup should be necessary, just open the project in Unity.
+
+### Deploying the server to a new machine.
+
+The script `deploy/deploy.sh` should take care of everything. This installs a
+SystemD Daemon which handles the CB2 server. See `deploy/systemd/README.md` for
+more. 
+
+### OpenAI Gym
+
+The OpenAI Gym takes the same state machine used by the CB2 server and runs it
+locally. This is used to train agents.
 
 Deploying a WebGL Client
 ------------------------

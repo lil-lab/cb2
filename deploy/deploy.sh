@@ -1,3 +1,6 @@
+# This is your one-stop shop for installing the server on a new machine.
+# If you run into a missing dependency that prevents this from working on a
+# brand-new machine, make sure to add it here!
 sudo apt install python3.8-venv
 sudo apt install gcc
 sudo apt install sqlite3 libsqlite3-dev

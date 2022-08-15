@@ -326,6 +326,7 @@ class GameDisplay(object):
         self._screen_size = screen_size
         self._cell_width = self._cell_height = 0
         self._map = None
+        self._props = None
         self._game_state = None
         self._trajectory = None # A list of Hecscoords. A follower's pathway to draw.
         self._positive_markers = None
@@ -352,6 +353,8 @@ class GameDisplay(object):
         else:
             self._cell_height = self._cell_width * 1.5 / math.sqrt(3)
     
+    def set_props(self, props):
+        self._props = props
     
     def set_trajectory(self, trajectory):
         self._trajectory = trajectory
@@ -412,8 +415,12 @@ class GameDisplay(object):
             icon = pygame.transform.scale(icon, (icon_width, icon_height))
             self._screen.blit(icon, (center_x - icon_width/2, center_y - icon_height/2))
 
+    def visualize_props(self):
+        if self._props is None:
+            return
+
         # Draw card props.
-        for prop in self._map.props:
+        for prop in self._props:
             if prop.prop_type != PropType.CARD:
                 continue
             # Get the card location.
@@ -422,7 +429,6 @@ class GameDisplay(object):
             draw_card(self._screen, center_x, center_y,
                       self._cell_width / 2, self._cell_height * 0.7,
                       prop.card_init)
-
 
     def visualize_actor(self, actor_index):
         actor = self._game_state.actors[actor_index]
@@ -479,8 +485,6 @@ class GameDisplay(object):
         y_offset = heading_offset * math.sin(math.radians(heading))
         pygame.draw.circle(self._screen, pygame.Color("black"), (x + x_offset, y + y_offset), 4)
 
-
-
     def visualize_markers(self):
         if self._positive_markers is None or len(self._positive_markers) == 0:
             return
@@ -508,6 +512,7 @@ class GameDisplay(object):
         self._screen.fill((255,255,255))
 
         self.visualize_map()
+        self.visualize_props()
         self.visualize_game_state()
         self.visualize_trajectory()
         self.visualize_markers()

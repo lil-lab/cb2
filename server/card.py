@@ -23,7 +23,7 @@ class Shape(Enum):
     SQUARE = 5
     STAR = 6
     TRIANGLE = 7
-
+    MAX = 8
 
 class Color(Enum):
     NONE = 0
@@ -34,6 +34,13 @@ class Color(Enum):
     PINK = 5
     RED = 6
     YELLOW = 7
+    MAX = 8
+
+class SelectedState(Enum):
+    NONE = 0
+    SELECTED = 1
+    SELECTED_ERROR = 2  # Card is selected, but set completion rules are violated.
+    MAX = 3
 
 OUTLINE_RADIUS = 30
 

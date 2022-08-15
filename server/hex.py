@@ -134,6 +134,8 @@ class HexBoundary(DataClassJSONMixin):
         HecsCoord.origin().up_left(): Edges.UPPER_LEFT,
     }
 
+    MAX_VAL = (Edges.UPPER_RIGHT | Edges.RIGHT | Edges.LOWER_RIGHT | Edges.LOWER_LEFT | Edges.LEFT | Edges.UPPER_LEFT)
+
     def rotate_cw(bound, rotation_degrees=0):
         # We can only rotate by even numbers of 60 degrees.
         turns = rotation_degrees // 60

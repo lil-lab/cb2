@@ -24,6 +24,7 @@ class Role(Enum):
     NONE = 0
     FOLLOWER = 1
     LEADER = 2
+    MAX = 3
 
 
 @dataclass(frozen=True)
