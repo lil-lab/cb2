@@ -80,6 +80,20 @@ def Delay(id, duration):
         expiration=datetime.now(NYC) + timedelta(seconds=10)
     )
 
+def Init(id, location, orientation):
+    NYC = tz.gettz('America/New_York')
+    return Action(
+        id=id,
+        action_type=ActionType.INIT,
+        animation_type=AnimationType.IDLE,
+        displacement=location,
+        rotation=orientation,
+        border_radius=0,
+        border_color=Color(0, 0, 0, 0),
+        duration_s=0.01,
+        expiration=datetime.now(NYC) + timedelta(seconds=10)
+    )
+
 def Turn(id, angle, duration=0.33):
     NYC = tz.gettz('America/New_York')
     return Action(

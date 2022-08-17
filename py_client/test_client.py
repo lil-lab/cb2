@@ -7,14 +7,14 @@ import statistics as stats
 from datetime import datetime
 from datetime import timedelta
 
-from messages import message_from_server
-from messages import message_to_server
-from messages import action
-from messages import turn_state
-from messages.objective import ObjectiveMessage
-import messages.rooms
+from server.messages import message_from_server
+from server.messages import message_to_server
+from server.messages import action
+from server.messages import turn_state
+from server.messages.objective import ObjectiveMessage
+import server.messages.rooms
 
-from hex import HecsCoord
+from server.hex import HecsCoord
 
 
 # Connect via websocket to the server's /player_endpoint endpoint.

@@ -25,14 +25,14 @@ import uuid
 logger = logging.getLogger(__name__)
 
 class Actor(object):
-    def __init__(self, actor_id, asset_id, role, spawn, realtime=False):
+    def __init__(self, actor_id, asset_id, role, spawn, realtime=False, spawn_rotation_degrees=0):
         self._actor_id = actor_id
         self._asset_id = asset_id
         self._realtime = realtime
         self._action_start_timestamp = datetime.min
         self._actions = Queue()
         self._location = spawn
-        self._heading_degrees = 0
+        self._heading_degrees = spawn_rotation_degrees
         self._projected_location = spawn
         self._projected_heading = 0
         self._role = role
@@ -83,20 +83,32 @@ class Actor(object):
     def peek_action_done(self):
         return (datetime.now() - self._action_start_timestamp).total_seconds() >= self.peek().duration_s
     
-    def WalkForwards(self):
+    def WalkForwardsAction(self):
         displacement = HecsCoord.origin().neighbor_at_heading(self._projected_heading)
-        self.add_action(Walk(self.actor_id(), displacement))
+        return Walk(self.actor_id(), displacement)
     
-    def WalkBackwards(self):
+    def WalkBackwardsAction(self):
         # Note that the displacement is negated on the next line.
         displacement = HecsCoord.origin().neighbor_at_heading(self._projected_heading)
-        self.add_action(Walk(self.actor_id(), displacement.negate()))
+        return Walk(self.actor_id(), displacement.negate())
+    
+    def TurnLeftAction(self):
+        return Turn(self.actor_id(), -60)
+    
+    def TurnRightAction(self):
+        return Turn(self.actor_id(), 60)
+    
+    def WalkForwards(self):
+        self.add_action(self.WalkForwardsAction())
+    
+    def WalkBackwards(self):
+        self.add_action(self.WalkBackwardsAction())
 
     def TurnLeft(self):
-        self.add_action(Turn(self.actor_id(), -60))
+        self.add_action(self.TurnLeftAction())
 
     def TurnRight(self):
-        self.add_action(Turn(self.actor_id(), 60))
+        self.add_action(self.TurnRightAction())
 
     def step(self):
         """ Executes & consumes an action from the queue."""

@@ -38,22 +38,17 @@ class MessageType(Enum):
 def ActionsFromServer(actions):
     return MessageFromServer(datetime.now(), MessageType.ACTIONS, actions, None, None, None, None, None, None)
 
-
 def MapUpdateFromServer(map_update):
     return MessageFromServer(datetime.now(), MessageType.MAP_UPDATE, None, map_update, None, None, None, None, None)
-
 
 def StateSyncFromServer(state_sync):
     return MessageFromServer(datetime.now(), MessageType.STATE_SYNC, None, None, state_sync, None, None, None, None)
 
-
 def RoomResponseFromServer(room_response):
     return MessageFromServer(datetime.now(), MessageType.ROOM_MANAGEMENT, None, None, None, room_response, None, None, None)
 
-
 def ObjectivesFromServer(texts):
     return MessageFromServer(datetime.now(), MessageType.OBJECTIVE, None, None, None, None, texts, None, None)
-
 
 def GameStateFromServer(game_state):
     return MessageFromServer(datetime.now(), MessageType.GAME_STATE, None, None, None, None, None, game_state, None)

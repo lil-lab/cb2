@@ -62,6 +62,7 @@ class RoomRequestType(Enum):
     LEAVE = 4
     MAP_SAMPLE = 5
     JOIN_FOLLOWER_ONLY = 6
+    JOIN_LEADER_ONLY = 7
 
 
 @dataclass(frozen=True)

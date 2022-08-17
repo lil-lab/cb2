@@ -5,6 +5,7 @@ import uuid
 
 import server.assets as assets
 import server.hex as hex
+import server.messages.message_from_server as message_from_server
 import server.schemas as schemas
 import server.state as state
 import server.card as card
@@ -18,18 +19,27 @@ from typing import Optional
 from server.util import GetCommitHash
 from server.map_tools.visualize import GameDisplay
 
-class Actions(Enum):
+class LeadActions(Enum):
     NONE = 0
     FORWARDS = 1
     BACKWARDS = 2
     TURN_LEFT = 3
     TURN_RIGHT = 4
     END_TURN = 5
-    INSTRUCTION_DONE = 6
-    POSITIVE_FEEDBACK = 7
-    NEGATIVE_FEEDBACK = 8
-    INTERRUPT = 9
+    POSITIVE_FEEDBACK = 6
+    NEGATIVE_FEEDBACK = 7
+    INTERRUPT = 8
+    SEND_INSTRUCTION = 9
     MAX = 10
+
+class FollowActions(Enum):
+    NONE = 0
+    FORWARDS = 1
+    BACKWARDS = 2
+    TURN_LEFT = 3
+    TURN_RIGHT = 4
+    INSTRUCTION_DONE = 5
+    MAX = 6
 
 class CerealBar2Env(gym.Env):
   metadata = {"render_modes": ["human", "ascii"], "render_fps": 4}
@@ -86,10 +96,46 @@ class CerealBar2Env(gym.Env):
         }),
     })
 
-    self.action_space = spaces.Dict({
-        "action": spaces.Discrete(Actions.MAX),
+    self.lead_action_space = spaces.Dict({
+        "action": spaces.Discrete(LeadActions.MAX),
         "instruction": spaces.Box(shape=(1000, 1000), dtype=np.int32),
     })
 
+    self.follow_action_space = spaces.Dict({
+        "action": spaces.Discrete(FollowActions.MAX),
+    })
+
+    # Start with leader turn.
+    self.action_space = self.lead_action_space
     self.reset()
-  
+
+    def _get_obs(self):
+        map = self.state.map()
+        return {
+            "actors": {
+                "leader": self.state.get_actor(self.leader_id).location().to_offset_coordinates(),
+                "follower": self.state.get_actor(self.follower_id).location().to_offset_coordinates(),
+            },
+            "map": {
+                "asset_ids": [map[]]
+            },
+            "cards": {
+            },
+            "instructions": self.state.instructions(),
+        }
+
+    def drain_leader_messages(self):
+        message = self.state.drain_message(self.leader_id)
+        while message != None:
+            message = self.state.drain_message(self.leader_id)
+    
+    def drain_follower_messages(self):
+        message = self.state.drain_message(self.follower_id)
+        while message != None:
+            message = self.state.drain_message(self.follower_id)
+
+    def drain_messages(self):
+        self.drain_leader_messages()
+        self.drain_follower_messages()
+    
+    def step()
