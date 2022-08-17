@@ -25,6 +25,24 @@ from server.messages.rooms import Role
 
 logger = logging.getLogger(__name__)
 
+# object that gives access to game (map, actors, state, instructions, etc).
+# It gets those things from calls from cb2client.
+# works with context manager and async coroutine so you can do something like:
+
+# client.Connect(url)
+# with client.JoinGame(queue_type) as game:
+#     while not game.over():
+#        game.state()
+#        game.turn()
+# 
+# and JoinGame() starts a coroutine which updates game state in the background.
+class Game(object):
+    def __init__(self):
+        self.map_update = None
+
+    def Reset():
+
+
 class Cb2Client(object):
     class State(Enum):
         NONE = 0
@@ -315,6 +333,15 @@ class Cb2Client(object):
         """
         message = message_to_server.ActionsFromServer([action])
         await self._send_message(message)
+    
+    async def _cb2_task(self):
+        # Make sure we've joined a game.
+        if self.state < Cb2Client.State.GAME_STARTED:
+            return False, "Not in game"
+        while True:
+            result, reason = self._drain_socket_message(timedelta(minutes=5))
+            if not result:
+                return False, f"Encountered while draining socket: {reason}"
     
     async def _drain_socket_message(self, timeout):
         if self.ws.closed:
