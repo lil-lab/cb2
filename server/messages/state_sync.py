@@ -6,7 +6,7 @@ from mashumaro.mixins.json import DataClassJSONMixin
 from marshmallow import fields
 from typing import List, Optional
 
-from rooms import Role
+from messages.rooms import Role
 
 import datetime
 import dateutil.parser
