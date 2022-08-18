@@ -319,7 +319,7 @@ class State(object):
                 # We've changed cards, so we need to mark the map as stale for all players.
                 self._prop_update = self._map_provider.prop_update()
                 for actor_id in self._actors:
-                    self._props_stale[actor_id] = True
+                    self._prop_stale[actor_id] = True
 
         # Make sure to mark the game's end time.
         self._game_record.end_time = datetime.utcnow()
