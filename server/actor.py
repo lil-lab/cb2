@@ -65,7 +65,7 @@ class Actor(object):
 
     def state(self):
         return state_sync.Actor(self.actor_id(), self.asset_id(),
-                                self._location, self._heading_degrees)
+                                self._location, self._heading_degrees, self._role)
 
     def peek(self):
         """ Peeks at the next action without consuming it. """

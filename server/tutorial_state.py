@@ -875,7 +875,8 @@ class TutorialGameState(object):
         for a in self._actors:
             actor = self._actors[a]
             actor_states.append(actor.state())
-        return state_sync.StateSync(len(self._actors), actor_states, actor_id)
+        role = self._actors[actor_id].role() if actor_id >= 0 else Role.NONE
+        return state_sync.StateSync(len(self._actors), actor_states, actor_id, role)
 
     # Returns the current state of the game.
     # Calling this message comes with the assumption that the response will be transmitted to the clients.

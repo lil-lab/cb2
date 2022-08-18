@@ -8,6 +8,7 @@ from datetime import timedelta
 
 from server.hex import HecsCoord
 from server.messages import turn_state
+from ..server.messages.objective import ObjectiveCompleteMessage
 
 def EndTurnMessage():
     message = message_to_server.MessageToServer(
@@ -55,6 +56,13 @@ def JoinQueueMessage():
         transmit_time=datetime.utcnow(),
         type=message_to_server.MessageType.ROOM_MANAGEMENT,
         room_request=message_to_server.RoomManagementRequest(messages.rooms.RoomRequestType.JOIN))
+    return message
+
+def InstructionDoneMessage(uuid):
+    message = message_to_server.MessageToServer(
+        transmit_time=datetime.now(),
+        type=message_to_server.MessageType.OBJECTIVE_COMPLETED,
+        objective_complete=ObjectiveCompleteMessage(uuid))
     return message
 
 def JoinFollowerQueueMessage():
