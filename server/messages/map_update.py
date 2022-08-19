@@ -1,12 +1,11 @@
+from server.hex import HexCell, HecsCoord
+
 from mashumaro.mixins.json import DataClassJSONMixin
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from enum import Enum
-from hex import HexCell, HecsCoord
 from marshmallow import fields
 from typing import List
-
-import messages.prop
 
 @dataclass(frozen=True)
 class Tile(DataClassJSONMixin):

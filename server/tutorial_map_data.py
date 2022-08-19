@@ -1,8 +1,8 @@
 from pathlib import Path
-from card import Card, Shape, Color
-from hex import HecsCoord
-from map_utils import *
-from messages.map_update import MapMetadata
+from server.card import Card, Shape, Color
+from server.hex import HecsCoord
+from server.map_utils import *
+from server.messages.map_update import MapMetadata
 
 MAP_WIDTH = 10
 MAP_HEIGHT = 10

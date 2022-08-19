@@ -5,10 +5,10 @@ new game.
 
 """
 
-from enum import Enum
-from hex import HecsCoord
-from messages.map_update import MapUpdate
+from server.hex import HecsCoord
+from server.messages.map_update import MapUpdate
 
+from enum import Enum
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime

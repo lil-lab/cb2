@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
-from hex import HecsCoord
+from server.hex import HecsCoord
 from mashumaro.mixins.json import DataClassJSONMixin
 from marshmallow import fields
 from typing import List, Optional
 
-from messages.rooms import Role
+from server.messages.rooms import Role
 
 import datetime
 import dateutil.parser

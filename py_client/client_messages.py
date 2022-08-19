@@ -8,13 +8,23 @@ from datetime import timedelta
 
 from server.hex import HecsCoord
 from server.messages import turn_state
-from ..server.messages.objective import ObjectiveCompleteMessage
+from server.messages.rooms import RoomRequestType
+from server.messages.objective import ObjectiveCompleteMessage
 
 def EndTurnMessage():
     message = message_to_server.MessageToServer(
         transmit_time=datetime.now(),
         type=message_to_server.MessageType.TURN_COMPLETE,
         turn_complete=turn_state.TurnComplete())
+    return message
+
+def LeaveMessage():
+    message = message_to_server.MessageToServer(
+        transmit_time=datetime.now(),
+        type=message_to_server.MessageType.ROOM_MANAGEMENT,
+        room_management=message_to_server.RoomManagement(
+            type=RoomRequestType.LEAVE)
+        )
     return message
 
 def InstructionMessage(instruction_text):

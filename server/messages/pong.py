@@ -3,7 +3,7 @@ from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from mashumaro.mixins.json import DataClassJSONMixin
 from marshmallow import fields
-from messages import action
+from server.messages import action
 from typing import Optional
 
 import dateutil.parser

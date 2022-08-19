@@ -1,12 +1,12 @@
-from assets import AssetId, TreeAssets, NatureAssets, SnowifyAssetId, TreeFrequencies, SnowAssets
-from hex import HecsCoord, HexCell, HexBoundary
-from messages.map_update import MapUpdate, Tile
+from server.assets import AssetId, TreeAssets, NatureAssets, SnowifyAssetId, TreeFrequencies, SnowAssets
+from server.hex import HecsCoord, HexCell, HexBoundary
+from server.messages.map_update import MapUpdate, Tile
 from enum import Enum
 from queue import Queue
 
-import messages.action as action
-import card 
-import messages.prop
+import server.messages.action as action
+import server.card  as card
+import server.messages.prop as prop
 
 import dataclasses
 import logging
@@ -440,7 +440,7 @@ def CensorPropForFollower(prop_update, follower):
     """
     prop_update_clone = dataclasses.replace(prop_update)
     for i, prop in enumerate(prop_update_clone.props):
-        if prop_update_clone.props[i].prop_type == messages.prop.PropType.CARD:
+        if prop_update_clone.props[i].prop_type == prop.PropType.CARD:
             if prop_update_clone.props[i].prop_info.border_color == action.Color(1, 0, 0, 1):
                 prop_update_clone.props[i].prop_info.border_color = action.Color(0, 0, 1, 1)
             if not prop_update_clone.props[i].card_init.selected:

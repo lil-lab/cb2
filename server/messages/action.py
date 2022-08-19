@@ -1,7 +1,7 @@
 from enum import Enum
 
 from mashumaro import pass_through
-from hex import HecsCoord
+from server.hex import HecsCoord
 
 from dataclasses import dataclass, field, replace
 from dataclasses_json import dataclass_json, config, LetterCase

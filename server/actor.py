@@ -1,17 +1,15 @@
 
-from assets import AssetId
-from messages.action import Action, Color, ActionType, Walk, Turn
-from messages.rooms import Role
-from messages import message_from_server
-from messages import message_to_server
-from messages import objective, state_sync
-from hex import HecsCoord
-from queue import Queue
-from map_provider import MapProvider, MapType
-from card import CardSelectAction
-from util import IdAssigner
-from datetime import datetime, timedelta
-from messages.turn_state import TurnState, GameOverMessage, TurnUpdate
+from .assets import AssetId
+from .messages.action import Action, Color, ActionType, Walk, Turn
+from .messages.rooms import Role
+from .messages import message_from_server
+from .messages import message_to_server
+from .messages import objective, state_sync
+from .hex import HecsCoord
+from .map_provider import MapProvider, MapType
+from .card import CardSelectAction
+from .util import IdAssigner
+from .messages.turn_state import TurnState, GameOverMessage, TurnUpdate
 
 import aiohttp
 import asyncio
@@ -21,6 +19,9 @@ import math
 import random
 import time
 import uuid
+
+from queue import Queue
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 

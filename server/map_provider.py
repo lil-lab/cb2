@@ -1,13 +1,13 @@
 """ This utility streams a hardcoded map to clients. """
 from pathlib import Path
-from assets import AssetId, is_snowy, SnowifyAssetId
+from server.assets import AssetId, is_snowy, SnowifyAssetId
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from enum import Enum
-from hex import HecsCoord, HexCell, HexBoundary
-from map_utils import *
-from messages.map_update import MapMetadata, MapUpdate, City, Lake, Mountain, Outpost, MountainType, LakeType
-from messages.prop import PropUpdate
+from server.hex import HecsCoord, HexCell, HexBoundary
+from server.map_utils import *
+from server.messages.map_update import MapMetadata, MapUpdate, City, Lake, Mountain, Outpost, MountainType, LakeType
+from server.messages.prop import PropUpdate
 from queue import Queue
 from typing import List, Optional
 
@@ -17,11 +17,11 @@ import itertools
 import logging
 import math
 import random
-import card
+import server.card as card
 import numpy as np
-import tutorial_map_data
+import server.tutorial_map_data as tutorial_map_data
 
-from util import IdAssigner
+from server.util import IdAssigner
 
 MAP_WIDTH = 25
 MAP_HEIGHT = 25

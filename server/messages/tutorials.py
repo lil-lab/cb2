@@ -1,16 +1,16 @@
 """ Defines tutorial messages. """
 from enum import Enum
 from mashumaro.mixins.json import DataClassJSONMixin
-from messages.action import Action
-from messages.rooms import RoomManagementRequest, Role
-from messages.objective import ObjectiveMessage, ObjectiveCompleteMessage
-from messages.turn_state import TurnComplete
+from server.messages.action import Action
+from server.messages.rooms import RoomManagementRequest, Role
+from server.messages.objective import ObjectiveMessage, ObjectiveCompleteMessage
+from server.messages.turn_state import TurnComplete
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import date
 from datetime import datetime
-from hex import HecsCoord
+from server.hex import HecsCoord
 from marshmallow import fields
 from typing import List, Optional
 

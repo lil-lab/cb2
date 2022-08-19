@@ -1,26 +1,25 @@
 """ Defines message structure received from server.  """
 
-from enum import Enum
-from mashumaro.mixins.json import DataClassJSONMixin
-from messages import live_feedback
-from messages.action import Action
-from messages.turn_state import TurnState
-from messages.state_sync import StateSync
-from messages.map_update import MapUpdate
-from messages.rooms import RoomManagementResponse
-from messages.objective import ObjectiveMessage
-from messages.tutorials import TutorialResponse
-from messages.live_feedback import LiveFeedback
-from messages.prop import PropUpdate
+from server.messages import live_feedback
+from server.messages.action import Action
+from server.messages.turn_state import TurnState
+from server.messages.state_sync import StateSync
+from server.messages.map_update import MapUpdate
+from server.messages.rooms import RoomManagementResponse
+from server.messages.objective import ObjectiveMessage
+from server.messages.tutorials import TutorialResponse
+from server.messages.live_feedback import LiveFeedback
+from server.messages.prop import PropUpdate
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
+from enum import Enum
+from mashumaro.mixins.json import DataClassJSONMixin
 from marshmallow import fields
 from typing import List, Optional
 
 import dateutil.parser
-import typing
 
 
 class MessageType(Enum):
