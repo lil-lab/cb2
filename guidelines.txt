@@ -34,5 +34,22 @@ https://www.atlassian.com/git/tutorials/merging-vs-rebasing
 
 https://git-scm.com/docs/git-rebase
 
-- Please don't force push unless you're confident in your understanding of why
+- Please don't git force push unless you're confident in your understanding of why
   it's required and what is going to happen.
+
+- This isn't a guideline, but I've decided to make sure of the fill/drain
+terminology for function calls that handle network messages. Let's say you have
+a message providing function:
+
+    def fill_messages(out_messages: List[Any]) -> bool:
+        ...
+
+Then fill_messages() will fill out_messages (a list) with messages to process and
+return True if any messages were added (False if none available).
+
+Similarly, let's say you have a message consuming function:
+
+    def drain_messages(messages: List[Any]) -> None:
+        ...
+
+drain_messages() consumes the messages in parameter `messages`.

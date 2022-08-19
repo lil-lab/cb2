@@ -25,35 +25,37 @@ import time
 import zipfile
 import yappi
 
-import schemas.defaults
-import schemas.clients
-import schemas.mturk
-import leaderboard
+import server.schemas as schemas
+import server.schemas.game as game_db
+import server.schemas.defaults as defaults
+import server.schemas.clients as clients
+import server.schemas.mturk as mturk
+import server.leaderboard as leaderboard
 
-import db_tools.db_utils as db_utils
+import server.db_tools.db_utils as db_utils
 
 from aiohttp import web
-from config.config import Config, InitGlobalConfig, GlobalConfig
+from server.config.config import Config, InitGlobalConfig, GlobalConfig
 from dateutil import parser
 from dateutil import tz
 
-from hex import HecsCoord, HexBoundary, HexCell
-from map_provider import MapGenerationTask, MapPoolSize
-from map_tools import visualize
-from messages import map_update
-from messages import message_from_server
-from messages import message_to_server
-from messages import state_sync
-from messages.rooms import JoinResponse
-from messages.rooms import Role
-from messages.rooms import RoomManagementResponse
-from messages.rooms import RoomResponseType
-from messages.logs import GameLog, GameInfo, LogEntry
+from server.hex import HecsCoord, HexBoundary, HexCell
+from server.map_provider import MapGenerationTask, MapPoolSize
+from server.map_tools import visualize
+from server.messages import map_update
+from server.messages import message_from_server
+from server.messages import message_to_server
+from server.messages import state_sync
+from server.messages.rooms import JoinResponse
+from server.messages.rooms import Role
+from server.messages.rooms import RoomManagementResponse
+from server.messages.rooms import RoomResponseType
+from server.messages.logs import GameLog, GameInfo, LogEntry
 from playhouse.sqlite_ext import CSqliteExtDatabase
-from remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTable, LogConnectionEvent
-from room_manager import RoomManager
-from schemas import base
-from db_tools import backup
+from server.remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTable, LogConnectionEvent
+from server.room_manager import RoomManager
+from server.schemas import base
+from server.db_tools import backup
 
 from datetime import datetime, timezone, timedelta
 
@@ -95,60 +97,60 @@ async def transmit_bytes(ws, message):
 
 @routes.get('/')
 async def Index(request):
-    return web.FileResponse("www/WebGL/index.html")
+    return web.FileResponse("server/www/WebGL/index.html")
 
 @routes.get('/qualification')
 async def QualificationPage(request):
-    return web.FileResponse("www/qualification.html")
+    return web.FileResponse("server/www/qualification.html")
 
 @routes.get('/migration-qualification')
 async def QualificationPage(request):
-    return web.FileResponse("www/migration_qualification.html")
+    return web.FileResponse("server/www/migration_qualification.html")
 
 
 @routes.get('/rules')
 async def Rules(request):
-    return web.FileResponse("www/rules.html")
+    return web.FileResponse("server/www/rules.html")
 
 @routes.get('/example_sets')
 async def Rules(request):
-    return web.FileResponse("www/example_sets.html")
+    return web.FileResponse("server/www/example_sets.html")
 
 @routes.get('/oneoff')
 async def OneoffComp(request):
-    return web.FileResponse("www/oneoff.html")
+    return web.FileResponse("server/www/oneoff.html")
 
 @routes.get('/mturk-task')
 async def TaskPage(request):
-    return web.FileResponse("www/mturk-task.html")
+    return web.FileResponse("server/www/mturk-task.html")
 
 @routes.get('/follower-task')
 async def TaskPage(request):
-    return web.FileResponse("www/follower-task.html")
+    return web.FileResponse("server/www/follower-task.html")
 
 @routes.get('/follower-qual')
 async def TaskPage(request):
-    return web.FileResponse("www/follower-qual.html")
+    return web.FileResponse("server/www/follower-qual.html")
 
 @routes.get('/leader-qual')
 async def TaskPage(request):
-    return web.FileResponse("www/leader-qual.html")
+    return web.FileResponse("server/www/leader-qual.html")
 
 @routes.get('/changelist')
 async def Changelist(request):
-    return web.FileResponse("www/changelist.html")
+    return web.FileResponse("server/www/changelist.html")
 
 @routes.get('/images/{filename}')
 async def Images(request):
     if not request.match_info.get('filename'):
         return web.HTTPNotFound()
-    return web.FileResponse(f"www/images/{request.match_info['filename']}")
+    return web.FileResponse(f"server/www/images/{request.match_info['filename']}")
 
 @routes.get('/js/{filename}')
 async def Js(request):
     if not request.match_info.get('filename'):
         return web.HTTPNotFound()
-    return web.FileResponse(f"www/js/{request.match_info['filename']}")
+    return web.FileResponse(f"server/www/js/{request.match_info['filename']}")
 
 @routes.get('/status')
 async def Status(request):
@@ -230,7 +232,7 @@ async def GetUsername(request):
         return web.HTTPNotFound()
 
     hashed_id = hashlib.md5(user_id.encode('utf-8')).hexdigest(), # Worker ID is PII, so only save the hash.
-    worker_select = schemas.mturk.Worker.select().where(schemas.mturk.Worker.hashed_id == hashed_id)
+    worker_select = mturk.Worker.select().where(mturk.Worker.hashed_id == hashed_id)
     if worker_select.count() != 1:
         return web.HTTPNotFound()
     worker = worker_select.get()
@@ -243,7 +245,7 @@ async def GetUsername(request):
     if not hashed_id:
         return web.HTTPNotFound()
 
-    worker_select = schemas.mturk.Worker.select().where(schemas.mturk.Worker.hashed_id == hashed_id)
+    worker_select = mturk.Worker.select().where(mturk.Worker.hashed_id == hashed_id)
     if worker_select.count() != 1:
         return web.HTTPNotFound()
     worker = worker_select.get()
@@ -433,14 +435,14 @@ async def DataDownloadStart(request):
     global download_requested
     download_requested = True
     download_contents = None
-    return web.FileResponse("www/download.html")
+    return web.FileResponse("server/www/download.html")
 
 @routes.get('/data/game-list')
 async def GameList(request):
-    games = (schemas.game.Game.select()
-                .join(schemas.mturk.Worker, join_type=peewee.JOIN.LEFT_OUTER, on=((schemas.game.Game.leader == schemas.mturk.Worker.id) or (schemas.game.Game.follower == schemas.mturk.Worker.id)))
-                .join(schemas.mturk.Assignment, on=((schemas.game.Game.lead_assignment == schemas.mturk.Assignment.id) or (schemas.game.Game.follow_assignment == schemas.mturk.Assignment.id)), join_type=peewee.JOIN.LEFT_OUTER)
-                .order_by(schemas.game.Game.id.desc()))
+    games = (game_db.Game.select()
+                .join(mturk.Worker, join_type=peewee.JOIN.LEFT_OUTER, on=((game_db.Game.leader == mturk.Worker.id) or (game_db.Game.follower == mturk.Worker.id)))
+                .join(mturk.Assignment, on=((game_db.Game.lead_assignment == mturk.Assignment.id) or (game_db.Game.follow_assignment == mturk.Assignment.id)), join_type=peewee.JOIN.LEFT_OUTER)
+                .order_by(game_db.Game.id.desc()))
     response = []
     # For convenience, convert timestamps to US eastern time.
     NYC = tz.gettz('America/New_York')
@@ -461,12 +463,12 @@ async def GameList(request):
 
 @routes.get('/view/games')
 async def GamesViewer(request):
-    return web.FileResponse("www/games_viewer.html")
+    return web.FileResponse("server/www/games_viewer.html")
 
 @routes.get('/view/game/{game_id}')
 async def GameViewer(request):
     # Extract the game_id from the request.
-    return web.FileResponse("www/game_viewer.html")
+    return web.FileResponse("server/www/game_viewer.html")
 
 @routes.get('/data/config')
 async def GetConfig(request):
@@ -475,12 +477,12 @@ async def GetConfig(request):
 
 @routes.get('/view/stats')
 async def Stats(request):
-    return web.FileResponse("www/stats.html")
+    return web.FileResponse("server/www/stats.html")
 
 @routes.get('/data/turns/{game_id}')
 async def GameData(request):
     game_id = request.match_info.get('game_id')
-    game = schemas.game.Game.select().join(schemas.game.Turn, join_type=peewee.JOIN.LEFT_OUTER).where(schemas.game.Game.id == game_id).get()
+    game = game_db.Game.select().join(game_db.Turn, join_type=peewee.JOIN.LEFT_OUTER).where(game_db.Game.id == game_id).get()
     turns = []
     # For convenience, convert timestamps to US eastern time.
     NYC = tz.gettz('America/New_York')
@@ -498,9 +500,9 @@ async def GameData(request):
 @routes.get('/data/instructions/{turn_id}')
 async def GameData(request):
     turn_id = request.match_info.get('turn_id')
-    turn = schemas.game.Turn.select().join(schemas.game.Game).where(schemas.game.Turn.id == turn_id).get()
+    turn = game_db.Turn.select().join(game_db.Game).where(game_db.Turn.id == turn_id).get()
     game = turn.game
-    instructions = schemas.game.Instruction.select().join(schemas.game.Game, join_type=peewee.JOIN.LEFT_OUTER).where(schemas.game.Instruction.turn_issued == turn.turn_number, schemas.game.Instruction.game == game).order_by(schemas.game.Instruction.turn_issued)
+    instructions = game_db.Instruction.select().join(game_db.Game, join_type=peewee.JOIN.LEFT_OUTER).where(game_db.Instruction.turn_issued == turn.turn_number, game_db.Instruction.game == game).order_by(game_db.Instruction.turn_issued)
     NYC = tz.gettz('America/New_York')
     json_instructions = []
     for instruction in instructions:
@@ -516,9 +518,9 @@ async def GameData(request):
 @routes.get('/data/moves/{turn_id}')
 async def GameData(request):
     turn_id = request.match_info.get('turn_id')
-    turn = schemas.game.Turn.select().join(schemas.game.Game).where(schemas.game.Turn.id == turn_id).get()
+    turn = game_db.Turn.select().join(game_db.Game).where(game_db.Turn.id == turn_id).get()
     game = turn.game
-    moves = schemas.game.Move.select().join(schemas.game.Instruction, join_type=peewee.JOIN.LEFT_OUTER).join(schemas.game.Game, join_type=peewee.JOIN.LEFT_OUTER).where(schemas.game.Move.turn_number == turn.turn_number, schemas.game.Move.game == game.id).order_by(schemas.game.Move.game_time)
+    moves = game_db.Move.select().join(game_db.Instruction, join_type=peewee.JOIN.LEFT_OUTER).join(game_db.Game, join_type=peewee.JOIN.LEFT_OUTER).where(game_db.Move.turn_number == turn.turn_number, game_db.Move.game == game.id).order_by(game_db.Move.game_time)
     json_moves = []
     for move in moves:
         json_moves.append({
@@ -669,7 +671,7 @@ async def stream_game_state(request, ws):
         await asyncio.sleep(0)
         poll_period = time.time() - last_loop
         if (poll_period) > 0.1:
-            logging.warn(
+            logging.warning(
                 f"Transmit socket for iphash {remote.hashed_ip} port {remote.client_port}, slow poll period of {poll_period}s")
         last_loop = time.time()
         # If not in a room, drain messages from the room manager.
@@ -706,10 +708,16 @@ async def stream_game_state(request, ws):
             remote.last_ping = datetime.now(timezone.utc)
             await transmit_bytes(ws, orjson.dumps(message_from_server.PingMessageFromServer(), option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat))
 
-        msg_from_server = room.drain_message(player_id)
-        while msg_from_server is not None:
-            await transmit_bytes(ws, orjson.dumps(msg_from_server, option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat))
-            msg_from_server = room.drain_message(player_id)
+        out_messages = []
+        if room.fill_messages(player_id, out_messages):
+            for message in out_messages:
+                await transmit_bytes(
+                    ws,
+                    orjson.dumps(
+                        message,
+                        option=orjson.OPT_NAIVE_UTC
+                               | orjson.OPT_PASSTHROUGH_DATETIME,
+                        default=datetime.isoformat))
 
 
 async def receive_agent_updates(request, ws):
@@ -744,10 +752,10 @@ async def receive_agent_updates(request, ws):
             
         if message.type == message_to_server.MessageType.PONG:
             # Calculate the time offset.
-            t0 = remote.last_ping
-            t1 = parser.isoparse(message.pong.ping_receive_time)
-            t2 = message.transmit_time
-            t3 = datetime.now(timezone.utc)
+            t0 = remote.last_ping.replace(tzinfo=timezone.utc)
+            t1 = parser.isoparse(message.pong.ping_receive_time).replace(tzinfo=timezone.utc)
+            t2 = message.transmit_time.replace(tzinfo=timezone.utc)
+            t3 = datetime.utcnow().replace(tzinfo=timezone.utc)
             # Calculate clock offset and latency.
             remote.time_offset = ((t1 - t0).total_seconds() + (t2 - t3).total_seconds()) / 2
             remote.latency = ((t3 - t0).total_seconds() - (t2 - t1).total_seconds()) / 2
@@ -757,7 +765,7 @@ async def receive_agent_updates(request, ws):
             # Only handle in-game actions if we're in a room.
             (room_id, player_id, _) = room_manager.socket_info(ws).as_tuple()
             room = room_manager.get_room(room_id)
-            room.handle_packet(player_id, message)
+            room.drain_messages(player_id, [message])
         else:
             # Room manager handles out-of-game requests.
             room_manager.handle_request(message, ws)
@@ -831,7 +839,7 @@ async def serve(config):
     app = web.Application()
 
     # Add a route for serving web frontend files on /.
-    routes.static('/', './www/WebGL')
+    routes.static('/', 'server/www/WebGL')
 
     app.add_routes(routes)
     runner = runner = aiohttp.web.AppRunner(app, handle_signals=True)
@@ -910,7 +918,7 @@ def InitGameRecording(config):
     # Setup the sqlite database used to record game actions.
     base.SetDatabase(config.database_path())
     base.ConnectDatabase()
-    base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
+    base.CreateTablesIfNotExists(defaults.ListDefaultTables())
     
 
 # Attempts to parse the config file. If there's any parsing or file errors,

@@ -1,7 +1,7 @@
 from peewee import *
 
-from schemas.base import *
-from schemas.game import *
+from server.schemas.base import *
+from server.schemas.game import *
 
 
 class CardSets(BaseModel):

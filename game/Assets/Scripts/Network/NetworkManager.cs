@@ -25,6 +25,7 @@ namespace Network
         private NetworkRouter _router;
         private EntityManager _entityManager;
         private Player _player;
+        private MenuTransitionHandler _menuTransitionHandler;
         private DateTime _lastStatsPoll;
         private Network.Config _serverConfig;
         private Network.Config _replayConfig;
@@ -175,7 +176,7 @@ namespace Network
         public void RespondToPing()
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.transmit_time = DateTime.Now.ToString("s");
+            toServer.transmit_time = DateTime.UtcNow.ToString("s");
             toServer.type = MessageToServer.MessageType.PONG;
             toServer.pong = new Pong{ping_receive_time = DateTime.Now.ToString("o")};
             _client.TransmitMessage(toServer);
@@ -184,7 +185,7 @@ namespace Network
         public void TransmitCancelPendingObjectives()
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.transmit_time = DateTime.Now.ToString("s");
+            toServer.transmit_time = DateTime.UtcNow.ToString("s");
             toServer.type = MessageToServer.MessageType.CANCEL_PENDING_OBJECTIVES;
             _client.TransmitMessage(toServer);
         }
@@ -192,7 +193,7 @@ namespace Network
         public void TransmitObjective(ObjectiveMessage objective)
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.transmit_time = DateTime.Now.ToString("s");
+            toServer.transmit_time = DateTime.UtcNow.ToString("s");
             toServer.type = MessageToServer.MessageType.OBJECTIVE;
             toServer.objective = objective;
             toServer.objective.sender = _role;
@@ -202,7 +203,7 @@ namespace Network
         public void TransmitLiveFeedback(LiveFeedback feedback)
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.transmit_time = DateTime.Now.ToString("s");
+            toServer.transmit_time = DateTime.UtcNow.ToString("s");
             toServer.type = MessageToServer.MessageType.LIVE_FEEDBACK;
             toServer.live_feedback = feedback;
             _client.TransmitMessage(toServer);
@@ -211,7 +212,7 @@ namespace Network
         public void TransmitObjectiveComplete(ObjectiveCompleteMessage objectiveComplete)
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.transmit_time = DateTime.Now.ToString("s");
+            toServer.transmit_time = DateTime.UtcNow.ToString("s");
             toServer.type = MessageToServer.MessageType.OBJECTIVE_COMPLETE;
             toServer.objective_complete = objectiveComplete;
             _client.TransmitMessage(toServer);
@@ -220,7 +221,7 @@ namespace Network
         public void TransmitTurnComplete()
         {
             MessageToServer toServer = new MessageToServer();
-            toServer.transmit_time = DateTime.Now.ToString("s");
+            toServer.transmit_time = DateTime.UtcNow.ToString("s");
             toServer.type = MessageToServer.MessageType.TURN_COMPLETE;
             _client.TransmitMessage(toServer);
         }
@@ -235,7 +236,7 @@ namespace Network
         public void JoinGame()
         {
             MessageToServer msg = new MessageToServer();
-            msg.transmit_time = DateTime.Now.ToString("s");
+            msg.transmit_time = DateTime.UtcNow.ToString("s");
             msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
             msg.room_request = new RoomManagementRequest();
             msg.room_request.type = RoomRequestType.JOIN;
@@ -246,7 +247,7 @@ namespace Network
         public void JoinAsFollower()
         {
             MessageToServer msg = new MessageToServer();
-            msg.transmit_time = DateTime.Now.ToString("s");
+            msg.transmit_time = DateTime.UtcNow.ToString("s");
             msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
             msg.room_request = new RoomManagementRequest();
             msg.room_request.type = RoomRequestType.JOIN_FOLLOWER_ONLY;
@@ -267,7 +268,7 @@ namespace Network
         public void StartTutorial(string tutorialName)
         {
             MessageToServer msg = new MessageToServer();
-            msg.transmit_time = DateTime.Now.ToString("s");
+            msg.transmit_time = DateTime.UtcNow.ToString("s");
             msg.type = MessageToServer.MessageType.TUTORIAL_REQUEST;
             msg.tutorial_request = new TutorialRequest();
             msg.tutorial_request.type = TutorialRequestType.START_TUTORIAL;
@@ -279,7 +280,7 @@ namespace Network
         public void NextTutorialStep()
         {
             MessageToServer msg = new MessageToServer();
-            msg.transmit_time = DateTime.Now.ToString("s");
+            msg.transmit_time = DateTime.UtcNow.ToString("s");
             msg.type = MessageToServer.MessageType.TUTORIAL_REQUEST;
             msg.tutorial_request = new TutorialRequest();
             msg.tutorial_request.type = Network.TutorialRequestType.REQUEST_NEXT_STEP;
@@ -291,7 +292,7 @@ namespace Network
         public void CancelGameQueue()
         {
             MessageToServer msg = new MessageToServer();
-            msg.transmit_time = DateTime.Now.ToString("s");
+            msg.transmit_time = DateTime.UtcNow.ToString("s");
             msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
             msg.room_request = new RoomManagementRequest();
             msg.room_request.type = RoomRequestType.CANCEL;
@@ -302,7 +303,7 @@ namespace Network
         public void QuitGame()
         {
             MessageToServer msg = new MessageToServer();
-            msg.transmit_time = DateTime.Now.ToString("s");
+            msg.transmit_time = DateTime.UtcNow.ToString("s");
             msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
             msg.room_request = new RoomManagementRequest();
             msg.room_request.type = RoomRequestType.LEAVE;
@@ -318,6 +319,7 @@ namespace Network
             _currentTurn = Network.Role.NONE;
             _router.ClearEntityManager();
             _router.ClearPlayer();
+            _router.ClearMenuTransitionHandler();
             SceneManager.LoadScene("menu_scene");
         }
 
@@ -355,11 +357,26 @@ namespace Network
             return Util.Status.OkStatus();
         }
 
+        public Util.Status InitializeMenuTransitionHandler()
+        {
+            GameObject obj = GameObject.FindGameObjectWithTag(MenuTransitionHandler.TAG);
+            if (obj == null)
+            {
+                return Util.Status.NotFound("Could not find menu tag: " + MenuTransitionHandler.TAG);
+            }
+            _menuTransitionHandler = obj.GetComponent<MenuTransitionHandler>();
+            if (_menuTransitionHandler == null)
+                return Util.Status.NotFound("Could not find menu transition handler component.");
+            _router.SetMenuTransitionHandler(_menuTransitionHandler);
+            return Util.Status.OkStatus();
+        }
+
         public Util.Status InitializeTaggedObjects()
         {
             Util.Status result = Util.Status.OkStatus();
             result.Chain(InitializeEntityManager());
             result.Chain(InitializePlayer());
+            result.Chain(InitializeMenuTransitionHandler());
             return result;
         }
 
@@ -400,7 +417,7 @@ namespace Network
             Util.Status result = InitializeTaggedObjects();
             if (!result.Ok())
             {
-                Debug.Log(result);
+                _logger.Warn(result.ToString());
             }
 
             // Subscribe to new scene changes.
@@ -416,6 +433,8 @@ namespace Network
 
         public void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            // Set log level.
+            Logger.SetGlobalLogLevel(Logger.LogLevel.INFO);
             _logger.Info("Scene loaded: " + scene.name);
             if (scene.name == "menu_scene")
                 return;    
@@ -438,6 +457,7 @@ namespace Network
                 Debug.Log("[DEBUG]Tutorial started.");
                 _router.ClearEntityManager();
                 _router.ClearPlayer();
+                _router.ClearMenuTransitionHandler();
                 SceneManager.LoadScene("tutorial_scene");
                 _role = tutorialResponse.Role();
             }
@@ -462,6 +482,7 @@ namespace Network
                     Debug.Log("Joined room as " + response.join_response.role + "!");
                     _router.ClearEntityManager();
                     _router.ClearPlayer();
+                    _router.ClearMenuTransitionHandler();
                     SceneManager.LoadScene("game_scene");
                     _role = response.join_response.role;
                 } else if (response.join_response.booted_from_queue) {
@@ -503,7 +524,7 @@ namespace Network
                 MessageFromServer map_update_message = new MessageFromServer();
                 map_update_message.type = MessageFromServer.MessageType.MAP_UPDATE;
                 map_update_message.map_update = response.map_update;
-                map_update_message.transmit_time = DateTime.Now.ToString();
+                map_update_message.transmit_time = DateTime.UtcNow.ToString();
                 _router.HandleMessage(map_update_message);
             }
             else
@@ -520,7 +541,7 @@ namespace Network
         public void RequestMapSample()
         {
             MessageToServer msg = new MessageToServer();
-            msg.transmit_time = DateTime.Now.ToString("s");
+            msg.transmit_time = DateTime.UtcNow.ToString("s");
             msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
             msg.room_request = new RoomManagementRequest();
             msg.room_request.type = RoomRequestType.MAP_SAMPLE;
@@ -530,6 +551,10 @@ namespace Network
         // Update is called once per frame
         void Update()
         {
+            if (_router != null)
+            {
+                _router.Update();
+            }
             // If it's been more than 60 seconds since the last poll and _serverConfig is null, poll the server for the config.
             // Alternatively, if _serverConfig is out of date and it's been > 10 seconds since the last poll, also poll the server.
             if ((_serverConfig == null || (DateTime.Now.Subtract(_serverConfig.timestamp).TotalMinutes > 1))
@@ -544,7 +569,7 @@ namespace Network
                 Debug.Log("Requesting stats..");
                 _lastStatsPoll = DateTime.Now;
                 MessageToServer msg = new MessageToServer();
-                msg.transmit_time = DateTime.Now.ToString("s");
+                msg.transmit_time = DateTime.UtcNow.ToString("s");
                 msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
                 msg.room_request = new RoomManagementRequest();
                 msg.room_request.type = RoomRequestType.STATS;
@@ -593,7 +618,7 @@ namespace Network
                     case UnityWebRequest.Result.Success:
                         Debug.Log("Received: " + webRequest.downloadHandler.text);
                         _serverConfig = JsonConvert.DeserializeObject<Network.Config>(webRequest.downloadHandler.text);
-                        _serverConfig.timestamp = DateTime.Now;
+                        _serverConfig.timestamp = DateTime.UtcNow;
                         OnConfigReceived(_serverConfig);
                         break;
                 }

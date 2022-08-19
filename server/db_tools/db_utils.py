@@ -7,13 +7,13 @@ import peewee
 from enum import Enum
 from numpy import number
 
-from schemas.game import Turn
-from schemas.game import Game
-from schemas.game import Instruction
-from schemas.game import Move
-from schemas.map import MapUpdate
-from schemas.mturk import Worker
-from schemas.mturk import Assignment
+from server.schemas.game import Turn
+from server.schemas.game import Game
+from server.schemas.game import Instruction
+from server.schemas.game import Move
+from server.schemas.map import MapUpdate
+from server.schemas.mturk import Worker
+from server.schemas.mturk import Assignment
 
 # This document makes reference to the following game classifications:
 # - Mturk Games (ListMturkGames): Games where at least one player is an mturk worker.

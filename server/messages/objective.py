@@ -2,8 +2,7 @@ from dataclasses import dataclass, field
 from mashumaro.mixins.json import DataClassJSONMixin
 from dataclasses_json import dataclass_json, config, LetterCase
 
-from messages.rooms import Role
-
+from server.messages.rooms import Role
 
 @dataclass
 class ObjectiveMessage(DataClassJSONMixin):

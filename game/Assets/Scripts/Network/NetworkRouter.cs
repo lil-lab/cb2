@@ -18,11 +18,10 @@ namespace Network
         private NetworkMapSource _mapSource;
         private readonly NetworkManager _networkManager;
         private EntityManager _entityManager;
+        private MenuTransitionHandler _menuTransitionHandler;
         private Player _player;
 
-        private StateSync _pendingStateSync;
-        private MapUpdate _pendingMapUpdate;
-        public PropUpdate _pendingPropUpdate;
+        private List<MessageFromServer> _pendingMessages;
 
         public enum Mode
         {
@@ -40,8 +39,8 @@ namespace Network
             _networkManager = networkManager;
             _entityManager = entityManager;
             _player = player;
-            _pendingStateSync = null;
             _logger = Logger.GetTrackedLogger("NetworkRouter");
+            _pendingMessages = new List<MessageFromServer>();
             if (_logger == null)
             {
                 _logger = Logger.CreateTrackedLogger("NetworkRouter");
@@ -59,16 +58,6 @@ namespace Network
         public void SetEntityManager(EntityManager entityManager)
         {
             _entityManager = entityManager;
-            if (_pendingStateSync != null)
-            {
-                _logger.Info("EntityManager receiving pending state sync.");
-                ApplyStateSyncToEntityManager(_pendingStateSync);
-            }
-            if (_pendingPropUpdate != null)
-            {
-                _logger.Info("EntityManager receiving pending map update.");
-                ApplyPropUpdateToEntityManager(_pendingPropUpdate);
-            }
         }
 
         public void ClearEntityManager()
@@ -78,21 +67,41 @@ namespace Network
 
         public void SetPlayer(Player player)
         {
-            Debug.Log("NetworkRouter SetPlayer()");
             if (player == null) {
                 Debug.Log("NetworkRouter player is null.");
             }
             _player = player;
-            if (_pendingStateSync != null)
-            {
-                _logger.Info("Player receiving pending state sync.");
-                ApplyStateSyncToPlayer(_pendingStateSync);
-            }
+        }
+
+        public void SetMenuTransitionHandler(MenuTransitionHandler menuTransitionHandler)
+        {
+            _menuTransitionHandler = menuTransitionHandler;
+        }
+
+        public void ClearMenuTransitionHandler()
+        {
+            _menuTransitionHandler = null;
         }
 
         public void ClearPlayer()
         {
             _player = null;
+        }
+
+        public bool Initialized() {
+            return _menuTransitionHandler != null && _player != null && _entityManager != null;
+        }
+
+        public void Update()
+        {
+            if (Initialized() && _pendingMessages.Count > 0)
+            {
+                foreach (MessageFromServer message in _pendingMessages)
+                {
+                    ProcessMessage(message);
+                }
+                _pendingMessages.Clear();
+            }
         }
 
         public bool ApplyStateSyncToPlayer(StateSync stateSync)
@@ -162,9 +171,8 @@ namespace Network
             return true;
         }
 
-        public void HandleMessage(MessageFromServer message)
+        private void ProcessMessage(MessageFromServer message)
         {
-            _logger.Info("Received message of type: " + message.type);
             if (message.type == MessageFromServer.MessageType.PING)
             {
                 _logger.Info("Received ping.");
@@ -206,13 +214,15 @@ namespace Network
                 if ((!ApplyStateSyncToPlayer(message.state)))
                 {
                     _logger.Info("Player not set, yet received state sync.");
-                    _pendingStateSync = message.state;
                 }
                 if (!ApplyStateSyncToEntityManager(message.state))
                 {
                     _logger.Info("Entity manager not set, yet received state sync.");
-                    _pendingStateSync = message.state;
                 }
+            }
+            if (message.type == MessageFromServer.MessageType.STATE_MACHINE_TICK)
+            {
+                // Do nothing, this is more useful for bots.
             }
             if (message.type == MessageFromServer.MessageType.MAP_UPDATE)
             {
@@ -228,12 +238,7 @@ namespace Network
                 if(!ApplyPropUpdateToEntityManager(message.prop_update))
                 {
                     _logger.Info("Unable to apply prop update to entity manager... Saved for later.");
-                    _pendingPropUpdate = message.prop_update;
                 }
-            }
-            if (message.type == MessageFromServer.MessageType.ROOM_MANAGEMENT)
-            {
-                if (_mode == Mode.NETWORK) _networkManager.HandleRoomManagement(message.room_management_response);
             }
             if (message.type == MessageFromServer.MessageType.OBJECTIVE)
             {
@@ -253,21 +258,14 @@ namespace Network
             }
             if (message.type == MessageFromServer.MessageType.TURN_STATE)
             {
-                GameObject obj = GameObject.FindGameObjectWithTag(MenuTransitionHandler.TAG);
-                if (obj == null)
-                {
-                    Debug.Log("Could not find menu transition handler object.");
-                    return;
-                }
-                MenuTransitionHandler menuTransitionHandler = obj.GetComponent<MenuTransitionHandler>();
-                if (menuTransitionHandler == null)
-                {
-                    Debug.Log("Could not find menu transition handler.");
-                    return;
-                }
-                TurnState state = message.turn_state;
                 DateTime transmitTime = DateTime.Parse(message.transmit_time, null, System.Globalization.DateTimeStyles.RoundtripKind);
-                menuTransitionHandler.HandleTurnState(transmitTime, state);
+                TurnState state = message.turn_state;
+                if (_menuTransitionHandler == null)
+                {
+                    _logger.Warn("Menu transition handler not set, yet received turn state.");
+                    return;
+                }
+                _menuTransitionHandler.HandleTurnState(transmitTime, state);
                 _networkManager.HandleTurnState(state);
                 if (_mode == Mode.NETWORK) _player.HandleTurnState(state);
             }
@@ -278,6 +276,26 @@ namespace Network
             if (message.type == MessageFromServer.MessageType.LIVE_FEEDBACK)
             {
                 MenuTransitionHandler.TaggedInstance().HandleLiveFeedback(message.live_feedback);
+            }
+        }
+
+        public void HandleMessage(MessageFromServer message)
+        {
+            _logger.Info("Received message of type: " + message.type);
+            if (message.type == MessageFromServer.MessageType.ROOM_MANAGEMENT)
+            {
+                if (_mode == Mode.NETWORK) _networkManager.HandleRoomManagement(message.room_management_response);
+                return;
+            }
+            if (message.type == MessageFromServer.MessageType.TUTORIAL_RESPONSE)
+            {
+                if (_mode == Mode.NETWORK) _networkManager.HandleTutorialResponse(message.tutorial_response);
+                return;
+            }
+            if (Initialized()) {
+                ProcessMessage(message);
+            } else {
+                _pendingMessages.Add(message);
             }
         }
 
@@ -299,7 +317,7 @@ namespace Network
                 return;
             }
             MessageToServer toServer = new MessageToServer();
-            toServer.transmit_time = DateTime.Now.ToString("o");
+            toServer.transmit_time = DateTime.UtcNow.ToString("o");
             toServer.type = MessageToServer.MessageType.ACTIONS;
             toServer.actions = new List<Action>();
             toServer.actions.Add(action.Packet(_player.PlayerId()));

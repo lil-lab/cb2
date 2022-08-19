@@ -46,7 +46,7 @@ async def wait_for_join_messages(ws):
             continue
         response = message_from_server.MessageFromServer.from_json(message.data)
         if response.type == message_from_server.MessageType.ROOM_MANAGEMENT:
-            if response.room_management_response.type == messages.rooms.RoomResponseType.JOIN_RESPONSE:
+            if response.room_management_response.type == server.messages.rooms.RoomResponseType.JOIN_RESPONSE:
                 join_message = response.room_management_response.join_response
                 if join_message.joined == True:
                     print(f"Joined room. Role: {join_message.role}")
@@ -77,7 +77,9 @@ def TurnAction(player_id, rotation_degrees):
     return message
 
 def JoinRoomToServer():
-    message = message_to_server.MessageToServer(transmit_time=datetime.utcnow(), type=message_to_server.MessageType.ROOM_MANAGEMENT, actions=None, room_request=message_to_server.RoomManagementRequest(messages.rooms.RoomRequestType.JOIN))
+    message = message_to_server.MessageToServer(transmit_time=datetime.utcnow(),
+    type=message_to_server.MessageType.ROOM_MANAGEMENT, actions=None,
+    room_request=message_to_server.RoomManagementRequest(server.messages.rooms.RoomRequestType.JOIN))
     print(f"Sending message: {message}")
     return message
 
@@ -116,6 +118,7 @@ async def wait_for_turn(ws, player_id, role, receive_times):
                 if message_id in receive_times:
                     receive_times[message_id].append(datetime.now())
         if response.type == message_from_server.MessageType.GAME_STATE:
+            print(f"Game state received. turn end: {response.turn_state.turn_end}. current turn: {response.turn_state.turn}")
             game_state = response.turn_state
             if game_state.turn == role:
                 return
@@ -190,7 +193,9 @@ async def send_instruction(ws, message_string):
     if ws.closed:
         return
     try:
-        message = message_to_server.MessageToServer(transmit_time=datetime.now(), type=message_to_server.MessageType.OBJECTIVE, objective=ObjectiveMessage(messages.rooms.Role.LEADER, message_string))
+        message = message_to_server.MessageToServer(transmit_time=datetime.now(),
+          type=message_to_server.MessageType.OBJECTIVE,
+          objective=ObjectiveMessage(server.messages.rooms.Role.LEADER, message_string))
         print(f"Sending message: {message}")
         await ws.send_str(message.to_json())
     except:
@@ -218,13 +223,13 @@ async def handle_send(ws, messages_per_socket):
             await ws.close()
             return
         if (ws_state[ws] == State.TURN) or (ws_state[ws] == State.JOINED):
-            messages_to_send = 5 if player_role[ws] == messages.rooms.Role.LEADER else 15
+            messages_to_send = 5 if player_role[ws] == server.messages.rooms.Role.LEADER else 15
             messages_to_send = min(messages_to_send, messages_per_socket - messages_sent)
             for i in range(messages_to_send):
                 await send_turn_action(ws, player_id[ws], message_no)
                 messages_sent += 1
                 message_no += 0.01
-            if player_role[ws] == messages.rooms.Role.LEADER:
+            if player_role[ws] == server.messages.rooms.Role.LEADER:
                 await send_instruction(ws, "Automated test player, please leave game.")
             await end_turn(ws)
             ws_state[ws] = State.WAITING_FOR_TURN

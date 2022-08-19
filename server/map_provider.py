@@ -1,13 +1,13 @@
 """ This utility streams a hardcoded map to clients. """
 from pathlib import Path
-from assets import AssetId, is_snowy, SnowifyAssetId
+from server.assets import AssetId, is_snowy, SnowifyAssetId
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from enum import Enum
-from hex import HecsCoord, HexCell, HexBoundary
-from map_utils import *
-from messages.map_update import MapMetadata, MapUpdate, City, Lake, Mountain, Outpost, MountainType, LakeType
-from messages.prop import PropUpdate
+from server.hex import HecsCoord, HexCell, HexBoundary
+from server.map_utils import *
+from server.messages.map_update import MapMetadata, MapUpdate, City, Lake, Mountain, Outpost, MountainType, LakeType
+from server.messages.prop import PropUpdate
 from queue import Queue
 from typing import List, Optional
 
@@ -17,11 +17,11 @@ import itertools
 import logging
 import math
 import random
-import card
+import server.card as card
 import numpy as np
-import tutorial_map_data
+import server.tutorial_map_data as tutorial_map_data
 
-from util import IdAssigner
+from server.util import IdAssigner
 
 MAP_WIDTH = 25
 MAP_HEIGHT = 25
@@ -674,6 +674,9 @@ class MapProvider(object):
         
         self._id_assigner = IdAssigner()
         self._tiles = map.tiles
+        self._tiles_by_location = {}
+        for i, tile in enumerate(self._tiles):
+            self._tiles_by_location[tile.cell.coord] = i
         self._rows = map.rows
         self._cols = map.cols
         self._cards = []
@@ -836,7 +839,6 @@ class MapProvider(object):
             self._cards.append(self._card_generator.generate_card_at(r, c, shape, color, count))
             self._cards_by_location[self._cards[-1].location] = self._cards[-1]
 
-    
     def spawn_points(self):
         return self._spawn_points
 
@@ -868,6 +870,10 @@ class MapProvider(object):
 
     def prop_update(self):
         return PropUpdate([card.prop() for card in self._cards])
+    
+    def edge_between(self, loc1, loc2):
+        return (self._tiles[self._tiles_by_location[loc1]].cell.boundary.get_edge_between(loc1, loc2) 
+                or self._tiles[self._tiles_by_location[loc2]].cell.boundary.get_edge_between(loc2, loc1))
     
     def coord_in_map(self, coord):
         offset_coords = coord.to_offset_coordinates()
@@ -905,4 +911,3 @@ async def MapGenerationTask(room_manager, config):
         if len(map_pool) % 10 == 0:
             print(f"Map pool size: {len(map_pool)}")
         await asyncio.sleep(0.001)
-

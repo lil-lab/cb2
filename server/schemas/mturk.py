@@ -5,9 +5,9 @@ from enum import IntEnum
 from peewee import *
 from typing import Text
 
-import schemas
+import server.schemas as schemas
 
-from schemas.base import *
+from server.schemas.base import *
 
 class RecentScoresField(TextField):
     def __init__(self, *args, **kwargs):

@@ -1,9 +1,9 @@
-from assets import AssetId
-from messages.map_update import MapUpdate
-from messages.bug_report import BugReport
-from messages.prop import PropType, GenericPropInfo, CardConfig, Prop
-from card import Shape, Color
-from hex import HexBoundary, Edges
+from server.assets import AssetId
+from server.messages.map_update import MapUpdate
+from server.messages.bug_report import BugReport
+from server.messages.prop import PropType, GenericPropInfo, CardConfig, Prop
+from server.card import Shape, Color
+from server.hex import HexBoundary, Edges
 
 import math
 import pygame

@@ -19,7 +19,6 @@ public class MenuTransitionHandler : MonoBehaviour
     }
 
     private static readonly string ESCAPE_MENU_TAG = "ESCAPE_MENU";
-
     private static readonly string INPUT_FIELD_TAG = "MessageInputField";
     private static readonly string OBJECTIVE_LIST = "OBJECTIVE_LIST";
     private static readonly string SCROLL_VIEW_TAG = "ScrollView";
@@ -49,6 +48,10 @@ public class MenuTransitionHandler : MonoBehaviour
     private static readonly string FOLLOWER_TURN_TAG = "FOLLOWER_TURN_INDICATOR";
     private static readonly string LEADER_TURN_TAG = "LEADER_TURN_INDICATOR";
 
+    private static readonly string LEADER_FEEDBACK_WINDOW = "LEADER_FEEDBACK_WINDOW";
+
+    private Logger _logger;
+
     // We re-use ActionQueue here to animate UI transparency. It's a bit
     // overkill to have two animation queues here, but it's very obvious what's
     // happening for the reader, and that's worth it.
@@ -61,7 +64,8 @@ public class MenuTransitionHandler : MonoBehaviour
     private MenuState _currentMenuState;
 
     private DateTime _lastTurnTransmitTime;
-    private TurnState _lastTurn = new TurnState();
+    private DateTime _lastTurnRefreshTime;
+    private TurnState _lastTurn = null;
 
     List<Network.ObjectiveMessage> _lastObjectivesList = new List<Network.ObjectiveMessage>();
 
@@ -264,7 +268,7 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public void HandleLiveFeedback(LiveFeedback feedback)
     {
-        Debug.Log("Received feedback: " + feedback.signal);
+        _logger.Info("Received feedback: " + feedback.signal);
         // Display the positive feedback signal for 2 seconds.
         if (feedback.signal == Network.FeedbackType.POSITIVE)
         {
@@ -277,6 +281,7 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public void HandleTurnState(DateTime transmitTime, Network.TurnState state)
     {
+        _logger.Info("Received turn state: " + state);
         if (state.game_over)
         {
             EndGame(transmitTime, state);
@@ -290,7 +295,7 @@ public class MenuTransitionHandler : MonoBehaviour
     private void DisplayTurnStateReplayMode(DateTime transmitTime, Network.TurnState state)
     {
         NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
-        string twoLineSummary = state.ShortStatus(transmitTime, networkManager.Role(), networkManager.IsReplay());
+        string twoLineSummary = state.ShortStatus(networkManager.Role(), networkManager.IsReplay());
         if (state.turn == Network.Role.LEADER)
         {
             GameObject scoreObj = GameObject.FindWithTag(LEADER_SCORE_TEXT_TAG);
@@ -330,6 +335,15 @@ public class MenuTransitionHandler : MonoBehaviour
         Canvas.ForceUpdateCanvases();
     }
 
+    private void UpdateTurnUIText(Network.TurnState state)
+    {
+        Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
+        string twoLineSummary = state.ShortStatus(networkManager.Role(), networkManager.IsReplay());
+        GameObject scoreObj = GameObject.FindWithTag(SCORE_TEXT_TAG);
+        TMPro.TMP_Text textMeshPro = scoreObj.GetComponent<TMPro.TMP_Text>();
+        textMeshPro.text = twoLineSummary;
+    }
+
     private void DisplayTurnState(DateTime transmitTime, Network.TurnState state)
     {
         Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
@@ -340,12 +354,9 @@ public class MenuTransitionHandler : MonoBehaviour
             return;
         }
 
-        string twoLineSummary = state.ShortStatus(transmitTime, networkManager.Role(), networkManager.IsReplay());
-        GameObject scoreObj = GameObject.FindWithTag(SCORE_TEXT_TAG);
-        TMPro.TMP_Text textMeshPro = scoreObj.GetComponent<TMPro.TMP_Text>();
-        textMeshPro.text = twoLineSummary;
+        UpdateTurnUIText(state);
 
-        if (_lastTurn.turn != state.turn)
+        if ((_lastTurn != null) && (_lastTurn.turn != state.turn))
         {
             Debug.Log("Changing turn animation. " + _lastTurn.turn + " -> " + state.turn);
             GameObject endTurnPanel = GameObject.FindGameObjectWithTag(END_TURN_PANEL);
@@ -478,6 +489,11 @@ public class MenuTransitionHandler : MonoBehaviour
         score.text = state.ScoreString(transmitTime);
     }
 
+    void Awake()
+    {
+        _logger = Logger.GetOrCreateTrackedLogger("MenuTransitionHandler");
+    }
+
     // Start is called before the first frame update
     void Start()
     {
@@ -486,8 +502,8 @@ public class MenuTransitionHandler : MonoBehaviour
         ourTurnIndicatorFade = new ActionQueue("OurTurnQueue");
         _positiveFeedbackSignal = GameObject.FindWithTag(POSITIVE_FEEDBACK_TAG);
         _negativeFeedbackSignal = GameObject.FindWithTag(NEGATIVE_FEEDBACK_TAG);
+        _lastTurnRefreshTime = DateTime.MinValue;
     }
-
 
     public void TurnComplete()
     {
@@ -525,6 +541,14 @@ public class MenuTransitionHandler : MonoBehaviour
             GameObject not_turn_obj = GameObject.FindWithTag(NOT_OUR_TURN_TAG);
             CanvasGroup not_turn_group = not_turn_obj.GetComponent<CanvasGroup>();
             not_turn_group.alpha = nTS.Opacity;
+        }
+        // Refresh the menu UI showing the most recent turn state (so that time remaining stays fresh). Once per second.
+        if (DateTime.Now - _lastTurnRefreshTime > TimeSpan.FromSeconds(1))
+        {
+            _lastTurnRefreshTime = DateTime.Now;
+            if (_lastTurn != null) {
+                UpdateTurnUIText(_lastTurn);
+            }
         }
 
         if (Input.GetKeyDown(KeyCode.Return))
@@ -575,40 +599,46 @@ public class MenuTransitionHandler : MonoBehaviour
 
         // Handle feedback UI.
         UnityEngine.Color feedbackColor = new UnityEngine.Color(1f, 1f, 1f, 100f / 255f);  // Neutral color.
-        if ((_positiveFeedbackSignal != null) && (_negativeFeedbackSignal != null))
-        {
-            bool is_pos = (DateTime.Now - _lastPositiveFeedback).TotalSeconds < FEEDBACK_DURATION_SECONDS;
-            bool is_neg = (DateTime.Now - _lastNegativeFeedback).TotalSeconds < FEEDBACK_DURATION_SECONDS;
+        if (_positiveFeedbackSignal == null && networkManager.Role() == Role.FOLLOWER)
+            _positiveFeedbackSignal = GameObject.FindWithTag(POSITIVE_FEEDBACK_TAG);
+        if (_negativeFeedbackSignal == null && networkManager.Role() == Role.FOLLOWER)
+            _negativeFeedbackSignal = GameObject.FindWithTag(NEGATIVE_FEEDBACK_TAG);
+        bool is_pos = (DateTime.Now - _lastPositiveFeedback).TotalSeconds < FEEDBACK_DURATION_SECONDS;
+        bool is_neg = (DateTime.Now - _lastNegativeFeedback).TotalSeconds < FEEDBACK_DURATION_SECONDS;
 
-            // If only one is active, show it.
-            if (!(is_pos && is_neg)) {
+        // If only one is active, show it.
+        if (!(is_pos && is_neg)) {
+            if (_positiveFeedbackSignal)
                 _positiveFeedbackSignal.SetActive(is_pos);
+            if (_negativeFeedbackSignal)
                 _negativeFeedbackSignal.SetActive(is_neg);
-                if (is_pos)
-                    feedbackColor = new UnityEngine.Color(0f, 1f, 0f, 1f);  // Green.
-                if (is_neg)
-                    feedbackColor = new UnityEngine.Color(1f, 0f, 0f, 1f);  // Red.
-            }
-
-            // If both are active, only show the most recent.
-            if (is_pos && is_neg) {
-                if (_lastPositiveFeedback < _lastNegativeFeedback) 
-                {
-                    feedbackColor = new UnityEngine.Color(1f, 0f, 0f, 1f);  // Red.
-                    _negativeFeedbackSignal.SetActive(true);
-                    _positiveFeedbackSignal.SetActive(false);
-                } else {
-                    _positiveFeedbackSignal.SetActive(true);
-                    _negativeFeedbackSignal.SetActive(false);
-                    feedbackColor = new UnityEngine.Color(0f, 1f, 0f, 1f);  // Green.
-                }
-            }
-        } else {
-            if (_positiveFeedbackSignal == null)
-                _positiveFeedbackSignal = GameObject.FindWithTag(POSITIVE_FEEDBACK_TAG);
-            if (_negativeFeedbackSignal == null)
-                _negativeFeedbackSignal = GameObject.FindWithTag(NEGATIVE_FEEDBACK_TAG);
+            if (is_pos)
+                feedbackColor = new UnityEngine.Color(0f, 1f, 0f, 1f);  // Green.
+            if (is_neg)
+                feedbackColor = new UnityEngine.Color(1f, 0f, 0f, 1f);  // Red.
         }
+
+        // If both are active, only show the most recent.
+        if (is_pos && is_neg) {
+            if (_lastPositiveFeedback < _lastNegativeFeedback) 
+            {
+                feedbackColor = new UnityEngine.Color(1f, 0f, 0f, 1f);  // Red.
+                if (_negativeFeedbackSignal)
+                    _negativeFeedbackSignal.SetActive(true);
+                if (_positiveFeedbackSignal)
+                    _positiveFeedbackSignal.SetActive(false);
+            } else {
+                if (_positiveFeedbackSignal)
+                    _positiveFeedbackSignal.SetActive(true);
+                if (_negativeFeedbackSignal)
+                    _negativeFeedbackSignal.SetActive(false);
+                feedbackColor = new UnityEngine.Color(0f, 1f, 0f, 1f);  // Green.
+            }
+        }
+
+        GameObject leader_feedback_window = GameObject.FindWithTag(LEADER_FEEDBACK_WINDOW);
+        if (leader_feedback_window != null)
+            leader_feedback_window.GetComponent<Image>().color = feedbackColor;
         GameObject feedback_obj = GameObject.FindWithTag(FEEDBACK_WINDOW_TAG);
         if (feedback_obj != null)
             feedback_obj.GetComponent<Image>().color = feedbackColor;

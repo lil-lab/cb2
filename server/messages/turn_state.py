@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from mashumaro.mixins.json import DataClassJSONMixin
-from messages.rooms import Role
+from server.messages.rooms import Role
 from datetime import datetime
 from marshmallow import fields
 

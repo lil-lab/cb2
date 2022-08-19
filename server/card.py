@@ -1,15 +1,15 @@
 from enum import Enum
-from hex import HecsCoord
+from server.hex import HecsCoord
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
-from messages.action import Action, ActionType, AnimationType
+from server.messages.action import Action, ActionType, AnimationType
 
 import datetime
 import random
 
-import messages.prop
-import messages.action as action
-from schemas.cards import CardSelections
+import server.messages.prop as prop
+import server.messages.action as action
+from server.schemas.cards import CardSelections
 
 from dateutil import tz
 
@@ -94,14 +94,15 @@ class Card:
     hidden: bool = False
 
     def prop(self):
-        return messages.prop.Prop(self.id,
-                                  messages.prop.PropType.CARD,
-                                  messages.prop.GenericPropInfo(
-                                      self.location, self.rotation_degrees, False, OUTLINE_RADIUS, self.border_color),
-                                  messages.prop.CardConfig(
-                                      self.color,
-                                      self.shape,
-                                      self.count,
-                                      self.selected,
-                                      self.hidden),
-                                  None)
+        return prop.Prop(
+                        self.id,
+                        prop.PropType.CARD,
+                        prop.GenericPropInfo(
+                            self.location, self.rotation_degrees, False, OUTLINE_RADIUS, self.border_color),
+                        prop.CardConfig(
+                            self.color,
+                            self.shape,
+                            self.count,
+                            self.selected,
+                            self.hidden),
+                        None)

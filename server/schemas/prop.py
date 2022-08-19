@@ -1,7 +1,7 @@
-from schemas.game import *
-from schemas.mturk import *
+from server.schemas.game import *
+from server.schemas.mturk import *
 from peewee import *
-import messages.prop
+import server.messages.prop
 
 import orjson
 
@@ -10,7 +10,7 @@ class PropUpdateField(TextField):
         return orjson.dumps(value, option=orjson.OPT_NAIVE_UTC).decode('utf-8')
     
     def python_value(self, db_val):
-        return messages.prop.PropUpdate.from_json(db_val)
+        return server.messages.prop.PropUpdate.from_json(db_val)
 
 class PropUpdate(BaseModel):
     prop_data = PropUpdateField()

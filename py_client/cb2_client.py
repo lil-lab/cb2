@@ -1,4 +1,3 @@
-from mimetypes import init
 import aiohttp
 import asyncio
 import fire
@@ -13,92 +12,108 @@ from datetime import datetime
 from datetime import timedelta
 from enum import Enum
 
-from client_messages import *
+from py_client.client_messages import *
 from server.hex import HecsCoord
-from server.hex import HecsCoord
+from server.messages.action import Action, Walk, Turn
 from server.messages import message_from_server
 from server.messages import message_to_server
 from server.messages import action
 from server.messages import turn_state
 from server.messages.objective import ObjectiveMessage
-from server.messages.rooms import Role
+from server.messages.prop import PropType
+from server.messages.rooms import Role 
 
 logger = logging.getLogger(__name__)
 
-class Player(object):
-    def __init__(self, client, game, actor):
-        self.game = game
-        self.actor = actor
-        self.client = client
-    
-    def role(self):
-        return self.actor.role
-    
-    class LeadActions(Enum):
+Role = Role
+
+# This page defines and implements the CB2 headless client API.
+# Here is an example of how to use the API:
+#
+# client = Cb2Client(url)
+# joined, reason = client.Connect()
+# assert joined, f"Could not join: {reason}"
+# async with client.JoinGame(queue_type=leader_only) as game:
+#     leader = game.leader()
+#     while not game.over():
+#        leader.WaitForTurn()
+#        leader.SendLeadAction(Player.LeadActions.FORWARDS)
+#        leader.SendLeadAction(Player.LeadActions.END_TURN)
+#        game.follower().WaitForTurn()
+#        leader.SendLeadAction(Player.LeadActions.POSITIVE_FEEDBACK)
+# 
+# JoinGame() starts a coroutine which updates game state in the background.
+#
+# TODO(sharf): client.Connect() should have its own context manager, or at least
+# make it so that __aexit__ for JoinGame() doesn't disconnect the client's
+# socket.
+class LeadAction(object):
+    class ActionCode(Enum):
         NONE = 0
         FORWARDS = 1
         BACKWARDS = 2
         TURN_LEFT = 3
         TURN_RIGHT = 4
         END_TURN = 5
-        POSITIVE_FEEDBACK = 6
-        NEGATIVE_FEEDBACK = 7
-        INTERRUPT = 8
-        MAX = 9
-    async def SendLeadAction(self, action):
-        """ Sends a lead action to the server.
+        INTERRUPT = 6
+        SEND_INSTRUCTION = 7
+        MAX = 8
 
-            TODO(sharf): implement turn checking -- certain actions happen
-                during your turn and certain actions (live feedback) only happen
-                during the other player's turn. Make sure this is enforced.
-            
-            Args:
-                action: The LeadAction to send.
-            Returns:
-                (bool, str): A tuple containing if the action was sent, and if not, the reason why.
-        """
-        if self.role() != Role.LEADER:
-            return False, "Not a leader, cannot send lead action"
-        if action == Player.LeadActions.FORWARDS:
-            await self._send_action(self.actor.WalkForwardsAction())
-            self.actor.WalkForwards()
-        elif action == Player.LeadActions.BACKWARDS:
-            await self._send_action(self.actor.WalkBackwardsAction())
-            self.actor.WalkBackwards()
-        elif action == Player.LeadActions.TURN_LEFT:
-            await self._send_action(self.actor.TurnLeftAction())
-            self.actor.TurnLeft()
-        elif action == Player.LeadActions.TURN_RIGHT:
-            await self._send_action(self.actor.TurnRightAction())
-            self.actor.TurnRight()
-        elif action == Player.LeadActions.END_TURN:
-            await self.client._send_message(EndTurnMessage())
-        elif action == Player.LeadActions.POSITIVE_FEEDBACK:
-            await self.client._send_message(PositiveFeedbackMessage())
-        elif action == Player.LeadActions.NEGATIVE_FEEDBACK:
-            await self.client._send_message(NegativeFeedbackMessage())
-        elif action == Player.LeadActions.INTERRUPT:
-            await self.client._send_message(InterruptMessage())
+    def __init__(self, action_code, instruction=None):
+        if action_code == LeadAction.ActionCode.SEND_INSTRUCTION:
+            assert instruction != None, "Instruction must be provided for SEND_INSTRUCTION"
+            if type(instruction) not in [str, bytes]:
+                raise TypeError("Instruction must be a string or bytes")
+                
+        self.action = (action_code, instruction)
+    
+    def message_to_server(self, actor):
+        action_code = self.action[0]
+        action = None
+        if action_code == LeadAction.ActionCode.FORWARDS:
+            action = actor.WalkForwardsAction()
+        elif action_code == LeadAction.ActionCode.BACKWARDS:
+            action = actor.WalkBackwardsAction()
+        elif action_code == LeadAction.ActionCode.TURN_LEFT:
+            action = actor.TurnLeftAction()
+        elif action_code == LeadAction.ActionCode.TURN_RIGHT:
+            action = actor.TurnRightAction()
+        elif action_code == LeadAction.ActionCode.END_TURN:
+            return EndTurnMessage(), ""
+        elif action_code == LeadAction.ActionCode.INTERRUPT:
+            return InterruptMessage(), ""
+        elif action_code == LeadAction.ActionCode.SEND_INSTRUCTION:
+            return InstructionMessage(self.action[1]), ""
         else:
-            return False, "Invalid lead action"
-        return True, ""
+            return None, "Invalid lead action"
+        assert action != None, "Invalid lead action"
+        actor.add_action(action)
+        actor.step()
+        action_message = ActionsMessage([action])
+        return action_message, ""
 
-    async def SendInstruction(self, instruction):
-        """ Sends an instruction to the server.
-        
-            Args:
-                instruction: The instruction to send. str-like object.
-            Returns:
-                (bool, str): A tuple containing if the instruction was sent, and if not, the reason why.
-        """
-        if self.role() != Role.LEADER:
-            return False, "Not a leader, cannot send instruction"
-        if self.game.turn_state.role != Role.LEADER:
-            return False, "Not your turn, cannot send instruction"
-        await self._send_message(InstructionMessage(instruction))
-        return True, ""
 
-    class FollowActions(Enum):
+class LeadFeedbackAction(object):
+    class ActionCode(Enum):
+        NONE = 0
+        POSITIVE_FEEDBACK = 1
+        NEGATIVE_FEEDBACK = 2
+        MAX = 3
+    def __init__(self, action_code):
+        self.action = action_code
+    
+    def message_to_server(self, actor):
+        if self.action == LeadFeedbackAction.ActionCode.POSITIVE_FEEDBACK:
+            return PositiveFeedbackMessage(), ""
+        elif self.action == LeadFeedbackAction.ActionCode.NEGATIVE_FEEDBACK:
+            return NegativeFeedbackMessage(), ""
+        elif self.action == LeadFeedbackAction.ActionCode.NONE:
+            return None, ""
+        else:
+            return None, "Invalid lead feedback action"
+
+class FollowAction(object):
+    class ActionCode(Enum):
         NONE = 0
         FORWARDS = 1
         BACKWARDS = 2
@@ -106,110 +121,184 @@ class Player(object):
         TURN_RIGHT = 4
         INSTRUCTION_DONE = 5
         MAX = 6
-    async def SendFollowAction(self, action):
-        """  Sends a follow action to the server.
-        
-            Args:
-                action: The FollowAction to send.
-            Returns:
-                (bool, str): A tuple containing if the action was sent, and if not, the reason why.
-        """
-        if self.role() != Role.FOLLOWER:
-            return False, "Not a follower, cannot send follow action"
-        if self.game.turn_state.role != Role.FOLLOWER:
-            return False, "Not your turn, cannot send follow action"
-        if action == Player.FollowActions.FORWARDS:
-            await self._send_action(self.actor.WalkForwardsAction())
-            self.actor.WalkForwards()
-        elif action == Player.FollowActions.BACKWARDS:
-            await self._send_action(self.actor.WalkBackwardsAction())
-            self.actor.WalkBackwards()
-        elif action == Player.FollowActions.TURN_LEFT:
-            await self._send_action(self.actor.TurnLeftAction())
-            self.actor.TurnLeft()
-        elif action == Player.FollowActions.TURN_RIGHT:
-            await self._send_action(self.actor.TurnRightAction())
-            self.actor.TurnRight()
-        elif action == Player.FollowActions.INSTRUCTION_DONE:
-            objectives = self.game.objectives
-            first_objective = None
-            for objective in objectives:
-                if not objective.completed and not objective.cancelled:
-                    first_objective = objective
-                    break
-            if first_objective is None:
-                return False, "No objectives to complete"
-            await self.client._send_message(InstructionDoneMessage(first_objective.uuid))
+
+    def __init__(self, action_code, instruction_uuid=None):
+        if action_code == FollowAction.ActionCode.INSTRUCTION_DONE:
+            assert instruction_uuid != None, "Instruction UUID must be provided for INSTRUCTION_DONE"
+        self.action = action_code, instruction_uuid
+
+    def message_to_server(self, actor):
+        action = None
+        action_code = self.action[0]
+        if action_code == FollowAction.ActionCode.FORWARDS:
+            action = actor.WalkForwardsAction()
+        elif action_code == FollowAction.ActionCode.BACKWARDS:
+            action = actor.WalkBackwardsAction()
+        elif action_code == FollowAction.ActionCode.TURN_LEFT:
+            action = actor.TurnLeftAction()
+        elif action_code == FollowAction.ActionCode.TURN_RIGHT:
+            action = actor.TurnRightAction()
+        elif action_code == FollowAction.ActionCode.INSTRUCTION_DONE:
+            return InstructionDoneMessage(self.action[1]), ""
         else:
-            return False, f"Invalid follow action: {action}"
-        return True, ""
-
-    async def _send_action(self, action):
-        """ Sends an action to the server.
-        
-            Args:
-                action: The action to send.
-        """
-        message = message_to_server.ActionsFromServer([action])
-        await self._send_message(message)
+            return None, "Invalid follow action"
+        assert action != None, "Invalid follow action"
+        actor.add_action(action)
+        actor.step()
+        action_message = ActionsMessage([action])
+        return action_message, ""
 
 
-# object that gives access to game (map, actors, state, instructions, etc).
-# It gets those things from calls from cb2client.
-# works with context manager and async coroutine so you can do something like:
-
-# client.Connect(url)
-# async with client.JoinGame(queue_type) as game:
+# client = Cb2Client(url)
+# joined, reason = await client.Connect()
+# assert joined, f"Could not join: {reason}"
+# leader_agent = Agent(...)
+# async with client.JoinGame(queue_type=LEADER_ONLY) as game:
+#     observation, action_space = game.state()
+#     action = await leader_agent.act(observation, action_space)
 #     while not game.over():
-#        game.state()
-#        game.turn()
-# 
-# and JoinGame() starts a coroutine which updates game state in the background.
+#         observation, action_space = game.step(action)
+#         action = leader_agent.act(observation, action_space)
 class Game(object):
     def __init__(self, client):
         self.client = client
-        self.Reset()
+        self._reset()
 
-    def Reset(self):
+    def _reset(self):
         self.map_update = None
         self.prop_update = None
-        self.actor = None
         self.actors = {}
-        self.queued_messages = []
+        self.cards = {}
         self.turn_state = None
-        self.leader = None
-        self.follower = None
+        self.instructions = []
+        self.queued_messages = []
+        self.message_number = 0
+        self.player_id = -1
+        self._player_role = Role.NONE
+        self.player_actor = None
+        self._initial_state_ready = False
+        self._initial_state_retrieved = False
+        self.live_feedback = None
     
-    def Leader(self):
-        for actor in self.actors:
-            if actor.role == Role.LEADER:
-                return actor
-        return None
+    def player_role(self):
+        return self._player_role
+    
+    def initial_state(self):
+        if self._initial_state_retrieved:
+            logger.warn("Initial state already retrieved")
+            return None
+        if not self._initial_state_ready:
+            logger.warn("Initial state not ready")
+            return None
+        self._initial_state_retrieved = True
+        return self._state()
+    
+    def step(self, action):
+        # Send action.
+        # Send queued messages (like automated ping responses)
+        # While it isn't our turn to move:
+        #   Wait for tick
+        #   Process messages
+        # Return
+        if isinstance(action, FollowAction):
+            if self._player_role != Role.FOLLOWER:
+                raise ValueError("Not a follower, cannot send follow action")
+            if self.turn_state.turn != Role.FOLLOWER and action.action[0] != FollowAction.ActionCode.NONE:
+                raise ValueError(f"Not your turn, cannot send follow action: {action.action}")
+        if isinstance(action, LeadAction):
+            if self._player_role != Role.LEADER:
+                raise ValueError("Not a leader, cannot send lead action")
+            if self.turn_state.turn != Role.LEADER:
+                raise ValueError("Not your turn, cannot send lead action")
+        if isinstance(action, LeadFeedbackAction):
+            if self._player_role != Role.LEADER:
+                raise ValueError("Not a leader, cannot send lead feedback action")
+            if self.turn_state.turn != Role.FOLLOWER:
+                raise ValueError("Not follower turn, cannot send lead feedback action")
+        message, reason = action.message_to_server(self.player_actor)
+        if message != None:
+            self.client._send_message(message)
+        for message in self.queued_messages:
+            self.client._send_message(message)
+        # Call _wait_for_tick before checking _can_act(), to make sure we don't
+        # miss any state transitions that took place on the server.
+        waited, reason = self._wait_for_tick()
+        if not waited:
+            logger.warn(f"Issue waiting for tick: {reason}")
+        while not self._can_act() and not self.over() and self.client.connected():
+            waited, reason = self._wait_for_tick()
+            if not waited:
+                logger.warn(f"Issue waiting for tick: {reason}")
+        state = self._state()
+        # Clear live feedback before returning. This is to make sure that the
+        # live feedback only occurs for 1 step per feedback message.
+        self.live_feedback = None
+        return state
+    
+    def _can_act(self):
+        # TODO(sharf): Once feedback is optional, this should check if feedback
+        # is allowed in config before always returning for the Leader.
+        return (self.player_role() == self.turn_state.turn) or self.player_role() == Role.LEADER
 
-    def Follower(self):
-        for actor in self.actors:
-            if actor.role == Role.FOLLOWER:
-                return actor
-        return None
-    
+    def _wait_for_tick(self, timeout=timedelta(seconds=60)):
+        """ Waits for a tick """
+        start_time = datetime.utcnow()
+        end_time = start_time + timeout
+        while not self.over() and self.client.connected():
+            if datetime.utcnow() > end_time:
+                return False, "Timed out waiting for tick"
+            message, reason = self.client._receive_message(end_time - datetime.utcnow())
+            if message is None:
+                logger.warn(f"Received None from _receive_message. Reason: {reason}")
+                continue
+            self._handle_message(message)
+            if message.type == message_from_server.MessageType.STATE_MACHINE_TICK:
+                return True, ""
+        return False, "Game over"
+
     # Returns true if the game is over.
     def over(self):
-        return self.turn_state.game_over
+        return self.turn_state.game_over or not self.client.connected()
     
-    async def __aenter__(self):
+    def __enter__(self):
         return self
     
-    async def __aexit__(self, type, value, traceback):
-        self.client.Reset()
+    def __exit__(self, type, value, traceback):
+        if not self.over() and self.client.connected():
+            self.client._send_message(LeaveMessage())
+
+    def _state(self):
+        leader = None
+        follower = None
+        for id in self.actors:
+            if self.actors[id].role() == Role.LEADER:
+                leader = self.actors[id]
+            elif self.actors[id].role() == Role.FOLLOWER:
+                follower = self.actors[id]
+        if leader is None or follower is None:
+            logger.warn(f"One of leader/follower missing!")
+        return self.map_update, self.cards.values(), self.turn_state, self.instructions, (leader, follower), self.live_feedback
     
     def _initialize(self, state_sync, map, props, turn_state):
+        if self._initial_state_ready:
+            logger.warn("Initial state already ready")
+            return
         self.map_update = map
-        self.prop_update = props
+        self._handle_prop_update(props)
         self.player_id = state_sync.player_id
-        self.player_role = state_sync.player_role
+        self._player_role = state_sync.player_role
         for net_actor in state_sync.actors:
-            self.actors[net_actor.id] = actor.Actor(net_actor.actor_id, 0, net_actor.actor_role, net_actor.location, False, net_actor.rotation_degrees)
+            self.actors[net_actor.actor_id] = actor.Actor(net_actor.actor_id, 0, net_actor.actor_role, net_actor.location, False, net_actor.rotation_degrees)
+        self.player_actor = self.actors[self.player_id]
         self.turn_state = turn_state
+        self._initial_state_ready = True
+    
+    def _handle_prop_update(self, prop_update):
+        self.prop_update = prop_update
+        self.cards = {}
+        for prop in prop_update.props:
+            if prop.prop_type == PropType.CARD:
+                self.cards[prop.id] = prop
     
     def _handle_state_sync(self, state_sync):
         """ Handles a state sync message.
@@ -219,7 +308,7 @@ class Game(object):
             Returns:
                 (bool, str): A tuple containing if the message was handled, and if not, the reason why.
         """
-        for net_actor in self.state_sync.actors:
+        for net_actor in state_sync.actors:
             if net_actor.actor_id not in self.actors:
                 logger.error(f"Received state sync for unknown actor {net_actor.actor_id}")
                 return False, "Received state sync for unknown actor"
@@ -228,29 +317,39 @@ class Game(object):
                 actor.drop()
             actor.add_action(action.Init(
                 net_actor.actor_id,
-                actor.location,
-                actor.rotation_degrees))
+                net_actor.location,
+                net_actor.rotation_degrees))
+            actor.step()
 
     def _handle_message(self, message):
         if message.type == message_from_server.MessageType.ACTIONS:
             for action in message.actions:
-                if action.id not in self.actors:
-                    logger.error(f"Received action for unknown actor: {action.id}")
+                if action.id == self.player_id:
+                    # Skip actions that we made. These are just sent for confirmation.
                     continue
+                if action.id not in self.actors:
+                    if action.id not in self.cards:
+                        logger.error(f"Received action for unknown actor: {action.id}")
+                    return
                 self.actors[action.id].add_action(action)
-        if message.type == message_from_server.MessageType.STATE_SYNC:
+                self.actors[action.id].step()
+        elif message.type == message_from_server.MessageType.STATE_SYNC:
             self._handle_state_sync(message.state)
-        if message.type == message_from_server.MessageType.GAME_STATE:
+        elif message.type == message_from_server.MessageType.GAME_STATE:
             self.turn_state = message.turn_state
-        if message.type == message_from_server.MessageType.MAP_UPDATE:
+        elif message.type == message_from_server.MessageType.MAP_UPDATE:
             logger.warn(f"Received map update after game started. This is unexpected.")
             self.map_update = message.map_update
-        if message.type == message_from_server.MessageType.OBJECTIVE:
-            self.objectives = message.objectives
-        if message.type == message_from_server.MessageType.PING:
+        elif message.type == message_from_server.MessageType.OBJECTIVE:
+            self.instructions = message.objectives
+        elif message.type == message_from_server.MessageType.PING:
             self.queued_messages.append(PongMessage())
-        if message.type == message_from_server.MessageType.LIVE_FEEDBACK:
-            self._live_feedback_handler(message.live_feedback.signal)
+        elif message.type == message_from_server.MessageType.LIVE_FEEDBACK:
+            self.live_feedback = message.live_feedback
+        elif message.type == message_from_server.MessageType.PROP_UPDATE:
+            self._handle_prop_update(message.prop_update)
+        elif message.type == message_from_server.MessageType.STATE_MACHINE_TICK:
+            return
         else:
             logger.warn(f"Received unexpected message type: {message.type}")
 
@@ -271,30 +370,42 @@ class Cb2Client(object):
         self.ws = None
         self.Reset()
         self.url = url
-
-    async def Connect(self):
+        self.event_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.event_loop)
+        logging.basicConfig(level=logging.INFO)
+    
+    def Connect(self):
         """ Connect to the server.
 
             Returns:
                 (bool, str): True if connected. If not, the second element is an error message.
         """
-        if self.init_state != Cb2Client.State.NONE:
+        if self.init_state != Cb2Client.State.BEGIN:
             return False, "Server is not in the BEGIN state. Call Reset() first?"
         url = f"{self.url}/player_endpoint"
         logger.info(f"Connecting to {url}...")
         session = aiohttp.ClientSession()
-        ws = await session.ws_connect(url)
+        ws = self.event_loop.run_until_complete(session.ws_connect(url))
         logger.info(f"Connected!")
         self.session = session
         self.ws = ws
         self.init_state = Cb2Client.State.CONNECTED
         return True, ""
     
-    async def Reset(self):
+    def connected(self):
+        return self.init_state in [
+            Cb2Client.State.CONNECTED,
+            Cb2Client.State.IN_QUEUE,
+            Cb2Client.State.IN_GAME_INIT,
+            Cb2Client.State.GAME_STARTED,
+            Cb2Client.State.GAME_OVER
+        ]
+        
+    def Reset(self):
         if self.session is not None:
-            await self.session.close()
+            self.event_loop.run_until_complete(self.session.close())
         if self.ws is not None:
-            await self.ws.close()
+            self.event_loop.run_until_complete(self.ws.close())
         self.session = None
         self.ws = None
         self.player_role = None
@@ -303,9 +414,7 @@ class Cb2Client(object):
         self.map_update = None
         self.state_sync = None
         self.prop_update = None
-        self.actor = None
         self.actors = {}
-        self.queued_messages = []
         self.turn_state = None
         self.game = None
     
@@ -316,9 +425,9 @@ class Cb2Client(object):
         NONE = 0
         LEADER_ONLY = 1
         FOLLOWER_ONLY = 2
-        DEFAULT = 3 # Could be assigned either leader or follower.
+        DEFAULT = 3 # Could be assigned either leader or follower.asyncio.
         MAX = 4
-    async def JoinGame(self, timeout=timedelta(minutes=6), queue_type=QueueType.DEFAULT):
+    def JoinGame(self, timeout=timedelta(minutes=6), queue_type=QueueType.DEFAULT):
         """ Enters the game queue and waits for a game.
 
             Waits for all of the following:
@@ -334,110 +443,48 @@ class Cb2Client(object):
             Raises:
                 TimeoutError: If the game did not start within the timeout.
         """
-        in_queue, reason = await self._join_queue(queue_type)
-        if not in_queue:
-            self.Reset()
-            return None, f"Failed to join queue: {reason}"
-        game_joined, reason = await self._wait_for_game(timeout)
-        if not game_joined:
-            self.Reset()
-            return None, f"Failed to join game: {reason}"
-        return self.game, ""
+        in_queue, reason = self._join_queue(queue_type)
+        assert in_queue, f"Failed to join queue: {reason}"
+        game_joined, reason = self._wait_for_game(timeout)
+        assert game_joined, f"Failed to join game: {reason}"
+        return self.game
     
-    
-    async def WaitForTurn(self, timeout=timedelta(minutes=5)):
-        """ Waits for it to be our turn.
-
-            Args:
-                timeout: The maximum amount of time to wait for our turn.
-            Returns:
-                (bool, str): A tuple containing if it is our turn, and if not, the reason why.
-        """
-        # Make sure we've joined a game.
-        if self.state < Cb2Client.State.GAME_STARTED:
-            return False, "Not in game"
-        # Check if its currently our turn and return immediately.
-        if self.turn_state.role == self.player_role:
-            return True, ""
-        timeout_end = datetime.now() + timeout
-        while True:
-            if datetime.now() > timeout_end:
-                return False, "Timeout"
-            result, reason = self._drain_socket_message(timeout_end - datetime.now())
-            if not result:
-                return False, f"Encountered while draining socket: {reason}"
-            if self.turn_state.role == self.player_role:
-                return True, ""
-
-    async def _send_queued_messages(self):
-        if self.init_state != Cb2Client.State.GAME_STARTED:
-            logger.error(f"_send_queued_messages called when not in game")
-            return
-        if len(self.queued_messages) == 0:
-            return
-        for message in self.queued_messages:
-            await self._send_message(message)
-        self.queued_messages = []
-    
-    async def _send_message(self, message):
+    def _send_message(self, message):
         """ Sends a message to the server.
         
             Args:
                 message: The message to send.
         """
-        binary_message = orjson.dumps(message, options=orjson.OPT_NAIVE_UTC)
-        await self.ws.send_str(binary_message.decode('utf-8'))
-    
-    async def _cb2_task(self):
-        # Make sure we've joined a game.
-        if self.state < Cb2Client.State.GAME_STARTED:
-            return False, "Not in game"
-        while True:
-            result, reason = await self._drain_socket_message(timedelta(minutes=5))
-            if not result:
-                return False, f"Encountered while draining socket: {reason}"
-    
-    async def _drain_socket_message(self, timeout):
         if self.ws.closed:
-            return False, "Socket closed."
+            return
+        if not self.connected():
+            return
         try:
-            message = await self.ws.receive(timeout=timeout)
-        except Exception as e:
-            return False, f"Failed to receive message due to: {e}"
-        if message is None:
-            return False, f"Received None from socket."
-        if message.type == aiohttp.WSMsgType.ERROR:
-            return False, f"Received error from socket: {message.data}"
-        if message.type == aiohttp.WSMsgType.CLOSE:
-            return False, f"WaitForTurn received close message."
-        if message.type == aiohttp.WSMsgType.BINARY:
-            return False, f"WaitForTurn received BINARY message."
-        if message.type != aiohttp.WSMsgType.TEXT:
-            logger.warn(f"wait_for_turn received unexpected message type: {message.type}. data: {message.data}. Ignoring")
-            return True, ""
-        message_parsed = message_from_server.MessageFromServer.from_json(message.data)
-        if self.game == None:
-            return False, f"Handling message when game is None: {message_parsed}"
-        self.game._handle_message(message_parsed)
-        await self._send_queued_messages()
-        return True, ""
-
-    async def _join_queue(self, queue_type=QueueType.DEFAULT):
+            binary_message = orjson.dumps(message, option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat)
+            self.event_loop.run_until_complete(self.ws.send_str(binary_message.decode('utf-8')))
+        except RuntimeError as e:
+            logger.error(f"Failed to send message: {e}")
+            self.init_state = Cb2Client.State.ERROR
+        except ConnectionResetError as e:
+            logger.error(f"Connection reset: {e}")
+            self.init_state = Cb2Client.State.CONNECTED
+    
+    def _join_queue(self, queue_type=QueueType.DEFAULT):
         """ Sends a join queue message to the server. """
-        if self.init_state not in [Cb2Client.State.BEGIN, Cb2Client.State.GAME_OVER, Cb2Client.State.ERROR]:
-            return False, "Already in game"
+        if self.init_state not in [Cb2Client.State.CONNECTED, Cb2Client.State.GAME_OVER]:
+            return False, f"Not ready to join game. State: {str(self.init_state)}"
         if queue_type == Cb2Client.QueueType.DEFAULT:
-            await self._send_message(JoinQueueMessage())
+            self._send_message(JoinQueueMessage())
         elif queue_type == Cb2Client.QueueType.LEADER_ONLY:
-            await self._send_message(JoinLeaderQueueMessage())
+            self._send_message(JoinLeaderQueueMessage())
         elif queue_type == Cb2Client.QueueType.FOLLOWER_ONLY:
-            await self._send_message(JoinFollowerQueueMessage())
+            self._send_message(JoinFollowerQueueMessage())
         else:
             return False, f"Invalid queue type {queue_type}"
         self.init_state = Cb2Client.State.IN_QUEUE
         return True, ""
     
-    async def _wait_for_game(self, timeout=timedelta(minutes=6)):
+    def _wait_for_game(self, timeout=timedelta(minutes=6)):
         """ Blocks until the game is started or a timeout is reached.
 
             Waits for all of the following:
@@ -459,19 +506,14 @@ class Cb2Client(object):
         map_update = None
         prop_update = None
         turn_state = None
-        while True:
-            if datetime.utcnow() > start_time + timeout:
+        end_time = start_time + timeout
+        while self.connected():
+            if datetime.utcnow() > end_time:
                 return False, "Timed out waiting for game"
-            message = await self.ws.receive()
-            if message is None:
+            response, reason = self._receive_message(timeout=end_time - datetime.utcnow())
+            if response is None:
+                logger.warn(f"No message received from _receive_message(). Reason: {reason}")
                 continue
-            if message.type == aiohttp.WSMsgType.ERROR:
-                print(f"Received error: {message.data}")
-                continue
-            if message.type != aiohttp.WSMsgType.TEXT:
-                print(f"wait_for_join_messages received unexpected message type: {message.type}. data: {message.data}")
-                continue
-            response = message_from_server.MessageFromServer.from_json(message.data)
             if self.init_state == Cb2Client.State.IN_QUEUE and response.type == message_from_server.MessageType.ROOM_MANAGEMENT:
                 if response.room_management_response.type == messages.rooms.RoomResponseType.JOIN_RESPONSE:
                     join_message = response.room_management_response.join_response
@@ -492,8 +534,26 @@ class Cb2Client(object):
                 prop_update = response.prop_update
             if self.init_state == Cb2Client.State.IN_GAME_INIT and response.type == message_from_server.MessageType.GAME_STATE:
                 turn_state = response.turn_state
-            if self.init_state == Cb2Client.State.IN_GAME_INIT and None not in [state_sync, map_update, prop_update, turn_state]:
-                self.init_state = Cb2Client.State.GAME_STARTED
-                self.game = Game(self)
-                self.game._initialize(state_sync, map_update, prop_update, turn_state)
-                return True, ""
+            if response.type == message_from_server.MessageType.STATE_MACHINE_TICK:
+                if self.init_state == Cb2Client.State.IN_GAME_INIT and None not in [state_sync, map_update, prop_update, turn_state]:
+                    self.init_state = Cb2Client.State.GAME_STARTED
+                    self.game = Game(self)
+                    self.game._initialize(state_sync, map_update, prop_update, turn_state)
+                    return True, ""
+    
+    def _receive_message(self, timeout=timedelta(minutes=1)):
+        message = self.event_loop.run_until_complete(self.ws.receive(timeout=timeout.total_seconds()))
+        if message is None:
+            return None, "None received from websocket.receive()"
+        if message.type == aiohttp.WSMsgType.ERROR:
+            return None, f"Received websocket error: {message.data}"
+        if message.type == aiohttp.WSMsgType.CLOSED:
+            self.init_state = Cb2Client.State.BEGIN
+            return None, "Socket closed."
+        if message.type == aiohttp.WSMsgType.CLOSE:
+            self.init_state = Cb2Client.State.BEGIN
+            return None, "Socket closing."
+        if message.type != aiohttp.WSMsgType.TEXT:
+            return None, f"Unexpected message type: {message.type}. data: {message.data}"
+        response = message_from_server.MessageFromServer.from_json(message.data)
+        return response, ""

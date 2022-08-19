@@ -24,4 +24,10 @@ namespace Network
         // Which actor we are. -1 means spectate mode (no active player).
         public int player_id;
     }
+
+    [Serializable]
+    public class StateMachineInfo
+    {
+        public int iter;
+    }
 }  // namespace Network

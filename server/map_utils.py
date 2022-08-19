@@ -1,13 +1,14 @@
-from assets import AssetId, TreeAssets, NatureAssets, SnowifyAssetId, TreeFrequencies, SnowAssets
-from hex import HecsCoord, HexCell, HexBoundary
-from messages.map_update import MapUpdate, Tile
+from server.assets import AssetId, TreeAssets, NatureAssets, SnowifyAssetId, TreeFrequencies, SnowAssets
+from server.hex import HecsCoord, HexCell, HexBoundary
+from server.messages.map_update import MapUpdate, Tile
 from enum import Enum
 from queue import Queue
 
-import messages.action as action
-import card 
-import messages.prop
+import server.messages.action as action
+import server.card  as card
+import server.messages.prop as prop
 
+import copy
 import dataclasses
 import logging
 import numpy as np
@@ -432,16 +433,17 @@ def FloodFillPartitionTiles(tiles):
 def CensorMapForFollower(map_update, follower):
     """ Censors information from a map that the follower isn't supposed to have.
     """
-    map_update_clone = dataclasses.replace(map_update)
+    map_update_clone = copy.deepcopy(map_update)
     return map_update_clone
 
 def CensorPropForFollower(prop_update, follower):
     """ Censors information from a map that the follower isn't supposed to have.
     """
-    prop_update_clone = dataclasses.replace(prop_update)
-    for i, prop in enumerate(prop_update_clone.props):
-        if prop_update_clone.props[i].prop_type == messages.prop.PropType.CARD:
+    prop_update_clone = copy.deepcopy(prop_update)
+    for i, _ in enumerate(prop_update_clone.props):
+        if prop_update_clone.props[i].prop_type == prop.PropType.CARD:
             if prop_update_clone.props[i].prop_info.border_color == action.Color(1, 0, 0, 1):
+                logger.info("Censoring card for follower {}".format(follower))
                 prop_update_clone.props[i].prop_info.border_color = action.Color(0, 0, 1, 1)
             if not prop_update_clone.props[i].card_init.selected:
                 prop_update_clone.props[i].card_init.hidden = True

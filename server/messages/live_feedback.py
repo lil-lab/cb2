@@ -1,5 +1,5 @@
 from enum import Enum
-from hex import HecsCoord
+from server.hex import HecsCoord
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase

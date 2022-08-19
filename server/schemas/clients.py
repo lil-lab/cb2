@@ -1,6 +1,6 @@
 from peewee import *
-from schemas.base import *
-from schemas.mturk import *
+from server.schemas.base import *
+from server.schemas.mturk import *
 
 class Remote(BaseModel):
     hashed_ip = TextField()

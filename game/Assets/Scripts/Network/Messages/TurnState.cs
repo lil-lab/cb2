@@ -10,7 +10,7 @@ namespace Network
         public Role turn;  // Who's turn it is.
         public int moves_remaining;  // How many moves the player has left in this turn.
         public int turns_left;  // How many turns the game has left.
-        public string turn_end;  // Time when the current turn began.
+        public string turn_end;  // Time when the current turn will end.
         public string game_start;  // Time when the game began.
         public int sets_collected;
         public int score;
@@ -24,10 +24,11 @@ namespace Network
             return "Time taken: " + gameDuration.ToString(@"mm\:ss") + "\nSets Collected: " + sets_collected + "\nScore: " + score;
         }
 
-        public string ShortStatus(DateTime transmitTime, Role role, bool is_replay = false)
+        public string ShortStatus(Role role, bool is_replay = false)
         {
             DateTime turn_end_parsed = DateTime.Parse(turn_end, null, System.Globalization.DateTimeStyles.RoundtripKind);
-            TimeSpan timeLeftInTurn = ((role == turn) || (is_replay)) ? turn_end_parsed - transmitTime : new TimeSpan(0);
+            DateTime time_now = DateTime.UtcNow;
+            TimeSpan timeLeftInTurn = ((role == turn) || (is_replay)) ? turn_end_parsed - time_now : new TimeSpan(0);
             int movesRemaining = (role == turn) ? moves_remaining : 0;
             string color = movesRemaining == 0 ? "red" : "#00ff00ff";
             string coloredMovesRemaining = "<color=" + color + ">" + movesRemaining + "</color>";

@@ -1,7 +1,7 @@
-from schemas.game import *
-from schemas.mturk import *
+from server.schemas.game import *
+from server.schemas.mturk import *
 from peewee import *
-import messages.map_update
+import server.messages.map_update
 
 import orjson
 
@@ -10,7 +10,7 @@ class MapUpdateField(TextField):
         return orjson.dumps(value, option=orjson.OPT_NAIVE_UTC).decode('utf-8')
     
     def python_value(self, db_val):
-        return messages.map_update.MapUpdate.from_json(db_val)
+        return server.messages.map_update.MapUpdate.from_json(db_val)
 
 class MapUpdate(BaseModel):
     world_seed = TextField()

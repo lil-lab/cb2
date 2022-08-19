@@ -1,9 +1,10 @@
-from config.config import Config
-from map_tools.visualize import *
-from playhouse.sqlite_ext import CSqliteExtDatabase
-from schemas import base
+from server.config.config import Config
+from server.map_tools.visualize import *
+from server.schemas import base
 
-import config.config as config
+from playhouse.sqlite_ext import CSqliteExtDatabase
+
+import server.config.config as config
 
 import fire
 

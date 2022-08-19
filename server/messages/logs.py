@@ -7,10 +7,10 @@ from typing import List, Optional
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro import pass_through
 from marshmallow import fields
-from messages import message_to_server as mts
-from messages import message_from_server as mfs
-from messages.rooms import Role
-from config import config as cfg
+from server.messages import message_to_server as mts
+from server.messages import message_from_server as mfs
+from server.messages.rooms import Role
+from server.config import config as cfg
 
 import dateutil
 

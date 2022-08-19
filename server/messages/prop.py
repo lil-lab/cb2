@@ -1,13 +1,13 @@
 from enum import Enum
-from hex import HecsCoord
-import card
+from server.hex import HecsCoord
+import server.card as card
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from mashumaro.mixins.json import DataClassJSONMixin
 from datetime import datetime
 from marshmallow import fields
-from messages import action
+from server.messages import action
 from typing import List, Optional
 
 import dateutil.parser

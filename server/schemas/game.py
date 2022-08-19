@@ -1,9 +1,9 @@
 from importlib.machinery import FrozenImporter
-from hex import HecsCoord
-from messages.action import Action
-from schemas.mturk import *
+from server.hex import HecsCoord
+from server.messages.action import Action
+from server.schemas.mturk import *
 from peewee import *
-from schemas.clients import *
+from server.schemas.clients import *
 
 import orjson
 
