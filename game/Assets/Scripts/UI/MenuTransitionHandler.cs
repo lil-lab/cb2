@@ -48,6 +48,8 @@ public class MenuTransitionHandler : MonoBehaviour
     private static readonly string FOLLOWER_TURN_TAG = "FOLLOWER_TURN_INDICATOR";
     private static readonly string LEADER_TURN_TAG = "LEADER_TURN_INDICATOR";
 
+    private Logger _logger;
+
     // We re-use ActionQueue here to animate UI transparency. It's a bit
     // overkill to have two animation queues here, but it's very obvious what's
     // happening for the reader, and that's worth it.
@@ -61,7 +63,7 @@ public class MenuTransitionHandler : MonoBehaviour
 
     private DateTime _lastTurnTransmitTime;
     private DateTime _lastTurnRefreshTime;
-    private TurnState _lastTurn = new TurnState();
+    private TurnState _lastTurn = null;
 
     List<Network.ObjectiveMessage> _lastObjectivesList = new List<Network.ObjectiveMessage>();
 
@@ -264,7 +266,7 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public void HandleLiveFeedback(LiveFeedback feedback)
     {
-        Debug.Log("Received feedback: " + feedback.signal);
+        _logger.Info("Received feedback: " + feedback.signal);
         // Display the positive feedback signal for 2 seconds.
         if (feedback.signal == Network.FeedbackType.POSITIVE)
         {
@@ -277,6 +279,7 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public void HandleTurnState(DateTime transmitTime, Network.TurnState state)
     {
+        _logger.Info("Received turn state: " + state);
         if (state.game_over)
         {
             EndGame(transmitTime, state);
@@ -351,7 +354,7 @@ public class MenuTransitionHandler : MonoBehaviour
 
         UpdateTurnUIText(state);
 
-        if (_lastTurn.turn != state.turn)
+        if ((_lastTurn == null) || (_lastTurn.turn != state.turn))
         {
             Debug.Log("Changing turn animation. " + _lastTurn.turn + " -> " + state.turn);
             GameObject endTurnPanel = GameObject.FindGameObjectWithTag(END_TURN_PANEL);
@@ -484,6 +487,11 @@ public class MenuTransitionHandler : MonoBehaviour
         score.text = state.ScoreString(transmitTime);
     }
 
+    void Awake()
+    {
+        _logger = Logger.GetOrCreateTrackedLogger("MenuTransitionHandler");
+    }
+
     // Start is called before the first frame update
     void Start()
     {
@@ -492,6 +500,7 @@ public class MenuTransitionHandler : MonoBehaviour
         ourTurnIndicatorFade = new ActionQueue("OurTurnQueue");
         _positiveFeedbackSignal = GameObject.FindWithTag(POSITIVE_FEEDBACK_TAG);
         _negativeFeedbackSignal = GameObject.FindWithTag(NEGATIVE_FEEDBACK_TAG);
+        _lastTurnRefreshTime = DateTime.MinValue;
     }
 
     public void TurnComplete()
@@ -532,10 +541,13 @@ public class MenuTransitionHandler : MonoBehaviour
             not_turn_group.alpha = nTS.Opacity;
         }
         // Refresh the menu UI showing the most recent turn state (so that time remaining stays fresh). Once per second.
-        if (DateTime.Now - _lastTurnTransmitTime > TimeSpan.FromSeconds(1))
+        if (DateTime.Now - _lastTurnRefreshTime > TimeSpan.FromSeconds(1))
         {
             _lastTurnRefreshTime = DateTime.Now;
-            UpdateTurnUIText(_lastTurn);
+            if (_lastTurn != null) {
+                _logger.Info("Refreshing menu with turn state: " + _lastTurn);
+                UpdateTurnUIText(_lastTurn);
+            }
         }
 
         if (Input.GetKeyDown(KeyCode.Return))

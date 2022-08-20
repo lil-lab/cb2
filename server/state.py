@@ -126,10 +126,11 @@ class State(object):
     def drain_turn_state(self, actor_id):
         if not actor_id in self._turn_history:
             self._turn_history[actor_id] = Queue()
-        if self._turn_history[actor_id].empty():
+        try:
+            turn = self._turn_history[actor_id].get_nowait()
+            return turn
+        except queue.Empty:
             return None
-        turn = self._turn_history[actor_id].get()
-        return turn
 
     def end_game(self):
         logging.info(f"Game ending.")
@@ -513,6 +514,8 @@ class State(object):
         self._actors[actor.actor_id()] = actor
         self._action_history[actor.actor_id()] = []
         self._synced[actor.actor_id()] = False
+        # Resend the latest turn state.
+        self.send_turn_state(self._turn_state)
         # Mark clients as desynced.
         self.desync_all()
         return actor.actor_id()
