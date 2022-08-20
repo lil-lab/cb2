@@ -25,10 +25,11 @@ import time
 import zipfile
 import yappi
 
-import schemas.defaults
-import schemas.clients
-import schemas.mturk
-import leaderboard
+import server.schemas as schemas
+import server.schemas.defaults as defaults
+import server.schemas.clients as clients
+import server.schemas.mturk as mturk
+import server.leaderboard as leaderboard
 
 import db_tools.db_utils as db_utils
 
@@ -37,23 +38,23 @@ from config.config import Config, InitGlobalConfig, GlobalConfig
 from dateutil import parser
 from dateutil import tz
 
-from hex import HecsCoord, HexBoundary, HexCell
-from map_provider import MapGenerationTask, MapPoolSize
-from map_tools import visualize
-from messages import map_update
-from messages import message_from_server
-from messages import message_to_server
-from messages import state_sync
-from messages.rooms import JoinResponse
-from messages.rooms import Role
-from messages.rooms import RoomManagementResponse
-from messages.rooms import RoomResponseType
-from messages.logs import GameLog, GameInfo, LogEntry
+from server.hex import HecsCoord, HexBoundary, HexCell
+from server.map_provider import MapGenerationTask, MapPoolSize
+from server.map_tools import visualize
+from server.messages import map_update
+from server.messages import message_from_server
+from server.messages import message_to_server
+from server.messages import state_sync
+from server.messages.rooms import JoinResponse
+from server.messages.rooms import Role
+from server.messages.rooms import RoomManagementResponse
+from server.messages.rooms import RoomResponseType
+from server.messages.logs import GameLog, GameInfo, LogEntry
 from playhouse.sqlite_ext import CSqliteExtDatabase
-from remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTable, LogConnectionEvent
-from room_manager import RoomManager
-from schemas import base
-from db_tools import backup
+from server.remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTable, LogConnectionEvent
+from server.room_manager import RoomManager
+from server.schemas import base
+from server.db_tools import backup
 
 from datetime import datetime, timezone, timedelta
 
@@ -230,7 +231,7 @@ async def GetUsername(request):
         return web.HTTPNotFound()
 
     hashed_id = hashlib.md5(user_id.encode('utf-8')).hexdigest(), # Worker ID is PII, so only save the hash.
-    worker_select = schemas.mturk.Worker.select().where(schemas.mturk.Worker.hashed_id == hashed_id)
+    worker_select = mturk.Worker.select().where(mturk.Worker.hashed_id == hashed_id)
     if worker_select.count() != 1:
         return web.HTTPNotFound()
     worker = worker_select.get()
@@ -243,7 +244,7 @@ async def GetUsername(request):
     if not hashed_id:
         return web.HTTPNotFound()
 
-    worker_select = schemas.mturk.Worker.select().where(schemas.mturk.Worker.hashed_id == hashed_id)
+    worker_select = mturk.Worker.select().where(mturk.Worker.hashed_id == hashed_id)
     if worker_select.count() != 1:
         return web.HTTPNotFound()
     worker = worker_select.get()
@@ -438,9 +439,9 @@ async def DataDownloadStart(request):
 @routes.get('/data/game-list')
 async def GameList(request):
     games = (schemas.game.Game.select()
-                .join(schemas.mturk.Worker, join_type=peewee.JOIN.LEFT_OUTER, on=((schemas.game.Game.leader == schemas.mturk.Worker.id) or (schemas.game.Game.follower == schemas.mturk.Worker.id)))
-                .join(schemas.mturk.Assignment, on=((schemas.game.Game.lead_assignment == schemas.mturk.Assignment.id) or (schemas.game.Game.follow_assignment == schemas.mturk.Assignment.id)), join_type=peewee.JOIN.LEFT_OUTER)
-                .order_by(schemas.game.Game.id.desc()))
+                .join(mturk.Worker, join_type=peewee.JOIN.LEFT_OUTER, on=((game.Game.leader == mturk.Worker.id) or (game.Game.follower == mturk.Worker.id)))
+                .join(mturk.Assignment, on=((game.Game.lead_assignment == mturk.Assignment.id) or (game.Game.follow_assignment == mturk.Assignment.id)), join_type=peewee.JOIN.LEFT_OUTER)
+                .order_by(game.Game.id.desc()))
     response = []
     # For convenience, convert timestamps to US eastern time.
     NYC = tz.gettz('America/New_York')
@@ -910,7 +911,7 @@ def InitGameRecording(config):
     # Setup the sqlite database used to record game actions.
     base.SetDatabase(config.database_path())
     base.ConnectDatabase()
-    base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
+    base.CreateTablesIfNotExists(defaults.ListDefaultTables())
     
 
 # Attempts to parse the config file. If there's any parsing or file errors,

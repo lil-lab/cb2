@@ -19,7 +19,6 @@ public class MenuTransitionHandler : MonoBehaviour
     }
 
     private static readonly string ESCAPE_MENU_TAG = "ESCAPE_MENU";
-
     private static readonly string INPUT_FIELD_TAG = "MessageInputField";
     private static readonly string OBJECTIVE_LIST = "OBJECTIVE_LIST";
     private static readonly string SCROLL_VIEW_TAG = "ScrollView";
@@ -61,6 +60,7 @@ public class MenuTransitionHandler : MonoBehaviour
     private MenuState _currentMenuState;
 
     private DateTime _lastTurnTransmitTime;
+    private DateTime _lastTurnRefreshTime;
     private TurnState _lastTurn = new TurnState();
 
     List<Network.ObjectiveMessage> _lastObjectivesList = new List<Network.ObjectiveMessage>();
@@ -290,7 +290,7 @@ public class MenuTransitionHandler : MonoBehaviour
     private void DisplayTurnStateReplayMode(DateTime transmitTime, Network.TurnState state)
     {
         NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
-        string twoLineSummary = state.ShortStatus(transmitTime, networkManager.Role(), networkManager.IsReplay());
+        string twoLineSummary = state.ShortStatus(networkManager.Role(), networkManager.IsReplay());
         if (state.turn == Network.Role.LEADER)
         {
             GameObject scoreObj = GameObject.FindWithTag(LEADER_SCORE_TEXT_TAG);
@@ -330,6 +330,15 @@ public class MenuTransitionHandler : MonoBehaviour
         Canvas.ForceUpdateCanvases();
     }
 
+    private void UpdateTurnUIText(Network.TurnState state)
+    {
+        Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
+        string twoLineSummary = state.ShortStatus(networkManager.Role(), networkManager.IsReplay());
+        GameObject scoreObj = GameObject.FindWithTag(SCORE_TEXT_TAG);
+        TMPro.TMP_Text textMeshPro = scoreObj.GetComponent<TMPro.TMP_Text>();
+        textMeshPro.text = twoLineSummary;
+    }
+
     private void DisplayTurnState(DateTime transmitTime, Network.TurnState state)
     {
         Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
@@ -340,10 +349,7 @@ public class MenuTransitionHandler : MonoBehaviour
             return;
         }
 
-        string twoLineSummary = state.ShortStatus(transmitTime, networkManager.Role(), networkManager.IsReplay());
-        GameObject scoreObj = GameObject.FindWithTag(SCORE_TEXT_TAG);
-        TMPro.TMP_Text textMeshPro = scoreObj.GetComponent<TMPro.TMP_Text>();
-        textMeshPro.text = twoLineSummary;
+        UpdateTurnUIText(state);
 
         if (_lastTurn.turn != state.turn)
         {
@@ -488,7 +494,6 @@ public class MenuTransitionHandler : MonoBehaviour
         _negativeFeedbackSignal = GameObject.FindWithTag(NEGATIVE_FEEDBACK_TAG);
     }
 
-
     public void TurnComplete()
     {
         Network.NetworkManager.TaggedInstance().TransmitTurnComplete();
@@ -525,6 +530,12 @@ public class MenuTransitionHandler : MonoBehaviour
             GameObject not_turn_obj = GameObject.FindWithTag(NOT_OUR_TURN_TAG);
             CanvasGroup not_turn_group = not_turn_obj.GetComponent<CanvasGroup>();
             not_turn_group.alpha = nTS.Opacity;
+        }
+        // Refresh the menu UI showing the most recent turn state (so that time remaining stays fresh). Once per second.
+        if (DateTime.Now - _lastTurnTransmitTime > TimeSpan.FromSeconds(1))
+        {
+            _lastTurnRefreshTime = DateTime.Now;
+            UpdateTurnUIText(_lastTurn);
         }
 
         if (Input.GetKeyDown(KeyCode.Return))

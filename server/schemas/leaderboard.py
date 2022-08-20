@@ -1,7 +1,7 @@
 import datetime
 from peewee import *
-from schemas.base import *
-from schemas.mturk import Worker
+from server.schemas.base import *
+from server.schemas.mturk import Worker
 
 class Username(BaseModel):
     username = TextField()

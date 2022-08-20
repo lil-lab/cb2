@@ -1,5 +1,5 @@
 """ Code for updating the leaderboard table. """
-from schemas.game import Game
+from server.schemas.game import Game
 import schemas.leaderboard
 import schemas.mturk
 

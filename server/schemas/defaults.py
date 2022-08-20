@@ -1,11 +1,11 @@
-from schemas.base import *
-from schemas.cards import *
-from schemas.clients import *
-from schemas.game import *
-from schemas.map import *
-from schemas.mturk import *
-from schemas.leaderboard import *
-from schemas.prop import *
+from server.schemas.base import *
+from server.schemas.cards import *
+from server.schemas.clients import *
+from server.schemas.game import *
+from server.schemas.map import *
+from server.schemas.mturk import *
+from server.schemas.leaderboard import *
+from server.schemas.prop import *
 
 TABLES = [
     CardSets, Card, CardSelections,
