@@ -1,23 +1,25 @@
+from server.actor import Actor
+from server.assets import AssetId
+from server.messages.action import Action, Color, ActionType, CensorActionForFollower, Delay
+from server.messages.rooms import Role
+from server.messages import message_from_server
+from server.messages import message_to_server
+from server.messages import state_sync
+from server.messages.objective import ObjectiveMessage, ObjectiveCompleteMessage
+from server.hex import HecsCoord
+from server.map_provider import MapProvider, MapType
+from server.card import CardSelectAction, SetCompletionActions
+from server.util import IdAssigner
+from server.messages.turn_state import TurnState, GameOverMessage, TurnUpdate
+from server.messages.tutorials import FollowerActions, TutorialRequestType, TutorialResponseFromStep, TutorialCompletedResponse, RoleFromTutorialName, TooltipType
+from server.tutorial_steps import LoadTutorialSteps
+
+from datetime import datetime, timedelta
+
 from multiprocessing import dummy
 from async_timeout import current_task
 from numpy import select
-from actor import Actor
-from assets import AssetId
-from messages.action import Action, Color, ActionType, CensorActionForFollower, Delay
-from messages.rooms import Role
-from messages import message_from_server
-from messages import message_to_server
-from messages import state_sync
-from messages.objective import ObjectiveMessage, ObjectiveCompleteMessage
-from hex import HecsCoord
 from queue import Queue
-from map_provider import MapProvider, MapType
-from card import CardSelectAction, SetCompletionActions
-from util import IdAssigner
-from datetime import datetime, timedelta
-from messages.turn_state import TurnState, GameOverMessage, TurnUpdate
-from messages.tutorials import FollowerActions, TutorialRequestType, TutorialResponseFromStep, TutorialCompletedResponse, RoleFromTutorialName, TooltipType
-from tutorial_steps import LoadTutorialSteps
 
 import aiohttp
 import asyncio
@@ -28,10 +30,11 @@ import random
 import time
 import uuid
 
-import map_utils
-import schemas.game
-import schemas.map
-import schemas.cards
+import server.map_utils as map_utils
+import server.schemas.game as game_db
+import server.schemas.map as map_db
+import server.schemas.cards as cards_db
+import server.schemas.prop as prop_db
 
 LEADER_MOVES_PER_TURN = -1
 FOLLOWER_MOVES_PER_TURN = -1
@@ -149,7 +152,7 @@ class TutorialGameState(object):
             self._action_history[actor.actor_id()].append(action)
     
     def record_objective(self, objective):
-        instruction = schemas.game.Instruction()
+        instruction = game_db.Instruction()
         instruction.game = self._tutorial_record
         instruction.worker = self._tutorial_record.leader
         instruction.uuid = objective.uuid
@@ -160,7 +163,7 @@ class TutorialGameState(object):
 
 
     def record_move(self, actor, proposed_action):
-        move = schemas.game.Move()
+        move = game_db.Move()
         move.game = self._tutorial_record
         if actor.role() == Role.FOLLOWER:
             last_objective = None
@@ -168,8 +171,8 @@ class TutorialGameState(object):
                 if not objective.completed:
                     last_objective = objective
             if last_objective is not None:
-                last_obj_record = schemas.game.Instruction.select().where(
-                    schemas.game.Instruction.uuid == last_objective.uuid).get()
+                last_obj_record = game_db.Instruction.select().where(
+                    game_db.Instruction.uuid == last_objective.uuid).get()
                 move.instruction = last_obj_record
         move.character_role = actor.role()
         if actor.role == Role.LEADER:
@@ -370,7 +373,7 @@ class TutorialGameState(object):
                     self._turn_state.score + 1,
                     self._turn_state.turn_number)
                 self.record_turn_state(new_turn_state)
-                set_record = schemas.cards.CardSets()
+                set_record = cards_db.CardSets()
                 set_record.game = self._tutorial_record
                 set_record.move = self._last_move
                 set_record.score = new_turn_state.score
@@ -453,7 +456,7 @@ class TutorialGameState(object):
         return list(self._map_provider.selected_cards())
 
     def get_or_create_card_record(self, card):
-        record, created = schemas.cards.Card.get_or_create(game=self._tutorial_record, count=card.count,color=str(card.color),shape=str(card.shape),
+        record, created = cards_db.Card.get_or_create(game=self._tutorial_record, count=card.count,color=str(card.color),shape=str(card.shape),
                                                 location=card.location, defaults={"turn_created": self._turn_state.turn_number})
         return record
 
@@ -470,7 +473,7 @@ class TutorialGameState(object):
             self._map_provider.set_color(stepped_on_card.id, color)
             card_select_action = CardSelectAction(stepped_on_card.id, selected, color)
             self.record_action(card_select_action)
-            selection_record = schemas.cards.CardSelections()
+            selection_record = cards_db.CardSelections()
             selection_record.game = self._tutorial_record
             selection_record.move = self._last_move
             selection_record.type = "select" if selected else "unselect"
@@ -563,8 +566,8 @@ class TutorialGameState(object):
                 break
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True
-        instruction = schemas.game.Instruction.select().where(
-            schemas.game.Instruction.uuid==objective_complete.uuid).get()
+        instruction = game_db.Instruction.select().where(
+            game_db.Instruction.uuid==objective_complete.uuid).get()
         instruction.turn_completed = self._turn_state.turn_number
         instruction.save()
     
@@ -831,7 +834,7 @@ class TutorialGameState(object):
         self._map_update_count += 1
 
         # Record the map update to the database.
-        map_record = schemas.map.MapUpdate()
+        map_record = map_db.MapUpdate()
         map_record.world_seed = ""
         map_record.map_data = map_update
         map_record.game = self._tutorial_record
@@ -856,7 +859,7 @@ class TutorialGameState(object):
             prop_update = map_utils.CensorPropForFollower(prop_update, self._actors[actor_id])
         
         # Record the prop update to the database.
-        prop_record = schemas.prop.PropUpdate()
+        prop_record = prop_db.PropUpdate()
         prop_record.prop_data = prop_update
         prop_record.game = self._game_record
         prop_record.save()

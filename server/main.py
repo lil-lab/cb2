@@ -31,10 +31,10 @@ import server.schemas.clients as clients
 import server.schemas.mturk as mturk
 import server.leaderboard as leaderboard
 
-import db_tools.db_utils as db_utils
+import server.db_tools.db_utils as db_utils
 
 from aiohttp import web
-from config.config import Config, InitGlobalConfig, GlobalConfig
+from server.config.config import Config, InitGlobalConfig, GlobalConfig
 from dateutil import parser
 from dateutil import tz
 
@@ -96,60 +96,60 @@ async def transmit_bytes(ws, message):
 
 @routes.get('/')
 async def Index(request):
-    return web.FileResponse("www/WebGL/index.html")
+    return web.FileResponse("server/www/WebGL/index.html")
 
 @routes.get('/qualification')
 async def QualificationPage(request):
-    return web.FileResponse("www/qualification.html")
+    return web.FileResponse("server/www/qualification.html")
 
 @routes.get('/migration-qualification')
 async def QualificationPage(request):
-    return web.FileResponse("www/migration_qualification.html")
+    return web.FileResponse("server/www/migration_qualification.html")
 
 
 @routes.get('/rules')
 async def Rules(request):
-    return web.FileResponse("www/rules.html")
+    return web.FileResponse("server/www/rules.html")
 
 @routes.get('/example_sets')
 async def Rules(request):
-    return web.FileResponse("www/example_sets.html")
+    return web.FileResponse("server/www/example_sets.html")
 
 @routes.get('/oneoff')
 async def OneoffComp(request):
-    return web.FileResponse("www/oneoff.html")
+    return web.FileResponse("server/www/oneoff.html")
 
 @routes.get('/mturk-task')
 async def TaskPage(request):
-    return web.FileResponse("www/mturk-task.html")
+    return web.FileResponse("server/www/mturk-task.html")
 
 @routes.get('/follower-task')
 async def TaskPage(request):
-    return web.FileResponse("www/follower-task.html")
+    return web.FileResponse("server/www/follower-task.html")
 
 @routes.get('/follower-qual')
 async def TaskPage(request):
-    return web.FileResponse("www/follower-qual.html")
+    return web.FileResponse("server/www/follower-qual.html")
 
 @routes.get('/leader-qual')
 async def TaskPage(request):
-    return web.FileResponse("www/leader-qual.html")
+    return web.FileResponse("server/www/leader-qual.html")
 
 @routes.get('/changelist')
 async def Changelist(request):
-    return web.FileResponse("www/changelist.html")
+    return web.FileResponse("server/www/changelist.html")
 
 @routes.get('/images/{filename}')
 async def Images(request):
     if not request.match_info.get('filename'):
         return web.HTTPNotFound()
-    return web.FileResponse(f"www/images/{request.match_info['filename']}")
+    return web.FileResponse(f"server/www/images/{request.match_info['filename']}")
 
 @routes.get('/js/{filename}')
 async def Js(request):
     if not request.match_info.get('filename'):
         return web.HTTPNotFound()
-    return web.FileResponse(f"www/js/{request.match_info['filename']}")
+    return web.FileResponse(f"server/www/js/{request.match_info['filename']}")
 
 @routes.get('/status')
 async def Status(request):
@@ -434,7 +434,7 @@ async def DataDownloadStart(request):
     global download_requested
     download_requested = True
     download_contents = None
-    return web.FileResponse("www/download.html")
+    return web.FileResponse("server/www/download.html")
 
 @routes.get('/data/game-list')
 async def GameList(request):
@@ -462,12 +462,12 @@ async def GameList(request):
 
 @routes.get('/view/games')
 async def GamesViewer(request):
-    return web.FileResponse("www/games_viewer.html")
+    return web.FileResponse("server/www/games_viewer.html")
 
 @routes.get('/view/game/{game_id}')
 async def GameViewer(request):
     # Extract the game_id from the request.
-    return web.FileResponse("www/game_viewer.html")
+    return web.FileResponse("server/www/game_viewer.html")
 
 @routes.get('/data/config')
 async def GetConfig(request):
@@ -476,7 +476,7 @@ async def GetConfig(request):
 
 @routes.get('/view/stats')
 async def Stats(request):
-    return web.FileResponse("www/stats.html")
+    return web.FileResponse("server/www/stats.html")
 
 @routes.get('/data/turns/{game_id}')
 async def GameData(request):
@@ -832,7 +832,7 @@ async def serve(config):
     app = web.Application()
 
     # Add a route for serving web frontend files on /.
-    routes.static('/', './www/WebGL')
+    routes.static('/', 'server/www/WebGL')
 
     app.add_routes(routes)
     runner = runner = aiohttp.web.AppRunner(app, handle_signals=True)

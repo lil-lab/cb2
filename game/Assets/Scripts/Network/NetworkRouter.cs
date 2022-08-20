@@ -214,6 +214,10 @@ namespace Network
                     _pendingStateSync = message.state;
                 }
             }
+            if (message.type == MessageFromServer.MessageType.STATE_MACHINE_ITER)
+            {
+                // Do nothing, this is more useful for bots.
+            }
             if (message.type == MessageFromServer.MessageType.MAP_UPDATE)
             {
                 if (_mapSource == null)

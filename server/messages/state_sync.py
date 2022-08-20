@@ -39,4 +39,4 @@ class StateSync(DataClassJSONMixin):
 # bandwidth).
 @dataclass(frozen=True)
 class StateMachineInfo(DataClassJSONMixin):
-    iter: int
+    iter: int = -1

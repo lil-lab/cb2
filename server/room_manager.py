@@ -3,35 +3,38 @@ from collections import deque
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime, timedelta
-from experience import GetWorkerExperienceEntry 
-from map_provider import CachedMapRetrieval
-from messages import message_from_server
-from messages import message_to_server
-from messages.logs import GameInfo
-from messages.rooms import Role
-from messages.rooms import JoinResponse
-from messages.rooms import LeaveRoomNotice
-from messages.rooms import StatsResponse
-from messages.rooms import RoomManagementRequest
-from messages.rooms import RoomRequestType
-from messages.rooms import RoomManagementResponse
-from messages.rooms import RoomResponseType
-from messages.tutorials import RoleFromTutorialName, TutorialRequestType, TutorialResponse, TutorialResponseType
+
+from server.experience import GetWorkerExperienceEntry 
+from server.map_provider import CachedMapRetrieval
+from server.messages import message_from_server
+from server.messages import message_to_server
+from server.messages.logs import GameInfo
+from server.messages.rooms import Role
+from server.messages.rooms import JoinResponse
+from server.messages.rooms import LeaveRoomNotice
+from server.messages.rooms import StatsResponse
+from server.messages.rooms import RoomManagementRequest
+from server.messages.rooms import RoomRequestType
+from server.messages.rooms import RoomManagementResponse
+from server.messages.rooms import RoomResponseType
+from server.messages.tutorials import RoleFromTutorialName, TutorialRequestType, TutorialResponse, TutorialResponseType
+
+from server.remote_table import GetRemote, GetWorkerFromRemote
+from server.room import Room, RoomType
+from server.schemas.mturk import Worker, WorkerQualLevel
+from server.util import IdAssigner, GetCommitHash
+import server.messages.rooms as rooms
+
 from queue import Queue
-from remote_table import GetRemote, GetWorkerFromRemote
-from room import Room, RoomType
-from schemas.mturk import Worker, WorkerQualLevel
-from util import IdAssigner, GetCommitHash
 
 import aiohttp
 import asyncio
 import logging
-import messages.rooms
 import orjson
 import pathlib
 import queue
 import random
-import schemas.game
+import server.schemas.game as game_db
 
 logger = logging.getLogger()
 
@@ -122,7 +125,7 @@ class RoomManager(object):
             room.stop()
         self._is_done = True
 
-    def create_room(self, id, game_record: schemas.game.Game,
+    def create_room(self, id, game_record: game_db.Game,
                     type: RoomType = RoomType.GAME, tutorial_name: str = ""):
         self._rooms[id] = Room(
             # Room name.
@@ -168,7 +171,7 @@ class RoomManager(object):
         logger.info(f"Creating tutorial room for {player}.")
 
         # Setup room log directory.
-        game_record = schemas.game.Game()
+        game_record = game_db.Game()
         game_record.save()
         game_id = game_record.id
         game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
@@ -210,7 +213,7 @@ class RoomManager(object):
             logger.info(f"Creating room for {leader} and {follower}. Queue size: {len(self._player_queue)} Follower Queue: {len(self._follower_queue)}")
 
             # Setup room log directory.
-            game_record = schemas.game.Game()
+            game_record = game_db.Game()
             game_record.save()
             game_id = game_record.id
             game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
@@ -325,7 +328,8 @@ class RoomManager(object):
 
         # If a general player has been waiting for >= 10 seconds with no follower, match them with another general player.
         (ts, _) = self._player_queue[0] 
-        if datetime.now() - ts > timedelta(seconds=10):
+        logger.warn(f"AHHH CHANGE THIS BACK TO 10s")
+        if datetime.now() - ts > timedelta(seconds=1):
             (_, player1) = self._player_queue.popleft()
             (_, player2) = self._player_queue.popleft()
             leader, follower = self.assign_leader_follower(player1, player2)

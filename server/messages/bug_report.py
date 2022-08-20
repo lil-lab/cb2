@@ -1,15 +1,15 @@
 from enum import Enum
-from modulefinder import Module
-from hex import HecsCoord
+
+from server.hex import HecsCoord
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from mashumaro.mixins.json import DataClassJSONMixin
 from marshmallow import fields
-from messages.map_update import MapUpdate
-from messages.turn_state import TurnState
-from messages.state_sync import StateSync
+from server.messages.map_update import MapUpdate
+from server.messages.turn_state import TurnState
+from server.messages.state_sync import StateSync
 from typing import List, Optional
 
 import dateutil.parser

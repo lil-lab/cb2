@@ -439,7 +439,7 @@ def CensorPropForFollower(prop_update, follower):
     """ Censors information from a map that the follower isn't supposed to have.
     """
     prop_update_clone = dataclasses.replace(prop_update)
-    for i, prop in enumerate(prop_update_clone.props):
+    for i, _ in enumerate(prop_update_clone.props):
         if prop_update_clone.props[i].prop_type == prop.PropType.CARD:
             if prop_update_clone.props[i].prop_info.border_color == action.Color(1, 0, 0, 1):
                 prop_update_clone.props[i].prop_info.border_color = action.Color(0, 0, 1, 1)

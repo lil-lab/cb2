@@ -7,8 +7,7 @@ import dateutil
 
 import aiohttp
 
-import schemas.clients
-import schemas.mturk
+import server.schemas.clients as clients_db
 
 
 # A table of active websocket connections. Maps from aiohttp.WebSocketResponse
@@ -18,7 +17,7 @@ remote_table = {}
 remote_worker_table = {}
 
 def AddRemote(web_socket_response, remote, assignment=None):
-    remote_record, _ = (schemas.clients.Remote.get_or_create(hashed_ip=remote.hashed_ip, remote_port=remote.client_port))
+    remote_record, _ = (clients_db.Remote.get_or_create(hashed_ip=remote.hashed_ip, remote_port=remote.client_port))
     if assignment is not None:
         remote_record.worker = assignment.worker
         remote_record.assignment = assignment
@@ -39,8 +38,8 @@ def DeleteRemote(web_socket_response):
     del remote_table[web_socket_response]
 
 def LogConnectionEvent(remote, event_str):
-    event = schemas.clients.ConnectionEvents()
-    remote = schemas.clients.Remote.get(schemas.clients.Remote.hashed_ip == remote.hashed_ip)
+    event = clients_db.ConnectionEvents()
+    remote = clients_db.Remote.get(clients_db.Remote.hashed_ip == remote.hashed_ip)
     event.remote = remote
     event.event_type = event_str
     event.save()

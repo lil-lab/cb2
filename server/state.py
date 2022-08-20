@@ -1,23 +1,23 @@
-from actor import Actor
-from assets import AssetId
-from messages.action import Action, Color, ActionType, CensorActionForFollower
-from messages.rooms import Role
-from messages import live_feedback, message_from_server
-from messages import message_to_server
-from messages import objective, state_sync
-from hex import HecsCoord
-from queue import Queue
-from map_provider import MapProvider, MapType, CachedMapRetrieval
-from card import CardSelectAction, SetCompletionActions
-from datetime import datetime, timedelta
-from messages.turn_state import TurnState, GameOverMessage, TurnUpdate
+from server.actor import Actor
+from server.assets import AssetId
+from server.messages.action import Action, Color, ActionType, CensorActionForFollower
+from server.messages.rooms import Role
+from server.messages import live_feedback, message_from_server
+from server.messages import message_to_server
+from server.messages import objective, state_sync
+from server.hex import HecsCoord
+from server.map_provider import MapProvider, MapType, CachedMapRetrieval
+from server.card import CardSelectAction, SetCompletionActions
+from server.messages.turn_state import TurnState, GameOverMessage, TurnUpdate
 
 from server.game_recorder import GameRecorder
 from server.state_machine_driver import StateMachineDriver
 
-import leaderboard
-import experience
+import server.leaderboard as leaderboard
+import server.experience as experience
 
+from queue import Queue
+from datetime import datetime, timedelta
 
 import asyncio
 import dataclasses
@@ -28,12 +28,12 @@ import time
 import uuid
 import queue
 
-import schemas.game
-import schemas.map
-import schemas.cards
-import schemas.leaderboard
-import schemas.prop
-import map_utils
+import server.schemas.game as game_db
+import server.schemas.map as map_db
+import server.schemas.cards as cards_db
+import server.schemas.leaderboard as leaderboard_db
+import server.schemas.prop as prop_db
+import server.map_utils as map_utils
 from server.messages.state_sync import StateMachineInfo
 
 LEADER_MOVES_PER_TURN = 5
@@ -102,22 +102,19 @@ class State(object):
         self._turn_history = {}
         self.send_turn_state(initial_turn)
 
-        self._game_recorder.initial_state(self._map_provider.map(), self._map_provider.cards(), initial_turn)
-
-        for card in self._map_provider.cards():
-            card_record = self.get_or_create_card_record(card)
-            card_record.save()
+        self._game_recorder.initial_state(self._map_provider.map(), self._map_provider.prop_update(), initial_turn)
 
         self._spawn_points = self._map_provider.spawn_points()
         random.shuffle(self._spawn_points)
         self._done = False
+
+        self._current_set_invalid = False
 
     def turn_duration(self, role):
         return timedelta(seconds=LEADER_SECONDS_PER_TURN) if role == Role.LEADER else timedelta(seconds=FOLLOWER_SECONDS_PER_TURN)
 
     def send_turn_state(self, turn_state):
         # Record a copy of the current turn state.
-        self._record_log.debug(turn_state)
         self._game_recorder.record_turn_state(turn_state)
         self._turn_state = turn_state
         for actor_id in self._actors:
@@ -132,7 +129,6 @@ class State(object):
         if self._turn_history[actor_id].empty():
             return None
         turn = self._turn_history[actor_id].get()
-        self._sent_log.debug(f"to: {actor_id} turn_state: {turn}")
         return turn
 
     def end_game(self):
@@ -142,7 +138,6 @@ class State(object):
     def record_action(self, action):
         # Marks an action as validated (i.e. it did not conflict with other actions).
         # Queues this action to be sent to each user.
-        self._record_log.info(action)
         for id in self._actors:
             actor = self._actors[id]
             self._action_history[actor.actor_id()].append(action)
@@ -155,6 +150,9 @@ class State(object):
     
     def done(self):
         return self._done
+    
+    def player_ids(self):
+        return self._actors.keys()
 
     async def update(self):
         self._iter = (self._iter + 1) % 4096
@@ -204,13 +202,12 @@ class State(object):
                     self._game_recorder.record_move(actor, proposed_action)
                     actor.step()
                     self.record_action(proposed_action)
-                    color = Color(0, 0, 1, 1) if not current_set_invalid else Color(1, 0, 0, 1)
+                    color = Color(0, 0, 1, 1) if not self._current_set_invalid else Color(1, 0, 0, 1)
                     self.check_for_stepped_on_cards(actor_id, proposed_action, color)
                     self.update_turn()
                 else:
                     actor.drop()
                     self.desync(actor_id)
-                    self._record_log.error(f"Resyncing {actor_id} after invalid action.")
                     continue
         
         while len(self._turn_complete_queue) > 0:
@@ -229,9 +226,8 @@ class State(object):
 
         selected_cards = list(self._map_provider.selected_cards())
         cards_changed = False
-        if self._map_provider.selected_cards_collide() and not current_set_invalid:
-            current_set_invalid = True
-            self._record_log.info("Invalid set detected.")
+        if self._map_provider.selected_cards_collide() and not self._current_set_invalid:
+            self._current_set_invalid = True
             cards_changed = True
             # Indicate invalid set.
             for card in selected_cards:
@@ -240,9 +236,9 @@ class State(object):
                 self._map_provider.set_color(card.id, Color(1, 0, 0, 1))
                 self.record_action(card_select_action)
         
-        if not self._map_provider.selected_cards_collide() and current_set_invalid:
+        if not self._map_provider.selected_cards_collide() and self._current_set_invalid:
             logger.info("Marking set as clear (not invalid) because it is smaller than 3.")
-            current_set_invalid = False
+            self._current_set_invalid = False
             cards_changed = True
             for card in selected_cards:
                 # Outline the cards in blue.
@@ -251,8 +247,7 @@ class State(object):
                 self.record_action(card_select_action)
 
         if self._map_provider.selected_valid_set():
-            self._record_log.info("Unique set collected. Awarding points.")
-            current_set_invalid = False
+            self._current_set_invalid = False
             added_turns = 0
             cards_changed = True
             if self._turn_state.sets_collected == 0:
@@ -275,15 +270,11 @@ class State(object):
                 self._turn_state.score + 1,
                 self._turn_state.turn_number)
             self.send_turn_state(new_turn_state)
-            set_record = schemas.cards.CardSets()
+            set_record = cards_db.CardSets()
             set_record.game = self._game_record
             set_record.move = self._last_move
             set_record.score = new_turn_state.score
             set_record.save()
-            for card in selected_cards: 
-                card_record = self.get_or_create_card_record(card)
-                card_record.set = set_record
-                card_record.save()
             # Add 3 new cards before clearing selected cards. This prevents
             # us from accidentally spawning cards in the same location as
             # the previous 3, which is confusing to the user.
@@ -306,8 +297,8 @@ class State(object):
 
     def on_game_over(self):
         self._game_recorder.record_game_over()
-        leaderboard.UpdateLeaderboard(self._game_record)
-        experience.UpdateWorkerExperienceTable(self._game_record)
+        leaderboard.UpdateLeaderboard(self._game_recorder.record())
+        experience.UpdateWorkerExperienceTable(self._game_recorder.record())
     
     def has_instructions_todo(self):
         for objective in self._objectives:
@@ -415,7 +406,6 @@ class State(object):
         if (action.id != actor_id):
             self.desync(actor_id)
             return
-        self._recvd_log.info(action)
         self._actors[actor_id].add_action(action)
 
     def handle_objective(self, id, objective):
@@ -429,7 +419,6 @@ class State(object):
         # TODO: Make UUID and non-UUID'd objectives separate message types.
         objective.uuid = uuid.uuid4().hex
         self._game_recorder.record_objective(objective)
-        self._recvd_log.info(objective)
         self._objectives.append(objective)
         if self._active_objective is None:
             self._active_objective = objective
@@ -441,10 +430,8 @@ class State(object):
             logger.warn(
                 f'Warning, obj complete received from non-follower ID: {str(id)}')
             return
-        self._recvd_log.info(objective_complete)
         for i, objective in enumerate(self._objectives):
             if objective.uuid == objective_complete.uuid:
-                self._record_log.info(objective_complete)
                 if self._objectives[i].cancelled:
                     logger.warn(
                         f'Warning, obj complete received for cancelled objective: {objective_complete.uuid}')
@@ -487,7 +474,6 @@ class State(object):
             if not self.has_instructions_todo():
                 logger.warn(f"Warning, turn complete received from leader ID: {str(id)} when there are no pending instructions!")
                 return
-        self._recvd_log.info(f"player_id: {id} turn_complete received.")
         if len(self._turn_complete_queue) >= 1:
             logger.warn(
                 f"Warning, turn complete queued from ID: {str(id)}, but one was already received!")
@@ -650,8 +636,6 @@ class State(object):
             action_history = [CensorActionForFollower(action, actor) for action in action_history]
 
         # Log actions sent to client.
-        for action in action_history:
-            self._sent_log.debug(f"to: {actor_id} action: {action}")
         self._action_history[actor_id] = []
         return action_history
 
@@ -664,7 +648,6 @@ class State(object):
         
         # Send the latest objective list and mark as fresh for this player.
         self._objectives_stale[actor_id] = False
-        self._sent_log.info(f"to: {actor_id} objectives: {self._objectives}")
         return self._objectives
     
     def drain_map_update(self, actor_id):
@@ -685,7 +668,6 @@ class State(object):
 
         # Send the latest map and mark as fresh for this player.
         self._map_stale[actor_id] = False
-        self._sent_log.debug(f"to: {actor_id} map: {map_update}")
         return map_update
     
     def drain_prop_update(self, actor_id):
@@ -704,7 +686,6 @@ class State(object):
         self._game_recorder.record_prop_update(prop_update)
 
         self._prop_stale[actor_id] = False
-        self._sent_log.debug(f"to: {actor_id} PropUpdate: {prop_update}")
         return prop_update
         
     def drain_live_feedback(self, actor_id):

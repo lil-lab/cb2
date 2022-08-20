@@ -1,6 +1,6 @@
 """ Code for updating the worker experience table. """
-from schemas.game import Game
-import schemas.mturk
+from server.schemas.game import Game
+import server.schemas.mturk as mturk_db
 
 import hashlib
 import humanhash
@@ -11,22 +11,22 @@ logger = logging.getLogger()
 
 def GetWorkerExperienceEntries():
     """ Returns a list of all worker experience entries sorted by # of games. """
-    return schemas.mturk.WorkerExperience.select().order_by(schemas.mturk.WorkerExperience.total_games_played.desc())
+    return mturk_db.WorkerExperience.select().order_by(mturk_db.WorkerExperience.total_games_played.desc())
 
 def GetOrCreateWorkerExperienceEntry(worker_hashed_id):
-    worker_query = schemas.mturk.Worker.select().join(schemas.mturk.WorkerExperience, join_type=peewee.JOIN.LEFT_OUTER).where(schemas.mturk.Worker.hashed_id == worker_hashed_id)
+    worker_query = mturk_db.Worker.select().join(mturk_db.WorkerExperience, join_type=peewee.JOIN.LEFT_OUTER).where(mturk_db.Worker.hashed_id == worker_hashed_id)
     if worker_query.count() == 0:
         logger.warning(f"Worker {worker_hashed_id} does not exist in the database. Skipping.")
         return None
     worker = worker_query.get()
     if worker.experience is None:
-        worker.experience = schemas.mturk.WorkerExperience.create()
+        worker.experience = mturk_db.WorkerExperience.create()
         worker.experience.save()
         worker.save()
     return worker.experience
 
 def GetWorkerExperienceEntry(worker_hashed_id):
-    worker_query = schemas.mturk.Worker.select().join(schemas.mturk.WorkerExperience, join_type=peewee.JOIN.LEFT_OUTER).where(schemas.mturk.Worker.hashed_id == worker_hashed_id)
+    worker_query = mturk_db.Worker.select().join(mturk_db.WorkerExperience, join_type=peewee.JOIN.LEFT_OUTER).where(mturk_db.Worker.hashed_id == worker_hashed_id)
     if worker_query.count() == 0:
         logger.warning(f"Worker {worker_hashed_id} does not exist in the database. Skipping.")
         return None
@@ -51,7 +51,7 @@ def update_game_stats(sum, count, avg, recent_scores, game_score):
 
 def InitWorkerExperience(worker):
     """ Initializes a worker's experience table. """
-    worker.experience = schemas.mturk.WorkerExperience.create()
+    worker.experience = mturk_db.WorkerExperience.create()
 
     worker.experience.lead_games_played = 0
     worker.experience.lead_score_sum = 0

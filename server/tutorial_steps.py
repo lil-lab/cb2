@@ -1,5 +1,5 @@
-from messages.tutorials import TutorialStep, Indicator, Instruction, Tooltip, TooltipType, LEADER_TUTORIAL, FOLLOWER_TUTORIAL, FollowerActions
-from hex import HecsCoord
+from server.messages.tutorials import TutorialStep, Indicator, Instruction, Tooltip, TooltipType, LEADER_TUTORIAL, FOLLOWER_TUTORIAL, FollowerActions
+from server.hex import HecsCoord
 
 import logging
 
