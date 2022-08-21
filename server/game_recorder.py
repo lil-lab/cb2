@@ -93,7 +93,7 @@ class GameRecorder(object):
     def record_objective_complete(self, objective_complete):
         instruction = schemas.game.Instruction.select().where(
             schemas.game.Instruction.uuid==objective_complete.uuid).get()
-        instruction.turn_completed = self._turn_state.turn_number
+        instruction.turn_completed = self._last_turn_state.turn_number
         instruction.save()
         try:
             next_active_objective = self._objective_queue.get_nowait()
@@ -155,7 +155,7 @@ class GameRecorder(object):
             last_obj_record = schemas.game.Instruction.select().where(
                 schemas.game.Instruction.uuid == self._active_objective.uuid).get()
             live_feedback_record.instruction = last_obj_record
-        live_feedback_record.turn_number = self._turn_state.turn_number
+        live_feedback_record.turn_number = self._last_turn_state.turn_number
         if follower is not None:
             live_feedback_record.follower_position = follower.location()
             live_feedback_record.follower_orientation = follower.heading_degrees()
@@ -171,7 +171,7 @@ class GameRecorder(object):
                 if not objective.completed:
                     instruction = schemas.game.Instruction.select().where(
                         schemas.game.Instruction.uuid==objective.uuid).get()
-                    instruction.turn_cancelled = self._turn_state.turn_number
+                    instruction.turn_cancelled = self._last_turn_state.turn_number
                     instruction.save()
         except queue.Empty:
             return
@@ -188,9 +188,9 @@ class GameRecorder(object):
         notes = []
         if turn_skipped:
             notes.append("SkippedTurnNoInstructionsTodo")
-        if self._turn_state.moves_remaining <= 0:
+        if self._last_turn_state.moves_remaining <= 0:
             notes.append("UsedAllMoves")
-        if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
+        if self._last_turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
             notes.append("FinishedAllCommands")
         turn.notes = ",".join(notes)
         turn.save()
@@ -209,5 +209,5 @@ class GameRecorder(object):
 
     def _get_or_create_card_record(self, card):
         record, created = schemas.cards.Card.get_or_create(game=self._game_record, count=card.count,color=str(card.color),shape=str(card.shape),
-                                                location=card.location, defaults={'turn_created': self._turn_state.turn_number})
+                                                location=card.location, defaults={'turn_created': self._last_turn_state.turn_number})
         return record

@@ -167,13 +167,13 @@ class Room(object):
         return self._state_machine_driver.done()
     
     def has_pending_messages(self):
-        return self._game_state.has_pending_messages()
+        return self._state_machine_driver.state_machine().has_pending_messages()
 
     def desync(self, id):
-        self._game_state.desync(id)
+        self._state_machine_driver.state_machine().desync(id)
 
     def desync_all(self):
-        self._game_state.desync_all()
+        self._state_machine_driver.state_machine().desync_all()
 
     def is_full(self):
         """ Returns True if the room is full. """
@@ -184,10 +184,10 @@ class Room(object):
         return len(self._players) == 0
 
     def state(self, actor_id=-1):
-        return self._game_state.state(actor_id)
+        return self._state_machine_driver.state_machine().state(actor_id)
     
     def selected_cards(self):
-        return self._game_state.selected_cards()
+        return self._state_machine_driver.state_machine().selected_cards()
     
     def debug_status(self):
         is_done = self.done()
