@@ -25,7 +25,7 @@ class GameRecorder(object):
         self._last_turn_state = None
         self._objective_number = 1
         self._active_objective = None
-        self._objective_queue = Queue
+        self._objective_queue = Queue()
         self._map_update_count = 1
 
         # Create an entry in the Game database table.
@@ -190,7 +190,7 @@ class GameRecorder(object):
             notes.append("SkippedTurnNoInstructionsTodo")
         if self._last_turn_state.moves_remaining <= 0:
             notes.append("UsedAllMoves")
-        if self._last_turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
+        if self._last_turn_state.turn == Role.FOLLOWER and self._objective_queue.empty():
             notes.append("FinishedAllCommands")
         turn.notes = ",".join(notes)
         turn.save()

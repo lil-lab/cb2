@@ -303,7 +303,7 @@ namespace Network
                 return;
             }
             MessageToServer toServer = new MessageToServer();
-            toServer.transmit_time = DateTime.Now.ToString("o");
+            toServer.transmit_time = DateTime.UtcNow.ToString("o");
             toServer.type = MessageToServer.MessageType.ACTIONS;
             toServer.actions = new List<Action>();
             toServer.actions.Add(action.Packet(_player.PlayerId()));

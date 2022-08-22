@@ -94,11 +94,10 @@ class State(object):
 
         self._synced = {}
         self._action_history = {}
-        self._last_tick = datetime.now() # Used to time 1s ticks for turn state updates.
         initial_turn = TurnUpdate(
             Role.LEADER, LEADER_MOVES_PER_TURN, 6,
-            datetime.now() + self.turn_duration(Role.LEADER),
-            datetime.now(), 0, 0, 0)
+            datetime.utcnow() + self.turn_duration(Role.LEADER),
+            datetime.utcnow(), 0, 0, 0)
         self._turn_history = {}
         self.send_turn_state(initial_turn)
 
@@ -171,7 +170,7 @@ class State(object):
             self.end_game()
             return
 
-        if datetime.now() >= self._turn_state.turn_end:
+        if datetime.utcnow() >= self._turn_state.turn_end:
             self.update_turn()
 
         # If the follower currently has no instructions, end their turn.
@@ -272,7 +271,7 @@ class State(object):
                 self._turn_state.turn_number)
             self.send_turn_state(new_turn_state)
             set_record = cards_db.CardSets()
-            set_record.game = self._game_record
+            set_record.game = self._game_recorder.record()
             set_record.move = self._last_move
             set_record.score = new_turn_state.score
             set_record.save()
@@ -309,7 +308,7 @@ class State(object):
 
     def update_turn(self, force_role_switch=False, end_reason=""):
         opposite_role = Role.LEADER if self._turn_state.turn == Role.FOLLOWER else Role.FOLLOWER
-        role_switch = (datetime.now() >= self._turn_state.turn_end) or force_role_switch
+        role_switch = (datetime.utcnow() >= self._turn_state.turn_end) or force_role_switch
         next_role = opposite_role if role_switch else self._turn_state.turn
         # Force the leader to act if there's no uncompleted instructions.
         turn_skipped = False
@@ -327,7 +326,7 @@ class State(object):
                 self._prop_stale[actor_id] = True
             end_of_turn = (next_role == Role.LEADER)
             moves_remaining = self.moves_per_turn(next_role)
-            turn_end = datetime.now() + self.turn_duration(next_role)
+            turn_end = datetime.utcnow() + self.turn_duration(next_role)
             if end_of_turn:
                 turns_left -= 1
                 turn_number += 1

@@ -56,7 +56,6 @@ class StateMachineDriver(object):
     
     async def run(self):
         last_loop = time.time()
-        current_set_invalid = False
         while not self._state_machine.done():
             self._process_incoming_messages()
             await self._state_machine.update()

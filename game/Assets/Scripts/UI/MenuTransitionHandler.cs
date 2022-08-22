@@ -354,7 +354,7 @@ public class MenuTransitionHandler : MonoBehaviour
 
         UpdateTurnUIText(state);
 
-        if ((_lastTurn == null) || (_lastTurn.turn != state.turn))
+        if ((_lastTurn != null) && (_lastTurn.turn != state.turn))
         {
             Debug.Log("Changing turn animation. " + _lastTurn.turn + " -> " + state.turn);
             GameObject endTurnPanel = GameObject.FindGameObjectWithTag(END_TURN_PANEL);
@@ -545,7 +545,6 @@ public class MenuTransitionHandler : MonoBehaviour
         {
             _lastTurnRefreshTime = DateTime.Now;
             if (_lastTurn != null) {
-                _logger.Info("Refreshing menu with turn state: " + _lastTurn);
                 UpdateTurnUIText(_lastTurn);
             }
         }

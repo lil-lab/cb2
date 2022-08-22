@@ -27,7 +27,7 @@ namespace Network
         public string ShortStatus(Role role, bool is_replay = false)
         {
             DateTime turn_end_parsed = DateTime.Parse(turn_end, null, System.Globalization.DateTimeStyles.RoundtripKind);
-            DateTime time_now = DateTime.Now;
+            DateTime time_now = DateTime.UtcNow;
             TimeSpan timeLeftInTurn = ((role == turn) || (is_replay)) ? turn_end_parsed - time_now : new TimeSpan(0);
             int movesRemaining = (role == turn) ? moves_remaining : 0;
             string color = movesRemaining == 0 ? "red" : "#00ff00ff";

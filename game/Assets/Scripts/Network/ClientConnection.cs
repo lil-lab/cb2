@@ -16,6 +16,7 @@ namespace Network
         private NetworkRouter _router;
         private ConcurrentQueue<Network.MessageToServer> _messageQueue;
         private DateTime _lastReconnect;
+        private Logger _logger;
 
         string fix_json(string value)
         {
@@ -25,6 +26,7 @@ namespace Network
 
         public ClientConnection(string url, bool autoReconnect=false)
         {
+            _logger = Logger.CreateTrackedLogger("ClientConnection");
             _url = url;
             _messageQueue = new ConcurrentQueue<Network.MessageToServer>();
             _autoReconnect = autoReconnect;
@@ -57,22 +59,23 @@ namespace Network
 
         public void TransmitMessage(MessageToServer message)
         {
+            _logger.Info("Sending message of type: " + message.type.ToString());
             _messageQueue.Enqueue(message);
         }
 
         private void OnOpen()
         {
-            Debug.Log("Connection open!");
+            _logger.Info("Connection open!");
         }
 
         private void OnError(string e)
         {
-            Debug.Log("Connection error: " + e);
+            _logger.Info("Connection error: " + e);
         }
 
         private void OnClose(WebSocketCloseCode code)
         {
-            Debug.Log("Connection closed: " + code);
+            _logger.Info("Connection closed: " + code);
             _webSocket.OnOpen -= OnOpen;
             _webSocket.OnError -= OnError;
             _webSocket.OnClose -= OnClose;
@@ -90,7 +93,7 @@ namespace Network
             }
 
             string received = System.Text.Encoding.UTF8.GetString(bytes);
-            Debug.Log("[" + DateTime.Now.ToString() + "]: Received: " + received);
+            _logger.Info("[" + DateTime.Now.ToString() + "]: Received: " + received);
             MessageFromServer message = JsonConvert.DeserializeObject<MessageFromServer>(System.Text.Encoding.ASCII.GetString(bytes));
             _router.HandleMessage(message);
         }
@@ -103,7 +106,7 @@ namespace Network
             _webSocket.OnClose += OnClose;
             _webSocket.OnMessage += OnMessage;
 
-            Debug.Log("Connecting...");
+            _logger.Info("Connecting...");
             // waiting for messages
             await _webSocket.Connect();
             _lastReconnect = DateTime.Now;
@@ -119,7 +122,7 @@ namespace Network
         {
             if (_autoReconnect && IsClosed() && ((DateTime.Now - _lastReconnect).Seconds > 3))
             {
-                Debug.Log("Reconnecting...");
+                _logger.Info("Reconnecting...");
                 Reconnect();
             }
 
@@ -140,11 +143,11 @@ namespace Network
 
                 if (toServer == null)
                 {
-                    Debug.Log("Dequeued a null MessageToServer.");
+                    _logger.Info("Dequeued a null MessageToServer.");
                     return;
                 }
 
-                Debug.Log("[" + DateTime.Now.ToString() + "]: Sending: " + JsonUtility.ToJson(toServer));
+                _logger.Info("[" + DateTime.Now.ToString() + "]: Sending: " + JsonUtility.ToJson(toServer));
                 await _webSocket.SendText(JsonUtility.ToJson(toServer));
             }
         }
