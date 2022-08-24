@@ -707,10 +707,16 @@ async def stream_game_state(request, ws):
             remote.last_ping = datetime.now(timezone.utc)
             await transmit_bytes(ws, orjson.dumps(message_from_server.PingMessageFromServer(), option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat))
 
-        msg_from_server = room.drain_message(player_id)
-        while msg_from_server is not None:
-            await transmit_bytes(ws, orjson.dumps(msg_from_server, option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat))
-            msg_from_server = room.drain_message(player_id)
+        out_messages = []
+        if room.fill_messages(player_id, out_messages):
+            for message in out_messages:
+                await transmit_bytes(
+                    ws,
+                    orjson.dumps(
+                        message,
+                        option=orjson.OPT_NAIVE_UTC
+                               | orjson.OPT_PASSTHROUGH_DATETIME,
+                        default=datetime.isoformat))
 
 
 async def receive_agent_updates(request, ws):
@@ -745,10 +751,10 @@ async def receive_agent_updates(request, ws):
             
         if message.type == message_to_server.MessageType.PONG:
             # Calculate the time offset.
-            t0 = remote.last_ping
-            t1 = parser.isoparse(message.pong.ping_receive_time)
-            t2 = message.transmit_time
-            t3 = datetime.now(timezone.utc)
+            t0 = remote.last_ping.replace(tzinfo=timezone.utc)
+            t1 = parser.isoparse(message.pong.ping_receive_time).replace(tzinfo=timezone.utc)
+            t2 = message.transmit_time.replace(tzinfo=timezone.utc)
+            t3 = datetime.utcnow().replace(tzinfo=timezone.utc)
             # Calculate clock offset and latency.
             remote.time_offset = ((t1 - t0).total_seconds() + (t2 - t3).total_seconds()) / 2
             remote.latency = ((t3 - t0).total_seconds() - (t2 - t1).total_seconds()) / 2
@@ -758,7 +764,7 @@ async def receive_agent_updates(request, ws):
             # Only handle in-game actions if we're in a room.
             (room_id, player_id, _) = room_manager.socket_info(ws).as_tuple()
             room = room_manager.get_room(room_id)
-            room.handle_packet(player_id, message)
+            room.drain_messages(player_id, [message])
         else:
             # Room manager handles out-of-game requests.
             room_manager.handle_request(message, ws)

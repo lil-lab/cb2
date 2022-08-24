@@ -69,6 +69,13 @@ class GameRecorder(object):
         card_record = self._get_or_create_card_record(card)
         selection_record.card = card_record
         selection_record.save()
+    
+    def record_card_set(self):
+            set_record = schemas.cards.CardSets()
+            set_record.game = self._game_recorder.record()
+            set_record.move = self._last_move
+            set_record.score = self._last_turn_state.score + 1
+            set_record.save()
 
     def record_objective(self, objective):
         instruction = schemas.game.Instruction()

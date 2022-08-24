@@ -19,7 +19,7 @@ namespace Network
             PING,
             LIVE_FEEDBACK,
             PROP_UPDATE,
-            STATE_MACHINE_ITER,
+            STATE_MACHINE_TICK,
         }
 
         // These fields are always provided with any packet.
@@ -38,6 +38,6 @@ namespace Network
         public TutorialResponse tutorial_response;
         public LiveFeedback live_feedback;
         public PropUpdate prop_update;
-        public StateMachineInfo state_info;
+        public StateMachineInfo state_machine_tick;
     }
 }  // namespace Network

@@ -4,7 +4,6 @@ from dataclasses_json import dataclass_json, config, LetterCase
 
 from server.messages.rooms import Role
 
-
 @dataclass
 class ObjectiveMessage(DataClassJSONMixin):
     sender: Role = Role.NONE

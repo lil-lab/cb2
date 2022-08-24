@@ -34,25 +34,28 @@ class StateMachineDriver(object):
     
     def state_machine(self):
         return self._state_machine
+
+    def drain_messages(self, id, messages):
+        for m in messages:
+            self._messages_in.put((id, m))
     
-    def handle_packet(self, id, message):
-        """
-        Handles a packet from a player.
-        """
-        self._messages_in.put((id, message))
-
-    def drain_message(self, player_id):
-        """ Returns a MessageFromServer object to send to the indicated player.
-
-            If no message is available, returns None.
+    def fill_messages(self, player_id, out_messages):
+        """ Fills out_messages with MessageFromServer objects to send to the
+        indicated player and returns True.
+        
+            If no message is available, returns False.
         """
         if player_id not in self._messages_out:
-            return None
-        try:
-            message = self._messages_out[player_id].get(block=False)
-            return message
-        except queue.Empty:
-            return None
+            return False
+        packets_added = False
+        while True:
+            try:
+                message = self._messages_out[player_id].get_nowait()
+                out_messages.append(message)
+                packets_added = True
+            except queue.Empty:
+                break
+        return packets_added
     
     async def run(self):
         last_loop = time.time()
@@ -76,18 +79,23 @@ class StateMachineDriver(object):
 
     def _process_incoming_messages(self):
         # Process all available messages.
+        messages = {} # player_id -> message
         while True:
             try:
                 player_id, message = self._messages_in.get_nowait()
-                self._state_machine.handle_packet(player_id, message)
+                if player_id not in messages:
+                    messages[player_id] = []
+                messages[player_id].append(message)
             except queue.Empty:
                 break
+        for player_id in messages:
+            self._state_machine.drain_messages(player_id, messages[player_id])
 
     def _serialize_outgoing_messages(self):
         for player_id in self._state_machine.player_ids():
             if player_id not in self._messages_out:
                 self._messages_out[player_id] = Queue()
-            message = self._state_machine.drain_message(player_id)
-            while message != None:
-                self._messages_out[player_id].put(message)
-                message = self._state_machine.drain_message(player_id)
+            out_messages = []
+            if self._state_machine.fill_messages(player_id, out_messages):
+                for message in out_messages:
+                    self._messages_out[player_id].put(message)

@@ -18,23 +18,18 @@ import server.experience as experience
 
 from queue import Queue
 from datetime import datetime, timedelta
+from typing import List
 
 import asyncio
 import dataclasses
 import logging
 import math
 import random
-import time
 import uuid
 import queue
 
-import server.schemas.game as game_db
-import server.schemas.map as map_db
-import server.schemas.cards as cards_db
-import server.schemas.leaderboard as leaderboard_db
-import server.schemas.prop as prop_db
 import server.map_utils as map_utils
-from server.messages.state_sync import StateMachineInfo
+from server.messages.state_sync import StateMachineTick
 
 LEADER_MOVES_PER_TURN = 5
 FOLLOWER_MOVES_PER_TURN = 10
@@ -44,9 +39,12 @@ FOLLOWER_SECONDS_PER_TURN = 15
 
 logger = logging.getLogger()
 
-# TODO(sharf): Pull all observation state handling into a separate class from
-# the state machine. That will make the logic much simpler.  and can result in
-# deduplication with tutorial_state.py
+# The Cerealbar2 State Machine. This is the state machine that is used to drive the game.
+# This class contains methods to consume and produce messages from/for the state machine. It also contains a state machine update loop.
+# Produce messages and send them to the state machine with drain_messages().
+# Consume messages from the state machine with fill_messages().
+# You must call drain_messages() before each update() call and fill_messages() after each update() call.
+# It is recommended to use StateMachineDriver to run this class -- see server/state_machine_driver.py for details.
 class State(object):
     def __init__(self, room_id, game_record):
         self._room_id = room_id
@@ -54,10 +52,8 @@ class State(object):
         # Records everything that happens in a game.
         self._game_recorder = GameRecorder(game_record)
 
-        self._last_move = None
-
         # Rolling count of iteration loop. Used to indicate when an iteration of
-        # the logic loop has occurred. Sent out in StateMachineInfo messages
+        # the logic loop has occurred. Sent out in StateMachineTick messages
         # (only if an event occured that loop).
         self._iter = 0
 
@@ -122,7 +118,7 @@ class State(object):
             self._turn_history[actor_id].put(
                 dataclasses.replace(turn_state))
 
-    def drain_turn_state(self, actor_id):
+    def _next_turn_state(self, actor_id):
         if not actor_id in self._turn_history:
             self._turn_history[actor_id] = Queue()
         try:
@@ -155,7 +151,10 @@ class State(object):
         return self._actors.keys()
 
     async def update(self):
-        self._iter = (self._iter + 1) % 4096
+        # I haven't estimated the update loop time recently, but it should be
+        # ~50-100us. That means this number overflows in 2 days. Should be good
+        # enough for our purposes. Even if its 1us, that gives us > 1 hour.
+        self._iter = (self._iter + 1) % 2**32
 
         # Check to see if the game is over.
         if self._turn_state.turns_left <= -1:
@@ -270,11 +269,7 @@ class State(object):
                 self._turn_state.score + 1,
                 self._turn_state.turn_number)
             self.send_turn_state(new_turn_state)
-            set_record = cards_db.CardSets()
-            set_record.game = self._game_recorder.record()
-            set_record.move = self._last_move
-            set_record.score = new_turn_state.score
-            set_record.save()
+            self._game_recorder.record_card_set()
             # Add 3 new cards before clearing selected cards. This prevents
             # us from accidentally spawning cards in the same location as
             # the previous 3, which is confusing to the user.
@@ -357,8 +352,7 @@ class State(object):
         
     def check_for_stepped_on_cards(self, actor_id, action, color):
         actor = self._actors[actor_id]
-        stepped_on_card = self._map_provider.card_by_location(
-            actor.location())
+        stepped_on_card = self._map_provider.card_by_location(actor.location())
         # If the actor just moved and stepped on a card, mark it as selected.
         if (action.action_type == ActionType.TRANSLATE) and (stepped_on_card is not None):
             logger.info(
@@ -370,23 +364,25 @@ class State(object):
             self.record_action(card_select_action)
             self._game_recorder.record_card_selection(stepped_on_card)
     
-    def handle_packet(self, id, message):
+    def drain_messages(self, id, messages):
+        for message in messages:
+            self._drain_message(id, message)
+
+    def _drain_message(self, id, message):
         if message.type == message_to_server.MessageType.ACTIONS:
             logger.info(f'Actions received. Room: {self._room_id}')
-            for action in message.actions:
-                logger.info(f'{action.id}:{action.displacement}')
-                self.handle_action(id, action)
+            self._drain_actions(id, message.actions)
         elif message.type == message_to_server.MessageType.OBJECTIVE:
             logger.info(
                 f'Objective received. Room: {self._room_id}, Text: {message.objective.text}')
-            self.handle_objective(id, message.objective)
+            self._drain_objective(id, message.objective)
         elif message.type == message_to_server.MessageType.OBJECTIVE_COMPLETED:
             logger.info(
                 f'Objective Compl received. Room: {self._room_id}, Text: {message.objective_complete.uuid}')
-            self.handle_objective_complete(id, message.objective_complete)
+            self._drain_objective_complete(id, message.objective_complete)
         elif message.type == message_to_server.MessageType.TURN_COMPLETE:
             logger.info(f'Turn Complete received. Room: {self._room_id}')
-            self.handle_turn_complete(id, message.turn_complete)
+            self._drain_turn_complete(id, message.turn_complete)
         elif message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
             logger.info(
                 f'Sync request recvd. Room: {self._room_id}, Player: {id}')
@@ -394,21 +390,26 @@ class State(object):
         elif message.type == message_to_server.MessageType.LIVE_FEEDBACK:
             logger.info(
                 f'Live feedback recvd. Room: {self._room_id}, Player: {id}')
-            self.handle_live_feedback(id, message.live_feedback)
+            self._drain_live_feedback(id, message.live_feedback)
         elif message.type == message_to_server.MessageType.CANCEL_PENDING_OBJECTIVES:
             logger.info(
                 f'Cancel pending objectives recvd. Room: {self._room_id}, Player: {id}')
-            self.handle_cancel_pending_objectives(id)
+            self._drain_cancel_pending_objectives(id)
         else:
             logger.warn(f'Received unknown packet type: {message.type}')
+    
+    def _drain_actions(self, id, actions):
+        for action in actions:
+            logger.info(f'{action.id}:{action.displacement}')
+            self._drain_action(id, action)
 
-    def handle_action(self, actor_id, action):
+    def _drain_action(self, actor_id, action):
         if (action.id != actor_id):
             self.desync(actor_id)
             return
         self._actors[actor_id].add_action(action)
 
-    def handle_objective(self, id, objective):
+    def _drain_objective(self, id, objective):
         if self._actors[id].role() != Role.LEADER:
             logger.warn(
                 f'Warning, objective received from non-leader ID: {str(id)}')
@@ -425,7 +426,7 @@ class State(object):
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True
 
-    def handle_objective_complete(self, id, objective_complete):
+    def _drain_objective_complete(self, id, objective_complete):
         if self._actors[id].role() != Role.FOLLOWER:
             logger.warn(
                 f'Warning, obj complete received from non-follower ID: {str(id)}')
@@ -449,7 +450,7 @@ class State(object):
             self._objectives_stale[actor_id] = True
         self._game_recorder.record_objective_complete(objective_complete)
     
-    def handle_live_feedback(self, id, feedback):
+    def _drain_live_feedback(self, id, feedback):
         if feedback.signal == live_feedback.FeedbackType.NONE:
             logger.info(f'Received live feedback from {id} with type NONE. Dropping.')
             return
@@ -465,7 +466,7 @@ class State(object):
                 break
         self._game_recorder.record_live_feedback(feedback, follower)
     
-    def handle_turn_complete(self, id, turn_complete):
+    def _drain_turn_complete(self, id, turn_complete):
         if self._actors[id].role() != self._turn_state.turn:
             logger.warn(
                 f"Warning, turn complete received from ID: {str(id)} when it isn't their turn!")
@@ -483,7 +484,7 @@ class State(object):
             return
         self._turn_complete_queue.append((id, "UserPrompted"))
     
-    def handle_cancel_pending_objectives(self, id):
+    def _drain_cancel_pending_objectives(self, id):
         logger.info(f"Cancel pending objectives received from ID: {str(id)}.")
         if self._actors[id].role() != Role.LEADER:
             logger.warn(
@@ -564,12 +565,34 @@ class State(object):
                 return True
         return False
     
-    def drain_message(self, player_id):
-        """ Serializes all messages into a linear history. This is important for
-        enforcing message ordering before drain_message is called. This lets us
-        separate logic iterations with StateMachineInfo() messages.
+    def fill_messages(
+        self,
+        player_id,
+        out_messages: List[message_from_server.MessageFromServer]) -> bool:
+        """ Serializes all messages to one player into a linear history. 
+        
+            If any messages have been generated this iteration, caps those
+            messages with a StateMachineTick. This lets us separate logic
+            iterations on the receive side.
         """
-        actions = self.drain_actions(player_id)
+        message = self._next_message(player_id)
+        messages_added = 0
+        while message != None:
+            out_messages.append(message)
+            messages_added += 1
+            message = self._next_message(player_id)
+
+        if messages_added == 0:
+            return False
+
+        # We sent messages this iteration. Send a tick.
+        tick_message = StateMachineTick(iter=self._iter)
+        message = message_from_server.StateMachineTickFromServer(tick_message)
+        out_messages.append(message)
+        return True
+    
+    def _next_message(self, player_id):
+        actions = self._next_actions(player_id)
         if len(actions) > 0:
             logger.debug(
                 f'Room {self._room_id} drained {len(actions)} actions for player_id {player_id}')
@@ -577,14 +600,14 @@ class State(object):
             self._observation_updated = True
             return msg
 
-        map_update = self.drain_map_update(player_id)
+        map_update = self._next_map_update(player_id)
         if map_update is not None:
             logger.debug(
                 f'Room {self._room_id} drained map update {map_update} for player_id {player_id}')
             self._observation_updated = True
             return message_from_server.MapUpdateFromServer(map_update)
         
-        prop_update = self.drain_prop_update(player_id)
+        prop_update = self._next_prop_update(player_id)
         if prop_update is not None:
             logger.debug(
                 f'Room {self._room_id} drained prop update {prop_update} for player_id {player_id}')
@@ -598,7 +621,7 @@ class State(object):
             msg = message_from_server.StateSyncFromServer(state_sync)
             return msg
 
-        objectives = self.drain_objectives(player_id)
+        objectives = self._next_objectives(player_id)
         if len(objectives) > 0:
             logger.debug(
                 f'Room {self._room_id} drained {len(objectives)} texts for player_id {player_id}')
@@ -606,7 +629,7 @@ class State(object):
             self._observation_updated = True
             return msg
         
-        turn_state = self.drain_turn_state(player_id)
+        turn_state = self._next_turn_state(player_id)
         if not turn_state is None:
             logger.debug(
                 f'Room {self._room_id} drained ts {turn_state} for player_id {player_id}')
@@ -614,7 +637,7 @@ class State(object):
             self._observation_updated = True
             return msg
 
-        live_feedback = self.drain_live_feedback(player_id)
+        live_feedback = self._next_live_feedback(player_id)
         if not live_feedback is None:
             logger.info(
                 f'Room {self._room_id} drained live feedback {live_feedback} for player_id {player_id}')
@@ -625,7 +648,7 @@ class State(object):
         # Nothing to send.
         return None
 
-    def drain_actions(self, actor_id):
+    def _next_actions(self, actor_id):
         actor = self._actors[actor_id]
         if not actor_id in self._action_history:
             return []
@@ -641,7 +664,7 @@ class State(object):
         self._action_history[actor_id] = []
         return action_history
 
-    def drain_objectives(self, actor_id):
+    def _next_objectives(self, actor_id):
         if not actor_id in self._objectives_stale:
             self._objectives_stale[actor_id] = True
         
@@ -652,7 +675,7 @@ class State(object):
         self._objectives_stale[actor_id] = False
         return self._objectives
     
-    def drain_map_update(self, actor_id):
+    def _next_map_update(self, actor_id):
         if not actor_id in self._map_stale:
             self._map_stale[actor_id] = True
         
@@ -672,7 +695,7 @@ class State(object):
         self._map_stale[actor_id] = False
         return map_update
     
-    def drain_prop_update(self, actor_id):
+    def _next_prop_update(self, actor_id):
         if not actor_id in self._prop_stale:
             self._prop_stale[actor_id] = True
         
@@ -690,7 +713,7 @@ class State(object):
         self._prop_stale[actor_id] = False
         return prop_update
         
-    def drain_live_feedback(self, actor_id):
+    def _next_live_feedback(self, actor_id):
         if actor_id not in self._live_feedback:
             return None
         if self._live_feedback[actor_id] == live_feedback.FeedbackType.NONE:

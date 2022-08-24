@@ -20,9 +20,11 @@ from server.messages import message_to_server
 from server.messages import action
 from server.messages import turn_state
 from server.messages.objective import ObjectiveMessage
-from server.messages.rooms import Role
+from server.messages.rooms import Role 
 
 logger = logging.getLogger(__name__)
+
+Role = Role
 
 # This page defines and implements the CB2 headless client API.
 # Here is an example of how to use the API:
@@ -44,7 +46,6 @@ logger = logging.getLogger(__name__)
 # TODO(sharf): client.Connect() should have its own context manager, or at least
 # make it so that __aexit__ for JoinGame() doesn't disconnect the client's
 # socket.
-
 class LeadAction(object):
     class ActionCode(Enum):
         NONE = 0
@@ -60,6 +61,9 @@ class LeadAction(object):
     def __init__(self, action_code, instruction=None):
         if action_code == LeadAction.ActionCode.SEND_INSTRUCTION:
             assert instruction != None, "Instruction must be provided for SEND_INSTRUCTION"
+            if type(instruction) not in [str, bytes]:
+                raise TypeError("Instruction must be a string or bytes")
+                
         self.action = (action_code, instruction)
     
     def message_to_server(self, actor):
@@ -78,7 +82,7 @@ class LeadAction(object):
         elif action_code == LeadAction.ActionCode.INTERRUPT:
             return InterruptMessage(), ""
         elif action_code == LeadAction.ActionCode.SEND_INSTRUCTION:
-            return InstructionMessage(instruction=self.action[1]), ""
+            return InstructionMessage(self.action[1]), ""
         else:
             return None, "Invalid lead action"
         assert action != None, "Invalid lead action"
@@ -97,11 +101,12 @@ class LeadFeedbackAction(object):
         self.action = action_code
     
     def message_to_server(self, actor):
-        action = None
-        if action == LeadFeedbackAction.ActionCode.POSITIVE_FEEDBACK:
+        if self.action == LeadFeedbackAction.ActionCode.POSITIVE_FEEDBACK:
             return PositiveFeedbackMessage(), ""
-        elif action == LeadFeedbackAction.ActionCode.NEGATIVE_FEEDBACK:
+        elif self.action == LeadFeedbackAction.ActionCode.NEGATIVE_FEEDBACK:
             return NegativeFeedbackMessage(), ""
+        elif self.action == LeadFeedbackAction.ActionCode.NONE:
+            return None, ""
         else:
             return None, "Invalid lead feedback action"
 
@@ -163,58 +168,93 @@ class Game(object):
         self.actors = {}
         self.turn_state = None
         self.instructions = []
+        self.queued_messages = []
         self.message_number = 0
         self.player_id = -1
-        self.player_role = Role.NONE
+        self._player_role = Role.NONE
+        self._initial_state_ready = False
+        self._initial_state_retrieved = False
     
-    def player_role():
-        return self.player_role
+    def player_role(self):
+        return self._player_role
     
-    def state(self):
-        return self.map_update, self.prop_update, self.turn_state, self.instructions, self.actors
+    def initial_state(self):
+        if self._initial_state_retrieved:
+            logger.warn("Initial state already retrieved")
+            return None
+        if not self._initial_state_ready:
+            logger.warn("Initial state not ready")
+            return None
+        self._initial_state_retrieved = True
+        return self._state()
     
     def step(self, action):
+        # Send action.
+        # Send queued messages (like automated ping responses)
+        # While it isn't our turn to move:
+        #   Wait for tick
+        #   Process messages
+        # Return
         if isinstance(action, FollowAction):
-            if self.player_role != Role.FOLLOWER:
+            if self._player_role != Role.FOLLOWER:
                 raise ValueError("Not a follower, cannot send follow action")
-            if self.turn_state.role != Role.FOLLOWER:
+            if self.turn_state.turn != Role.FOLLOWER:
                 raise ValueError("Not your turn, cannot send follow action")
         if isinstance(action, LeadAction):
-            if self.player_role != Role.LEADER:
+            if self._player_role != Role.LEADER:
                 raise ValueError("Not a leader, cannot send lead action")
-            if self.turn_state.role != Role.LEADER:
+            if self.turn_state.turn != Role.LEADER:
                 raise ValueError("Not your turn, cannot send lead action")
         if isinstance(action, LeadFeedbackAction):
-            if self.player_role != Role.LEADER:
+            if self._player_role != Role.LEADER:
                 raise ValueError("Not a leader, cannot send lead feedback action")
-            if self.turn_state.role != Role.FOLLOWER:
+            if self.turn_state.turn != Role.FOLLOWER:
                 raise ValueError("Not follower turn, cannot send lead feedback action")
         message, reason = action.message_to_server(self.actor)
-        assert message != None, f"Invalid action: {reason}"
-        asyncio.run(self.client._send_message(message_to_server))
-        # Skips mirrored/loopback messages from server, which are just sent for verification.
-        asyncio.run(self.client._drain_messages())
-        return self.state()
+        if message != None:
+            self.client._send_message(message)
+        for message in self.queued_messages:
+            self.client._send_message(message)
+        # Call _wait_for_tick before checking _can_act(), to make sure we don't
+        # miss any state transitions that took place on the server.
+        waited, reason = self.client._wait_for_tick()
+        assert waited, f"Could not wait for tick: {reason}"
+        while not self._can_act():
+            waited, reason = self.client._wait_for_tick()
+            assert waited, f"Could not wait for tick: {reason}"
+        return self._state()
+    
+    def _can_act(self):
+        # TODO(sharf): Once feedback is optional, this should check if feedback
+        # is allowed in config before always returning for the Leader.
+        return (self.player_role() == self.turn_state.turn) or self.player_role() == Role.LEADER
 
     # Returns true if the game is over.
     def over(self):
         return self.turn_state.game_over
     
-    async def __enter__(self):
+    def __enter__(self):
         return self
     
-    async def __exit__(self, type, value, traceback):
+    def __exit__(self, type, value, traceback):
         if not self.over():
-            asyncio.run(self.client._send_message(LeaveMessage()))
+            self.client._send_message(LeaveMessage())
+
+    def _state(self):
+        return self.map_update, self.prop_update, self.turn_state, self.instructions, self.actors
     
     def _initialize(self, state_sync, map, props, turn_state):
+        if self._initial_state_ready:
+            logger.warn("Initial state already ready")
+            return
         self.map_update = map
         self.prop_update = props
         self.player_id = state_sync.player_id
-        self.player_role = state_sync.player_role
+        self._player_role = state_sync.player_role
         for net_actor in state_sync.actors:
-            self.actors[net_actor.id] = actor.Actor(net_actor.actor_id, 0, net_actor.actor_role, net_actor.location, False, net_actor.rotation_degrees)
+            self.actors[net_actor.actor_id] = actor.Actor(net_actor.actor_id, 0, net_actor.actor_role, net_actor.location, False, net_actor.rotation_degrees)
         self.turn_state = turn_state
+        self._initial_state_ready = True
     
     def _handle_state_sync(self, state_sync):
         """ Handles a state sync message.
@@ -279,6 +319,13 @@ class Cb2Client(object):
         self.ws = None
         self.Reset()
         self.url = url
+        self.event_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.event_loop)
+        logging.basicConfig(level=logging.INFO)
+    
+    async def CheckTask(self):
+        current_task = asyncio.Task.current_task()
+
 
     def Connect(self):
         """ Connect to the server.
@@ -291,7 +338,7 @@ class Cb2Client(object):
         url = f"{self.url}/player_endpoint"
         logger.info(f"Connecting to {url}...")
         session = aiohttp.ClientSession()
-        ws = asyncio.run(session.ws_connect(url))
+        ws = self.event_loop.run_until_complete(session.ws_connect(url))
         logger.info(f"Connected!")
         self.session = session
         self.ws = ws
@@ -300,9 +347,9 @@ class Cb2Client(object):
     
     def Reset(self):
         if self.session is not None:
-            asyncio.run(self.session.close())
+            self.event_loop.run_until_complete(self.session.close())
         if self.ws is not None:
-            asyncio.run(self.ws.close())
+            self.event_loop.run_until_complete(self.ws.close())
         self.session = None
         self.ws = None
         self.player_role = None
@@ -313,7 +360,6 @@ class Cb2Client(object):
         self.prop_update = None
         self.actor = None
         self.actors = {}
-        self.queued_messages = []
         self.turn_state = None
         self.game = None
     
@@ -324,7 +370,7 @@ class Cb2Client(object):
         NONE = 0
         LEADER_ONLY = 1
         FOLLOWER_ONLY = 2
-        DEFAULT = 3 # Could be assigned either leader or follower.
+        DEFAULT = 3 # Could be assigned either leader or follower.asyncio.
         MAX = 4
     def JoinGame(self, timeout=timedelta(minutes=6), queue_type=QueueType.DEFAULT):
         """ Enters the game queue and waits for a game.
@@ -354,37 +400,15 @@ class Cb2Client(object):
             Args:
                 message: The message to send.
         """
-        binary_message = orjson.dumps(message, options=orjson.OPT_NAIVE_UTC)
-        asyncio.run(self.ws.send_str(binary_message.decode('utf-8')))
-    
-    def _drain_socket_message(self, timeout):
         if self.ws.closed:
-            return False, "Socket closed."
-        try:
-            message = asyncio.run(self.ws.receive(timeout=timeout))
-        except Exception as e:
-            return False, f"Failed to receive message due to: {e}"
-        if message is None:
-            return False, f"Received None from socket."
-        if message.type == aiohttp.WSMsgType.ERROR:
-            return False, f"Received error from socket: {message.data}"
-        if message.type == aiohttp.WSMsgType.CLOSE:
-            return False, f"WaitForTurn received close message."
-        if message.type == aiohttp.WSMsgType.BINARY:
-            return False, f"WaitForTurn received BINARY message."
-        if message.type != aiohttp.WSMsgType.TEXT:
-            logger.warn(f"wait_for_turn received unexpected message type: {message.type}. data: {message.data}. Ignoring")
-            return True, ""
-        message_parsed = message_from_server.MessageFromServer.from_json(message.data)
-        if self.game == None:
-            return False, f"Handling message when game is None: {message_parsed}"
-        self.game._handle_message(message_parsed)
-        return True, ""
-
+            return
+        binary_message = orjson.dumps(message, option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat)
+        self.event_loop.run_until_complete(self.ws.send_str(binary_message.decode('utf-8')))
+    
     def _join_queue(self, queue_type=QueueType.DEFAULT):
         """ Sends a join queue message to the server. """
-        if self.init_state not in [Cb2Client.State.BEGIN, Cb2Client.State.GAME_OVER, Cb2Client.State.ERROR]:
-            return False, "Already in game"
+        if self.init_state not in [Cb2Client.State.CONNECTED, Cb2Client.State.GAME_OVER]:
+            return False, f"Not ready to join game. State: {str(self.init_state)}"
         if queue_type == Cb2Client.QueueType.DEFAULT:
             self._send_message(JoinQueueMessage())
         elif queue_type == Cb2Client.QueueType.LEADER_ONLY:
@@ -418,17 +442,21 @@ class Cb2Client(object):
         map_update = None
         prop_update = None
         turn_state = None
+        end_time = start_time + timeout
         while True:
-            if datetime.utcnow() > start_time + timeout:
+            if datetime.utcnow() > end_time:
                 return False, "Timed out waiting for game"
-            message = asyncio.run(self.ws.receive())
+            message = self.event_loop.run_until_complete(self.ws.receive((end_time - datetime.utcnow()).total_seconds()))
             if message is None:
                 continue
             if message.type == aiohttp.WSMsgType.ERROR:
-                print(f"Received error: {message.data}")
+                logger.info(f"Received websocket error: {message.data}")
                 continue
+            if message.type == aiohttp.WSMsgType.CLOSED:
+                logger.info(f"Received websocket closed: {message.data}")
+                return False, "Socket closed."
             if message.type != aiohttp.WSMsgType.TEXT:
-                print(f"wait_for_join_messages received unexpected message type: {message.type}. data: {message.data}")
+                logger.info(f"wait_for_join_messages received unexpected message type: {message.type}. data: {message.data}")
                 continue
             response = message_from_server.MessageFromServer.from_json(message.data)
             if self.init_state == Cb2Client.State.IN_QUEUE and response.type == message_from_server.MessageType.ROOM_MANAGEMENT:
@@ -455,4 +483,28 @@ class Cb2Client(object):
                 self.init_state = Cb2Client.State.GAME_STARTED
                 self.game = Game(self)
                 self.game._initialize(state_sync, map_update, prop_update, turn_state)
+                return True, ""
+        
+    def _wait_for_tick(self, timeout=timedelta(seconds=60)):
+        """ Waits for a tick """
+        start_time = datetime.utcnow()
+        end_time = start_time + timeout
+        while True:
+            if datetime.utcnow() > end_time:
+                return False, "Timed out waiting for tick"
+            message = self.event_loop.run_until_complete(self.ws.receive(timeout=(end_time - datetime.utcnow()).total_seconds()))
+            if message is None:
+                continue
+            if message.type == aiohttp.WSMsgType.ERROR:
+                logger.info(f"Received websocket error: {message.data}")
+                continue
+            if message.type == aiohttp.WSMsgType.CLOSED:
+                logger.info(f"Received closed: {message.data}")
+                return False, "Socket closed."
+            if message.type != aiohttp.WSMsgType.TEXT:
+                logger.info(f"wait_for_tick received unexpected message type: {message.type}. data: {message.data}")
+                continue
+            response = message_from_server.MessageFromServer.from_json(message.data)
+            self.game._handle_message(response)
+            if response.type == message_from_server.MessageType.STATE_MACHINE_TICK:
                 return True, ""

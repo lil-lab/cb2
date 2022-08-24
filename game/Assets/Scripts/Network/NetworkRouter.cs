@@ -18,11 +18,13 @@ namespace Network
         private NetworkMapSource _mapSource;
         private readonly NetworkManager _networkManager;
         private EntityManager _entityManager;
+        private MenuTransitionHandler _menuTransitionHandler;
         private Player _player;
 
         private StateSync _pendingStateSync;
         private MapUpdate _pendingMapUpdate;
         public PropUpdate _pendingPropUpdate;
+        private List<(DateTime, TurnState)> _pendingTurnStateMessages;
 
         public enum Mode
         {
@@ -88,6 +90,27 @@ namespace Network
                 _logger.Info("Player receiving pending state sync.");
                 ApplyStateSyncToPlayer(_pendingStateSync);
             }
+        }
+
+        public void SetMenuTransitionHandler(MenuTransitionHandler menuTransitionHandler)
+        {
+            _menuTransitionHandler = menuTransitionHandler;
+            if (_pendingTurnStateMessages.Count > 0)
+            {
+                _logger.Info("MenuTransitionHandler receiving pending turn state messages.");
+                foreach (var (transmitTime, turnState) in _pendingTurnStateMessages)
+                {
+                    _menuTransitionHandler.HandleTurnState(transmitTime, turnState);
+                    _networkManager.HandleTurnState(turnState);
+                    if (_mode == Mode.NETWORK) _player.HandleTurnState(turnState);
+                }
+                _pendingTurnStateMessages.Clear();
+            }
+        }
+
+        public void ClearMenuTransitionHandler()
+        {
+            _menuTransitionHandler = null;
         }
 
         public void ClearPlayer()
@@ -214,7 +237,7 @@ namespace Network
                     _pendingStateSync = message.state;
                 }
             }
-            if (message.type == MessageFromServer.MessageType.STATE_MACHINE_ITER)
+            if (message.type == MessageFromServer.MessageType.STATE_MACHINE_TICK)
             {
                 // Do nothing, this is more useful for bots.
             }
@@ -257,21 +280,14 @@ namespace Network
             }
             if (message.type == MessageFromServer.MessageType.TURN_STATE)
             {
-                GameObject obj = GameObject.FindGameObjectWithTag(MenuTransitionHandler.TAG);
-                if (obj == null)
-                {
-                    Debug.Log("Could not find menu transition handler object.");
-                    return;
-                }
-                MenuTransitionHandler menuTransitionHandler = obj.GetComponent<MenuTransitionHandler>();
-                if (menuTransitionHandler == null)
-                {
-                    Debug.Log("Could not find menu transition handler.");
-                    return;
-                }
-                TurnState state = message.turn_state;
                 DateTime transmitTime = DateTime.Parse(message.transmit_time, null, System.Globalization.DateTimeStyles.RoundtripKind);
-                menuTransitionHandler.HandleTurnState(transmitTime, state);
+                TurnState state = message.turn_state;
+                if (_menuTransitionHandler == null)
+                {
+                    _pendingTurnStateMessages.Add((transmitTime, message.turn_state));
+                    return;
+                }
+                _menuTransitionHandler.HandleTurnState(transmitTime, state);
                 _networkManager.HandleTurnState(state);
                 if (_mode == Mode.NETWORK) _player.HandleTurnState(state);
             }

@@ -3,7 +3,7 @@
 from server.messages import live_feedback
 from server.messages.action import Action
 from server.messages.turn_state import TurnState
-from server.messages.state_sync import StateSync, StateMachineInfo
+from server.messages.state_sync import StateSync, StateMachineTick
 from server.messages.map_update import MapUpdate
 from server.messages.rooms import RoomManagementResponse
 from server.messages.objective import ObjectiveMessage
@@ -32,7 +32,7 @@ class MessageType(Enum):
     PING = 7
     LIVE_FEEDBACK = 8
     PROP_UPDATE = 9
-    STATE_MACHINE_ITER = 10
+    STATE_MACHINE_TICK = 10
 
 def ActionsFromServer(actions):
     return MessageFromServer(datetime.now(), MessageType.ACTIONS, actions, None, None, None, None, None, None)
@@ -64,8 +64,8 @@ def LiveFeedbackFromServer(feedback):
 def PropUpdateFromServer(props):
     return MessageFromServer(datetime.now(), MessageType.PROP_UPDATE, None, None, None, None, None, None, None, None, props)
 
-def StateMachineIterFromServer(state_machine_info):
-    return MessageFromServer(datetime.now(), MessageType.STATE_MACHINE_ITER, None, None, None, None, None, None, None, None, None, state_machine_info)
+def StateMachineTickFromServer(state_machine_tick):
+    return MessageFromServer(datetime.now(), MessageType.STATE_MACHINE_TICK, None, None, None, None, None, None, None, None, None, state_machine_tick)
 
 @dataclass(frozen=True)
 class MessageFromServer(DataClassJSONMixin):
@@ -85,4 +85,4 @@ class MessageFromServer(DataClassJSONMixin):
     tutorial_response: Optional[TutorialResponse]
     live_feedback: Optional[LiveFeedback] = LiveFeedback()
     prop_update: Optional[PropUpdate] = PropUpdate()
-    state_info: Optional[StateMachineInfo] = StateMachineInfo()
+    state_machine_tick: Optional[StateMachineTick] = StateMachineTick()

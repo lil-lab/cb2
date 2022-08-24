@@ -25,6 +25,7 @@ namespace Network
         private NetworkRouter _router;
         private EntityManager _entityManager;
         private Player _player;
+        private MenuTransitionHandler _menuTransitionHandler;
         private DateTime _lastStatsPoll;
         private Network.Config _serverConfig;
         private Network.Config _replayConfig;
@@ -318,6 +319,7 @@ namespace Network
             _currentTurn = Network.Role.NONE;
             _router.ClearEntityManager();
             _router.ClearPlayer();
+            _router.ClearMenuTransitionHandler();
             SceneManager.LoadScene("menu_scene");
         }
 
@@ -355,11 +357,26 @@ namespace Network
             return Util.Status.OkStatus();
         }
 
+        public Util.Status InitializeMenuTransitionHandler()
+        {
+            GameObject obj = GameObject.FindGameObjectWithTag(MenuTransitionHandler.TAG);
+            if (obj == null)
+            {
+                return Util.Status.NotFound("Could not find menu tag: " + MenuTransitionHandler.TAG);
+            }
+            _menuTransitionHandler = obj.GetComponent<MenuTransitionHandler>();
+            if (_menuTransitionHandler == null)
+                return Util.Status.NotFound("Could not find menu transition handler component.");
+            _router.SetMenuTransitionHandler(_menuTransitionHandler);
+            return Util.Status.OkStatus();
+        }
+
         public Util.Status InitializeTaggedObjects()
         {
             Util.Status result = Util.Status.OkStatus();
             result.Chain(InitializeEntityManager());
             result.Chain(InitializePlayer());
+            result.Chain(InitializeMenuTransitionHandler());
             return result;
         }
 
@@ -400,7 +417,7 @@ namespace Network
             Util.Status result = InitializeTaggedObjects();
             if (!result.Ok())
             {
-                Debug.Log(result);
+                _logger.Warn(result.ToString());
             }
 
             // Subscribe to new scene changes.
@@ -438,6 +455,7 @@ namespace Network
                 Debug.Log("[DEBUG]Tutorial started.");
                 _router.ClearEntityManager();
                 _router.ClearPlayer();
+                _router.ClearMenuTransitionHandler();
                 SceneManager.LoadScene("tutorial_scene");
                 _role = tutorialResponse.Role();
             }
@@ -462,6 +480,7 @@ namespace Network
                     Debug.Log("Joined room as " + response.join_response.role + "!");
                     _router.ClearEntityManager();
                     _router.ClearPlayer();
+                    _router.ClearMenuTransitionHandler();
                     SceneManager.LoadScene("game_scene");
                     _role = response.join_response.role;
                 } else if (response.join_response.booted_from_queue) {

@@ -141,11 +141,13 @@ class Room(object):
     def number_of_players(self):
         return len(self._players)
 
-    def handle_packet(self, id, message):
-        log_message = orjson.dumps(LogEntryFromIncomingMessage(id, message), option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat).decode('utf-8')
-        self._messages_to_server_log.write(log_message + "\n")
-        logger.info(f"Received message type {message.type} for player {id}.")
-        self._state_machine_driver.handle_packet(id, message)
+    def drain_messages(self, id, messages):
+        self._state_machine_driver.drain_messages(id, messages)
+        # Log messages
+        for message in messages:
+            log_message = orjson.dumps(LogEntryFromIncomingMessage(id, message), option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat).decode('utf-8')
+            self._messages_to_server_log.write(log_message + "\n")
+            logger.info(f"Received message type {message.type} for player {id}.")
 
     def start(self):
         if self._update_loop is not None:
@@ -202,18 +204,21 @@ class Room(object):
             'turn_state': turn_state_json,
         }
 
-    def drain_message(self, player_id):
+    def fill_messages(self, player_id, out_messages):
         """ Returns a MessageFromServer object to send to the indicated player.
 
             If no message is available, returns None.
         """
-        message = self._state_machine_driver.drain_message(player_id)
-        if message is None:
-            return
-        logger.info(f"Drained message type {message.type} for player {player_id}.")
+        messages = []
+        if not self._state_machine_driver.fill_messages(player_id, messages):
+            return False
+        out_messages.extend(messages)
 
-        log_bytes = orjson.dumps(LogEntryFromOutgoingMessage(player_id, message), option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat).decode('utf-8')
-        self._messages_from_server_log.write(log_bytes + "\n")
+        for message in messages:
+            logger.info(f"Sent message type {message.type} for player {player_id}.")
+            log_bytes = orjson.dumps(LogEntryFromOutgoingMessage(player_id, message), option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat).decode('utf-8')
+            self._messages_from_server_log.write(log_bytes + "\n")
+        return True
 
         # Render map updates to a PNG.
         # Disabled for now until 
