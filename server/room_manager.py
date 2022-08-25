@@ -165,7 +165,7 @@ class RoomManager(object):
     
     async def cleanup_rooms(self):
         while not self._is_done:
-            await asyncio.sleep(0)
+            await asyncio.sleep(2)
             self.delete_unused_rooms()
     
     def create_tutorial(self, player, tutorial_name):

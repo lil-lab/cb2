@@ -743,12 +743,17 @@ class TutorialGameState(object):
             messages with a StateMachineTick. This lets us separate logic
             iterations on the receive side.
         """
+        # Don't send messages to the dummy player.
+        if player_id == self._dummy_character.actor_id():
+            return False
         message = self._next_message(player_id)
+        logger.info(f"Filling message: {message} for player {player_id}")
         messages_added = 0
         while message != None:
             out_messages.append(message)
             messages_added += 1
             message = self._next_message(player_id)
+            logger.info(f"Filling message: {message} for player {player_id}")
 
         if messages_added == 0:
             return False
