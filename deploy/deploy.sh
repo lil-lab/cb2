@@ -7,13 +7,13 @@ sudo apt install sqlite3 libsqlite3-dev
 sudo apt install python-dev cython python3-pip
 sudo apt install cargo
 sudo apt-get install python3-dev
-cd ../server/
+cd ../
 sudo -S -u ubuntu -E env PATH=$PATH python3 -m venv --system-site-packages venv
 . ./venv/bin/activate
 sudo -S -u ubuntu -E env PATH=$PATH python3 -m pip install wheel==0.37.1
 sudo -S -u ubuntu -E env PATH=$PATH python3 -m pip install cython
 sudo -S -u ubuntu -E env PATH=$PATH python3 -m pip install -r requirements.txt
-cd ../../
+cd ../
 sudo -S -u ubuntu -E env PATH=$PATH git clone https://github.com/coleifer/peewee.git
 cd peewee
 sudo -S -u ubuntu -E env PATH=$PATH python setup.py install
