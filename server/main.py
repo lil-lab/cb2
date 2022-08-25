@@ -944,7 +944,7 @@ async def profiler():
             # yappi.get_thread_stats().print_all()
             last_print = datetime.now()
 
-def main(config_filepath="config/server-config.json"):
+def main(config_filepath="server/config/server-config.json"):
     global assets_map
     global room_manager
 
