@@ -26,6 +26,7 @@ import zipfile
 import yappi
 
 import server.schemas as schemas
+import server.schemas.game as game_db
 import server.schemas.defaults as defaults
 import server.schemas.clients as clients
 import server.schemas.mturk as mturk
@@ -438,10 +439,10 @@ async def DataDownloadStart(request):
 
 @routes.get('/data/game-list')
 async def GameList(request):
-    games = (schemas.game.Game.select()
-                .join(mturk.Worker, join_type=peewee.JOIN.LEFT_OUTER, on=((game.Game.leader == mturk.Worker.id) or (game.Game.follower == mturk.Worker.id)))
-                .join(mturk.Assignment, on=((game.Game.lead_assignment == mturk.Assignment.id) or (game.Game.follow_assignment == mturk.Assignment.id)), join_type=peewee.JOIN.LEFT_OUTER)
-                .order_by(game.Game.id.desc()))
+    games = (game_db.Game.select()
+                .join(mturk.Worker, join_type=peewee.JOIN.LEFT_OUTER, on=((game_db.Game.leader == mturk.Worker.id) or (game_db.Game.follower == mturk.Worker.id)))
+                .join(mturk.Assignment, on=((game_db.Game.lead_assignment == mturk.Assignment.id) or (game_db.Game.follow_assignment == mturk.Assignment.id)), join_type=peewee.JOIN.LEFT_OUTER)
+                .order_by(game_db.Game.id.desc()))
     response = []
     # For convenience, convert timestamps to US eastern time.
     NYC = tz.gettz('America/New_York')
@@ -481,7 +482,7 @@ async def Stats(request):
 @routes.get('/data/turns/{game_id}')
 async def GameData(request):
     game_id = request.match_info.get('game_id')
-    game = schemas.game.Game.select().join(schemas.game.Turn, join_type=peewee.JOIN.LEFT_OUTER).where(schemas.game.Game.id == game_id).get()
+    game = game_db.Game.select().join(game_db.Turn, join_type=peewee.JOIN.LEFT_OUTER).where(game_db.Game.id == game_id).get()
     turns = []
     # For convenience, convert timestamps to US eastern time.
     NYC = tz.gettz('America/New_York')
@@ -499,9 +500,9 @@ async def GameData(request):
 @routes.get('/data/instructions/{turn_id}')
 async def GameData(request):
     turn_id = request.match_info.get('turn_id')
-    turn = schemas.game.Turn.select().join(schemas.game.Game).where(schemas.game.Turn.id == turn_id).get()
+    turn = game_db.Turn.select().join(game_db.Game).where(game_db.Turn.id == turn_id).get()
     game = turn.game
-    instructions = schemas.game.Instruction.select().join(schemas.game.Game, join_type=peewee.JOIN.LEFT_OUTER).where(schemas.game.Instruction.turn_issued == turn.turn_number, schemas.game.Instruction.game == game).order_by(schemas.game.Instruction.turn_issued)
+    instructions = game_db.Instruction.select().join(game_db.Game, join_type=peewee.JOIN.LEFT_OUTER).where(game_db.Instruction.turn_issued == turn.turn_number, game_db.Instruction.game == game).order_by(game_db.Instruction.turn_issued)
     NYC = tz.gettz('America/New_York')
     json_instructions = []
     for instruction in instructions:
@@ -517,9 +518,9 @@ async def GameData(request):
 @routes.get('/data/moves/{turn_id}')
 async def GameData(request):
     turn_id = request.match_info.get('turn_id')
-    turn = schemas.game.Turn.select().join(schemas.game.Game).where(schemas.game.Turn.id == turn_id).get()
+    turn = game_db.Turn.select().join(game_db.Game).where(game_db.Turn.id == turn_id).get()
     game = turn.game
-    moves = schemas.game.Move.select().join(schemas.game.Instruction, join_type=peewee.JOIN.LEFT_OUTER).join(schemas.game.Game, join_type=peewee.JOIN.LEFT_OUTER).where(schemas.game.Move.turn_number == turn.turn_number, schemas.game.Move.game == game.id).order_by(schemas.game.Move.game_time)
+    moves = game_db.Move.select().join(game_db.Instruction, join_type=peewee.JOIN.LEFT_OUTER).join(game_db.Game, join_type=peewee.JOIN.LEFT_OUTER).where(game_db.Move.turn_number == turn.turn_number, game_db.Move.game == game.id).order_by(game_db.Move.game_time)
     json_moves = []
     for move in moves:
         json_moves.append({
@@ -670,7 +671,7 @@ async def stream_game_state(request, ws):
         await asyncio.sleep(0)
         poll_period = time.time() - last_loop
         if (poll_period) > 0.1:
-            logging.warn(
+            logging.warning(
                 f"Transmit socket for iphash {remote.hashed_ip} port {remote.client_port}, slow poll period of {poll_period}s")
         last_loop = time.time()
         # If not in a room, drain messages from the room manager.

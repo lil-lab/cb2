@@ -674,6 +674,9 @@ class MapProvider(object):
         
         self._id_assigner = IdAssigner()
         self._tiles = map.tiles
+        self._tiles_by_location = {}
+        for i, tile in enumerate(self._tiles):
+            self._tiles_by_location[tile.cell.coord] = i
         self._rows = map.rows
         self._cols = map.cols
         self._cards = []
@@ -836,7 +839,6 @@ class MapProvider(object):
             self._cards.append(self._card_generator.generate_card_at(r, c, shape, color, count))
             self._cards_by_location[self._cards[-1].location] = self._cards[-1]
 
-    
     def spawn_points(self):
         return self._spawn_points
 
@@ -868,6 +870,10 @@ class MapProvider(object):
 
     def prop_update(self):
         return PropUpdate([card.prop() for card in self._cards])
+    
+    def edge_between(self, loc1, loc2):
+        return (self._tiles[self._tiles_by_location[loc1]].cell.boundary.get_edge_between(loc1, loc2) 
+                or self._tiles[self._tiles_by_location[loc2]].cell.boundary.get_edge_between(loc2, loc1))
     
     def coord_in_map(self, coord):
         offset_coords = coord.to_offset_coordinates()
@@ -905,4 +911,3 @@ async def MapGenerationTask(room_manager, config):
         if len(map_pool) % 10 == 0:
             print(f"Map pool size: {len(map_pool)}")
         await asyncio.sleep(0.001)
-

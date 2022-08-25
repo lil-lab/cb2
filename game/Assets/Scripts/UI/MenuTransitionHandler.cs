@@ -48,6 +48,8 @@ public class MenuTransitionHandler : MonoBehaviour
     private static readonly string FOLLOWER_TURN_TAG = "FOLLOWER_TURN_INDICATOR";
     private static readonly string LEADER_TURN_TAG = "LEADER_TURN_INDICATOR";
 
+    private static readonly string LEADER_FEEDBACK_WINDOW = "LEADER_FEEDBACK_WINDOW";
+
     private Logger _logger;
 
     // We re-use ActionQueue here to animate UI transparency. It's a bit
@@ -597,40 +599,46 @@ public class MenuTransitionHandler : MonoBehaviour
 
         // Handle feedback UI.
         UnityEngine.Color feedbackColor = new UnityEngine.Color(1f, 1f, 1f, 100f / 255f);  // Neutral color.
-        if ((_positiveFeedbackSignal != null) && (_negativeFeedbackSignal != null))
-        {
-            bool is_pos = (DateTime.Now - _lastPositiveFeedback).TotalSeconds < FEEDBACK_DURATION_SECONDS;
-            bool is_neg = (DateTime.Now - _lastNegativeFeedback).TotalSeconds < FEEDBACK_DURATION_SECONDS;
+        if (_positiveFeedbackSignal == null && networkManager.Role() == Role.FOLLOWER)
+            _positiveFeedbackSignal = GameObject.FindWithTag(POSITIVE_FEEDBACK_TAG);
+        if (_negativeFeedbackSignal == null && networkManager.Role() == Role.FOLLOWER)
+            _negativeFeedbackSignal = GameObject.FindWithTag(NEGATIVE_FEEDBACK_TAG);
+        bool is_pos = (DateTime.Now - _lastPositiveFeedback).TotalSeconds < FEEDBACK_DURATION_SECONDS;
+        bool is_neg = (DateTime.Now - _lastNegativeFeedback).TotalSeconds < FEEDBACK_DURATION_SECONDS;
 
-            // If only one is active, show it.
-            if (!(is_pos && is_neg)) {
+        // If only one is active, show it.
+        if (!(is_pos && is_neg)) {
+            if (_positiveFeedbackSignal)
                 _positiveFeedbackSignal.SetActive(is_pos);
+            if (_negativeFeedbackSignal)
                 _negativeFeedbackSignal.SetActive(is_neg);
-                if (is_pos)
-                    feedbackColor = new UnityEngine.Color(0f, 1f, 0f, 1f);  // Green.
-                if (is_neg)
-                    feedbackColor = new UnityEngine.Color(1f, 0f, 0f, 1f);  // Red.
-            }
-
-            // If both are active, only show the most recent.
-            if (is_pos && is_neg) {
-                if (_lastPositiveFeedback < _lastNegativeFeedback) 
-                {
-                    feedbackColor = new UnityEngine.Color(1f, 0f, 0f, 1f);  // Red.
-                    _negativeFeedbackSignal.SetActive(true);
-                    _positiveFeedbackSignal.SetActive(false);
-                } else {
-                    _positiveFeedbackSignal.SetActive(true);
-                    _negativeFeedbackSignal.SetActive(false);
-                    feedbackColor = new UnityEngine.Color(0f, 1f, 0f, 1f);  // Green.
-                }
-            }
-        } else {
-            if (_positiveFeedbackSignal == null)
-                _positiveFeedbackSignal = GameObject.FindWithTag(POSITIVE_FEEDBACK_TAG);
-            if (_negativeFeedbackSignal == null)
-                _negativeFeedbackSignal = GameObject.FindWithTag(NEGATIVE_FEEDBACK_TAG);
+            if (is_pos)
+                feedbackColor = new UnityEngine.Color(0f, 1f, 0f, 1f);  // Green.
+            if (is_neg)
+                feedbackColor = new UnityEngine.Color(1f, 0f, 0f, 1f);  // Red.
         }
+
+        // If both are active, only show the most recent.
+        if (is_pos && is_neg) {
+            if (_lastPositiveFeedback < _lastNegativeFeedback) 
+            {
+                feedbackColor = new UnityEngine.Color(1f, 0f, 0f, 1f);  // Red.
+                if (_negativeFeedbackSignal)
+                    _negativeFeedbackSignal.SetActive(true);
+                if (_positiveFeedbackSignal)
+                    _positiveFeedbackSignal.SetActive(false);
+            } else {
+                if (_positiveFeedbackSignal)
+                    _positiveFeedbackSignal.SetActive(true);
+                if (_negativeFeedbackSignal)
+                    _negativeFeedbackSignal.SetActive(false);
+                feedbackColor = new UnityEngine.Color(0f, 1f, 0f, 1f);  // Green.
+            }
+        }
+
+        GameObject leader_feedback_window = GameObject.FindWithTag(LEADER_FEEDBACK_WINDOW);
+        if (leader_feedback_window != null)
+            leader_feedback_window.GetComponent<Image>().color = feedbackColor;
         GameObject feedback_obj = GameObject.FindWithTag(FEEDBACK_WINDOW_TAG);
         if (feedback_obj != null)
             feedback_obj.GetComponent<Image>().color = feedbackColor;

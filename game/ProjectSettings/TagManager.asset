@@ -64,6 +64,7 @@ TagManager:
   - INSTRUCTION_TITLE_TEXT
   - QUEUE_TIMEOUT_UI
   - CANCEL_QUEUE_BTN
+  - LEADER_FEEDBACK_WINDOW
   layers:
   - Default
   - TransparentFX

@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 from typing import List
 
 import asyncio
+import copy
 import dataclasses
 import logging
 import math
@@ -56,14 +57,6 @@ class State(object):
         # the logic loop has occurred. Sent out in StateMachineTick messages
         # (only if an event occured that loop).
         self._iter = 0
-
-        # Were any world updates applied this iteration? A world update is an update to one of the following:
-        # - the map
-        # - the cards
-        # - the actors
-        # - the objectives (instructions)
-        # - the turn state (not related to clock synchronization)
-        self._observation_updated = False
 
         # Maps from actor_id (prop id) to actor object (see definition below).
         self._actors = {}
@@ -455,8 +448,6 @@ class State(object):
             logger.info(f'Received live feedback from {id} with type NONE. Dropping.')
             return
         for actor_id in self._actors:
-            if actor_id == id:
-                continue
             self._live_feedback[actor_id] = feedback.signal
         # Find the follower.
         follower = None
@@ -595,54 +586,48 @@ class State(object):
         actions = self._next_actions(player_id)
         if len(actions) > 0:
             logger.debug(
-                f'Room {self._room_id} drained {len(actions)} actions for player_id {player_id}')
+                f'Room {self._room_id} {len(actions)} actions for player_id {player_id}')
             msg = message_from_server.ActionsFromServer(actions)
-            self._observation_updated = True
             return msg
 
         map_update = self._next_map_update(player_id)
         if map_update is not None:
             logger.debug(
-                f'Room {self._room_id} drained map update {map_update} for player_id {player_id}')
-            self._observation_updated = True
+                f'Room {self._room_id} map update {map_update} for player_id {player_id}')
             return message_from_server.MapUpdateFromServer(map_update)
         
         prop_update = self._next_prop_update(player_id)
         if prop_update is not None:
             logger.debug(
-                f'Room {self._room_id} drained prop update {prop_update} for player_id {player_id}')
-            self._observation_updated = True
+                f'Room {self._room_id} prop update {prop_update} for player_id {player_id}')
             return message_from_server.PropUpdateFromServer(prop_update)
 
         if not self.is_synced(player_id):
             state_sync = self.sync_message_for_transmission(player_id)
             logger.debug(
-                f'Room {self._room_id} drained state sync: {state_sync} for player_id {player_id}')
+                f'Room {self._room_id} state sync: {state_sync} for player_id {player_id}')
             msg = message_from_server.StateSyncFromServer(state_sync)
             return msg
 
         objectives = self._next_objectives(player_id)
         if len(objectives) > 0:
             logger.debug(
-                f'Room {self._room_id} drained {len(objectives)} texts for player_id {player_id}')
+                f'Room {self._room_id} {len(objectives)} texts for player_id {player_id}')
             msg = message_from_server.ObjectivesFromServer(objectives)
-            self._observation_updated = True
             return msg
         
         turn_state = self._next_turn_state(player_id)
         if not turn_state is None:
             logger.debug(
-                f'Room {self._room_id} drained ts {turn_state} for player_id {player_id}')
+                f'Room {self._room_id} ts {turn_state} for player_id {player_id}')
             msg = message_from_server.GameStateFromServer(turn_state)
-            self._observation_updated = True
             return msg
 
         live_feedback = self._next_live_feedback(player_id)
         if not live_feedback is None:
             logger.info(
-                f'Room {self._room_id} drained live feedback {live_feedback} for player_id {player_id}')
+                f'Room {self._room_id} live feedback {live_feedback} for player_id {player_id}')
             msg = message_from_server.LiveFeedbackFromServer(live_feedback)
-            self._observation_updated = True
             return msg
 
         # Nothing to send.
@@ -747,6 +732,17 @@ class State(object):
             cartesian = action.displacement.cartesian()
             # Add a small delta for floating point comparison.
             if (math.sqrt(cartesian[0]**2 + cartesian[1]**2) > 1.001):
+                return False
+            destination = HecsCoord.add(self._actors[actor_id].location(), action.displacement)
+            if self._map_provider.edge_between(self._actors[actor_id].location(), destination):
+                return False
+            forward_location = (self._actors[actor_id]
+                            .location()
+                            .neighbor_at_heading(self._actors[actor_id].heading_degrees()))
+            backward_location = (self._actors[actor_id]
+                            .location()
+                            .neighbor_at_heading(self._actors[actor_id].heading_degrees() + 180))
+            if destination not in [forward_location, backward_location]:
                 return False
         if (action.action_type == ActionType.ROTATE):
             if (action.rotation > 60.01):

@@ -89,18 +89,9 @@ def JoinLeaderQueueMessage():
         room_request=message_to_server.RoomManagementRequest(messages.rooms.RoomRequestType.JOIN_LEADER_ONLY))
     return message
 
-def RotateAction(player_id, rotation_degrees):
+def ActionsMessage(actions):
     message = message_to_server.MessageToServer(
         transmit_time=datetime.utcnow(),
         type=message_to_server.MessageType.ACTIONS,
-        actions=[
-            action.Action(player_id,
-            action.ActionType.ROTATE,
-            action.AnimationType.ROTATE,
-            HecsCoord(0, 0, 0),
-            rotation_degrees,
-            0,
-            action.Color(0, 0, 0, 0),
-            0.1,
-            datetime.utcnow() + timedelta(seconds=15))])
+        actions=actions)
     return message

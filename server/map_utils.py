@@ -8,6 +8,7 @@ import server.messages.action as action
 import server.card  as card
 import server.messages.prop as prop
 
+import copy
 import dataclasses
 import logging
 import numpy as np
@@ -432,16 +433,17 @@ def FloodFillPartitionTiles(tiles):
 def CensorMapForFollower(map_update, follower):
     """ Censors information from a map that the follower isn't supposed to have.
     """
-    map_update_clone = dataclasses.replace(map_update)
+    map_update_clone = copy.deepcopy(map_update)
     return map_update_clone
 
 def CensorPropForFollower(prop_update, follower):
     """ Censors information from a map that the follower isn't supposed to have.
     """
-    prop_update_clone = dataclasses.replace(prop_update)
+    prop_update_clone = copy.deepcopy(prop_update)
     for i, _ in enumerate(prop_update_clone.props):
         if prop_update_clone.props[i].prop_type == prop.PropType.CARD:
             if prop_update_clone.props[i].prop_info.border_color == action.Color(1, 0, 0, 1):
+                logger.info("Censoring card for follower {}".format(follower))
                 prop_update_clone.props[i].prop_info.border_color = action.Color(0, 0, 1, 1)
             if not prop_update_clone.props[i].card_init.selected:
                 prop_update_clone.props[i].card_init.hidden = True

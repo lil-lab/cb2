@@ -72,7 +72,7 @@ class GameRecorder(object):
     
     def record_card_set(self):
             set_record = schemas.cards.CardSets()
-            set_record.game = self._game_recorder.record()
+            set_record.game = self._game_record
             set_record.move = self._last_move
             set_record.score = self._last_turn_state.score + 1
             set_record.save()

@@ -465,7 +465,6 @@ class RoomManager(object):
                 logger.info("Removed socket from queue.")
                 removed = True
                 continue
-            logger.debug(f"{element}(element) != {ws}(ws -- to be deleted)")
             player_queue.append((ts, element))
         if not removed:
             logger.warning("Socket not found in queue!")
@@ -478,11 +477,22 @@ class RoomManager(object):
                 logger.info("Removed socket from follower queue.")
                 removed = True
                 continue
-            logger.debug(f"{element}(element) != {ws}(ws -- to be deleted)")
             follower_queue.append((ts, element))
         if not removed:
             logger.warning("Socket not found in follower queue!")
         self._follower_queue = follower_queue
+
+        leader_queue = deque()
+        removed = False
+        for ts, element in self._leader_queue:
+            if element == ws:
+                logger.info("Removed socket from leader queue.")
+                removed = True
+                continue
+            leader_queue.append((ts, element))
+        if not removed:
+            logger.warning("Socket not found in leader queue!")
+        self._leader_queue = leader_queue
     
     def handle_cancel_request(self, request, ws):
         # Iterate through the queue of followers and leaders,

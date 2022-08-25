@@ -35,37 +35,37 @@ class MessageType(Enum):
     STATE_MACHINE_TICK = 10
 
 def ActionsFromServer(actions):
-    return MessageFromServer(datetime.now(), MessageType.ACTIONS, actions, None, None, None, None, None, None)
+    return MessageFromServer(datetime.utcnow(), MessageType.ACTIONS, actions, None, None, None, None, None, None)
 
 def MapUpdateFromServer(map_update):
-    return MessageFromServer(datetime.now(), MessageType.MAP_UPDATE, None, map_update, None, None, None, None, None)
+    return MessageFromServer(datetime.utcnow(), MessageType.MAP_UPDATE, None, map_update, None, None, None, None, None)
 
 def StateSyncFromServer(state_sync):
-    return MessageFromServer(datetime.now(), MessageType.STATE_SYNC, None, None, state_sync, None, None, None, None)
+    return MessageFromServer(datetime.utcnow(), MessageType.STATE_SYNC, None, None, state_sync, None, None, None, None)
 
 def RoomResponseFromServer(room_response):
-    return MessageFromServer(datetime.now(), MessageType.ROOM_MANAGEMENT, None, None, None, room_response, None, None, None)
+    return MessageFromServer(datetime.utcnow(), MessageType.ROOM_MANAGEMENT, None, None, None, room_response, None, None, None)
 
 def ObjectivesFromServer(texts):
-    return MessageFromServer(datetime.now(), MessageType.OBJECTIVE, None, None, None, None, texts, None, None)
+    return MessageFromServer(datetime.utcnow(), MessageType.OBJECTIVE, None, None, None, None, texts, None, None)
 
 def GameStateFromServer(game_state):
-    return MessageFromServer(datetime.now(), MessageType.GAME_STATE, None, None, None, None, None, game_state, None)
+    return MessageFromServer(datetime.utcnow(), MessageType.GAME_STATE, None, None, None, None, None, game_state, None)
 
 def TutorialResponseFromServer(tutorial_response):
-    return MessageFromServer(datetime.now(), MessageType.TUTORIAL_RESPONSE, None, None, None, None, None, None, tutorial_response)
+    return MessageFromServer(datetime.utcnow(), MessageType.TUTORIAL_RESPONSE, None, None, None, None, None, None, tutorial_response)
 
 def PingMessageFromServer():
-    return MessageFromServer(datetime.now(), MessageType.PING, None, None, None, None, None, None, None)
+    return MessageFromServer(datetime.utcnow(), MessageType.PING, None, None, None, None, None, None, None)
 
 def LiveFeedbackFromServer(feedback):
-    return MessageFromServer(datetime.now(), MessageType.LIVE_FEEDBACK, None, None, None, None, None, None, None, feedback)
+    return MessageFromServer(datetime.utcnow(), MessageType.LIVE_FEEDBACK, None, None, None, None, None, None, None, feedback)
 
 def PropUpdateFromServer(props):
-    return MessageFromServer(datetime.now(), MessageType.PROP_UPDATE, None, None, None, None, None, None, None, None, props)
+    return MessageFromServer(datetime.utcnow(), MessageType.PROP_UPDATE, None, None, None, None, None, None, None, None, props)
 
 def StateMachineTickFromServer(state_machine_tick):
-    return MessageFromServer(datetime.now(), MessageType.STATE_MACHINE_TICK, None, None, None, None, None, None, None, None, None, state_machine_tick)
+    return MessageFromServer(datetime.utcnow(), MessageType.STATE_MACHINE_TICK, None, None, None, None, None, None, None, None, None, state_machine_tick)
 
 @dataclass(frozen=True)
 class MessageFromServer(DataClassJSONMixin):

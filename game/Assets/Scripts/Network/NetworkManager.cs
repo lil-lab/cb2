@@ -433,6 +433,8 @@ namespace Network
 
         public void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            // Set log level.
+            Logger.SetGlobalLogLevel(Logger.LogLevel.INFO);
             _logger.Info("Scene loaded: " + scene.name);
             if (scene.name == "menu_scene")
                 return;    
@@ -549,6 +551,10 @@ namespace Network
         // Update is called once per frame
         void Update()
         {
+            if (_router != null)
+            {
+                _router.Update();
+            }
             // If it's been more than 60 seconds since the last poll and _serverConfig is null, poll the server for the config.
             // Alternatively, if _serverConfig is out of date and it's been > 10 seconds since the last poll, also poll the server.
             if ((_serverConfig == null || (DateTime.Now.Subtract(_serverConfig.timestamp).TotalMinutes > 1))

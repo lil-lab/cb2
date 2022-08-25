@@ -133,4 +133,4 @@ def HardcodedMap():
         map_tiles[i].cell.height = LayerToHeight(map_tiles[i].cell.layer)
 
     map_metadata = MapMetadata([], [], [], [], 0)
-    return MapUpdate(MAP_HEIGHT, MAP_WIDTH, map_tiles, [], map_metadata)
+    return MapUpdate(MAP_HEIGHT, MAP_WIDTH, map_tiles, map_metadata)

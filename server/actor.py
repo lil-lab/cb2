@@ -53,6 +53,7 @@ class Actor(object):
     def add_action(self, action):
         self._projected_location = HecsCoord.add(self._location, action.displacement)
         self._projected_heading += action.rotation
+        self._projected_heading %= 360
         self._actions.put(action)
 
     def has_actions(self):
@@ -118,6 +119,7 @@ class Actor(object):
         action = self._actions.get()
         self._location = HecsCoord.add(self._location, action.displacement)
         self._heading_degrees += action.rotation
+        self._heading_degrees %= 360
         self._action_start_timestamp = datetime.now()
 
     def drop(self):
