@@ -2691,6 +2691,22 @@ PrefabInstance:
       propertyPath: m_Name
       value: NOT_OUR_TURN_OVERLAY
       objectReference: {fileID: 0}
+    - target: {fileID: 8194540249266415969, guid: 7576aa853dbd34dc8b370154655d2690, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 8ac3e49970dd34375ac7eff800d7c17f, type: 3}
+    - target: {fileID: 8194540249266415969, guid: 7576aa853dbd34dc8b370154655d2690, type: 3}
+      propertyPath: m_Color.b
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8194540249266415969, guid: 7576aa853dbd34dc8b370154655d2690, type: 3}
+      propertyPath: m_Color.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8194540249266415969, guid: 7576aa853dbd34dc8b370154655d2690, type: 3}
+      propertyPath: m_Color.r
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 8194540249266415970, guid: 7576aa853dbd34dc8b370154655d2690, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
@@ -2811,6 +2827,10 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8194540250252974606, guid: 7576aa853dbd34dc8b370154655d2690, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 0a6a2a3aefe084d34b6b7cc9577a0215, type: 3}
     - target: {fileID: 8194540250252974607, guid: 7576aa853dbd34dc8b370154655d2690, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
