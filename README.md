@@ -60,8 +60,7 @@ Dependencies can be installed with:
 Launch the server on your desktop with:
 
 ```
-cd server/
-python3 -m main --config_filepath="config/local-config.json"
+python3 -m server.main --config_filepath="server/config/local-config.json"
 ```
 
 To launch the server on a deployment machine, you'll want to use the SystemD
