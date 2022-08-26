@@ -51,9 +51,14 @@ class Actor(object):
         return self._role
 
     def add_action(self, action):
-        self._projected_location = HecsCoord.add(self._location, action.displacement)
-        self._projected_heading += action.rotation
-        self._projected_heading %= 360
+        # Certain actions aren't cumulative. 
+        if action.action_type == ActionType.INIT:
+            self._projected_location = action.displacement
+            self._projected_heading = action.rotation
+        else:
+            self._projected_location = HecsCoord.add(self._location, action.displacement)
+            self._projected_heading += action.rotation
+            self._projected_heading %= 360
         self._actions.put(action)
 
     def has_actions(self):
