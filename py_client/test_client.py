@@ -16,7 +16,6 @@ import server.messages.rooms
 
 from server.hex import HecsCoord
 
-
 # Connect via websocket to the server's /player_endpoint endpoint.
 async def connect_to_server(server_url):
     url = f"{server_url}/player_endpoint"

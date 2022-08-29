@@ -47,6 +47,15 @@ logger = logging.getLogger()
 # You must call drain_messages() before each update() call and fill_messages() after each update() call.
 # It is recommended to use StateMachineDriver to run this class -- see server/state_machine_driver.py for details.
 class State(object):
+
+    @classmethod
+    def InitializeFromExistingState(cls, map, props, turn_state, instructions, actors, live_feedback):
+        s = State()
+        return s
+        
+    def __init__(self):
+        pass
+
     def __init__(self, room_id, game_record):
         self._room_id = room_id
 

@@ -64,7 +64,6 @@ class LeadAction(object):
             assert instruction != None, "Instruction must be provided for SEND_INSTRUCTION"
             if type(instruction) not in [str, bytes]:
                 raise TypeError("Instruction must be a string or bytes")
-                
         self.action = (action_code, instruction)
     
     def message_to_server(self, actor):
@@ -230,7 +229,7 @@ class Game(object):
             if not waited:
                 logger.warn(f"Issue waiting for tick: {reason}")
         state = self._state()
-        # Clear live feedback before returning. This is to make sure that the
+        # Clear internal live feedback before returning. This is to make sure that the
         # live feedback only occurs for 1 step per feedback message.
         self.live_feedback = None
         return state

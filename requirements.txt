@@ -17,4 +17,3 @@ viztracer==0.15.3
 tqdm==4.64.0
 sparklines==0.4.2
 gym==0.25.1
-transformers==4.21.1
