@@ -539,6 +539,7 @@ class Cb2Client(object):
                     self.game = Game(self)
                     self.game._initialize(state_sync, map_update, prop_update, turn_state)
                     return True, ""
+        return False, "Disconnected"
     
     def _receive_message(self, timeout=timedelta(minutes=1)):
         message = self.event_loop.run_until_complete(self.ws.receive(timeout=timeout.total_seconds()))
