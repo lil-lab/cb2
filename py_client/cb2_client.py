@@ -2,6 +2,7 @@ import aiohttp
 import asyncio
 import fire
 import logging
+import nest_asyncio
 import orjson
 import statistics as stats
 
@@ -369,9 +370,14 @@ class Cb2Client(object):
         self.ws = None
         self.Reset()
         self.url = url
-        self.event_loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.event_loop)
+        self.event_loop = asyncio.get_event_loop()
         logging.basicConfig(level=logging.INFO)
+        # Lets us synchronously block on an event loop that's already running.
+        # This means we can encapsulate asyncio without making our users learn
+        # how to use await/async. This isn't technically needed, unless you want
+        # to be compatible with something like jupyter or anything else which
+        # requires an always-running event loop.
+        nest_asyncio.apply()
     
     def Connect(self):
         """ Connect to the server.
