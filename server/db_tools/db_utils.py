@@ -113,9 +113,7 @@ def follower_got_lost(game_instructions):
 def short_game(game):
     # Make sure the game wasn't just given up on in the first 2 turns.
     number_of_turns = Turn.select().join(Game).where(Turn.game == game).count()
-    short_game = False
-    if number_of_turns <= 2:
-        return short_game
+    return number_of_turns <= 2
 
 class GameDiagnosis(Enum):
     NONE = 0
