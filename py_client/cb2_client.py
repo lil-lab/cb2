@@ -4,6 +4,7 @@ import fire
 import logging
 import nest_asyncio
 import orjson
+import requests
 import statistics as stats
 
 import server.messages as messages
@@ -160,8 +161,9 @@ class FollowAction(object):
 #         observation, action_space = game.step(action)
 #         action = leader_agent.act(observation, action_space)
 class Game(object):
-    def __init__(self, client):
+    def __init__(self, client, config):
         self.client = client
+        self.config = config
         self._reset()
 
     def _reset(self):
@@ -178,10 +180,18 @@ class Game(object):
         self.player_actor = None
         self._initial_state_ready = False
         self._initial_state_retrieved = False
+        self._follower_moved = False
         self.live_feedback = None
     
     def player_role(self):
         return self._player_role
+    
+    def actor_from_role(self, role):
+        for actor_id in self.actors:
+            actor = self.actors[actor_id]
+            if actor.role() == role:
+                return actor
+        return None
     
     def initial_state(self):
         if self._initial_state_retrieved:
@@ -220,6 +230,10 @@ class Game(object):
             self.client._send_message(message)
         for message in self.queued_messages:
             self.client._send_message(message)
+        # Reset this variable. We want to see if while waiting for ticks, the
+        # follower has moved. This allows self._can_act() to return True if
+        # playing as the leader, to give live feedback on a follower move.
+        self._follower_moved = False
         # Call _wait_for_tick before checking _can_act(), to make sure we don't
         # miss any state transitions that took place on the server.
         waited, reason = self._wait_for_tick()
@@ -236,9 +250,14 @@ class Game(object):
         return state
     
     def _can_act(self):
-        # TODO(sharf): Once feedback is optional, this should check if feedback
-        # is allowed in config before always returning for the Leader.
-        return (self.player_role() == self.turn_state.turn) or self.player_role() == Role.LEADER
+        if (self.player_role() == self.turn_state.turn):
+            return True
+        
+        if ((self.player_role() == Role.LEADER) and self.config["live_feedback_enabled"]):
+            # Check if the follower position has changed since the last tick.
+            return self._follower_moved
+        
+        return False
 
     def _wait_for_tick(self, timeout=timedelta(seconds=60)):
         """ Waits for a tick """
@@ -313,6 +332,9 @@ class Game(object):
                 logger.error(f"Received state sync for unknown actor {net_actor.actor_id}")
                 return False, "Received state sync for unknown actor"
             actor = self.actors[net_actor.actor_id]
+            if actor.role() == Role.FOLLOWER:
+                if net_actor.location != actor.location() or net_actor.rotation_degrees != actor.heading_degrees():
+                    self._follower_moved = True
             while actor.has_actions():
                 actor.drop()
             actor.add_action(action.Init(
@@ -331,8 +353,11 @@ class Game(object):
                     if action.id not in self.cards:
                         logger.error(f"Received action for unknown actor: {action.id}")
                     return
-                self.actors[action.id].add_action(action)
-                self.actors[action.id].step()
+                actor = self.actors[action.id]
+                if actor.role() == Role.FOLLOWER:
+                    self._follower_moved = True
+                actor.add_action(action)
+                actor.step()
         elif message.type == message_from_server.MessageType.STATE_SYNC:
             self._handle_state_sync(message.state)
         elif message.type == message_from_server.MessageType.GAME_STATE:
@@ -387,6 +412,11 @@ class Cb2Client(object):
         """
         if self.init_state != Cb2Client.State.BEGIN:
             return False, "Server is not in the BEGIN state. Call Reset() first?"
+        config_url = f"{self.url}/data/config"
+        config_response = requests.get(config_url)
+        if config_response.status_code != 200:
+            return False, f"Could not get config from {config_url}: {config_response.status_code}"
+        self.config = config_response.json()
         url = f"{self.url}/player_endpoint"
         logger.info(f"Connecting to {url}...")
         session = aiohttp.ClientSession()
@@ -422,6 +452,7 @@ class Cb2Client(object):
         self.actors = {}
         self.turn_state = None
         self.game = None
+        self.config = None
     
     def state(self):
         return self.init_state
@@ -542,7 +573,7 @@ class Cb2Client(object):
             if response.type == message_from_server.MessageType.STATE_MACHINE_TICK:
                 if self.init_state == Cb2Client.State.IN_GAME_INIT and None not in [state_sync, map_update, prop_update, turn_state]:
                     self.init_state = Cb2Client.State.GAME_STARTED
-                    self.game = Game(self)
+                    self.game = Game(self, self.config)
                     self.game._initialize(state_sync, map_update, prop_update, turn_state)
                     return True, ""
         return False, "Disconnected"

@@ -6,5 +6,6 @@
     "fog_start": 13,
     "fog_end": 20,
     "fps_limit": 30,
-    "map_cache_size": 10
+    "map_cache_size": 10,
+    "live_feedback_enabled": true
 }

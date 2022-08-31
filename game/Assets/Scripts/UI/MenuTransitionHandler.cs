@@ -254,6 +254,11 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public void SendPositiveFeedback()
     {
+        if (!Network.NetworkManager.TaggedInstance().ServerConfig().live_feedback_enabled)
+        {
+            _logger.Info("SendPositiveFeedback(): Live feedback is not enabled.");
+            return;
+        }
         Network.LiveFeedback feedback = new Network.LiveFeedback();
         feedback.signal = Network.FeedbackType.POSITIVE;
         Network.NetworkManager.TaggedInstance().TransmitLiveFeedback(feedback);
@@ -261,6 +266,11 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public void SendNegativeFeedback()
     {
+        if (!Network.NetworkManager.TaggedInstance().ServerConfig().live_feedback_enabled)
+        {
+            _logger.Info("SendNegativeFeedback(): Live feedback is not enabled.");
+            return;
+        }
         Network.LiveFeedback feedback = new Network.LiveFeedback();
         feedback.signal = Network.FeedbackType.NEGATIVE;
         Network.NetworkManager.TaggedInstance().TransmitLiveFeedback(feedback);

@@ -71,6 +71,8 @@ class Config(DataClassJSONMixin):
     
     analytics_since_game_id: int = -1 # The game ID to start all statistical/research calculations from (discard before this).
 
+    live_feedback_enabled: bool = True # Is leader live feedback enabled for games?
+
     # Data path accessors that add the requisite data_prefix.
     def record_directory(self):
         return pathlib.Path(self.data_prefix, self.record_directory_suffix).expanduser()

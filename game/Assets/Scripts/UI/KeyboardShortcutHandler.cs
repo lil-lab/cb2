@@ -7,9 +7,20 @@ using UnityEngine.UI;
 public class KeyboardShortcutHandler : MonoBehaviour
 {
     private static readonly string INPUT_FIELD_TAG = "MessageInputField";
+    private Logger _logger;
+
+    public void Start()
+    {
+        _logger = Logger.GetOrCreateTrackedLogger("KeyboardShortcutHandler");
+    }
 
     public void SendPositiveFeedback()
     {
+        if (!Network.NetworkManager.TaggedInstance().ServerConfig().live_feedback_enabled)
+        {
+            _logger.Info("SendPositiveFeedback(): Live feedback not enabled");
+            return;
+        }
         Network.LiveFeedback feedback = new Network.LiveFeedback();
         feedback.signal = Network.FeedbackType.POSITIVE;
         Network.NetworkManager.TaggedInstance().TransmitLiveFeedback(feedback);
@@ -17,6 +28,11 @@ public class KeyboardShortcutHandler : MonoBehaviour
 
     public void SendNegativeFeedback()
     {
+        if (!Network.NetworkManager.TaggedInstance().ServerConfig().live_feedback_enabled)
+        {
+            _logger.Info("SendNegativeFeedback(): Live feedback not enabled");
+            return;
+        }
         Network.LiveFeedback feedback = new Network.LiveFeedback();
         feedback.signal = Network.FeedbackType.NEGATIVE;
         Network.NetworkManager.TaggedInstance().TransmitLiveFeedback(feedback);

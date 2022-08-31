@@ -30,6 +30,7 @@ namespace Network
         private Network.Config _serverConfig;
         private Network.Config _replayConfig;
         private DateTime _lastServerConfigPoll = DateTime.MinValue;
+        private bool _serverConfigPollInProgress = false;
         private Role _role = Network.Role.NONE;
         private Role _replayRole = Network.Role.NONE;
         private Role _currentTurn = Network.Role.NONE;
@@ -41,12 +42,12 @@ namespace Network
             Scene scene = SceneManager.GetActiveScene();
             if (scene.name == "menu_scene")
             {
-                Debug.Log("Loading menu map");
+                _logger.Info("Loading menu map");
                 return new FixedMapSource();
             }
             if (_networkMapSource == null)
             {
-                Debug.Log("Retrieved map source before it was initialized.");
+                _logger.Warn("Retrieved map source before it was initialized.");
             }
             return _networkMapSource;
         }
@@ -132,7 +133,7 @@ namespace Network
             {
                 _replayRole = role;
             } else {
-                Debug.LogWarning("Attempted to inject replay role when not in replay scene.");
+                _logger.Warn("Attempted to inject replay role when not in replay scene.");
             }            
         }
 
@@ -143,7 +144,7 @@ namespace Network
                 _replayConfig = config;
                 OnConfigReceived(_replayConfig);
             } else {
-                Debug.LogWarning("Attempted to inject replay config when not in replay scene.");
+                _logger.Warn("Attempted to inject replay config when not in replay scene.");
             }
         }
 
@@ -240,7 +241,7 @@ namespace Network
             msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
             msg.room_request = new RoomManagementRequest();
             msg.room_request.type = RoomRequestType.JOIN;
-            Debug.Log("[DEBUG]Joining game...");
+            _logger.Info("Joining game...");
             _client.TransmitMessage(msg);
         }
 
@@ -251,7 +252,7 @@ namespace Network
             msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
             msg.room_request = new RoomManagementRequest();
             msg.room_request.type = RoomRequestType.JOIN_FOLLOWER_ONLY;
-            Debug.Log("[DEBUG]Joining game as follower ...");
+            _logger.Info("Joining game as follower ...");
             _client.TransmitMessage(msg);
         }
 
@@ -273,7 +274,7 @@ namespace Network
             msg.tutorial_request = new TutorialRequest();
             msg.tutorial_request.type = TutorialRequestType.START_TUTORIAL;
             msg.tutorial_request.tutorial_name = tutorialName;
-            Debug.Log("[DEBUG]Joining tutorial...");
+            _logger.Info("Joining tutorial...");
             _client.TransmitMessage(msg);
         }
 
@@ -284,7 +285,7 @@ namespace Network
             msg.type = MessageToServer.MessageType.TUTORIAL_REQUEST;
             msg.tutorial_request = new TutorialRequest();
             msg.tutorial_request.type = Network.TutorialRequestType.REQUEST_NEXT_STEP;
-            Debug.Log("[DEBUG]Requesting next tutorial step...");
+            _logger.Info("Requesting next tutorial step...");
             _client.TransmitMessage(msg);            
         }
 
@@ -410,7 +411,7 @@ namespace Network
                 }
                 url = endpointUrlBuilder.Uri.AbsoluteUri;
             }
-            Debug.Log("Using url: " + url);
+            _logger.Info("Using url: " + url);
             _client = new ClientConnection(url, /*autoReconnect=*/ true);
             _router = new NetworkRouter(_client, _networkMapSource, this, null, null);
 
@@ -428,6 +429,7 @@ namespace Network
             _client.Start();
 
             _lastServerConfigPoll = DateTime.Now;
+            _serverConfigPollInProgress = true;
             StartCoroutine(FetchConfig());
         }
 
@@ -454,7 +456,7 @@ namespace Network
         {
             if (tutorialResponse.type == TutorialResponseType.STARTED)
             {
-                Debug.Log("[DEBUG]Tutorial started.");
+                _logger.Info("Tutorial started.");
                 _router.ClearEntityManager();
                 _router.ClearPlayer();
                 _router.ClearMenuTransitionHandler();
@@ -463,12 +465,12 @@ namespace Network
             }
             else if (tutorialResponse.type == TutorialResponseType.COMPLETED)
             {
-                Debug.Log("[DEBUG]Tutorial completed.");
+                _logger.Info("Tutorial completed.");
                 DisplayGameOverMenu("Tutorial completed. Your participation has been recorded.");
             }
             else if (tutorialResponse.type == TutorialResponseType.STEP)
             {
-                Debug.Log("[DEBUG]Tutorial next step received.");
+                _logger.Info("Tutorial next step received.");
                 TutorialManager.TaggedInstance().HandleTutorialStep(tutorialResponse.step);
             }
         }
@@ -479,26 +481,25 @@ namespace Network
             {
                 if (response.join_response.joined)
                 {
-                    Debug.Log("Joined room as " + response.join_response.role + "!");
+                    _logger.Info("Joined room as " + response.join_response.role + "!");
                     _router.ClearEntityManager();
                     _router.ClearPlayer();
                     _router.ClearMenuTransitionHandler();
                     SceneManager.LoadScene("game_scene");
                     _role = response.join_response.role;
                 } else if (response.join_response.booted_from_queue) {
-                    Debug.Log("Booted from queue.");
+                    _logger.Info("Booted from queue.");
                     GameObject bootedUi = GameObject.FindGameObjectWithTag("QUEUE_TIMEOUT_UI");
                     Canvas bootedCanvas = bootedUi.GetComponent<Canvas>();
                     bootedCanvas.enabled = true;
                 } else {
-                    Debug.Log("Waiting for room. Position in queue: " + response.join_response.place_in_queue);
+                    _logger.Info("Waiting for room. Position in queue: " + response.join_response.place_in_queue);
                 }
             }
             else if (response.type == RoomResponseType.LEAVE_NOTICE)
             {
-                Debug.Log("Game ended. Reason: " + response.leave_notice.reason);
+                _logger.Info("Game ended. Reason: " + response.leave_notice.reason);
                 Scene scene = SceneManager.GetActiveScene();
-                Debug.Log("[DEBUG] scene: " + scene.name);
                 if (scene.name != "menu_scene")
                 {
                     DisplayGameOverMenu("Game ended. Reason: " + response.leave_notice.reason);
@@ -506,7 +507,7 @@ namespace Network
             }
             else if (response.type == RoomResponseType.STATS)
             {
-                Debug.Log("Stats: " + response.stats.ToString());
+                _logger.Debug("Stats: " + response.stats.ToString());
                 GameObject obj = GameObject.FindGameObjectWithTag("Stats");
                 if (obj == null) return;
                 Text stats = obj.GetComponent<Text>();
@@ -516,7 +517,7 @@ namespace Network
             }
             else if (response.type == RoomResponseType.ERROR)
             {
-                Debug.Log("Received room management error: " + response.error);
+                _logger.Info("Received room management error: " + response.error);
             }
             else if (response.type == RoomResponseType.MAP_SAMPLE)
             {
@@ -529,7 +530,7 @@ namespace Network
             }
             else
             {
-                Debug.Log("Received unknown room management response type: " + response.type);
+                _logger.Info("Received unknown room management response type: " + response.type);
             }
         }
 
@@ -557,16 +558,19 @@ namespace Network
             }
             // If it's been more than 60 seconds since the last poll and _serverConfig is null, poll the server for the config.
             // Alternatively, if _serverConfig is out of date and it's been > 10 seconds since the last poll, also poll the server.
-            if ((_serverConfig == null || (DateTime.Now.Subtract(_serverConfig.timestamp).TotalMinutes > 1))
-                 && DateTime.Now.Subtract(_lastServerConfigPoll).TotalSeconds > 60)
+            if ((_serverConfig == null || (DateTime.UtcNow.Subtract(_serverConfig.timestamp).TotalMinutes > 1)) && 
+                (DateTime.UtcNow.Subtract(_lastServerConfigPoll).TotalSeconds > 1) &&
+                !_serverConfigPollInProgress)
             {
-                _lastServerConfigPoll = DateTime.Now;
+                _logger.Info("Starting fetch config coroutine. poll in progress: " + _serverConfigPollInProgress);
+                _lastServerConfigPoll = DateTime.UtcNow;
+                _serverConfigPollInProgress = true;
                 StartCoroutine(FetchConfig());
             }
             GameObject statsObj = GameObject.FindGameObjectWithTag("Stats");
-            if (((DateTime.Now - _lastStatsPoll).Seconds > 1) && (statsObj != null) && (statsObj.activeInHierarchy))
+            if (((DateTime.Now - _lastStatsPoll).Seconds > 3) && (statsObj != null) && (statsObj.activeInHierarchy))
             {
-                Debug.Log("Requesting stats..");
+                _logger.Debug("Requesting stats..");
                 _lastStatsPoll = DateTime.Now;
                 MessageToServer msg = new MessageToServer();
                 msg.transmit_time = DateTime.UtcNow.ToString("s");
@@ -580,6 +584,10 @@ namespace Network
             if (_client.IsClosed())
             {
                 connectionStatus.text = "Disconnected";
+                if (_serverConfig != null) {
+                    _serverConfig = null;
+                    _lastServerConfigPoll = DateTime.MinValue;
+                }
             }
             else if (_client.IsConnected())
             {
@@ -610,19 +618,21 @@ namespace Network
                 {
                     case UnityWebRequest.Result.ConnectionError:
                     case UnityWebRequest.Result.DataProcessingError:
-                        Debug.LogError("Error: " + webRequest.error);
+                        _logger.Error("Error: " + webRequest.error);
                         break;
                     case UnityWebRequest.Result.ProtocolError:
-                        Debug.LogError("HTTP Error: " + webRequest.error);
+                        _logger.Error("HTTP Error: " + webRequest.error);
                         break;
                     case UnityWebRequest.Result.Success:
-                        Debug.Log("Received: " + webRequest.downloadHandler.text);
+                        _logger.Info("Received: " + webRequest.downloadHandler.text);
                         _serverConfig = JsonConvert.DeserializeObject<Network.Config>(webRequest.downloadHandler.text);
                         _serverConfig.timestamp = DateTime.UtcNow;
                         OnConfigReceived(_serverConfig);
                         break;
                 }
             }
+            _logger.Info("Done with fetch config coroutine");
+            _serverConfigPollInProgress = false;
         }
     }
 }

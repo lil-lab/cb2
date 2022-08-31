@@ -15,6 +15,7 @@ from server.state_machine_driver import StateMachineDriver
 
 import server.leaderboard as leaderboard
 import server.experience as experience
+import server.config.config as config
 
 from queue import Queue
 from datetime import datetime, timedelta
@@ -453,6 +454,9 @@ class State(object):
         self._game_recorder.record_objective_complete(objective_complete)
     
     def _drain_live_feedback(self, id, feedback):
+        if config.GlobalConfig() and not config.GlobalConfig().live_feedback_enabled:
+            logger.info(f'Live feedback disabled. Dropping message. GRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR (added temp for debug easier viewing)')
+            return
         if feedback.signal == live_feedback.FeedbackType.NONE:
             logger.info(f'Received live feedback from {id} with type NONE. Dropping.')
             return

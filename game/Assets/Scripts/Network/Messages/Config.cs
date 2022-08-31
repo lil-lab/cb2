@@ -35,5 +35,7 @@ namespace Network
 
         // Client-side FPS limit. -1 means the browser controls FPS.
         public int fps_limit = -1;
+
+        public bool live_feedback_enabled = true;  // Leader feedback enabled.
     }
 }
