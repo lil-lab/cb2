@@ -6,7 +6,10 @@ from mashumaro.mixins.json import DataClassJSONMixin
 from marshmallow import fields
 from typing import List, Optional
 
+import logging
 import pathlib
+
+logger = logging.getLogger(__name__)
 
 g_config = None
 def GlobalConfig():
@@ -17,11 +20,35 @@ def InitGlobalConfig(config_path):
     global g_config
     g_config = ReadConfigOrDie(config_path)
 
+def ValidateConfig(config):
+    """ Checks whether or not the provided configuration is valid. Doubles as documentation for how configs should be specified.
+    
+        Args:
+            config: The configuration to validate.
+        Returns:
+            A tuple of (valid, reason) where valid is a boolean indicating whether or not the configuration is valid, and reason is a string describing why the configuration is invalid.
+    """
+    if len(config.name) == 0:
+        return False, "Name is empty"
+    # Check if data prefix exists as a directory.
+    if not config.data_directory().is_dir():
+        return False, f"Data prefix {config.data_directory()} is not a directory"
+    # Check if the data prefix contains a game_data.db file. Log a warning if it doesn't.
+    if not config.database_path().is_file():
+        logger.warning(f"Record directory {config.database_path()} does not exist. This can happen if it's your first time running a new config. The program will just create a database for you.")
+    # If game_records doesn't exist, log a warning but don't fail.
+    if not config.record_directory().is_dir():
+        logger.warning(f"Record directory {config.record_directory()} does not exist. This is okay, it's just a sign that the logged network packets may be missing. Or it's your first time running a config.")
+    return True, ""
+
 # Attempts to parse the config file. If there's any parsing or file errors,
 # doesn't handle the exceptions.
 def ReadConfigOrDie(config_path):
     with open(config_path, 'r') as cfg_file:
         config = Config.from_json(cfg_file.read())
+        valid_config, reason = ValidateConfig(config)
+        if not valid_config:
+            raise ValueError(f"Config file is invalid: {reason}")
         return config
 
 # For backwards compatibility, the members of this class are ordered by when they were added rather than by relevancy.
@@ -35,7 +62,7 @@ class Config(DataClassJSONMixin):
     # Data filepath configurations.
     data_prefix: str = "./" # Prefix added to the below data directories. Can be used to store data on a different fs.
     record_directory_suffix: str = "game_records/" # Where to store game recordings.
-    assets_directory_suffix: str = "assets/"  # Where to store asset resources.
+    assets_directory_suffix: str = "assets/"  # Where to store asset resources. Currently unused.
     database_path_suffix: str = "game_data.db"  # Where to store the sqlite3 record database.
     backup_db_path_suffix: str = "game_data.bk.db"
 
@@ -74,6 +101,8 @@ class Config(DataClassJSONMixin):
     live_feedback_enabled: bool = True # Is leader live feedback enabled for games?
 
     # Data path accessors that add the requisite data_prefix.
+    def data_directory(self):
+        return pathlib.Path(self.data_prefix).expanduser()
     def record_directory(self):
         return pathlib.Path(self.data_prefix, self.record_directory_suffix).expanduser()
     def assets_directory(self):
