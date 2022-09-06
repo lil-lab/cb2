@@ -122,6 +122,12 @@ class Actor(object):
         if not self.has_actions():
             return
         action = self._actions.get()
+        if action.action_type == ActionType.INIT:
+            self._location = action.displacement
+            self._heading_degrees = action.rotation
+            self._heading_degrees %= 360
+            self._action_start_timestamp = datetime.now()
+            return
         self._location = HecsCoord.add(self._location, action.displacement)
         self._heading_degrees += action.rotation
         self._heading_degrees %= 360

@@ -4,10 +4,13 @@ import fire
 import logging
 import nest_asyncio
 import orjson
+import pygame
 import requests
 import statistics as stats
+import sys
 
 import server.messages as messages
+import server.messages.state_sync as state_sync
 import server.actor as actor
 
 from datetime import datetime
@@ -15,8 +18,9 @@ from datetime import timedelta
 from enum import Enum
 
 from py_client.client_messages import *
+from py_client.follower_data_masking import CensorFollowerMap, CensorFollowerProps, CensorActors
 from server.hex import HecsCoord
-from server.messages.action import Action, Walk, Turn
+from server.messages.action import Action, CensorActionForFollower, Walk, Turn
 from server.messages import message_from_server
 from server.messages import message_to_server
 from server.messages import action
@@ -24,10 +28,32 @@ from server.messages import turn_state
 from server.messages.objective import ObjectiveMessage
 from server.messages.prop import PropType
 from server.messages.rooms import Role 
+from server.map_tools.visualize import GameDisplay
 
 logger = logging.getLogger(__name__)
 
+# I dont' think I need this anymore. This is an attempt to export the Role symbol so that users of this package can access it.
 Role = Role
+
+# If render=True in the constructor for Cb2Client, this controls the resulting window size.
+SCREEN_SIZE = 800
+
+def pygame_handle_events():
+    """ Checks if a key has been pressed and then exits the program. """
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            sys.exit(0)
+
+async def pygame_event_handler():
+    """ Background task to handle pygame events.
+
+    This is a coroutine. Recommended to start as an asyncio task and killed with
+    task.Cancel().
+    
+    """
+    while True:
+        pygame_handle_events()
+        await asyncio.sleep(0.1)
 
 # This page defines and implements the CB2 headless client API.
 # Here is an example of how to use the API:
@@ -43,9 +69,7 @@ Role = Role
 #        leader.SendLeadAction(Player.LeadActions.END_TURN)
 #        game.follower().WaitForTurn()
 #        leader.SendLeadAction(Player.LeadActions.POSITIVE_FEEDBACK)
-# 
-# JoinGame() starts a coroutine which updates game state in the background.
-#
+
 # TODO(sharf): client.Connect() should have its own context manager, or at least
 # make it so that __aexit__ for JoinGame() doesn't disconnect the client's
 # socket.
@@ -161,9 +185,13 @@ class FollowAction(object):
 #         observation, action_space = game.step(action)
 #         action = leader_agent.act(observation, action_space)
 class Game(object):
-    def __init__(self, client, config):
+    def __init__(self, client, config, render=False):
         self.client = client
         self.config = config
+        self.render = render
+        if self.render:
+            self.display = GameDisplay(SCREEN_SIZE)
+            self.display.set_config(config)
         self._reset()
 
     def _reset(self):
@@ -182,6 +210,9 @@ class Game(object):
         self._initial_state_retrieved = False
         self._follower_moved = False
         self.live_feedback = None
+        if self.render:
+            loop = asyncio.get_event_loop()
+            self.pygame_task = loop.create_task(pygame_event_handler())
     
     def player_role(self):
         return self._player_role
@@ -243,10 +274,18 @@ class Game(object):
             waited, reason = self._wait_for_tick()
             if not waited:
                 logger.warn(f"Issue waiting for tick: {reason}")
+            if self.render:
+                # Handle pygame events while waiting in between turns.
+                pygame_handle_events()
         state = self._state()
         # Clear internal live feedback before returning. This is to make sure that the
         # live feedback only occurs for 1 step per feedback message.
         self.live_feedback = None
+
+        # If rendering is enabled, use the map visualizer to draw the game state.
+        if self.render:
+            self._render()
+
         return state
     
     def _can_act(self):
@@ -285,6 +324,8 @@ class Game(object):
     def __exit__(self, type, value, traceback):
         if not self.over() and self.client.connected():
             self.client._send_message(LeaveMessage())
+        if self.render:
+            self.pygame_task.cancel()
 
     def _state(self):
         leader = None
@@ -296,7 +337,14 @@ class Game(object):
                 follower = self.actors[id]
         if leader is None or follower is None:
             logger.warn(f"One of leader/follower missing!")
-        return self.map_update, self.cards.values(), self.turn_state, self.instructions, (leader, follower), self.live_feedback
+        map_update = self.map_update
+        props = self.cards.values()
+        actors = [leader, follower]
+        if self.player_role() == Role.FOLLOWER:
+            map_update = CensorFollowerMap(map_update, follower, self.config)
+            props = CensorFollowerProps(props, follower, self.config)
+            actors = CensorActors(actors, follower, self.config)
+        return map_update, props, self.turn_state, self.instructions, actors, self.live_feedback
     
     def _initialize(self, state_sync, map, props, turn_state):
         if self._initial_state_ready:
@@ -311,6 +359,8 @@ class Game(object):
         self.player_actor = self.actors[self.player_id]
         self.turn_state = turn_state
         self._initial_state_ready = True
+        if self.render:
+            self._render()
     
     def _handle_prop_update(self, prop_update):
         self.prop_update = prop_update
@@ -341,7 +391,9 @@ class Game(object):
                 net_actor.actor_id,
                 net_actor.location,
                 net_actor.rotation_degrees))
-            actor.step()
+            while actor.has_actions():
+                actor.step()
+            logger.info(f"state sync for actor {net_actor.actor_id}. location: {actor.location().to_offset_coordinates()}")
 
     def _handle_message(self, message):
         if message.type == message_from_server.MessageType.ACTIONS:
@@ -377,7 +429,26 @@ class Game(object):
             return
         else:
             logger.warn(f"Received unexpected message type: {message.type}")
+    
+    def _render(self):
+        if self.render:
+            map_update, props, turn_state, instructions, actors, feedback = self._state()
+            actor_states = [a.state() for a in actors]
+            self.display.set_state_sync(state_sync.StateSync(len(actors), actor_states, self.player_id, self.player_role()))
+            self.display.set_props(props)
+            self.display.set_map(map_update)
+            self.display.draw()
+            pygame.display.flip()
+    
+    def _generate_state_sync(self):
+        actor_states = []
+        for a in self.actors:
+            actor_states.append(self.actors[a].state())
+        role = self.player_role()
+        return state_sync.StateSync(len(self.actors), actor_states, self.player_id, role)
 
+# Client which manages connection state and shuffling of messages to Game
+# object. See the comment at the top of this file for an example usage.
 class Cb2Client(object):
     class State(Enum):
         NONE = 0
@@ -390,9 +461,16 @@ class Cb2Client(object):
         ERROR = 8
         MAX = 9
 
-    def __init__(self, url):
+    def __init__(self, url, render=False):
+        """ Constructor.
+
+            Args:
+                url: (str) The URL of the server to connect to. Include http:// or https://!
+                render: (bool) Whether to render the game using pygame, for the user to see.
+        """
         self.session = None
         self.ws = None
+        self.render = render # Whether to render the game with pygame.
         self.Reset()
         self.url = url
         self.event_loop = asyncio.get_event_loop()
@@ -573,7 +651,7 @@ class Cb2Client(object):
             if response.type == message_from_server.MessageType.STATE_MACHINE_TICK:
                 if self.init_state == Cb2Client.State.IN_GAME_INIT and None not in [state_sync, map_update, prop_update, turn_state]:
                     self.init_state = Cb2Client.State.GAME_STARTED
-                    self.game = Game(self, self.config)
+                    self.game = Game(self, self.config, self.render)
                     self.game._initialize(state_sync, map_update, prop_update, turn_state)
                     return True, ""
         return False, "Disconnected"

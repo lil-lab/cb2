@@ -4,17 +4,34 @@ from server.messages.bug_report import BugReport
 from server.messages.prop import PropType, GenericPropInfo, CardConfig, Prop
 from server.card import Shape, Color
 from server.hex import HexBoundary, Edges
+from server.messages.rooms import Role
+from server.actor import Actor
 
 import math
+import logging
 import pygame
 import pygame.font
 import random
 import sys
 import pathlib
 
+logger = logging.getLogger(__name__)
+
 SCREEN_SIZE = 800
 SCALE = 5
 BORDER = 0
+
+# The width of the follower vision cone in degrees (horizontal). Don't change this without opening Unity and changing the actual follower's FOV (unless you suspect this value isn't accurate).
+FOLLOWER_FOV = 90
+
+# For various reasons, Unity coordinates are scaled from hex cartesian
+# coordinates. This is mostly to line up with a bunch of convenient defaults in
+# Unity (camera clipping planes, model sizes, render detail settings, etc). This
+# value MUST equal the scale value in game/Assets/Scripts/HexGrid.cs. Don't
+# change this without changing that (make sure it's also done in Unity's UI on
+# the object component, not just in source code. The default in the editor might
+# overwrite that value due to the way Unity works).
+UNITY_COORDINATES_SCALE = 3.46
 
 pygame.font.init()
 GAME_FONT = pygame.font.SysFont('Helvetica', 30)
@@ -327,7 +344,7 @@ class GameDisplay(object):
         self._cell_width = self._cell_height = 0
         self._map = None
         self._props = None
-        self._game_state = None
+        self._state_sync = None
         self._trajectory = None # A list of Hecscoords. A follower's pathway to draw.
         self._positive_markers = None
         self._negative_markers = None
@@ -337,6 +354,10 @@ class GameDisplay(object):
         self._screen = pygame.display.set_mode((self._screen_size,
                                                 self._screen_size))
         pygame.display.set_caption("Game Visualizer")
+    
+    # This is the CB2 server config. Includes fog distance, and some other stuff relevant to game display (card covers, etc.)
+    def set_config(self, config):
+        self._config = config
     
     def screen(self):
         return self._screen
@@ -365,13 +386,13 @@ class GameDisplay(object):
     def set_negative_markers(self, negative_locations):
         self._negative_markers = negative_locations
 
-    def set_game_state(self, game_state):
-        self._game_state = game_state
+    def set_state_sync(self, state_sync):
+        self._state_sync = state_sync
 
     def transform_to_screen_coords(self, coords):
         """ Transforms the given map x, y coordinates to screen coordinates.
 
-            x, y: A coordinate in map space.
+            coords: An (x, y) tuple of map coordinates.
         """
         (x, y) = coords
         x_scale = self._cell_width * 0.9
@@ -431,7 +452,7 @@ class GameDisplay(object):
                       prop.card_init)
 
     def visualize_actor(self, actor_index):
-        actor = self._game_state.actors[actor_index]
+        actor = self._state_sync.actors[actor_index]
         (x, y) = self.transform_to_screen_coords(actor.location.cartesian())
         pygame.draw.circle(self._screen, pygame.Color("red"), (x, y), 10)
         heading = actor.rotation_degrees - 60
@@ -443,10 +464,10 @@ class GameDisplay(object):
         text = GAME_FONT.render(str(actor_id), False, pygame.Color("black"))
         self._screen.blit(text, (x - text.get_width() / 2, y - text.get_height() / 2))
     
-    def visualize_game_state(self):
-        if self._map is None or self._game_state is None:
+    def visualize_state_sync(self):
+        if self._map is None or self._state_sync is None:
             return
-        for i in range(self._game_state.population):
+        for i in range(self._state_sync.population):
             self.visualize_actor(i)
     
     def visualize_trajectory(self):
@@ -506,16 +527,61 @@ class GameDisplay(object):
             x_offset = orientation_offset * math.cos(math.radians(heading))
             y_offset = orientation_offset * math.sin(math.radians(heading))
             pygame.draw.circle(self._screen, pygame.Color("red"), (x + x_offset, y + y_offset), 7)
+        
+    def visualize_follower_visibility(self):
+        if self._config is None:
+            return
+        follower = None
+        for i, actor in enumerate(self._state_sync.actors):
+            if actor.actor_role == Role.FOLLOWER:
+                follower = Actor(i, 0, Role.FOLLOWER, actor.location, False, actor.rotation_degrees)
+                break
+        if follower is None:
+            return
+        fog_distance_hex_coordinates = self._config["fog_end"] / UNITY_COORDINATES_SCALE
+        pygame_distance = fog_distance_hex_coordinates
+        follower_location = follower.location().cartesian()
+
+        box_corner = self.transform_to_screen_coords((follower_location[0] - pygame_distance, follower_location[1] - pygame_distance))
+        box_corner_2 = self.transform_to_screen_coords((follower_location[0] + pygame_distance, follower_location[1] + pygame_distance))
+        box_width = box_corner_2[0] - box_corner[0]
+        box_height = box_corner_2[1] - box_corner[1]
+        box_around_follower = pygame.Rect(
+            box_corner[0], # Left.
+            box_corner[1], # Top.
+            box_width,
+            box_height)
+        follower_left_angle_degrees = (follower.heading_degrees() - 60) - FOLLOWER_FOV / 2
+        follower_right_angle_degrees = (follower.heading_degrees() - 60) + FOLLOWER_FOV / 2
+        # Convert to radians
+        follower_left_angle_radians = math.radians(follower_left_angle_degrees)
+        follower_right_angle_radians = math.radians(follower_right_angle_degrees)
+        pygame.draw.arc(self._screen, pygame.Color(0, 100, 200, 200), box_around_follower, -follower_right_angle_radians, -follower_left_angle_radians, 3)
+        arc_endpoint = (follower_location[0] + pygame_distance * math.cos(follower_left_angle_radians), follower_location[1] + pygame_distance * math.sin(follower_left_angle_radians))
+        pygame.draw.line(
+            self._screen,
+            pygame.Color(0, 100, 200, 200),
+            self.transform_to_screen_coords(follower_location),
+            self.transform_to_screen_coords(arc_endpoint),
+            3) # Width.
+        arc_endpoint_2 = (follower_location[0] + pygame_distance * math.cos(follower_right_angle_radians), follower_location[1] + pygame_distance * math.sin(follower_right_angle_radians))
+        pygame.draw.line(
+            self._screen,
+            pygame.Color(0, 100, 200, 200),
+            self.transform_to_screen_coords(follower_location),
+            self.transform_to_screen_coords(arc_endpoint_2),
+            3) # Width.
 
     def draw(self):
         # Fill the screen with white
         self._screen.fill((255,255,255))
-
+        # Draw map elements.
         self.visualize_map()
         self.visualize_props()
-        self.visualize_game_state()
+        self.visualize_state_sync()
         self.visualize_trajectory()
         self.visualize_markers()
+        self.visualize_follower_visibility()
 
 def main():
     """ Reads a JSON bug report from a file provided on the command line and displays the map to the user. """

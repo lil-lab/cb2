@@ -33,20 +33,20 @@ def get_active_instruction(instructions):
             return instruction
     return None
 
-def main(host):
-    client = Cb2Client(host)
+def main(host, render=False):
+    client = Cb2Client(host, render)
     connected, reason = client.Connect()
     assert connected, f"Unable to connect: {reason}"
     actions = []
     instruction_in_progress = False
     active_uuid = None
     with client.JoinGame(timeout=timedelta(minutes=5), queue_type=Cb2Client.QueueType.FOLLOWER_ONLY) as game:
-        map, cards, turn_state, instructions, (leader, follower), feedback = game.initial_state()
+        map, cards, turn_state, instructions, actors, feedback = game.initial_state()
         action = FollowAction(FollowAction.ActionCode.NONE)
         while not game.over():
             print(f"step({action.action})")
             sleep(1)
-            map, cards, turn_state, instructions, (leader, follower), feedback = game.step(action)
+            map, cards, turn_state, instructions, actors, feedback = game.step(action)
             if feedback != None:
                 print(f"FEEDBACK: {feedback}")
             if turn_state.turn != Role.FOLLOWER:

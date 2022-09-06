@@ -48,8 +48,8 @@ def has_instruction_available(instructions):
             return True
     return False
 
-def main(host):
-    client = Cb2Client(host)
+def main(host, render=False):
+    client = Cb2Client(host, render)
     connected, reason = client.Connect()
     assert connected, f"Unable to connect: {reason}"
     with client.JoinGame(timeout=timedelta(minutes=5), queue_type=Cb2Client.QueueType.LEADER_ONLY) as game:
