@@ -76,6 +76,13 @@ class HecsCoord(DataClassJSONMixin):
         nearest_div_of_60 = round(deg / 60.0) * 60
         return nearest_div_of_60
     
+    def degrees_to_precise(self, other):
+        """ Returns which direction (in degrees, precisely) to go from this Hecs coordinate to another Hecs coordinate. """
+        c = self.cartesian()
+        oc = other.cartesian()
+        diff = (oc[0] - c[0], oc[1] - c[1])
+        return math.degrees(math.atan2(diff[1], diff[0]))
+    
     def distance_to(self, other):
         """ Returns the distance between this Hecs coordinate and another Hecs coordinate. """
         self_cart = self.cartesian()
@@ -143,7 +150,6 @@ class HexBoundary(DataClassJSONMixin):
         rotated = HexBoundary(bound.edges)
         rotated.rotate_clockwise(turns)
         return rotated
-
 
     def set_edge(self, edge):
         self.edges |= 1 << int(edge)

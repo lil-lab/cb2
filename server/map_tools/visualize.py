@@ -22,7 +22,7 @@ SCALE = 5
 BORDER = 0
 
 # The width of the follower vision cone in degrees (horizontal). Don't change this without opening Unity and changing the actual follower's FOV (unless you suspect this value isn't accurate).
-FOLLOWER_FOV = 90
+FOLLOWER_FOV = 96.5
 
 # For various reasons, Unity coordinates are scaled from hex cartesian
 # coordinates. This is mostly to line up with a bunch of convenient defaults in

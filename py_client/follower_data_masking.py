@@ -12,7 +12,7 @@ from server.actor import Actor
 logger = logging.getLogger(__name__)
 
 # The width of the follower vision cone in degrees (horizontal). Don't change this without opening Unity and changing the actual follower's FOV (unless you suspect this value isn't accurate).
-FOLLOWER_FOV = 90
+FOLLOWER_FOV = 96.5
 
 # For various reasons, Unity coordinates are scaled from hex cartesian
 # coordinates. This is mostly to line up with a bunch of convenient defaults in
@@ -37,10 +37,13 @@ def CoordinateIsVisible(coord, follower_actor, config):
     if distance == 0:
         return True
     # Check FOV. TODO(sharf): Something's not quite right here. Too many tiles are filtered.
-    degrees_to = follower_actor.location().degrees_to(coord)
-    if not (follower_orientation - FOLLOWER_FOV/2 <= degrees_to <= follower_orientation + FOLLOWER_FOV/2):
-        return False
-    return True
+    degrees_to = follower_actor.location().degrees_to_precise(coord) % 360
+    left = (follower_orientation - FOLLOWER_FOV / 2) % 360
+    right = (follower_orientation + FOLLOWER_FOV / 2) % 360
+    if left < right:
+        return left <= degrees_to <= right
+    else:
+        return left <= degrees_to or degrees_to <= right
 
 def CensorFollowerMap(map_update, follower_actor, config):
     """ Removes all map tiles which aren't visible to the follower. 
