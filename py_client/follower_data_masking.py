@@ -29,9 +29,19 @@ def CoordinateIsVisible(coord, follower_actor, config):
     # There's something wrong with orientation... I have to put - 60 everywhere
     # Actor.heading_degrees() (actor.py) is used.
     follower_orientation = follower_actor.heading_degrees() - 60
+
+    # Get the two neighboring cells to the left and right. Special case them.
+    neighbor_cells = [
+        follower_actor.location().neighbor_at_heading(follower_actor.heading_degrees() - 60),
+        follower_actor.location().neighbor_at_heading(follower_actor.heading_degrees() + 60)
+    ]
+    if coord in neighbor_cells:
+        return True
+
     # Check distance.
     distance = coord.distance_to(follower_actor.location())
-    if distance > view_depth:
+    # Add 0.5 to round up to the next hex cell.
+    if distance > (view_depth + 0.5):
         return False
     # Special case distance == 0 to avoid weird FOV calculations.
     if distance == 0:
