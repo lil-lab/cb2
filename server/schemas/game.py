@@ -71,7 +71,7 @@ class Instruction(BaseModel):
     instruction_number = IntegerField()
     turn_issued = IntegerField()
     turn_completed = IntegerField(default=-1)
-    # turn_cancelled = IntegerField(null=True)
+    turn_cancelled = IntegerField(null=True)
 
 class Move(BaseModel):
     game = ForeignKeyField(Game, backref='moves')
