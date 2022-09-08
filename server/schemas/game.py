@@ -44,6 +44,16 @@ class ActionField(TextField):
     def python_value(self, db_val):
         return Action.from_json(db_val)
 
+class InitialState(BaseModel):
+    game = ForeignKeyField(Game, backref='initial_state', null=True)
+    time = DateTimeField(default=datetime.datetime.utcnow)
+    leader_id = IntegerField()
+    follower_id = IntegerField()
+    leader_position = HecsCoordField()
+    leader_rotation_degrees = IntegerField()
+    follower_position = HecsCoordField()
+    follower_rotation_degrees = IntegerField()
+
 class Turn(BaseModel):
     game = ForeignKeyField(Game, backref='turns')
     role = TextField()  # 'Leader' or 'Follower'
@@ -66,7 +76,7 @@ class Instruction(BaseModel):
 class Move(BaseModel):
     game = ForeignKeyField(Game, backref='moves')
     instruction = ForeignKeyField(Instruction, backref='moves', null=True)
-    character_role = TextField() # 'Leader' or 'Follower'
+    character_role = TextField() # 'Role.LEADER' or 'Role.FOLLOWER'
     worker = ForeignKeyField(Worker, backref='moves', null=True)
     turn_number = IntegerField()
     action = ActionField()

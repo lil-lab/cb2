@@ -10,7 +10,7 @@ from server.schemas.prop import *
 TABLES = [
     CardSets, Card, CardSelections,
     Remote, ConnectionEvents,
-    Game, Turn, Instruction, Move, LiveFeedback,
+    Game, Turn, Instruction, Move, LiveFeedback, InitialState,
     MapUpdate, PropUpdate,
     Worker, Assignment, WorkerExperience,
     Leaderboard, Username
