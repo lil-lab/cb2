@@ -48,7 +48,7 @@ class FollowActions(Enum):
 class EnvMode(Enum):
     NONE = 0
     LOCAL = 1 # Local mode, no server or network connection. Must specify game name.
-    SERVER = 2 # Server mode, connect to server and play game. Must specify server URL. May play against a human.
+    REMOTE = 2 # Remote mode, connect to server and play game. Must specify server URL. May play against a human.
 
 @dataclass
 class AuxiliaryInfo:
@@ -71,8 +71,6 @@ class CerealBar2Env(gym.Env):
     game_name: str="",
     game_coordinator: Optional[LocalGameCoordinator] = None,
     server_url: str="",
-    database_game_id: int=-1,
-    database_instruction_uuid: str = "",
     render_mode: Optional[str] = None):
     """ CB2 Env Constructor.
     
@@ -96,7 +94,7 @@ class CerealBar2Env(gym.Env):
             and the second is the follower. This can be verified by checking the
             action_space variable, as it differs for leader and follower.
             
-        SERVER:
+        REMOTE:
             In this mode, the game is played remotely on a server. It is unknown
             who the other player is (could be a human or another agent), and
             step() will block until a move is possible. This could be quiet a
@@ -107,7 +105,7 @@ class CerealBar2Env(gym.Env):
             game_mode: Mode to start the environment in. See above for details.
             game_name: Unique name of the game to play. Required in LOCAL mode.
             game_coordinator: Coordinates multiagent environments in LOCAL mode.
-            server_url: URL of the CB2 server. Required in SERVER mode.
+            server_url: URL of the CB2 server. Required in REMOTE mode.
             render_mode: Env display mode. "human" for GUI or None for headless.
     """
     assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -123,7 +121,7 @@ class CerealBar2Env(gym.Env):
         self.agent_id = self.coordinator.JoinGame(self.game_name)
         self.game_info.game_name = game_name
 
-    elif self.game_mode == EnvMode.SERVER:
+    elif self.game_mode == EnvMode.REMOTE:
         self.client = Cb2Client(server_url, self.render_mode == "human")
         self.game_info.server_url = server_url
 
