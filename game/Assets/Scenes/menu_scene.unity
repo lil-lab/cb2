@@ -560,7 +560,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "Cereal Bar is a two-player web game designed for studying language understanding
+  m_Text: "CB2 is a two-player web game designed for studying language understanding
     agents in collaborative interactions. \n\nLearn more here:\nhttps://lil.nlp.cornell.edu/cerealbar/\n\n\"Cube
     Robot - Animated\" (https://skfb.ly/6RyqL) by Berk Gedik is licensed under Creative
     Commons Attribution (http://creativecommons.org/licenses/by/4.0/).\n\nAudio clips:
@@ -4958,7 +4958,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Cereal Bar
+  m_Text: CB2
 --- !u!222 &1318859851
 CanvasRenderer:
   m_ObjectHideFlags: 0
