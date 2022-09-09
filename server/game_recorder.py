@@ -191,16 +191,26 @@ class GameRecorder(object):
         live_feedback_record.server_time = datetime.utcnow()
         live_feedback_record.save()
     
+    def mark_objective_cancelled(self, objective):
+        instruction_query = schemas.game.Instruction.select().where(
+            schemas.game.Instruction.uuid==objective.uuid)
+        if instruction_query.count() == 0:
+            logger.warn(f"Could not find instruction record for {objective.uuid}")
+            return
+        instruction = instruction_query.get()
+        logger.info(f"Canceling instruction {instruction.text}")
+        instruction.turn_cancelled = self._last_turn_state.turn_number
+        instruction.save()
+    
     def record_instruction_cancellation(self):
+        if self._active_objective != None:
+            self.mark_objective_cancelled(self._active_objective)
         self._active_objective = None
         try:
             while True:
                 objective = self._objective_queue.get_nowait()
-                if not objective.completed:
-                    instruction = schemas.game.Instruction.select().where(
-                        schemas.game.Instruction.uuid==objective.uuid).get()
-                    instruction.turn_cancelled = self._last_turn_state.turn_number
-                    instruction.save()
+                if not objective.completed and not objective.cancelled:
+                    self.mark_objective_cancelled(objective)
         except queue.Empty:
             return
     

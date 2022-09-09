@@ -507,6 +507,7 @@ class State(object):
         for objective in self._objectives:
             if not objective.completed:
                 objective.cancelled = True
+
         self._active_objective = None
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True
