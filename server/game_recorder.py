@@ -39,10 +39,31 @@ class GameRecorder(object):
     def record(self):
         return self._game_record
     
-    def initial_state(self, map_update, prop_update, turn_state):
+    def initial_state(self, map_update, prop_update, turn_state, actors):
         self._game_record.number_cards = len(prop_update.props)
         self._game_record.save()
         self._last_turn_state = turn_state
+        leader = None
+        follower = None
+        for id in actors:
+            actor = actors[id]
+            if actor.role() == Role.LEADER:
+                leader = actor
+            elif actor.role() == Role.FOLLOWER:
+                follower = actor
+        if leader is None or follower is None:
+            logger.warn(f"Unable to log initial state for game {self._game_record.id}. Leader or follower None.")
+            return
+        initial_state = schemas.game.InitialState(
+            game = self._game_record,
+            leader_id = leader.actor_id(),
+            follower_id = follower.actor_id(),
+            leader_position = leader.location(),
+            leader_rotation_degrees=leader.heading_degrees(),
+            follower_position = follower.location(),
+            follower_rotation_degrees=follower.heading_degrees()
+        )
+        initial_state.save()
 
     def record_map_update(self, map_update):
         # Record the map update to the database.

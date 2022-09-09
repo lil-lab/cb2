@@ -47,8 +47,8 @@ class ActionField(TextField):
 class InitialState(BaseModel):
     game = ForeignKeyField(Game, backref='initial_state', null=True)
     time = DateTimeField(default=datetime.datetime.utcnow)
-    leader_id = IntegerField()
-    follower_id = IntegerField()
+    leader_id = IntegerField()  # In-game ID of the leader.
+    follower_id = IntegerField() # In-game ID of the follower.
     leader_position = HecsCoordField()
     leader_rotation_degrees = IntegerField()
     follower_position = HecsCoordField()

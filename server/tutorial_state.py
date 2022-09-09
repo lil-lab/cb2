@@ -230,6 +230,10 @@ class TutorialGameState(object):
             if not objective.completed:
                 return True
         return False
+    
+    # Unimplemented. Exists to satisfy state machine interface.
+    def start(self):
+        ...
 
     async def update(self):
         self._iter += 1

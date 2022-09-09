@@ -100,8 +100,6 @@ class State(object):
         self._turn_history = {}
         self.send_turn_state(initial_turn)
 
-        self._game_recorder.initial_state(self._map_provider.map(), self._map_provider.prop_update(), initial_turn)
-
         self._spawn_points = self._map_provider.spawn_points()
         random.shuffle(self._spawn_points)
         self._done = False
@@ -152,6 +150,9 @@ class State(object):
     
     def player_ids(self):
         return self._actors.keys()
+    
+    def start(self):
+        self._game_recorder.initial_state(self._map_provider.map(), self._map_provider.prop_update(), self._turn_state, self._actors)
 
     async def update(self):
         # I haven't estimated the update loop time recently, but it should be
