@@ -20,6 +20,7 @@ from enum import Enum
 from py_client.client_messages import *
 from py_client.follower_data_masking import CensorFollowerMap, CensorFollowerProps, CensorActors
 from server.hex import HecsCoord
+from server.main import HEARTBEAT_TIMEOUT_S
 from server.messages.action import Action, CensorActionForFollower, Walk, Turn
 from server.messages import message_from_server
 from server.messages import message_to_server
@@ -195,6 +196,7 @@ class Game(object):
         self._reset()
 
     def _reset(self):
+        self.last_step_call = datetime.now()
         self.map_update = None
         self.prop_update = None
         self.actors = {}
@@ -235,6 +237,11 @@ class Game(object):
         return self._state()
     
     def step(self, action):
+        # If too much time passes between calls to step(), log an error.
+        if datetime.now() - self.last_step_call > timedelta(seconds=HEARTBEAT_TIMEOUT_S):
+            logger.warn(f"NOTE: Over {HEARTBEAT_TIMEOUT_S} seconds between calls to step(). Must call step more frequently than this, or the server will disconnect.")
+
+        # Step() pseudocode:
         # Send action.
         # Send queued messages (like automated ping responses)
         # While it isn't our turn to move:
@@ -286,6 +293,7 @@ class Game(object):
         if self.render:
             self._render()
 
+        self.last_step_call = datetime.now()
         return state
     
     def _can_act(self):
@@ -481,6 +489,10 @@ class Cb2Client(object):
         # to be compatible with something like jupyter or anything else which
         # requires an always-running event loop.
         nest_asyncio.apply()
+
+        # Detect if we're running in an interactive shell and warn the user about the server heartbeat timeout.
+        if hasattr(sys, 'ps1'):
+            logger.warn(f"NOTE: You're running in an interactive shell. The server will disconnect you after {HEARTBEAT_TIMEOUT_S} seconds (by default) of inactivity. Remain active by calling Game.step(). For this reason, it's recommended not to use this library manually from a REPL loop.")
     
     def Connect(self):
         """ Connect to the server.

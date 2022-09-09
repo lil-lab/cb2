@@ -67,6 +67,9 @@ room_manager = RoomManager()
 # Used if run with GUI enabled.
 SCREEN_SIZE = 1000
 
+# Constants which determine server behavior.
+HEARTBEAT_TIMEOUT_S = 20.0
+
 logger = logging.getLogger()
 
 async def transmit(ws, message):
@@ -790,7 +793,7 @@ async def PlayerEndpoint(request):
             submit_to_url=submit_to_url
         )
 
-    ws = web.WebSocketResponse(autoclose=True, heartbeat=20.0, autoping=True)
+    ws = web.WebSocketResponse(autoclose=True, heartbeat=HEARTBEAT_TIMEOUT_S, autoping=True)
     await ws.prepare(request)
     logger = logging.getLogger()
     logger.info("player connected from : " + request.remote)
