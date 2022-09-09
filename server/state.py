@@ -151,6 +151,9 @@ class State(object):
     def player_ids(self):
         return self._actors.keys()
     
+    def player_role(self, id):
+        return self._actors[id].role()
+    
     def start(self):
         self._game_recorder.initial_state(self._map_provider.map(), self._map_provider.prop_update(), self._turn_state, self._actors)
 
