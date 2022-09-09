@@ -94,7 +94,11 @@ def main(config_filepath="config/separated-games-2.json", no_i_totally_know_what
         messages_from_server = []
         with messages_from_server_file.open() as f:
             for line in f:
-                message = json.loads(line)
+                try:
+                    message = json.loads(line)
+                except json.decoder.JSONDecodeError:
+                    logger.warning(f"Could not decode line {line}")
+                    continue
                 if message["message_direction"] == Direction.FROM_SERVER.value:
                     messages_from_server.append(message["message_from_server"])
         
