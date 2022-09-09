@@ -667,13 +667,30 @@ class State(object):
     def _next_objectives(self, actor_id):
         if not actor_id in self._objectives_stale:
             self._objectives_stale[actor_id] = True
-        
+      
         if not self._objectives_stale[actor_id]:
             return []
-        
+      
         # Send the latest objective list and mark as fresh for this player.
         self._objectives_stale[actor_id] = False
-        return self._objectives
+
+        # For Leaders it's simple, send the current objective list.
+        if self._actors[actor_id].role() == Role.LEADER:
+            return self._objectives
+
+        # If sending objectives to a follower, don't send unseen instructions.
+        # Only past instructions + the oldest incomplete instruction.
+        objectives = []
+        for objective in self._objectives:
+            if objective.completed:
+                objectives.append(objective)
+            elif objective.cancelled:
+                objectives.append(objective)
+            else:
+                # Only send first "active" objective.
+                objectives.append(objective)
+                break
+        return objectives
     
     def _next_map_update(self, actor_id):
         if not actor_id in self._map_stale:
