@@ -100,6 +100,16 @@ def high_percent_instructions_incomplete(game_instructions):
     high_percent_instructions_incomplete = unfinished_instructions / game_instructions.count() >= 0.2 if game_instructions.count() > 0 else True
     return high_percent_instructions_incomplete
 
+def high_percent_cancelled_instructions(game_instructions):
+    # Make sure there weren't too many instructions that got cancelled
+    cancelled_instructions = 0
+    for instruction in game_instructions.order_by(Instruction.turn_issued.desc()):
+        if instruction.turn_cancelled != -1:
+            cancelled_instructions += 1
+
+    high_percent_instructions_cancelled = cancelled_instructions / game_instructions.count() >= 0.2 if game_instructions.count() > 0 else True
+    return high_percent_instructions_cancelled
+
 def follower_got_lost(game_instructions):
     # Make sure the follower didn't get stuck on an instruction.
     finished_instructions = game_instructions.where(Instruction.turn_completed != -1)
@@ -123,8 +133,9 @@ class GameDiagnosis(Enum):
     GAME_INCOMPLETE = 4  # No longer used. Incomplete games are still considered research data.
     SHORT_GAME = 5
     HIGH_PERCENT_INSTRUCTIONS_INCOMPLETE = 6
-    FOLLOWER_GOT_LOST = 7
-    GOOD = 8
+    HIGH_PERCENT_INSTRUCTIONS_CANCELLED = 7
+    FOLLOWER_GOT_LOST = 8
+    GOOD = 9
 
 def DiagnoseGame(game):
     """Returns a string explaining why the game is invalid for research.
@@ -152,8 +163,8 @@ def DiagnoseGame(game):
     game_instructions = Instruction.select().join(Game).where(Instruction.game == game)
     if follower_got_lost(game_instructions):
         return GameDiagnosis.FOLLOWER_GOT_LOST
-    if high_percent_instructions_incomplete(game_instructions): # > % of instructions incomplete.
-        return GameDiagnosis.HIGH_PERCENT_INSTRUCTIONS_INCOMPLETE
+    if high_percent_cancelled_instructions(game_instructions): # > % of instructions cancelled.
+        return GameDiagnosis.HIGH_PERCENT_INSTRUCTIONS_CANCELLED
     return GameDiagnosis.GOOD
 
 def IsGameResearchData(game):
