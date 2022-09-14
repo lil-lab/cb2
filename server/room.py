@@ -26,19 +26,6 @@ import server.schemas.game as game_db
 import server.schemas.clients as clients_db
 import server.schemas.mturk as mturk_db
 
-# The below imports are used to import pygame in a headless setup, to render map
-# updates as images for game recordings.
-import os, sys
-# set SDL to use the dummy NULL video driver, 
-#   so it doesn't need a windowing system.
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-import pygame.transform
-if 1:
-    #some platforms might need to init the display for some parts of pygame.
-    import pygame.display
-    pygame.display.init()
-    screen = pygame.display.set_mode((1,1))
-
 logger = logging.getLogger()
 
 class RoomType(Enum):
@@ -219,22 +206,6 @@ class Room(object):
             log_bytes = orjson.dumps(LogEntryFromOutgoingMessage(player_id, message), option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat).decode('utf-8')
             self._messages_from_server_log.write(log_bytes + "\n")
         return True
-
-        # Render map updates to a PNG.
-        # Disabled for now until 
-        # if message.type == message_from_server.MessageType.MAP_UPDATE:
-        #     self._map_update_count += 1
-        #     map_path = pathlib.Path(self._log_directory, f"map_update_{self._map_update_count}_player_{player_id}.png")
-        #     map_update_file = map_path.open('w')
-        #     display = visualize.GameDisplay(600)
-        #     display.set_map(message.map_update)
-        #     state = self._state_machine_driver.state_machine().state(-1)
-        #     display.set_game_state(state)
-        #     display.draw()
-        #     pygame.display.flip()
-        #     pygame.image.save(display.screen(), map_path)
-
-        return message
 
     def id(self):
         """ Returns the room id. """
