@@ -5,19 +5,23 @@
 
 """
 
+import asyncio
+from collections import deque
 import logging
 import pathlib
+from queue import Queue
 import uuid
 
 from datetime import datetime
+from py_client.game_endpoint import GameEndpoint
 
 import server.schemas.game as game_db
 
+from py_client.game_socket import GameSocket
 from server.messages.rooms import Role
 from server.state import State
 from server.state_machine_driver import StateMachineDriver
 from server.util import GetCommitHash
-
 
 logger = logging.getLogger(__name__)
 
@@ -43,12 +47,40 @@ logger = logging.getLogger(__name__)
 #       # The game is over, so we can clean up the state machine.
 #       coordinator.Cleanup()
 #
+#
 # Note that CreateGameFromDatabase() can be used instead of CreateGame() to
 # create a game which is initialized from a specific instruction in a recorded
 # game.
+
+class LocalSocket(GameSocket):
+    def __init__(self, local_coordinator, game_name: str, actor_id: int):
+        self.local_coordinator = local_coordinator
+        self.game_name = game_name
+        self.actor_id = actor_id
+        # A list of received messages, in order from oldest to newest. Use like FIFO.
+        self.received_messages = deque()
+
+    def send_message(self, message):
+        state_machine_driver = self.local_coordinator._state_machine_driver(self.game_name)
+        state_machine_driver.drain_messages(self.actor_id, [message])
+
+    def connected(self):
+        return self.local_coordinator._game_exists(self.game_name)
+    
+    def receive_message(self, timeout):
+        """ This is a local socket. We don't need to worry about timeouts. No blocking operations. """
+        end_time = datetime.utcnow() + timeout
+        while datetime.utcnow() < end_time:
+            state_machine_driver = self.local_coordinator._state_machine_driver(self.game_name)
+            state_machine_driver.fill_messages(self.actor_id, self.received_messages)
+            if len(self.received_messages) > 0:
+                return self.received_messages.popleft(), ""
+        return None, "No messages available."
+
 class LocalGameCoordinator(object):
     def __init__(self):
         self._game_drivers = {} # Game name -> StateMachineDriver
+        self._game_tasks = {} # Game name -> StateMachineDriver asyncio task.
     
     def CreateGame(self):
         """ Creates a new game. Exactly two agents can join this game with JoinGame(). 
@@ -56,6 +88,8 @@ class LocalGameCoordinator(object):
             Returns the game name.
         """
         game_name = self._unique_game_name()
+        if game_name in self._game_drivers:
+            raise Exception(f"Game name {game_name} already exists. This should never happen.")
         room_id = game_name
         # Setup game DB entry.
         game_record = game_db.Game()
@@ -69,6 +103,7 @@ class LocalGameCoordinator(object):
         game_record.save()
         state_machine = State(room_id, game_record)
         self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)
+        self._game_tasks[game_name] = asyncio.create_task(self._game_drivers[game_name].run())
         return game_name
     
     # TODO(sharf): Actually implement this...
@@ -81,7 +116,7 @@ class LocalGameCoordinator(object):
             If the game doesn't exist, crashes.
             If the game already has two players, crashes.
 
-            Returns a player ID unique to this game which can be used to interact with the game.
+            Returns a Game object used to interact with the game.
         """
         # If the game doesn't exist, crash.
         if game_name not in self._game_drivers:
@@ -97,16 +132,24 @@ class LocalGameCoordinator(object):
             raise Exception(f"Game is full! Number of players: {len(state_machine.player_ids())}")
 
         # If the game has one player, join as leader. Else, follow.
-        return state_machine.create_actor(Role.LEADER if number_players == 0 else Role.FOLLOWER)
+        actor_id = state_machine.create_actor(Role.LEADER if number_players == 0 else Role.FOLLOWER)
+        game_endpoint = GameEndpoint(LocalSocket(self, game_name, actor_id), )
+        game_endpoint._initialize()
+        return game_endpoint
 
     def Cleanup(self):
-        """ Cleans up any games that have ended. Call this regularly to avoid memory leaks. """
+        """ Cleans up any games that have ended. Call this regularly to avoid memory leaks.
+
+            Only deletes a SM if its associated task has ended.
+        
+        """
         # list() call is necessary to create a copy. Otherwise we're mutating a
         # list as we iterate through it.
         for game_name in list(self._game_drivers.keys()):
             game_driver = self._game_drivers[game_name]
-            if game_driver.state_machine().done():
+            if self._game_tasks[game_name].done() and game_driver.state_machine().done():
                 logger.info(f"Game {game_name} has ended. Cleaning up.")
+                del self._game_tasks[game_name]
                 del self._game_drivers[game_name]
         
     def _unique_game_name(cls):
@@ -122,3 +165,11 @@ class LocalGameCoordinator(object):
         """
         return str(uuid.uuid4())
     
+    def _state_machine_driver(self, game_name: str):
+        if game_name not in self._game_drivers:
+            raise ValueError(f"Game {game_name} doesn't exist.")
+        
+        return self._game_drivers[game_name]
+    
+    def _game_exists(self, game_name: str):
+        return game_name in self._game_drivers

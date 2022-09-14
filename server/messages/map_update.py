@@ -66,10 +66,26 @@ class MapMetadata(DataClassJSONMixin):
     partition_locations: List[Tile] = field(default_factory=list)
     partition_sizes: List[int] = field(default_factory=list)
 
-@dataclass(frozen=True)
+@dataclass
 class MapUpdate(DataClassJSONMixin):
     rows: int
     cols: int
     tiles: List[Tile]
     metadata: MapMetadata = field(default_factory=MapMetadata)
     props: List[Prop] = None
+
+    def tile_at(self, r, c):
+        """ Returns the tile at the given row and column. """
+        self._maybe_add_tile_cache() 
+        location = HecsCoord.from_offset(r, c)
+        return self._tile_cache[location]
+    
+    def tile_at(self, hecs: HecsCoord):
+        self._maybe_add_tile_cache()
+        return self._tile_cache[hecs]
+
+    def _maybe_add_tile_cache(self):
+        if not hasattr(self, "_tile_cache"):
+            self._tile_cache = {}
+            for tile in self.tiles:
+                self._tile_cache[tile.cell.coord] = tile

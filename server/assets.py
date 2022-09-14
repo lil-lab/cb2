@@ -45,6 +45,8 @@ class AssetId(IntEnum):
     MOUNTAIN_TILE_TREE = 41
     SNOWY_MOUNTAIN_TILE_TREE = 42
     EMPTY_TILE = 100 # Used for map gen, should never appear in network protocol.
+    NONE = 101 # Invalid value. Used for padding/masking unknown values.
+    MAX = 102 # Maximum possible value. Subject to change.
 
 def TreeAssets():
     """ Returns a list of snow-themed assets. """

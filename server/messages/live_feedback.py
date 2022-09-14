@@ -13,6 +13,7 @@ class FeedbackType(Enum):
     NONE = 0
     POSITIVE = 1
     NEGATIVE = 2
+    MAX = 3
 
 @dataclass(frozen=True)
 class LiveFeedback(DataClassJSONMixin):

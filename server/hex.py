@@ -118,6 +118,12 @@ class HecsCoord(DataClassJSONMixin):
     def to_offset_coordinates(self):
         """ Converts HECS A, R, C coordinates to Hex offset coordinates. """
         return (self.r * 2 + self.a, self.c)
+    
+    def __hash__(self):
+        return hash((self.a, self.r, self.c))
+    
+    def __eq__(self, other):
+        return self.a == other.a and self.r == other.r and self.c == other.c
 
 @dataclass(frozen=True)
 class Edges(IntEnum):

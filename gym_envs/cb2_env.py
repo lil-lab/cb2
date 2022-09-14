@@ -2,11 +2,13 @@ from dataclasses import dataclass
 import gym
 import numpy as np
 import pathlib
+import string
 import uuid
 
 import server.assets as assets
 import server.hex as hex
 import server.messages.message_from_server as message_from_server
+import server.messages.live_feedback as live_feedback
 import server.schemas as schemas
 import server.state as state
 import server.card as card
@@ -17,8 +19,8 @@ from gym import spaces
 from gym.utils.renderer import Renderer
 from typing import Optional
 
-from py_client.cb2_client import Cb2Client
-from gym_envs.local_game_coordinator import LocalGameCoordinator
+from py_client.remote_client import RemoteClient
+from py_client.local_game_coordinator import LocalGameCoordinator
 from server.util import GetCommitHash
 from server.map_tools.visualize import GameDisplay
 from server.messages.rooms import Role
@@ -57,13 +59,51 @@ class AuxiliaryInfo:
     server_url: str = ""
     game_name: str = ""
 
+DEFAULT_MAX_INSTRUCTION_LENGTH = 1000 # Chars.
+
 class CerealBar2Env(gym.Env):
-  metadata = {"render_modes": ["human"], "render_fps": 4}
+  metadata = {"render_modes": ["human", "headless"], "render_fps": 4}
   """ Implements an OpenAI Gym environment with a CB2 state machine.
 
   All drained messages and state updates are converted to gym spaces objects.
   The pygame board visualizer is used for rendering.
 
+
+  Launching an environment with a local game:
+  ```
+       coordinator = LocalGameCoordinator()
+       game_name = coordinator.CreateGame()
+       # Creating the OpenAI environment implicitly calls JoinGame(game_name).
+       leader_env = gym.make("CerealBar2-v0", render_mode="human", mode=EnvMode.LOCAL, game_name=game_name, coordinator=coordinator)
+       follower_env = gym.make("CerealBar2-v0", render_mode="human", mode=EnvMode.LOCAL, game_name=game_name, coordinator=coordinator)
+       leader_agent = ...
+       follower_agent = ...
+       leader_env_state = leader_env.reset()
+       follower_env_state = follower_env.reset()
+       while True:
+           leader_action = leader_agent(leader_env_state)
+           follower_action = follower_agent(follower_env_state)
+           leader_env_state, leader_reward, leader_done, leader_info = leader_env.step(leader_action)
+           follower_env_state, follower_reward, follower_done, follower_info = follower_env.step(follower_action)
+           if leader_done or follower_done:
+               break
+       # The game is over, so we can clean up the state machine.
+       coordinator.Cleanup()
+    ```
+
+    Launching an environment with a remote game:
+
+    ```
+        server_url = "http://cb2-server-url.whatever"
+        leader_env = gym.make("CerealBar2-v0", render_mode="human", mode=EnvMode.REMOTE, server_url=server_url, server_queue_type=RemoteClient.QueueType.LEADER_ONLY)
+        leader_agent = ...
+        leader_env_state = leader_env.reset()
+        while True:
+           leader_action = leader_agent(leader_env_state)
+           leader_env_state, leader_reward, leader_done, leader_info = leader_env.step(leader_action)
+           follower_env_state, follower_reward, follower_done, follower_info = follower_env.step(follower_action)
+           if leader_done or follower_done:
+               break
   """
   def __init__(
     self,
@@ -71,7 +111,9 @@ class CerealBar2Env(gym.Env):
     game_name: str="",
     game_coordinator: Optional[LocalGameCoordinator] = None,
     server_url: str="",
-    render_mode: Optional[str] = None):
+    server_queue_type: RemoteClient.QueueType = RemoteClient.QueueType.DEFAULT,
+    render_mode: Optional[str] = None,
+    max_instruction_length: int = DEFAULT_MAX_INSTRUCTION_LENGTH):
     """ CB2 Env Constructor.
     
         Creates a Cereal Bar 2 OpenAI Gym environment.
@@ -106,7 +148,9 @@ class CerealBar2Env(gym.Env):
             game_name: Unique name of the game to play. Required in LOCAL mode.
             game_coordinator: Coordinates multiagent environments in LOCAL mode.
             server_url: URL of the CB2 server. Required in REMOTE mode.
+            server_queue_type: Server queue to join (leader/remote/default).
             render_mode: Env display mode. "human" for GUI or None for headless.
+            max_instruction_length: Max length of instructions in chars.
     """
     assert render_mode is None or render_mode in self.metadata["render_modes"]
     self.render_mode = render_mode
@@ -118,12 +162,12 @@ class CerealBar2Env(gym.Env):
     if self.game_mode == EnvMode.LOCAL:
         self.coordinator = game_coordinator
         self.game_name = game_name
-        self.agent_id = self.coordinator.JoinGame(self.game_name)
         self.game_info.game_name = game_name
 
     elif self.game_mode == EnvMode.REMOTE:
-        self.client = Cb2Client(server_url, self.render_mode == "human")
+        self.client = RemoteClient(server_url, self.render_mode == "human")
         self.game_info.server_url = server_url
+        self.server_queue_type = server_queue_type
 
     map = self.state.map()
 
@@ -143,18 +187,20 @@ class CerealBar2Env(gym.Env):
             "shapes": spaces.Box(low=0, high=card.Shape.MAX, shape=(map.rows, map.cols), dtype=np.int8),
             "selected": spaces.Box(low=0, high=card.SelectedState.MAX, shape=(map.rows, map.cols), dtype=np.int8),
         }),
-        "instructions": spaces.Box(shape=(1000, 1000), dtype=np.int32),
+        "instructions": spaces.Sequence(spaces.Text(max_instruction_length, 0, string.printable)),
         "turn_state": spaces.Dict({
             "role": spaces.Discrete(state.Role.MAX),
             "moves_remaining": spaces.Box(shape=(1,), dtype=np.int16),
             "turns_remaining": spaces.Box(shape=(1,), dtype=np.int16),
             "score": spaces.Box(shape=(1,), dtype=np.int16),
         }),
+        # Feedback is either positive, negative, or none.
+        "feedback": spaces.Discrete(live_feedback.live_feedback.FeedbackType.MAX),
     })
 
     self.lead_action_space = spaces.Dict({
         "action": spaces.Discrete(LeadActions.MAX),
-        "instruction": spaces.Box(shape=(1000, 1000), dtype=np.int32),
+        "instructions": spaces.Sequence(spaces.Text(max_instruction_length, 0, string.printable))
     })
 
     self.follow_action_space = spaces.Dict({
@@ -163,35 +209,71 @@ class CerealBar2Env(gym.Env):
 
     # Start with leader turn.
     self.action_space = self.lead_action_space
-    self.reset()
 
-    def _get_obs(self):
-        map = self.state.map()
-        return {
-            "actors": {
-                "leader": self.state.get_actor(self.leader_id).location().to_offset_coordinates(),
-                "follower": self.state.get_actor(self.follower_id).location().to_offset_coordinates(),
-            },
-            "map": {
-                "asset_ids": [map[]]
-            },
-            "cards": {
-            },
-            "instructions": self.state.instructions(),
+    def reset(self):
+        """ Initializes the environment to the initial state.
+
+        Returns the initial environment state.
+        """
+
+        if self.game_mode == EnvMode.LOCAL:
+            self.game = self.coordinator.JoinGame(self.game_name)
+        elif self.game_mode == EnvMode.REMOTE:
+            joined, reason = self.client.Connect()
+            assert joined, f"Could not join: {reason}"
+            self.game = self.client.JoinGame(self.server_queue_type)
+        else:
+            raise ValueError(f"Invalid game mode: {self.game_mode}")
+        return self.game.initial_state()
+
+    def step(action):
+        map_update, props, turn_state, instructions, actors, feedback = self.game.step(action)
+        (leader, follower) = actors
+        actors = {
+            "leader": leader.location().to_offset_coordinates(),
+            "follower": follower.location().to_offset_coordinates(),
         }
-
-    def drain_leader_messages(self):
-        message = self.state.drain_message(self.leader_id)
-        while message != None:
-            message = self.state.drain_message(self.leader_id)
-    
-    def drain_follower_messages(self):
-        message = self.state.drain_message(self.follower_id)
-        while message != None:
-            message = self.state.drain_message(self.follower_id)
-
-    def drain_messages(self):
-        self.drain_leader_messages()
-        self.drain_follower_messages()
-    
-    def step()
+        asset_ids = [[assets.AssetId.NONE for _ in range(map_update.cols)] for _ in range(map_update.rows)]
+        boundaries = [[-1 for _ in range(map_update.cols)] for _ in range(map_update.rows)]
+        orientations = [[0 for _ in range(map_update.cols)] for _ in range(map_update.rows)]
+        for tile in map_update.tiles:
+            row, col = tile.cell.coord.to_offset_coordinates()
+            asset_ids[row][col] = tile.asset_id
+            boundaries[row][col] = tile.cell.boundary.edges
+            orientations[row][col] = tile.rotation_degrees
+        map = {
+            "asset_ids": asset_ids,
+            "boundaries": boundaries,
+            "orientations": orientations,
+        }
+        card_counts = [[0 for _ in range(map_update.cols)] for _ in range(map_update.rows)]
+        card_colors = [[card.Color.NONE for _ in range(map_update.cols)] for _ in range(map_update.rows)]
+        card_shapes = [[card.Shape.NONE for _ in range(map_update.cols)] for _ in range(map_update.rows)]
+        card_selected = [[False for _ in range(map_update.cols)] for _ in range(map_update.rows)]
+        for prop in props:
+            if prop.prop_type == prop.PropType.CARD:
+                (row, col) = prop.prop_info.location.to_offset_coordinates()
+                card_counts[row][col] = prop.card_init.count
+                card_colors[row][col] = prop.card_init.color
+                card_shapes[row][col] = prop.card_init.shape
+                card_selected[row][col] = prop.card_init.selected
+        cards = {
+            "counts": card_counts,
+            "colors": card_colors,
+            "shapes": card_shapes,
+            "selected": card_selected
+        }
+        turn_state = {
+            "role": turn_state.role(),
+            "moves_remaining": [turn_state.moves_remaining()],
+            "turns_remaining": [turn_state.turns_remaining()],
+            "score": [turn_state.score()],
+        }
+        return {
+            "actors": actors,
+            "map": map,
+            "cards": cards,
+            "instructions": instructions,
+            "turn_state": turn_state,
+            "feedback": feedback,
+        }, feedback.reward(), feedback.done(), feedback.info()

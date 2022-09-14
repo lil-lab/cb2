@@ -38,9 +38,10 @@ class Color(Enum):
 
 class SelectedState(Enum):
     NONE = 0
-    SELECTED = 1
-    SELECTED_ERROR = 2  # Card is selected, but set completion rules are violated.
-    MAX = 3
+    UNSELECTED = 1
+    SELECTED = 2
+    SELECTED_ERROR = 3  # Card is selected, but set completion rules are violated.
+    MAX = 4
 
 OUTLINE_RADIUS = 30
 

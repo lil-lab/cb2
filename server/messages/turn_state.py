@@ -7,10 +7,8 @@ from marshmallow import fields
 
 import dateutil.parser
 
-
 def GameOverMessage(game_start_date, sets_collected, score, turn_number):
     return TurnState(Role.NONE, 0, 0, datetime.now(), game_start_date, sets_collected, score, True, turn_number)
-
 
 def TurnUpdate(turn_role, moves_remaining, turns_left, turn_end, game_start, sets_collected, score, turn_number):
     return TurnState(turn_role, moves_remaining, turns_left, turn_end, game_start, sets_collected, score, False, turn_number)

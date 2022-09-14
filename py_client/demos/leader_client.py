@@ -1,6 +1,7 @@
 from math import degrees
 from time import sleep
-from py_client.cb2_client import Game, Cb2Client, LeadAction, FollowAction, LeadFeedbackAction, Role
+from py_client.remote_client import RemoteClient
+from py_client.game_endpoint import LeadAction, FollowAction, LeadFeedbackAction, Role
 
 import fire
 
@@ -49,10 +50,10 @@ def has_instruction_available(instructions):
     return False
 
 def main(host, render=False):
-    client = Cb2Client(host, render)
+    client = RemoteClient(host, render)
     connected, reason = client.Connect()
     assert connected, f"Unable to connect: {reason}"
-    with client.JoinGame(timeout=timedelta(minutes=5), queue_type=Cb2Client.QueueType.LEADER_ONLY) as game:
+    with client.JoinGame(timeout=timedelta(minutes=5), queue_type=RemoteClient.QueueType.LEADER_ONLY) as game:
         map, cards, turn_state, instructions, (leader, follower), live_feedback = game.initial_state()
         closest_card = get_next_card(cards, follower)
         action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower))
