@@ -6,17 +6,16 @@
 """
 
 import asyncio
-from collections import deque
 import logging
 import pathlib
-from queue import Queue
 import uuid
 
+from collections import deque
 from datetime import datetime
-from py_client.game_endpoint import GameEndpoint
 
 import server.schemas.game as game_db
 
+from py_client.game_endpoint import GameEndpoint
 from py_client.game_socket import GameSocket
 from server.messages.rooms import Role
 from server.state import State
@@ -63,12 +62,18 @@ class LocalSocket(GameSocket):
     def send_message(self, message):
         state_machine_driver = self.local_coordinator._state_machine_driver(self.game_name)
         state_machine_driver.drain_messages(self.actor_id, [message])
+        # Give the state machine a chance to run.
+        event_loop = asyncio.get_event_loop()
+        event_loop.run_until_complete(asyncio.sleep(0))
 
     def connected(self):
         return self.local_coordinator._game_exists(self.game_name)
     
     def receive_message(self, timeout):
         """ This is a local socket. We don't need to worry about timeouts. No blocking operations. """
+        # Give the state machine a chance to run.
+        event_loop = asyncio.get_event_loop()
+        event_loop.run_until_complete(asyncio.sleep(0))
         end_time = datetime.utcnow() + timeout
         while datetime.utcnow() < end_time:
             state_machine_driver = self.local_coordinator._state_machine_driver(self.game_name)
@@ -78,9 +83,12 @@ class LocalSocket(GameSocket):
         return None, "No messages available."
 
 class LocalGameCoordinator(object):
-    def __init__(self):
+    def __init__(self, config, render_leader=True, render_follower=False):
         self._game_drivers = {} # Game name -> StateMachineDriver
         self._game_tasks = {} # Game name -> StateMachineDriver asyncio task.
+        self._render_leader = render_leader
+        self._render_follower = render_follower
+        self._config = config
     
     def CreateGame(self):
         """ Creates a new game. Exactly two agents can join this game with JoinGame(). 
@@ -96,14 +104,15 @@ class LocalGameCoordinator(object):
         game_id = game_record.id
         game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
         game_name = f"{game_time}_{game_id}_GAME"
-        log_directory = pathlib.Path(self._base_log_directory, game_name)
+        log_directory = pathlib.Path(self._config.record_directory(), game_name)
         log_directory.mkdir(parents=False, exist_ok=False)
         game_record.log_directory = str(log_directory)
         game_record.server_software_commit = GetCommitHash()
         game_record.save()
         state_machine = State(room_id, game_record)
+        event_loop = asyncio.get_event_loop()
         self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)
-        self._game_tasks[game_name] = asyncio.create_task(self._game_drivers[game_name].run())
+        self._game_tasks[game_name] = event_loop.create_task(self._game_drivers[game_name].run())
         return game_name
     
     # TODO(sharf): Actually implement this...
@@ -132,8 +141,10 @@ class LocalGameCoordinator(object):
             raise Exception(f"Game is full! Number of players: {len(state_machine.player_ids())}")
 
         # If the game has one player, join as leader. Else, follow.
-        actor_id = state_machine.create_actor(Role.LEADER if number_players == 0 else Role.FOLLOWER)
-        game_endpoint = GameEndpoint(LocalSocket(self, game_name, actor_id), )
+        role = Role.LEADER if number_players == 0 else Role.FOLLOWER
+        actor_id = state_machine.create_actor(role)
+        render = self._render_leader if role == Role.LEADER else self._render_follower
+        game_endpoint = GameEndpoint(LocalSocket(self, game_name, actor_id), self._config, render)
         game_endpoint._initialize()
         return game_endpoint
 

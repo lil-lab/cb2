@@ -7,6 +7,9 @@ import peewee
 from enum import Enum
 from numpy import number
 
+import server.schemas.base as base
+import server.schemas.defaults as defaults_db
+
 from server.schemas.game import Turn
 from server.schemas.game import Game
 from server.schemas.game import Instruction
@@ -14,6 +17,7 @@ from server.schemas.game import Move
 from server.schemas.map import MapUpdate
 from server.schemas.mturk import Worker
 from server.schemas.mturk import Assignment
+
 
 # This document makes reference to the following game classifications:
 # - Mturk Games (ListMturkGames): Games where at least one player is an mturk worker.
@@ -26,6 +30,12 @@ from server.schemas.mturk import Assignment
 #   games filtered by the provided configuration. (Research & Config).
 
 logger = logging.getLogger(__name__)
+
+def ConnectToDatabase(cfg):
+    """ Helper utility to connect to a database given a config object. """
+    base.SetDatabase(cfg.database_path())
+    base.ConnectDatabase()
+    base.CreateTablesIfNotExists(defaults_db.ListDefaultTables())
 
 def ListAnalysisGames(config):
     # Filter out games that are not research data, and also games that are not included in this configuration.

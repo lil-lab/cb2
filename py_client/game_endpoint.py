@@ -229,7 +229,19 @@ class GameEndpoint(object):
         self._initial_state_retrieved = True
         return self._state()
     
-    def step(self, action):
+    def step(self, action, wait_for_turn=True):
+        """ Executes one action and blocks until the environment is ready for another action.
+        
+            For local games, we provide wait_for_turn as a parameter to disable
+            blocking. Do NOT use for remote games.  This is hacky, but in short
+            step() blocks until the game is ready for the next action for the
+            player's role. If the follower calls this and ends their turn, then
+            it will block until they receive a message from the leader. But that
+            will never happen, because the leader will be blocked by the
+            follower's step(). The long-term solution is to make step() return
+            if either role can act, and then rely on the user to call step()
+            with an action from the correct agent (this will be verified).
+        """
         # If too much time passes between calls to step(), log an error.
         if datetime.now() - self.last_step_call > timedelta(seconds=HEARTBEAT_TIMEOUT_S):
             logger.warn(f"NOTE: Over {HEARTBEAT_TIMEOUT_S} seconds between calls to step(). Must call step more frequently than this, or the server will disconnect.")
@@ -270,13 +282,14 @@ class GameEndpoint(object):
         waited, reason = self._wait_for_tick()
         if not waited:
             logger.warn(f"Issue waiting for tick: {reason}")
-        while not self._can_act() and not self.over() and self.socket.connected():
-            waited, reason = self._wait_for_tick()
-            if not waited:
-                logger.warn(f"Issue waiting for tick: {reason}")
-            if self.render:
-                # Handle pygame events while waiting in between turns.
-                pygame_handle_events()
+        if wait_for_turn:
+            while not self._can_act() and not self.over() and self.socket.connected():
+                waited, reason = self._wait_for_tick()
+                if not waited:
+                    logger.warn(f"Issue waiting for tick: {reason}")
+                if self.render:
+                    # Handle pygame events while waiting in between turns.
+                    pygame_handle_events()
         state = self._state()
         # Clear internal live feedback before returning. This is to make sure that the
         # live feedback only occurs for 1 step per feedback message.
@@ -347,11 +360,10 @@ class GameEndpoint(object):
             actors = CensorActors(actors, follower, self.config)
         return map_update, props, self.turn_state, self.instructions, actors, self.live_feedback
     
-    def _initialize(self, timeout):
+    def _initialize(self, timeout=timedelta(seconds=60)):
         """ Initializes the game state. 
 
             Initially, the game expects a certain number of messages to be sent. _initialize() blocks until these are received and then returns.
-        
         """
         if self._initial_state_ready:
             logger.warn("Initial state already ready")
@@ -365,7 +377,9 @@ class GameEndpoint(object):
             if response is None:
                 logger.warn(f"No message received from _receive_message(). Reason: {reason}")
                 continue
+            logger.info("Init: Received message")
             if response.type == message_from_server.MessageType.STATE_SYNC:
+                logger.info("Init: Received state sync")
                 state_sync = response.state
                 self.player_id = state_sync.player_id
                 self._player_role = state_sync.player_role
@@ -373,12 +387,16 @@ class GameEndpoint(object):
                     self.actors[net_actor.actor_id] = actor.Actor(net_actor.actor_id, 0, net_actor.actor_role, net_actor.location, False, net_actor.rotation_degrees)
                 self.player_actor = self.actors[self.player_id]
             if response.type == message_from_server.MessageType.MAP_UPDATE:
+                logger.info("Init: Received map")
                 self.map_update = response.map_update
             if response.type == message_from_server.MessageType.PROP_UPDATE:
+                logger.info("Init: Received props")
                 self._handle_prop_update(response.prop_update)
             if response.type == message_from_server.MessageType.GAME_STATE:
+                logger.info("Init: Received turn state")
                 self.turn_state = response.turn_state
             if response.type == message_from_server.MessageType.STATE_MACHINE_TICK:
+                logger.info("Init: Received TICK!")
                 if None not in [self.player_actor, self.map_update, self.prop_update, self.turn_state]:
                     self._initial_state_ready = True
                     if self.render:
