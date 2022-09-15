@@ -104,25 +104,26 @@ def high_percent_cancelled_instructions(game_instructions):
     # Compute the number of times the leader cancelled an active instruction
     cancelled_instructions = 0
     last_turn = -1
-    total_active_instrutions = 0
+    total_active_instructions = 0
 
     for instruction in game_instructions.order_by(Instruction.turn_issued.desc()):
-        if instruction.turn_cancelled != -1 and last_turn != instruction.turn_cancelled:
-            last_turn = instruction.turn_cancelled
-            cancelled_instructions += 1
-            total_active_instructions += 1
-        elif instruction.turn_completed == -1:
-            # Check if the instruction was ever executed
-            moves = Move.select().join(Game).where(Move.instruction == instruction,
-                                                   Move.character_role == 'Role.FOLLOWER')
-            if len(moves) > 0:
+        cancelled = instruction.turn_cancelled != -1
+        completed = instruction.turn_completed != -1
+
+        if not cancelled and not completed:
+            moves = Move.select().join(Instruction).where(Move.instruction == instruction,
+                                                          Move.character_role == 'Role.FOLLOWER')
+            if moves.count() > 0:
                 total_active_instructions += 1
-            break
+        elif cancelled:
+            if instruction.turn_cancelled != last_turn:
+                last_turn = instruction.turn_cancelled
+                cancelled_instructions += 1
+                total_active_instructions += 1
         else:
             total_active_instructions += 1
-            
 
-    high_percent_instructions_cancelled = cancelled_instructions / total_active_instructions >= 0.2 if game_instructions.count() > 0 else True
+    high_percent_instructions_cancelled = cancelled_instructions / total_active_instructions >= 0.2 if total_active_instructions > 0 else True
     return high_percent_instructions_cancelled
 
 def follower_got_lost(game_instructions):
