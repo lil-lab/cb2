@@ -455,14 +455,13 @@ class GameEndpoint(object):
             logger.warn(f"Received unexpected message type: {message.type}")
     
     def _render(self):
-        logging.info(f"Rendering game state")
         if self.render:
-            logging.info(f"Rendering enabled!")
             map_update, props, turn_state, instructions, actors, feedback = self._state()
             actor_states = [a.state() for a in actors]
             self.display.set_state_sync(state_sync.StateSync(len(actors), actor_states, self.player_id, self.player_role()))
             self.display.set_props(props)
             self.display.set_map(map_update)
+            self.display.set_instructions(instructions)
             self.display.draw()
             pygame.display.flip()
     

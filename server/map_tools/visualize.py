@@ -15,6 +15,10 @@ import random
 import sys
 import pathlib
 
+import pygame.freetype
+pygame.freetype.init()
+INSTRUCTION_FONT = pygame.freetype.SysFont('Times New Roman', 30)
+
 logger = logging.getLogger(__name__)
 
 SCREEN_SIZE = 800
@@ -224,6 +228,22 @@ def asset_id_to_icon(asset_id):
         print("Unknown asset ID encountered (img): " + str(asset_id))
         return ""
 
+def draw_wrapped(display, instruction_text, max_width=50):
+    words = instruction_text.split(" ")
+    lines = []
+    current_line = ""
+    for word in words:
+        if len(current_line) + len(word) > max_width:
+            lines.append(current_line)
+            current_line = word
+        else:
+            current_line += " " + word
+    lines.append(current_line)
+    screen_size = display._screen_size
+    for i, line in enumerate(lines):
+        (line_text, _) = INSTRUCTION_FONT.render(line, pygame.Color(90, 90, 90))
+        display._screen.blit(line_text, (screen_size * 0.5 - line_text.get_width() / 2, screen_size * 0.75 + i * 30))
+    
 def get_hexagon_vertices(x, y, width, height, rotation):
     """ Gets the vertices of a hexagon.
 
@@ -467,6 +487,9 @@ class GameDisplay(object):
         text = GAME_FONT.render(str(actor_id), False, pygame.Color("black"))
         self._screen.blit(text, (x - text.get_width() / 2, y - text.get_height() / 2))
     
+    def set_instructions(self, instructions):
+        self._instructions = instructions
+    
     def visualize_state_sync(self):
         if self._map is None or self._state_sync is None:
             return
@@ -575,6 +598,16 @@ class GameDisplay(object):
             self.transform_to_screen_coords(arc_endpoint_2),
             3) # Width.
 
+    def visualize_instructions(self):
+        if not self._instructions or len(self._instructions) == 0:
+            return
+        text = ""
+        for instruction in self._instructions:
+            if instruction.cancelled or instruction.completed:
+                continue
+            text += instruction.text + "|"
+        draw_wrapped(self, text)
+
     def draw(self):
         # Fill the screen with white
         self._screen.fill((255,255,255))
@@ -585,6 +618,7 @@ class GameDisplay(object):
         self.visualize_trajectory()
         self.visualize_markers()
         self.visualize_follower_visibility()
+        self.visualize_instructions()
 
 def main():
     """ Reads a JSON bug report from a file provided on the command line and displays the map to the user. """

@@ -39,7 +39,7 @@ def find_path_to_card(card, follower, map):
     start_location = follower.location()
     end_location = card.prop_info.location
     location_queue = deque()
-    location_queue.append((start_location, []))
+    location_queue.append((start_location, [start_location]))
     visited_locations = set()
     while len(location_queue) > 0:
         current_location, current_path = location_queue.popleft()
@@ -50,52 +50,55 @@ def find_path_to_card(card, follower, map):
             return current_path
         tile = map.tile_at(current_location)
         for neighbor in tile.cell.coord.neighbors():
-            if not tile.cell.boundary.get_edge_between(tile.cell.coord, neighbor):
-                location_queue.append((neighbor, current_path + [neighbor]))
+            if tile.cell.boundary.get_edge_between(tile.cell.coord, neighbor):
+                break
+            location_queue.append((neighbor, current_path + [neighbor]))
     return None
 
 def get_instruction_for_card(card, follower, map, game_endpoint):
     distance_to_follower = lambda c: c.prop_info.location.distance_to(follower.location())
     path = find_path_to_card(card, follower, map)
-    game_endpoint.visualization().set_trajectory([(coord, 0) for coord in path])
     if not path:
         return "No path found. :("
+    game_endpoint.visualization().set_trajectory([(coord, 0) for coord in path])
     heading = follower.heading_degrees() - 60
-    location = path[0]
     instructions = []
-    for idx, next_location in enumerate(path[1:]):
+    for idx, location in enumerate(path):
+        next_location = path[idx + 1] if idx + 1 < len(path) else None
+        if not next_location:
+            break
         degrees_away = location.degrees_to(next_location) - heading
         if degrees_away < 0:
             degrees_away += 360
         if degrees_away > 180:
             degrees_away -= 360
         # Pre-defined shortcuts to introduce backstepping.
-        if degrees_away == 180:
-            instructions.append("backward")
-            location = next_location
-            continue
-        if degrees_away == 120:
-            instructions.append("left")
-            instructions.append("backward")
-            heading -= 60
-            location = next_location
-            continue
-        if degrees_away == -120:
-            instructions.append("right")
-            instructions.append("backward")
-            heading += 60
-            location = next_location
-            continue
+        # if degrees_away == 180:
+        #     instructions.append("backward")
+        #     location = next_location
+        #     continue
+        # if degrees_away == 120:
+        #     instructions.append("left")
+        #     instructions.append("backward")
+        #     heading -= 60
+        #     location = next_location
+        #     continue
+        # if degrees_away == -120:
+        #     instructions.append("right")
+        #     instructions.append("backward")
+        #     heading += 60
+        #     location = next_location
+        #     continue
         # General-case movement pattern.
         if degrees_away > 0:
             instructions.extend(["right"] * int(degrees_away / 60))
         else:
-            instructions.extend(["left"] * int(degrees_away / 60))
+            instructions.extend(["left"] * int(-degrees_away / 60))
         heading += degrees_away
         instructions.append("forward")
         location = next_location
 
-    return ','.join(instructions)
+    return ', '.join(instructions)
 
 def get_distance_to_card(card, follower):
     distance_to_follower = lambda c: c.prop_info.location.distance_to(follower.location())
