@@ -1,23 +1,23 @@
 # Creates a set of graphics where an instruction is displayed on the left, and
 # the follower's pathway is displayed on the right.
-from map_tools import visualize
+from server.map_tools import visualize
 from playhouse.sqlite_ext import CSqliteExtDatabase
 import peewee
-import schemas.defaults
-import schemas.game
+import server.schemas.defaults as defaults_db
+import server.schemas.game as game_db
 
-from hex import HecsCoord
-from schemas.game import Turn
-from schemas.game import Game
-from schemas.game import Instruction
-from schemas.game import Move
-from schemas.game import LiveFeedback
-from schemas.map import MapUpdate
-from schemas import base
-from config.config import Config
+from server.hex import HecsCoord
+from server.schemas.game import Turn
+from server.schemas.game import Game
+from server.schemas.game import Instruction
+from server.schemas.game import Move
+from server.schemas.game import LiveFeedback
+from server.schemas.map import MapUpdate
+from server.schemas import base
+from server.config.config import Config
 
-import db_tools.db_utils as db_utils
-import config.config as config
+import server.db_tools.db_utils as db_utils
+import server.config.config as config
 
 import fire
 import itertools
@@ -96,7 +96,7 @@ def main(max_instructions=-1, config_filepath="config/server-config.json", outpu
     # Setup the sqlite database used to record game actions.
     base.SetDatabase(cfg.database_path())
     base.ConnectDatabase()
-    base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
+    base.CreateTablesIfNotExists(defaults_db.ListDefaultTables())
 
     output_dir = pathlib.Path(output_dir).expanduser()
     # Create the directory if it doesn't exist.

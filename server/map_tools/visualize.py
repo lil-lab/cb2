@@ -344,6 +344,7 @@ class GameDisplay(object):
         self._cell_width = self._cell_height = 0
         self._map = None
         self._props = None
+        self._config = None
         self._state_sync = None
         self._trajectory = None # A list of Hecscoords. A follower's pathway to draw.
         self._positive_markers = None
