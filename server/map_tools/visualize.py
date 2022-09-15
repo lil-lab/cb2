@@ -369,6 +369,7 @@ class GameDisplay(object):
         self._trajectory = None # A list of Hecscoords. A follower's pathway to draw.
         self._positive_markers = None
         self._negative_markers = None
+        self._instructions = None
         # Initialize pygame.
         pygame.init()
         # Create the screen

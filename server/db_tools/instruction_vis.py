@@ -13,6 +13,7 @@ from server.schemas.game import Instruction
 from server.schemas.game import Move
 from server.schemas.game import LiveFeedback
 from server.schemas.map import MapUpdate
+from server.schemas.prop import PropUpdate
 from server.schemas import base
 from server.config.config import Config
 
@@ -59,9 +60,10 @@ def draw_wrapped(display, instruction_text, max_width=50):
         (line_text, _) = INSTRUCTION_FONT.render(line, pygame.Color(90, 90, 90))
         display._screen.blit(line_text, (SCREEN_SIZE * 0.5 - line_text.get_width() / 2, SCREEN_SIZE * 0.75 + i * 30))
 
-def draw_instruction(instruction, moves, feedbacks, map_update, filename, game_id):
+def draw_instruction(instruction, moves, feedbacks, map_update, filename, game_id, props):
     display = visualize.GameDisplay(SCREEN_SIZE)
     display.set_map(map_update)
+    display.set_props(props)
     trajectory = [(move.position_before, move.orientation_before) for move in moves]
     if len (moves) > 0:
         final_position = HecsCoord.add(moves[-1].position_before, moves[-1].action.displacement)
@@ -89,7 +91,7 @@ def draw_instruction(instruction, moves, feedbacks, map_update, filename, game_i
     pygame.display.flip()
     pygame.image.save(display.screen(), filename)
     
-def main(max_instructions=-1, config_filepath="config/server-config.json", output_dir="output"):
+def main(max_instructions=-1, config_filepath="config/server-config.json", output_dir="output", research_only=True):
     cfg = config.ReadConfigOrDie(config_filepath)
 
     print(f"Reading database from {cfg.database_path()}")
@@ -105,20 +107,27 @@ def main(max_instructions=-1, config_filepath="config/server-config.json", outpu
     words = set()
     instruction_list = []
 
-    games = db_utils.ListAnalysisGames(cfg)
+    if research_only:
+        games = db_utils.ListAnalysisGames(cfg)
+    else:
+        games = [game for game in db_utils.ListGames() if db_utils.IsConfigGame(cfg, game)]
+    print(f"Found {len(games)} games.")
     # For each game.
     for game in games:
         # Create a directory for the game.
         game_dir = (output_dir / str(game.id))
         game_dir.mkdir(parents=False, exist_ok=True)
         maps = MapUpdate.select().join(Game).where(MapUpdate.game == game)
+        prop_updates = PropUpdate.select().join(Game).where(PropUpdate.game == game)
         instructions = Instruction.select().join(Game).where(Instruction.game == game)
         for instruction in instructions:
             moves = Move.select().join(Game).where(Move.game == game, Move.instruction == instruction).order_by(Move.id)
             feedbacks = LiveFeedback.select().join(Game).where(LiveFeedback.game == game, LiveFeedback.instruction == instruction).order_by(LiveFeedback.id)
+            # Get the most recent map and prop updates (filter to only previous updates, order by descending ID, then grab the first one).
             map = maps.where(MapUpdate.time <= instruction.time).order_by(MapUpdate.id.desc()).get()
+            prop_update = prop_updates.where(PropUpdate.time <= instruction.time).order_by(PropUpdate.id.desc()).get()
             filepath = game_dir / f"instruction_vis_{instruction.id}.png"
-            draw_instruction(instruction, moves, feedbacks, map.map_data, filepath, game.id)
+            draw_instruction(instruction, moves, feedbacks, map.map_data, filepath, game.id, prop_update.prop_data.props)
             instruction_list.append(instruction.text)
             for word in instruction.text.split(" "):
                 words.add(word)

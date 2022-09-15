@@ -135,18 +135,9 @@ def main(host, render=False):
                 else:
                     action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower, map, game, cards))
             if turn_state.turn == Role.FOLLOWER:
+                # Don't give live feedback. Messes with the follower bot at the moment.
                 action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.NONE)
                 continue
-                if closest_card != None:
-                    distance_to_card = get_distance_to_card(closest_card, follower)
-                    if distance_to_card < follower_distance_to_card:
-                        action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.POSITIVE_FEEDBACK)
-                    elif distance_to_card > follower_distance_to_card:
-                        action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.NEGATIVE_FEEDBACK)
-                    else:
-                        action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.NONE)
-                else:
-                    action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.NONE)
     print(f"Game over. Score: {turn_state.score}")
 
 if __name__ == "__main__":

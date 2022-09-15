@@ -66,6 +66,8 @@ def IsConfigGame(config, game):
 def ListResearchGames():
     games = ListMturkGames()
     ids = [game.id for game in games]
+    if len(ids) == 0:
+        return []
     logger.info(f"Max game ID before research filtering: {max(ids)}")
     return [game for game in games if IsGameResearchData(game)]
 
@@ -76,6 +78,12 @@ def ListMturkGames():
                    Game.type == "game-mturk",
                    ((Game.lead_assignment != None) & (Game.lead_assignment.submit_to_url == "https://www.mturk.com") | 
                     ((Game.follow_assignment != None)& (Game.lead_assignment.submit_to_url == "https://www.mturk.com"))))
+            .switch(Game))
+    return games
+
+def ListGames():
+    games = (Game.select()
+            .where(Game.valid == True, (Game.type == "game") or (Game.type == "game-mturk"))
             .switch(Game))
     return games
 
