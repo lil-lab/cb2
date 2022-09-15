@@ -35,9 +35,10 @@ def get_next_card(cards, follower):
                 closest_card = card
     return closest_card
 
-def find_path_to_card(card, follower, map):
+def find_path_to_card(card, follower, map, cards):
     start_location = follower.location()
     end_location = card.prop_info.location
+    card_locations = set([card.prop_info.location for card in cards])
     location_queue = deque()
     location_queue.append((start_location, [start_location]))
     visited_locations = set()
@@ -52,12 +53,14 @@ def find_path_to_card(card, follower, map):
         for neighbor in tile.cell.coord.neighbors():
             if tile.cell.boundary.get_edge_between(tile.cell.coord, neighbor):
                 break
+            if neighbor in card_locations and neighbor != end_location:
+                break
             location_queue.append((neighbor, current_path + [neighbor]))
     return None
 
-def get_instruction_for_card(card, follower, map, game_endpoint):
+def get_instruction_for_card(card, follower, map, game_endpoint, cards):
     distance_to_follower = lambda c: c.prop_info.location.distance_to(follower.location())
-    path = find_path_to_card(card, follower, map)
+    path = find_path_to_card(card, follower, map, cards)
     if not path:
         return "No path found. :("
     game_endpoint.visualization().set_trajectory([(coord, 0) for coord in path])
@@ -73,22 +76,22 @@ def get_instruction_for_card(card, follower, map, game_endpoint):
         if degrees_away > 180:
             degrees_away -= 360
         # Pre-defined shortcuts to introduce backstepping.
-        # if degrees_away == 180:
-        #     instructions.append("backward")
-        #     location = next_location
-        #     continue
-        # if degrees_away == 120:
-        #     instructions.append("left")
-        #     instructions.append("backward")
-        #     heading -= 60
-        #     location = next_location
-        #     continue
-        # if degrees_away == -120:
-        #     instructions.append("right")
-        #     instructions.append("backward")
-        #     heading += 60
-        #     location = next_location
-        #     continue
+        if degrees_away == 180:
+            instructions.append("backward")
+            location = next_location
+            continue
+        if degrees_away == 120:
+            instructions.append("left")
+            instructions.append("backward")
+            heading -= 60
+            location = next_location
+            continue
+        if degrees_away == -120:
+            instructions.append("right")
+            instructions.append("backward")
+            heading += 60
+            location = next_location
+            continue
         # General-case movement pattern.
         if degrees_away > 0:
             instructions.extend(["right"] * int(degrees_away / 60))
@@ -118,20 +121,22 @@ def main(host, render=False):
     with client.JoinGame(timeout=timedelta(minutes=5), queue_type=RemoteClient.QueueType.LEADER_ONLY) as game:
         map, cards, turn_state, instructions, (leader, follower), live_feedback = game.initial_state()
         closest_card = get_next_card(cards, follower)
-        action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower, map, game))
+        action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower, map, game, cards))
         follower_distance_to_card = float("inf")
         while not game.over():
             print(f"step()")
             if type(action) == LeadAction and action.action == LeadAction.ActionCode.END_TURN:
-                sleep(2)
+                sleep(0.2)
             map, cards, turn_state, instructions, (leader, follower), live_feedback = game.step(action)
             closest_card = get_next_card(cards, follower)
             if turn_state.turn == Role.LEADER:
                 if has_instruction_available(instructions):
                     action = LeadAction(LeadAction.ActionCode.END_TURN)
                 else:
-                    action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower, map, game))
+                    action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower, map, game, cards))
             if turn_state.turn == Role.FOLLOWER:
+                action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.NONE)
+                continue
                 if closest_card != None:
                     distance_to_card = get_distance_to_card(closest_card, follower)
                     if distance_to_card < follower_distance_to_card:

@@ -72,7 +72,7 @@ def CensorFollowerMap(map_update, follower_actor, config):
     follower_orientation = follower_actor.heading_degrees() - 60
 
     new_tiles = []
-    logger.info(f"Filtering tiles. Follower at {follower_actor.location()} with orientation {follower_orientation} and view depth {view_depth}")
+    logger.debug(f"Filtering tiles. Follower at {follower_actor.location()} with orientation {follower_orientation} and view depth {view_depth}")
     for tile in map_update.tiles:
         if CoordinateIsVisible(tile.cell.coord, follower_actor, config):
             new_tiles.append(copy.deepcopy(tile))
@@ -96,7 +96,7 @@ def CensorFollowerProps(props, follower_actor, config):
     follower_orientation = follower_actor.heading_degrees() - 60
 
     new_props = []
-    logger.info(f"Filtering props. Follower at {follower_actor.location()} with orientation {follower_orientation} and view depth {view_depth}")
+    logger.debug(f"Filtering props. Follower at {follower_actor.location()} with orientation {follower_orientation} and view depth {view_depth}")
     for prop in props:
         if CoordinateIsVisible(prop.prop_info.location, follower_actor, config):
             new_props.append(copy.deepcopy(prop))
@@ -119,7 +119,7 @@ def CensorActors(actors, follower_actor, config):
     follower_orientation = follower_actor.heading_degrees() - 60
 
     new_actors = []
-    logger.info(f"Filtering props. Follower at {follower_actor.location()} with orientation {follower_orientation} and view depth {view_depth}")
+    logger.debug(f"Filtering props. Follower at {follower_actor.location()} with orientation {follower_orientation} and view depth {view_depth}")
     for actor in actors:
         if CoordinateIsVisible(actor.location(), follower_actor, config):
             new_actors.append(Actor(actor.actor_id(), actor.asset_id(), actor.role(), actor.location(), False, actor.heading_degrees()))

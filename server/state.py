@@ -385,8 +385,9 @@ class State(object):
             self._drain_objective(id, message.objective)
         elif message.type == message_to_server.MessageType.OBJECTIVE_COMPLETED:
             logger.info(
-                f'Objective Compl received. Room: {self._room_id}, Text: {message.objective_complete.uuid}')
+                f'Objective Compl received. Room: {self._room_id}, uuid: {message.objective_complete.uuid}')
             self._drain_objective_complete(id, message.objective_complete)
+            self._log_objectives()
         elif message.type == message_to_server.MessageType.TURN_COMPLETE:
             logger.info(f'Turn Complete received. Room: {self._room_id}')
             self._drain_turn_complete(id, message.turn_complete)
@@ -600,6 +601,13 @@ class State(object):
         out_messages.append(message)
         return True
     
+    def _log_objectives(self):
+        for objective in self._objectives:
+            objective_status_char = 'C' if objective.completed else 'I'
+            if objective.cancelled:
+                objective_status_char = 'X'
+            logger.info(f'\t {objective_status_char} | {objective.text} | {objective.uuid}')
+    
     def _next_message(self, player_id):
         actions = self._next_actions(player_id)
         if len(actions) > 0:
@@ -629,8 +637,9 @@ class State(object):
 
         objectives = self._next_objectives(player_id)
         if len(objectives) > 0:
-            logger.debug(
+            logger.info(
                 f'Room {self._room_id} {len(objectives)} texts for player_id {player_id}')
+            self._log_objectives()
             msg = message_from_server.ObjectivesFromServer(objectives)
             return msg
         
