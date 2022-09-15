@@ -151,35 +151,35 @@ def asset_id_to_icon(asset_id):
     if asset_id == AssetId.GROUND_TILE:
         return ""
     elif asset_id == AssetId.GROUND_TILE_ROCKY:
-        return "map_tools/asset_icons/rocks.png"
+        return "server/map_tools/asset_icons/rocks.png"
     elif asset_id == AssetId.GROUND_TILE_TREES:
-        return "map_tools/asset_icons/trees.png"
+        return "server/map_tools/asset_icons/trees.png"
     elif asset_id == AssetId.GROUND_TILE_TREES_2:
-        return "map_tools/asset_icons/trees.png"
+        return "server/map_tools/asset_icons/trees.png"
     elif asset_id == AssetId.GROUND_TILE_FOREST:
-        return "map_tools/asset_icons/trees.png"
+        return "server/map_tools/asset_icons/trees.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE:
-        return "map_tools/asset_icons/house.png"
+        return "server/map_tools/asset_icons/house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_RED:
-        return "map_tools/asset_icons/red_house.png"
+        return "server/map_tools/asset_icons/red_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_PINK:
-        return "map_tools/asset_icons/pink_house.png"
+        return "server/map_tools/asset_icons/pink_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_GREEN:
-        return "map_tools/asset_icons/green_house.png"
+        return "server/map_tools/asset_icons/green_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_ORANGE:
-        return "map_tools/asset_icons/orange_house.png"
+        return "server/map_tools/asset_icons/orange_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_YELLOW:
-        return "map_tools/asset_icons/yellow_house.png"
+        return "server/map_tools/asset_icons/yellow_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_BLUE:
-        return "map_tools/asset_icons/blue_house.png"
+        return "server/map_tools/asset_icons/blue_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_TRIPLE:
-        return "map_tools/asset_icons/triple_house.png"
+        return "server/map_tools/asset_icons/triple_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_TRIPLE_RED:
-        return "map_tools/asset_icons/red_triple_house.png"
+        return "server/map_tools/asset_icons/red_triple_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_TRIPLE_BLUE:
-        return "map_tools/asset_icons/blue_triple_house.png"
+        return "server/map_tools/asset_icons/blue_triple_house.png"
     elif asset_id == AssetId.GROUND_TILE_STREETLIGHT:
-        return "map_tools/asset_icons/streetlight.png"
+        return "server/map_tools/asset_icons/streetlight.png"
     elif asset_id == AssetId.MOUNTAIN_TILE:
         return ""
     elif asset_id == AssetId.RAMP_TO_MOUNTAIN:
@@ -193,33 +193,33 @@ def asset_id_to_icon(asset_id):
     elif asset_id == AssetId.SNOWY_MOUNTAIN_TILE:
         return ""
     elif asset_id == AssetId.SNOWY_MOUNTAIN_TILE_TREE:
-        return "map_tools/asset_icons/snow_mountain_tree.png"
+        return "server/map_tools/asset_icons/snow_mountain_tree.png"
     elif asset_id == AssetId.SNOWY_RAMP_TO_MOUNTAIN:
         return ""
     elif asset_id == AssetId.MOUNTAIN_TILE_TREE:
-        return "map_tools/asset_icons/tree.png"
+        return "server/map_tools/asset_icons/tree.png"
     elif asset_id == AssetId.GROUND_TILE_TREE:
-        return "map_tools/asset_icons/tree.png"
+        return "server/map_tools/asset_icons/tree.png"
     elif asset_id == AssetId.GROUND_TILE_TREE_BROWN:
-        return "map_tools/asset_icons/withered_tree.png"
+        return "server/map_tools/asset_icons/withered_tree.png"
     elif asset_id == AssetId.GROUND_TILE_TREE_SOLIDBROWN:
-        return "map_tools/asset_icons/brown_tree.png"
+        return "server/map_tools/asset_icons/brown_tree.png"
     elif asset_id == AssetId.GROUND_TILE_TREE_DARKGREEN:
-        return "map_tools/asset_icons/dark_green_tree.png"
+        return "server/map_tools/asset_icons/dark_green_tree.png"
     elif asset_id == AssetId.GROUND_TILE_TREE_SNOW:
-        return "map_tools/asset_icons/snow_tree.png"
+        return "server/map_tools/asset_icons/snow_tree.png"
     elif asset_id == AssetId.GROUND_TILE_TREES_2:
-        return "map_tools/asset_icons/tree_2.png"
+        return "server/map_tools/asset_icons/tree_2.png"
     elif asset_id == AssetId.SNOWY_GROUND_TILE_TREES_2:
-        return "map_tools/asset_icons/snow_tree_2.png"
+        return "server/map_tools/asset_icons/snow_tree_2.png"
     elif asset_id == AssetId.GROUND_TILE_STONES:
-        return "map_tools/asset_icons/bush_stone.png"
+        return "server/map_tools/asset_icons/bush_stone.png"
     elif asset_id == AssetId.GROUND_TILE_STONES_GREENBUSH:
-        return "map_tools/asset_icons/green_bush_stone.png"
+        return "server/map_tools/asset_icons/green_bush_stone.png"
     elif asset_id == AssetId.GROUND_TILE_STONES_BROWNBUSH:
-        return "map_tools/asset_icons/brown_bush_stone.png"
+        return "server/map_tools/asset_icons/brown_bush_stone.png"
     elif asset_id == AssetId.GROUND_TILE_STONES_GREYBUSH:
-        return "map_tools/asset_icons/grey_bush_stone.png"
+        return "server/map_tools/asset_icons/grey_bush_stone.png"
     else:
         print("Unknown asset ID encountered (img): " + str(asset_id))
         return ""
@@ -374,6 +374,8 @@ class GameDisplay(object):
             self._cell_width = self._cell_height * (1/1.5) * math.sqrt(3)
         else:
             self._cell_height = self._cell_width * 1.5 / math.sqrt(3)
+        if hasattr(map, 'props') and map.props:
+            self._props = map.props
     
     def set_props(self, props):
         self._props = props

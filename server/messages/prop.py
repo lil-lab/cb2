@@ -33,7 +33,7 @@ class CardConfig(DataClassJSONMixin):
     shape: card.Shape
     count: int
     selected: bool
-    hidden: Optional[bool] # Whether the client should show the card.
+    hidden: Optional[bool] = None # Whether the client should show the card.
 
 
 @dataclass(frozen=True)

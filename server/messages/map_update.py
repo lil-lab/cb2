@@ -6,6 +6,7 @@ from dataclasses_json import dataclass_json, config, LetterCase
 from enum import Enum
 from marshmallow import fields
 from typing import List
+from server.messages.prop import Prop
 
 @dataclass(frozen=True)
 class Tile(DataClassJSONMixin):
@@ -71,3 +72,4 @@ class MapUpdate(DataClassJSONMixin):
     cols: int
     tiles: List[Tile]
     metadata: MapMetadata = field(default_factory=MapMetadata)
+    props: List[Prop] = None
