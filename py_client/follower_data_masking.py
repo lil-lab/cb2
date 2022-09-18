@@ -3,6 +3,7 @@
 import logging
 
 import copy
+from server.config.config import Config
 
 from server.messages.map_update import MapUpdate
 from server.messages.prop import Prop
@@ -25,7 +26,7 @@ UNITY_COORDINATES_SCALE = 3.46
 
 def CoordinateIsVisible(coord, follower_actor, config):
     """  Returns true if the given coordinate should be visible to the given follower with the given config. """
-    view_depth = config["fog_end"] / UNITY_COORDINATES_SCALE
+    view_depth = config.fog_end / UNITY_COORDINATES_SCALE
     # There's something wrong with orientation... I have to put - 60 everywhere
     # Actor.heading_degrees() (actor.py) is used.
     follower_orientation = follower_actor.heading_degrees() - 60
@@ -55,7 +56,7 @@ def CoordinateIsVisible(coord, follower_actor, config):
     else:
         return left <= degrees_to or degrees_to <= right
 
-def CensorFollowerMap(map_update, follower_actor, config):
+def CensorFollowerMap(map_update, follower_actor, config: Config):
     """ Removes all map tiles which aren't visible to the follower. 
 
         This is done by defining a circle sector (pie slice). The center (point of the slice) is at the follower's location.
@@ -66,7 +67,7 @@ def CensorFollowerMap(map_update, follower_actor, config):
             follower_actor: The follower actor. Used to find the actor's location & heading.
             config: The game configuration. Used to determine follower visibility.
     """
-    view_depth = config["fog_end"] / UNITY_COORDINATES_SCALE
+    view_depth = config.fog_end / UNITY_COORDINATES_SCALE
     # There's something wrong with orientation... I have to put - 60 everywhere
     # Actor.heading_degrees() (actor.py) is used.
     follower_orientation = follower_actor.heading_degrees() - 60
@@ -90,7 +91,7 @@ def CensorFollowerProps(props, follower_actor, config):
             follower_actor: The follower actor. Used to find the actor's location & heading.
             config: The game configuration. Used to determine follower visibility.
     """
-    view_depth = config["fog_end"] / UNITY_COORDINATES_SCALE
+    view_depth = config.fog_end / UNITY_COORDINATES_SCALE
     # There's something wrong with orientation... I have to put - 60 everywhere
     # Actor.heading_degrees() (actor.py) is used.
     follower_orientation = follower_actor.heading_degrees() - 60
@@ -113,7 +114,7 @@ def CensorActors(actors, follower_actor, config):
             follower_actor: The follower actor. Used to find the actor's location & heading.
             config: The game configuration. Used to determine follower visibility.
     """
-    view_depth = config["fog_end"] / UNITY_COORDINATES_SCALE
+    view_depth = config.fog_end / UNITY_COORDINATES_SCALE
     # There's something wrong with orientation... I have to put - 60 everywhere
     # Actor.heading_degrees() (actor.py) is used.
     follower_orientation = follower_actor.heading_degrees() - 60

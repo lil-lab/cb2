@@ -22,6 +22,7 @@ from py_client.game_socket import GameSocket
 from py_client.follower_data_masking import CensorFollowerMap, CensorFollowerProps, CensorActors
 from server.hex import HecsCoord
 from server.main import HEARTBEAT_TIMEOUT_S
+from server.config.config import Config
 from server.messages.action import Action, CensorActionForFollower, Walk, Turn
 from server.messages import message_from_server
 from server.messages import message_to_server
@@ -122,7 +123,7 @@ class RemoteClient(object):
         config_response = requests.get(config_url)
         if config_response.status_code != 200:
             return False, f"Could not get config from {config_url}: {config_response.status_code}"
-        self.config = config_response.json()
+        self.config = Config.from_json(config_response.text)
         url = f"{self.url}/player_endpoint"
         logger.info(f"Connecting to {url}...")
         session = aiohttp.ClientSession()

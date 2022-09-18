@@ -21,7 +21,7 @@ def card_collides(cards, new_card):
     card_counts = [card.card_init.count for card in cards]
     return (new_card.card_init.color in card_colors or new_card.card_init.shape
         in card_shapes or new_card.card_init.count in card_counts)
-    
+
 def get_next_card(cards, follower):
     distance_to_follower = lambda c: c.prop_info.location.distance_to(follower.location())
     selected_cards = []

@@ -4,6 +4,9 @@ import queue
 import time
 
 from queue import Queue
+from server.messages import message_from_server
+
+from server.messages.message_from_server import MessageFromServer
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +54,9 @@ class StateMachineDriver(object):
         while True:
             try:
                 message = self._messages_out[player_id].get_nowait()
+                logger.info(f"Sent message type {message.type} for player {player_id}.")
+                if message.type == message_from_server.MessageType.GAME_STATE:
+                    self._sent_log.info(f"Turn: {message.turn_state.turn}")
                 out_messages.append(message)
                 packets_added = True
             except queue.Empty:
@@ -61,9 +67,7 @@ class StateMachineDriver(object):
         last_loop = time.time()
         self._state_machine.start()  # Initialize the state machine.
         while not self._state_machine.done():
-            self._process_incoming_messages()
-            await self._state_machine.update()
-            self._serialize_outgoing_messages()
+            await self.step()
             poll_period = time.time() - last_loop
             if (poll_period) > 0.1:
                 logging.warn(
@@ -71,6 +75,11 @@ class StateMachineDriver(object):
             last_loop = time.time()
             await asyncio.sleep(0)
         self._state_machine.on_game_over()
+    
+    async def step(self):
+        self._process_incoming_messages()
+        await self._state_machine.update()
+        self._serialize_outgoing_messages()
     
     def done(self):
         return self._state_machine.done()

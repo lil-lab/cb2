@@ -32,9 +32,7 @@ def actions_from_instruction(instruction):
 
 def get_active_instruction(instructions):
     for instruction in instructions:
-        logger.info(f"INSTRUCTION: {instruction}")
         if not instruction.completed and not instruction.cancelled:
-            logger.info(f"FOUND ACTIVE INSTRUCTION: {instruction.text}")
             return instruction
     return None
 

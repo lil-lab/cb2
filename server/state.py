@@ -39,7 +39,7 @@ FOLLOWER_MOVES_PER_TURN = 10
 LEADER_SECONDS_PER_TURN = 50
 FOLLOWER_SECONDS_PER_TURN = 15
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 # The Cerealbar2 State Machine. This is the state machine that is used to drive the game.
 # This class contains methods to consume and produce messages from/for the state machine. It also contains a state machine update loop.
@@ -129,7 +129,7 @@ class State(object):
             return None
 
     def end_game(self):
-        logging.info(f"Game ending.")
+        logger.info(f"Game ending.")
         self._done = True
 
     def record_action(self, action):
@@ -165,7 +165,7 @@ class State(object):
 
         # Check to see if the game is over.
         if self._turn_state.turns_left <= -1:
-            logging.info(
+            logger.info(
                 f"Game {self._room_id} is out of turns. Game over!")
             game_over_message = GameOverMessage(
                 self._turn_state.game_start,
@@ -282,7 +282,7 @@ class State(object):
             # the previous 3, which is confusing to the user.
             self._map_provider.add_random_unique_set()
             # Clear card state and remove the cards in the winning set.
-            logging.info("Clearing selected cards")
+            logger.info("Clearing selected cards")
             for card in selected_cards:
                 self._map_provider.set_selected(card.id, False)
                 actions = SetCompletionActions(card.id)
@@ -632,6 +632,7 @@ class State(object):
             state_sync = self.sync_message_for_transmission(player_id)
             logger.debug(
                 f'Room {self._room_id} state sync: {state_sync} for player_id {player_id}')
+            logger.info(f"State sync with {player_id} and # {len(state_sync.actors)} actors")
             msg = message_from_server.StateSyncFromServer(state_sync)
             return msg
 
@@ -639,7 +640,6 @@ class State(object):
         if len(objectives) > 0:
             logger.info(
                 f'Room {self._room_id} {len(objectives)} texts for player_id {player_id}')
-            self._log_objectives()
             msg = message_from_server.ObjectivesFromServer(objectives)
             return msg
         

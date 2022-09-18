@@ -306,7 +306,7 @@ class GameEndpoint(object):
         if (self.player_role() == self.turn_state.turn):
             return True
         
-        if ((self.player_role() == Role.LEADER) and self.config["live_feedback_enabled"]):
+        if ((self.player_role() == Role.LEADER) and self.config.live_feedback_enabled):
             # Check if the follower position has changed since the last tick.
             return self._follower_moved
         

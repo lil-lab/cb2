@@ -76,16 +76,19 @@ class MapUpdate(DataClassJSONMixin):
 
     def tile_at(self, r, c):
         """ Returns the tile at the given row and column. """
-        self._maybe_add_tile_cache() 
         location = HecsCoord.from_offset(r, c)
-        return self._tile_cache[location]
+        self.tile_at(location)
     
     def tile_at(self, hecs: HecsCoord):
-        self._maybe_add_tile_cache()
+        self._refresh_tile_cache(hecs)
+        if hecs not in self._tile_cache:
+            return None
         return self._tile_cache[hecs]
 
-    def _maybe_add_tile_cache(self):
-        if not hasattr(self, "_tile_cache"):
-            self._tile_cache = {}
-            for tile in self.tiles:
-                self._tile_cache[tile.cell.coord] = tile
+    def _refresh_tile_cache(self, hecs: HecsCoord):
+        if hasattr(self, '_tile_cache'):
+            if hecs in self._tile_cache:
+                return # Cache up to date.
+        self._tile_cache = {}
+        for tile in self.tiles:
+            self._tile_cache[tile.cell.coord] = tile

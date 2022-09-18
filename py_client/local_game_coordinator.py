@@ -12,6 +12,7 @@ import uuid
 
 from collections import deque
 from datetime import datetime
+from server.messages import message_from_server
 
 import server.schemas.game as game_db
 
@@ -73,8 +74,10 @@ class LocalSocket(GameSocket):
         """ This is a local socket. We don't need to worry about timeouts. No blocking operations. """
         # Give the state machine a chance to run.
         event_loop = asyncio.get_event_loop()
+        # Let the game state loop update by giving control to asyncio event loop.
         event_loop.run_until_complete(asyncio.sleep(0))
         end_time = datetime.utcnow() + timeout
+        # Wait until we have at least one message to return.
         while datetime.utcnow() < end_time:
             state_machine_driver = self.local_coordinator._state_machine_driver(self.game_name)
             state_machine_driver.fill_messages(self.actor_id, self.received_messages)
@@ -86,6 +89,7 @@ class LocalGameCoordinator(object):
     def __init__(self, config, render_leader=True, render_follower=False):
         self._game_drivers = {} # Game name -> StateMachineDriver
         self._game_tasks = {} # Game name -> StateMachineDriver asyncio task.
+        self._game_endpoints = {} # Game name -> (leader_endpoint, follower_endpoint)
         self._render_leader = render_leader
         self._render_follower = render_follower
         self._config = config
@@ -145,8 +149,22 @@ class LocalGameCoordinator(object):
         actor_id = state_machine.create_actor(role)
         render = self._render_leader if role == Role.LEADER else self._render_follower
         game_endpoint = GameEndpoint(LocalSocket(self, game_name, actor_id), self._config, render)
-        game_endpoint._initialize()
+        # Register endpoints for this game so we can initialize them in StartGame().
+        if number_players == 0:
+            self._game_endpoints[game_name] = (game_endpoint, None)
+        else:
+            leader = self._game_endpoints[game_name][0]
+            self._game_endpoints[game_name] = (leader, game_endpoint)
         return game_endpoint
+    
+    def StartGame(self, game_name):
+        """ Starts a game with the given name. 
+        
+            The idea is you create a game, then the leader & follower join, then the game begins.
+        """
+        leader_endpoint, follower_endpoint = self._game_endpoints[game_name]
+        leader_endpoint._initialize()
+        follower_endpoint._initialize()
 
     def Cleanup(self):
         """ Cleans up any games that have ended. Call this regularly to avoid memory leaks.
@@ -162,7 +180,13 @@ class LocalGameCoordinator(object):
                 logger.info(f"Game {game_name} has ended. Cleaning up.")
                 del self._game_tasks[game_name]
                 del self._game_drivers[game_name]
-        
+
+    def _step_game(self, game_name):
+        """ Steps the game with the given name. """
+        game_driver = self._game_drivers[game_name]
+        event_loop = asyncio.get_event_loop()
+        event_loop.run_until_complete(game_driver.step())
+
     def _unique_game_name(cls):
         """ Generates a random UUID and returns.
         

@@ -565,7 +565,7 @@ class GameDisplay(object):
                 break
         if follower is None:
             return
-        fog_distance_hex_coordinates = self._config["fog_end"] / UNITY_COORDINATES_SCALE
+        fog_distance_hex_coordinates = self._config.fog_end / UNITY_COORDINATES_SCALE
         pygame_distance = fog_distance_hex_coordinates
         follower_location = follower.location().cartesian()
 
