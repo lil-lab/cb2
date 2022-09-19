@@ -197,10 +197,14 @@ class GameEndpoint(object):
         self._follower_moved = False
         self.live_feedback = None
         self.pygame_task = None
+        # Always create the display, even if render == None.
+        # This lets the user access the the display object manually if they need.
+        # It's a bit of a hack, because pygame can't render unless they're on the main thread.
+        # So the user (on main thread) might want to manually access this and call draw().
+        self.display = GameDisplay(SCREEN_SIZE)
+        self.display.set_config(self.config)
         if self.render:
             logger.info(f"Setting up display for rendering...")
-            self.display = GameDisplay(SCREEN_SIZE)
-            self.display.set_config(self.config)
             if self.pygame_task:
                 self.pygame_task.cancel()
             loop = asyncio.get_event_loop()
@@ -273,6 +277,7 @@ class GameEndpoint(object):
             self.socket.send_message(message)
         for message in self.queued_messages:
             self.socket.send_message(message)
+        self.queued_messages = []
         # Reset this variable. We want to see if while waiting for ticks, the
         # follower has moved. This allows self._can_act() to return True if
         # playing as the leader, to give live feedback on a follower move.
@@ -295,16 +300,23 @@ class GameEndpoint(object):
         # live feedback only occurs for 1 step per feedback message.
         self.live_feedback = None
 
-        # If rendering is enabled, use the map visualizer to draw the game state.
-        if self.render:
-            self._render()
+        # Updates the game visualization. If self._render, draws the display to the screen.
+        self._render()
 
         self.last_step_call = datetime.now()
         return state
     
     def _can_act(self):
         if (self.player_role() == self.turn_state.turn):
+            if self.player_role() == Role.FOLLOWER:
+                # Check if there are active instructions.
+                for instruction in self.instructions:
+                    if not instruction.completed and not instruction.cancelled:
+                        return True
+                return False
             return True
+        else:
+            logger.info(f"Role: {self.player_role()} Waiting for turn: {self.turn_state.turn}")
         
         if ((self.player_role() == Role.LEADER) and self.config.live_feedback_enabled):
             # Check if the follower position has changed since the last tick.
@@ -319,7 +331,11 @@ class GameEndpoint(object):
         while not self.over() and self.socket.connected():
             if datetime.utcnow() > end_time:
                 return False, "Timed out waiting for tick"
+            if self.player_role == Role.FOLLOWER:
+                logger.info(f"FOLLOWER receive...")
             message, reason = self.socket.receive_message(end_time - datetime.utcnow())
+            if self.player_role == Role.FOLLOWER:
+                logger.info(f"FOLLOWER received message: {message}")
             if message is None:
                 logger.warn(f"Received None from _receive_message. Reason: {reason}")
                 continue
@@ -331,6 +347,12 @@ class GameEndpoint(object):
     # Returns true if the game is over.
     def over(self):
         return self.turn_state.game_over or not self.socket.connected()
+    
+    def score(self):
+        return self.turn_state.score
+    
+    def game_duration(self):
+        return (datetime.utcnow() - self.turn_state.game_start)
     
     def __enter__(self):
         return self
@@ -359,6 +381,9 @@ class GameEndpoint(object):
             props = CensorFollowerProps(props, follower, self.config)
             actors = CensorActors(actors, follower, self.config)
         return map_update, props, self.turn_state, self.instructions, actors, self.live_feedback
+    
+    def Initialize(self, timeout=timedelta(seconds=60)):
+        self._initialize()
     
     def _initialize(self, timeout=timedelta(seconds=60)):
         """ Initializes the game state. 
@@ -473,13 +498,13 @@ class GameEndpoint(object):
             logger.warn(f"Received unexpected message type: {message.type}")
     
     def _render(self):
+        map_update, props, turn_state, instructions, actors, feedback = self._state()
+        actor_states = [a.state() for a in actors]
+        self.display.set_state_sync(state_sync.StateSync(len(actors), actor_states, self.player_id, self.player_role()))
+        self.display.set_props(props)
+        self.display.set_map(map_update)
+        self.display.set_instructions(instructions)
         if self.render:
-            map_update, props, turn_state, instructions, actors, feedback = self._state()
-            actor_states = [a.state() for a in actors]
-            self.display.set_state_sync(state_sync.StateSync(len(actors), actor_states, self.player_id, self.player_role()))
-            self.display.set_props(props)
-            self.display.set_map(map_update)
-            self.display.set_instructions(instructions)
             self.display.draw()
             pygame.display.flip()
     

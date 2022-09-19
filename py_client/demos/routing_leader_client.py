@@ -63,7 +63,9 @@ def get_instruction_for_card(card, follower, map, game_endpoint, cards):
     path = find_path_to_card(card, follower, map, cards)
     if not path:
         return "No path found. :("
-    game_endpoint.visualization().set_trajectory([(coord, 0) for coord in path])
+    game_vis = game_endpoint.visualization()
+    if game_vis is not None:
+        game_vis.set_trajectory([(coord, 0) for coord in path])
     heading = follower.heading_degrees() - 60
     instructions = []
     for idx, location in enumerate(path):

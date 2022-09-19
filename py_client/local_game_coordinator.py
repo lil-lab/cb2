@@ -8,10 +8,11 @@
 import asyncio
 import logging
 import pathlib
+import time
 import uuid
 
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timedelta
 from server.messages import message_from_server
 
 import server.schemas.game as game_db
@@ -63,30 +64,27 @@ class LocalSocket(GameSocket):
     def send_message(self, message):
         state_machine_driver = self.local_coordinator._state_machine_driver(self.game_name)
         state_machine_driver.drain_messages(self.actor_id, [message])
-        # Give the state machine a chance to run.
-        event_loop = asyncio.get_event_loop()
-        event_loop.run_until_complete(asyncio.sleep(0))
 
     def connected(self):
         return self.local_coordinator._game_exists(self.game_name)
     
-    def receive_message(self, timeout):
+    def receive_message(self, timeout=timedelta(seconds=60)):
         """ This is a local socket. We don't need to worry about timeouts. No blocking operations. """
         # Give the state machine a chance to run.
-        event_loop = asyncio.get_event_loop()
-        # Let the game state loop update by giving control to asyncio event loop.
-        event_loop.run_until_complete(asyncio.sleep(0))
         end_time = datetime.utcnow() + timeout
         # Wait until we have at least one message to return.
         while datetime.utcnow() < end_time:
+            logger.info(f"Waiting for message for {self.actor_id}")
             state_machine_driver = self.local_coordinator._state_machine_driver(self.game_name)
             state_machine_driver.fill_messages(self.actor_id, self.received_messages)
             if len(self.received_messages) > 0:
+                logger.info(f"RECEIVED MESSAGE FOR {self.actor_id}")
                 return self.received_messages.popleft(), ""
+            time.sleep(0.1)
         return None, "No messages available."
 
 class LocalGameCoordinator(object):
-    def __init__(self, config, render_leader=True, render_follower=False):
+    def __init__(self, config, render_leader=False, render_follower=False):
         self._game_drivers = {} # Game name -> StateMachineDriver
         self._game_tasks = {} # Game name -> StateMachineDriver asyncio task.
         self._game_endpoints = {} # Game name -> (leader_endpoint, follower_endpoint)
@@ -163,8 +161,6 @@ class LocalGameCoordinator(object):
             The idea is you create a game, then the leader & follower join, then the game begins.
         """
         leader_endpoint, follower_endpoint = self._game_endpoints[game_name]
-        leader_endpoint._initialize()
-        follower_endpoint._initialize()
 
     def Cleanup(self):
         """ Cleans up any games that have ended. Call this regularly to avoid memory leaks.
@@ -180,12 +176,6 @@ class LocalGameCoordinator(object):
                 logger.info(f"Game {game_name} has ended. Cleaning up.")
                 del self._game_tasks[game_name]
                 del self._game_drivers[game_name]
-
-    def _step_game(self, game_name):
-        """ Steps the game with the given name. """
-        game_driver = self._game_drivers[game_name]
-        event_loop = asyncio.get_event_loop()
-        event_loop.run_until_complete(game_driver.step())
 
     def _unique_game_name(cls):
         """ Generates a random UUID and returns.
