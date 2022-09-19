@@ -119,7 +119,23 @@ class LocalGameCoordinator(object):
     
     # TODO(sharf): Actually implement this...
     def CreateGameFromDatabase(self, game, game_id: int, instruction_uuid: str):
-        ...
+        """ Creates a new game from a specific instruction in a recorded game. Exactly two agents can join this game with JoinGame(). 
+
+            Returns the game name.
+        """
+        game_name = self._unique_game_name()
+        if game_name in self._game_drivers:
+            raise Exception(f"Game name {game_name} already exists. This should never happen.")
+        room_id = game_name
+        # Setup game DB entry.
+        instruction_record = 
+        game_record = game_db.Game.select().where(game_db.Game.id == game_id).get()
+        state_machine = State(room_id, game_record)
+        event_loop = asyncio.get_event_loop()
+        self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)
+        self._game_tasks[game_name] = event_loop.create_task(self._game_drivers[game_name].run())
+        return game_name
+        
     
     def JoinGame(self, game_name):
         """ Joins a game with the given name.

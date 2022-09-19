@@ -658,17 +658,53 @@ class MapType(Enum):
     NONE = 0
     RANDOM = 1
     HARDCODED = 2
-
+    PRESET = 3
+    MAX = 4
 
 class MapProvider(object):
-    def __init__(self, map_type):
-        map = None
+    def _init_from_map_and_cards(self, map, cards, actors):
+        """ """
+        self._tiles = map.tiles
+        # TODO(sharf): Need to advance id assigner to latest ID (max of tiles, cards, players)
+        self._id_assigner = IdAssigner()
+        self._tiles_by_location = {}
+        for i, tile in enumerate(self._tiles):
+            self._tiles_by_location[tile.cell.coord] = i
+        self._rows = map.rows
+        self._cols = map.cols
+        self._cards = cards
+        self._selected_cards = {}
+        self._card_generator = CardGenerator(self._id_assigner)
+        self.add_map_boundaries()
+        self.add_layer_boundaries()
+        # Choose spawn tiles for future cards.
+        spaces = FloodFillPartitionTiles(self._tiles)
+        sorted_spaces = sorted(spaces, key=len, reverse=True)
+        # Burn IDs for all the existing cards (so they don't get reused).
+        for card in self._cards:
+            self._id_assigner.alloc() # Discards a new ID.
+        # Only spawn cards in the largest contiguous region.
+        self._map_metadata.num_partitions = len(sorted_spaces)
+        self._map_metadata.partition_locations = [space[0] for space in sorted_spaces]
+        self._map_metadata.partition_sizes = [len(space) for space in sorted_spaces]
+        self._potential_spawn_tiles = sorted_spaces[0]
+        # Filter it down to tiles that are ok for spawning cards/players on.
+        self._potential_spawn_tiles = [tile 
+                                    for tile in self._potential_spawn_tiles
+                                    if tile.asset_id in [AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH,
+                                                            AssetId.MOUNTAIN_TILE, AssetId.SNOWY_MOUNTAIN_TILE]]
+
+
+    def __init__(self, map_type, map: MapUpdate = None, cards: List[card.Card] = None):
         if map_type == MapType.RANDOM:
             map = RandomMap()
             self._map_metadata = map.metadata
         elif map_type == MapType.HARDCODED:
             map = tutorial_map_data.HardcodedMap()
             self._map_metadata = None
+        elif map_type == MapType.PRESET:
+            self._init_from_map_and_cards(map, cards)
+            return
         else:
             raise ValueError("Invalid map type NONE specified.")
         

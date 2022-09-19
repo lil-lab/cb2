@@ -13,7 +13,6 @@ from server.schemas.cards import CardSelections
 
 from dateutil import tz
 
-
 class Shape(Enum):
     NONE = 0
     PLUS = 1
@@ -94,6 +93,19 @@ class Card:
     border_color: action.Color = action.Color(0, 0, 1, 1)
     hidden: bool = False
 
+    @classmethod
+    def FromProp(cls, prop):
+        return cls(
+            prop.id,
+            prop.prop_info.location,
+            prop.prop_info.rotation_degrees, 
+            prop.card_init.shape,
+            prop.card_init.color,
+            prop.card_init.count,
+            prop.card_init.selected,
+            prop.prop_info.border_color,
+            prop.card_init.hidden)
+        
     def prop(self):
         return prop.Prop(
                         self.id,

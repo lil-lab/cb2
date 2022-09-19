@@ -54,9 +54,11 @@ $(function () {
     $('#instruction-grid').w2grid({
       name: 'instruction-grid',
       header: "Turn Instructions",
+      selectType: 'cell',
       columns: [
           { field: 'instruction_number', text: 'Instruction No', size: '30%' },
           { field: 'turn_issued', text: 'Turn Issued', size: '30%' },
+          { field: 'uuid', text: 'Unique ID', size: '20%'},
           { field: 'time', text: 'Time', size: '40%' },
           { field: 'turn_completed', text: 'Turn Completed', size: '40%' },
           { field: 'text', text: 'Instruction Text', size: '40%' }

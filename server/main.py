@@ -512,6 +512,7 @@ async def GameData(request):
         json_instructions.append({
             "instruction_number": instruction.instruction_number,
             "turn_issued": instruction.turn_issued,
+            "uuid": instruction.uuid,
             "time": str(instruction.time.replace(tzinfo=tz.tzutc()).astimezone(NYC)),
             "turn_completed": instruction.turn_completed,
             "text": instruction.text

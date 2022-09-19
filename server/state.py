@@ -1,13 +1,15 @@
 from server.actor import Actor
 from server.assets import AssetId
 from server.messages.action import Action, Color, ActionType, CensorActionForFollower
+from server.messages.map_update import MapUpdate
+from server.messages.prop import Prop
 from server.messages.rooms import Role
 from server.messages import live_feedback, message_from_server
 from server.messages import message_to_server
 from server.messages import objective, state_sync
 from server.hex import HecsCoord
 from server.map_provider import MapProvider, MapType, CachedMapRetrieval
-from server.card import CardSelectAction, SetCompletionActions
+from server.card import CardSelectAction, SetCompletionActions, Card
 from server.messages.turn_state import TurnState, GameOverMessage, TurnUpdate
 
 from server.game_recorder import GameRecorder
@@ -50,18 +52,33 @@ logger = logging.getLogger(__name__)
 class State(object):
 
     @classmethod
-    def InitializeFromExistingState(cls, map, props, turn_state, instructions, actors, live_feedback):
-        s = State()
+    def InitializeFromExistingState(cls, room_id, map: MapUpdate = None, props : List[Prop] = [], turn_state : TurnState = None, instructions : List[objective.ObjectiveMessage] = [], actors : List[Actor] = []):
+        s = State(room_id, None, True, map, props, turn_state, instructions, actors)
         return s
-        
-    def __init__(self):
-        pass
 
-    def __init__(self, room_id, game_record):
+    def _init_from_data(self, map, props, turn_state, instructions, actors):
+        self._game_recorder = GameRecorder(disabled=True)
+        cards = [Card(card_id) for card_id in props]
+        self._map_provider = MapProvider(MapType.PRESET, map, cards)
+        self._objectives = instructions
+        self._objectives_stale = {}
+        for objective in self._objectives:
+            if not objective.completed and not objective.cancelled:
+                self._active_objectives.append(objective)
+        self._active_objective = None
+        self._turn_complete_queue = []
+        for actor in actors:
+            asset_id = AssetId.PLAYER if actor.role() == Role.LEADER else AssetId.FOLLOWER
+            spawn_point = actor.location()
+            new_actor = Actor(self._map_provider.id_assigner().alloc(), asset_id, actor.role(), spawn_point, False, actor.heading_degrees())
+            self._actors[new_actor.actor_id()] = new_actor
+            self._action_history[new_actor.actor_id()] = []
+            self.desync_all()
+        self.send_turn_state(turn_state)
+
+
+    def __init__(self, room_id, game_record, use_preset_data: bool = False, map: MapUpdate = None, props: List[Prop] = [], turn_state: TurnState = None, instructions: List[objective.ObjectiveMessage] = [], actors: List[Actor] = []):
         self._room_id = room_id
-
-        # Records everything that happens in a game.
-        self._game_recorder = GameRecorder(game_record)
 
         # Rolling count of iteration loop. Used to indicate when an iteration of
         # the logic loop has occurred. Sent out in StateMachineTick messages
@@ -71,40 +88,49 @@ class State(object):
         # Maps from actor_id (prop id) to actor object (see definition below).
         self._actors = {}
 
-        # Map props and actors share IDs from the same pool, so the ID assigner
-        # is shared to prevent overlap.
-        self._map_provider = CachedMapRetrieval()
-        self._id_assigner = self._map_provider.id_assigner()  # Map and state props share the same ID space.
-        
+        self._turn_complete_queue = []
+
         self._objectives = []
         self._objectives_stale = {}  # Maps from player_id -> bool if their objective list is stale.
         self._active_objective = None
 
-        self._turn_complete_queue = []
-
-        self._map_update = self._map_provider.map()
         self._map_stale = {} # Maps from player_id -> bool if their map is stale.
         self._map_update_count = 0
 
-        self._prop_update = self._map_provider.prop_update() # Maps from player_id -> list of props to update.
         self._prop_stale = {} # Maps from player_id -> bool if their prop list is stale.
-
-        self._live_feedback = {} # Maps from player_id -> live_feedback.FeedbackType if live feedback is pending. Otherwise live_feedback.FeedbackType.None.
 
         self._synced = {}
         self._action_history = {}
-        initial_turn = TurnUpdate(
-            Role.LEADER, LEADER_MOVES_PER_TURN, 6,
-            datetime.utcnow() + self.turn_duration(Role.LEADER),
-            datetime.utcnow(), 0, 0, 0)
         self._turn_history = {}
-        self.send_turn_state(initial_turn)
+        
+        self._turn_state = None
+
+        if use_preset_data:
+            self._init_from_data()
+        else:
+            # Records everything that happens in a game.
+            self._game_recorder = GameRecorder(game_record)
+            # Map props and actors share IDs from the same pool, so the ID assigner
+            # is shared to prevent overlap.
+            self._map_provider = CachedMapRetrieval()
+            initial_turn = TurnUpdate(
+                Role.LEADER, LEADER_MOVES_PER_TURN, 6,
+                datetime.utcnow() + self.turn_duration(Role.LEADER),
+                datetime.utcnow(), 0, 0, 0)
+            self.send_turn_state(initial_turn)
+
+        self._id_assigner = self._map_provider.id_assigner()  # Map and state props share the same ID space.
+
+        self._map_update = self._map_provider.map()
+        self._prop_update = self._map_provider.prop_update() # Maps from player_id -> list of props to update.
+
+        self._live_feedback = {} # Maps from player_id -> live_feedback.FeedbackType if live feedback is pending. Otherwise live_feedback.FeedbackType.None.
 
         self._spawn_points = self._map_provider.spawn_points()
         random.shuffle(self._spawn_points)
         self._done = False
 
-        self._current_set_invalid = False
+        self._current_set_invalid = self._map_provider.selected_cards_collide()
 
     def turn_duration(self, role):
         return timedelta(seconds=LEADER_SECONDS_PER_TURN) if role == Role.LEADER else timedelta(seconds=FOLLOWER_SECONDS_PER_TURN)

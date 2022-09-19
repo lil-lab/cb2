@@ -19,7 +19,11 @@ class GameRecorder(object):
 
         Logs all messages and also populates the database.
     """
-    def __init__(self, game_record):
+    def __init__(self, game_record, disabled=False):
+        """ Parameter disabled is used to disable logging. Useful for testing and certain other situations. """
+        self._disabled = disabled
+        if self._disabled:
+            return
         self._last_move = None
         self._active_objective = None
         self._last_turn_state = None
@@ -37,9 +41,13 @@ class GameRecorder(object):
         self._game_record.save()
     
     def record(self):
+        if self._disabled:
+            return None
         return self._game_record
     
     def initial_state(self, map_update, prop_update, turn_state, actors):
+        if self._disabled:
+            return
         self._game_record.number_cards = len(prop_update.props)
         self._game_record.save()
         self._last_turn_state = turn_state
@@ -66,6 +74,8 @@ class GameRecorder(object):
         initial_state.save()
 
     def record_map_update(self, map_update):
+        if self._disabled:
+            return
         # Record the map update to the database.
         map_record = schemas.map.MapUpdate()
         map_record.world_seed = self._game_record.world_seed
@@ -76,6 +86,8 @@ class GameRecorder(object):
         map_record.save()
     
     def record_prop_update(self, prop_update):
+        if self._disabled:
+            return
         # Record the prop update to the database.
         prop_record = schemas.prop.PropUpdate()
         prop_record.prop_data = prop_update
@@ -83,6 +95,8 @@ class GameRecorder(object):
         prop_record.save()
     
     def record_card_selection(self, card):
+        if self._disabled:
+            return
         selection_record = schemas.cards.CardSelections()
         selection_record.game = self._game_record
         selection_record.move = self._last_move
@@ -92,13 +106,17 @@ class GameRecorder(object):
         selection_record.save()
     
     def record_card_set(self):
-            set_record = schemas.cards.CardSets()
-            set_record.game = self._game_record
-            set_record.move = self._last_move
-            set_record.score = self._last_turn_state.score + 1
-            set_record.save()
+        if self._disabled:
+            return
+        set_record = schemas.cards.CardSets()
+        set_record.game = self._game_record
+        set_record.move = self._last_move
+        set_record.score = self._last_turn_state.score + 1
+        set_record.save()
 
     def record_objective(self, objective):
+        if self._disabled:
+            return
         instruction = schemas.game.Instruction()
         instruction.game = self._game_record
         instruction.time = datetime.utcnow()
@@ -119,6 +137,8 @@ class GameRecorder(object):
                 return
     
     def record_objective_complete(self, objective_complete):
+        if self._disabled:
+            return
         instruction = schemas.game.Instruction.select().where(
             schemas.game.Instruction.uuid==objective_complete.uuid).get()
         instruction.turn_completed = self._last_turn_state.turn_number
@@ -130,6 +150,8 @@ class GameRecorder(object):
             self._active_objective = None
     
     def record_move(self, actor, proposed_action: Action):
+        if self._disabled:
+            return
         move = schemas.game.Move()
         move.game = self._game_record
         if actor.role() == Role.FOLLOWER:
@@ -172,6 +194,8 @@ class GameRecorder(object):
         move.save()
     
     def record_live_feedback(self, feedback, follower):
+        if self._disabled:
+            return
         # TODO(sharf): Once we add a move column to live feedback. we can record
         # the move that the live feedback is for.
         live_feedback_record = schemas.game.LiveFeedback()
@@ -192,6 +216,8 @@ class GameRecorder(object):
         live_feedback_record.save()
     
     def mark_objective_cancelled(self, objective):
+        if self._disabled:
+            return
         instruction_query = schemas.game.Instruction.select().where(
             schemas.game.Instruction.uuid==objective.uuid)
         if instruction_query.count() == 0:
@@ -215,6 +241,8 @@ class GameRecorder(object):
             return
     
     def record_end_of_turn(self, force_role_switch, end_reason, turn_skipped):
+        if self._disabled:
+            return
         turn = schemas.game.Turn()
         turn.game = self._game_record
         # Due to a change in how turns are counted, each turn now
@@ -234,18 +262,24 @@ class GameRecorder(object):
         turn.save()
     
     def record_turn_state(self, turn_state):
+        if self._disabled:
+            return
         self._last_turn_state = turn_state
         self._game_record.score = turn_state.score
         self._game_record.number_turns = turn_state.turn_number
         self._game_record.save()
 
     def record_game_over(self):
+        if self._disabled:
+            return
         self._game_record.completed = True
         self._game_record.end_time = datetime.utcnow()
         self._game_record.score = self._last_turn_state.score
         self._game_record.save()
 
     def _get_or_create_card_record(self, card):
+        if self._disabled:
+            return
         record, created = schemas.cards.Card.get_or_create(game=self._game_record, count=card.count,color=str(card.color),shape=str(card.shape),
                                                 location=card.location, defaults={'turn_created': self._last_turn_state.turn_number})
         return record
