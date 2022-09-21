@@ -357,11 +357,15 @@ class GameEndpoint(object):
     def __enter__(self):
         return self
     
-    def __exit__(self, type, value, traceback):
+    def close(self):
         if not self.over() and self.socket.connected():
             self.socket.send_message(LeaveMessage())
         if self.render:
             self.pygame_task.cancel()
+
+    
+    def __exit__(self, type, value, traceback):
+        self.close()
 
     def _state(self):
         leader = None

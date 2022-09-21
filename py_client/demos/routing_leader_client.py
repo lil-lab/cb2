@@ -6,6 +6,7 @@ from py_client.remote_client import RemoteClient
 from py_client.game_endpoint import LeadAction, FollowAction, LeadFeedbackAction, Role
 
 import fire
+import threading
 
 from collections import deque
 
@@ -41,8 +42,10 @@ def find_path_to_card(card, follower, map, cards):
     location_queue = deque()
     location_queue.append((start_location, [start_location]))
     card_locations = set([card.prop_info.location for card in cards])
-    card_locations.remove(start_location)
-    card_locations.remove(end_location)
+    if start_location in card_locations:
+        card_locations.remove(start_location)
+    if end_location in card_locations:
+        card_locations.remove(end_location)
     visited_locations = set()
     while len(location_queue) > 0:
         current_location, current_path = location_queue.popleft()

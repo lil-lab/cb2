@@ -160,8 +160,9 @@ async def Status(request):
     global assets_map
     global room_manager
     remote_table = GetRemoteTable()
-    player_queue = {str(x):str(remote_table[x]) for _,x in room_manager.player_queue()}
-    follower_queue = {str(x):str(remote_table[x]) for _,x in room_manager.follower_queue()}
+    player_queue = [str(remote_table[x]) for _,x,_ in room_manager.player_queue()]
+    follower_queue = [str(remote_table[x]) for _,x,_ in room_manager.follower_queue()]
+    leader_queue = [str(remote_table[x]) for _,x,_ in room_manager.leader_queue()]
 
     server_state = {
         "assets": assets_map,
@@ -173,6 +174,7 @@ async def Status(request):
         "room_selected_cards": [str(room_manager.get_room(room_id).selected_cards()) for room_id in room_manager.room_ids()],
         "player_queue": player_queue,
         "follower_queue": follower_queue,
+        "leader_queue": leader_queue,
         "room_debug_info": [room_manager.get_room(room_id).debug_status() for room_id in room_manager.room_ids()],
     }
     pretty_dumper = lambda x: orjson.dumps(x, option=orjson.OPT_NAIVE_UTC | orjson.OPT_INDENT_2).decode('utf-8')

@@ -370,14 +370,13 @@ class GameDisplay(object):
         self._positive_markers = None
         self._negative_markers = None
         self._instructions = None
-        # Initialize pygame.
-        pygame.init()
-        # Create the screen
-        self._screen = pygame.display.set_mode((self._screen_size,
-                                                self._screen_size))
-        self._screen = pygame.display.set_mode((self._screen_size,
-                                                self._screen_size))
-        pygame.display.set_caption("Game Visualizer")
+
+        # This is used s.t. a user can initialize a GameDisplay without
+        # necessarily involving pygame. Pygame doesn't play nicely on background
+        # threads, but someone might want to initialize this object on a
+        # background thread and have draw() get called later in the main thread.
+        # As such, pygame intialization is only called when draw() is called.
+        self._pygame_initialized = False
     
     # This is the CB2 server config. Includes fog distance, and some other stuff relevant to game display (card covers, etc.)
     def set_config(self, config):
@@ -614,6 +613,14 @@ class GameDisplay(object):
         draw_wrapped(self, text)
 
     def draw(self):
+        if not self._pygame_initialized:
+            # Initialize pygame.
+            pygame.init()
+            # Create the screen
+            self._screen = pygame.display.set_mode((self._screen_size,
+                                                    self._screen_size))
+            pygame.display.set_caption("Game Visualizer")
+            self._pygame_initialized = True
         # Fill the screen with white
         self._screen.fill((255,255,255))
         # Draw map elements.

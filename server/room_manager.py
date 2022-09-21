@@ -79,6 +79,9 @@ class RoomManager(object):
     
     def follower_queue(self):
         return self._follower_queue
+    
+    def leader_queue(self):
+        return self._leader_queue
 
     def disconnect_socket(self, ws):
         """ This socket terminated its connection. End the game that the person was in."""
