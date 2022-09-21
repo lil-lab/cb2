@@ -662,7 +662,7 @@ class MapType(Enum):
     MAX = 4
 
 class MapProvider(object):
-    def _init_from_map_and_cards(self, map, cards, actors):
+    def _init_from_map_and_cards(self, map, cards):
         """ """
         self._tiles = map.tiles
         # TODO(sharf): Need to advance id assigner to latest ID (max of tiles, cards, players)
@@ -684,15 +684,19 @@ class MapProvider(object):
         for card in self._cards:
             self._id_assigner.alloc() # Discards a new ID.
         # Only spawn cards in the largest contiguous region.
-        self._map_metadata.num_partitions = len(sorted_spaces)
-        self._map_metadata.partition_locations = [space[0] for space in sorted_spaces]
-        self._map_metadata.partition_sizes = [len(space) for space in sorted_spaces]
+        self._map_metadata = map.metadata
         self._potential_spawn_tiles = sorted_spaces[0]
         # Filter it down to tiles that are ok for spawning cards/players on.
         self._potential_spawn_tiles = [tile 
                                     for tile in self._potential_spawn_tiles
                                     if tile.asset_id in [AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH,
                                                             AssetId.MOUNTAIN_TILE, AssetId.SNOWY_MOUNTAIN_TILE]]
+        # Index cards generated.
+        self._cards_by_location = {}
+        for generated_card in self._cards:
+            self._cards_by_location[generated_card.location] = generated_card
+        self._spawn_points = [tile.cell.coord for tile in self._tiles
+                              if (tile.asset_id == AssetId.GROUND_TILE_PATH) and (tile.cell.coord not in self._cards_by_location)]
 
 
     def __init__(self, map_type, map: MapUpdate = None, cards: List[card.Card] = None):

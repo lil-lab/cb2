@@ -12,6 +12,8 @@ from typing import List, Optional
 
 import dateutil.parser
 
+# TODO(sharf): This file is unnecessarily and prematurely abstracted. Props -> Cards, and simplify everything.
+
 class PropType(Enum):
     NONE = 0
     SIMPLE = 1

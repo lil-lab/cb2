@@ -62,6 +62,13 @@ class Turn(BaseModel):
     notes = TextField() # a CSV of 'UsedAllMoves', 'FinishedAllCommands', or 'SkippedTurnNoInstructionsTodo'
     end_method = TextField() # Something like 'RanOutOfTime' or 'UserPrompted', or 'FollowerOutOfMoves', 'FollowerFinishedInstructions', or 'UserPromptedInterruption'
 
+def InstructionTurnActive(instruction):
+    game = instruction.game
+    instruction_before = Instruction.select().where(Instruction.game == game, Instruction.time < instruction.time).order_by(Instruction.time.desc()).get()
+    if instruction_before.turn_completed == -1:
+        return instruction_before.turn_cancelled
+    return instruction_before.turn_completed
+
 class Instruction(BaseModel):
     game = ForeignKeyField(Game, backref='instructions')
     worker = ForeignKeyField(Worker, backref='moves', null=True)

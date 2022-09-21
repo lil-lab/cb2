@@ -383,7 +383,7 @@ class GameEndpoint(object):
         return map_update, props, self.turn_state, self.instructions, actors, self.live_feedback
     
     def Initialize(self, timeout=timedelta(seconds=60)):
-        self._initialize()
+        return self._initialize()
     
     def _initialize(self, timeout=timedelta(seconds=60)):
         """ Initializes the game state. 
@@ -395,6 +395,7 @@ class GameEndpoint(object):
             return
         
         end_time = datetime.utcnow() + timeout
+        logger.info(f"Beginning INIT")
         while self.socket.connected():
             if datetime.utcnow() > end_time:
                 raise Exception("Timed out waiting for game")
@@ -402,9 +403,8 @@ class GameEndpoint(object):
             if response is None:
                 logger.warn(f"No message received from _receive_message(). Reason: {reason}")
                 continue
-            logger.info("Init: Received message")
             if response.type == message_from_server.MessageType.STATE_SYNC:
-                logger.info("Init: Received state sync")
+                logger.info(f"INIT received state sync.")
                 state_sync = response.state
                 self.player_id = state_sync.player_id
                 self._player_role = state_sync.player_role
@@ -412,21 +412,25 @@ class GameEndpoint(object):
                     self.actors[net_actor.actor_id] = actor.Actor(net_actor.actor_id, 0, net_actor.actor_role, net_actor.location, False, net_actor.rotation_degrees)
                 self.player_actor = self.actors[self.player_id]
             if response.type == message_from_server.MessageType.MAP_UPDATE:
-                logger.info("Init: Received map")
                 self.map_update = response.map_update
             if response.type == message_from_server.MessageType.PROP_UPDATE:
-                logger.info("Init: Received props")
+                logger.info(f"INIT received prop")
                 self._handle_prop_update(response.prop_update)
             if response.type == message_from_server.MessageType.GAME_STATE:
-                logger.info("Init: Received turn state")
+                logger.info(f"INIT received turn state")
                 self.turn_state = response.turn_state
+                if self.over():
+                    return False, "Game over"
             if response.type == message_from_server.MessageType.STATE_MACHINE_TICK:
-                logger.info("Init: Received TICK!")
+                logger.info(f"Init TICK received")
                 if None not in [self.player_actor, self.map_update, self.prop_update, self.turn_state]:
+                    logger.info(f"Init DONE for {self._player_role}")
                     self._initial_state_ready = True
                     if self.render:
                         self._render()
                     return True, ""
+                else:
+                    logger.warn(f"Init not ready. Player role: {self._player_role}, map update: {self.map_update is not None}, prop update: {self.prop_update is not None}, turn state: {self.turn_state is not None}")
         return False, "Game initialization timed out."
     
     def _handle_prop_update(self, prop_update):

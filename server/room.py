@@ -36,7 +36,8 @@ class RoomType(Enum):
 class Room(object):
     """ Represents a game room. """
     def __init__(self, name: str, max_players: int, game_id: int, game_record,
-                 type: RoomType = RoomType.GAME, tutorial_name: str = ""):
+                 type: RoomType = RoomType.GAME, tutorial_name: str = "", from_instruction: str = ""):
+        """ from_instruction is the UUID of an instruction to start the game from. """
         self._name = name
         self._max_players = max_players
         self._players = []
@@ -46,7 +47,10 @@ class Room(object):
         self._game_record = game_record
         if self._room_type == RoomType.GAME:
             self._game_record.type = 'game'
-            game_state = State(self._id, self._game_record)
+            if from_instruction != None:
+                game_state = State.InitializeFromExistingState(self._id, from_instruction)
+            else:
+                game_state = State(self._id, self._game_record)
         elif self._room_type == RoomType.TUTORIAL:
             if RoleFromTutorialName(tutorial_name) == Role.LEADER:
                 self._game_record.type = 'lead_tutorial'
@@ -202,7 +206,6 @@ class Room(object):
         out_messages.extend(messages)
 
         for message in messages:
-            logger.info(f"Sent message type {message.type} for player {player_id}.")
             log_bytes = orjson.dumps(LogEntryFromOutgoingMessage(player_id, message), option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat).decode('utf-8')
             self._messages_from_server_log.write(log_bytes + "\n")
         return True

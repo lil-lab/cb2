@@ -93,6 +93,15 @@ class Card:
     border_color: action.Color = action.Color(0, 0, 1, 1)
     hidden: bool = False
 
+    def __hash__(self):
+        return hash(
+            self.id,
+            self.location,
+            self.rotation_degrees,
+            self.shape,
+            self.color,
+            self.count)
+
     @classmethod
     def FromProp(cls, prop):
         return cls(

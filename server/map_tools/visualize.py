@@ -375,6 +375,8 @@ class GameDisplay(object):
         # Create the screen
         self._screen = pygame.display.set_mode((self._screen_size,
                                                 self._screen_size))
+        self._screen = pygame.display.set_mode((self._screen_size,
+                                                self._screen_size))
         pygame.display.set_caption("Game Visualizer")
     
     # This is the CB2 server config. Includes fog distance, and some other stuff relevant to game display (card covers, etc.)
@@ -557,6 +559,8 @@ class GameDisplay(object):
         
     def visualize_follower_visibility(self):
         if self._config is None:
+            return
+        if self._state_sync is None:
             return
         follower = None
         for i, actor in enumerate(self._state_sync.actors):

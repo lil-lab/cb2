@@ -45,13 +45,11 @@ class LeaveRoomNotice(DataClassJSONMixin):
     """
     reason: str
 
-
 @dataclass(frozen=True)
 class StatsResponse(DataClassJSONMixin):
     number_of_games: int
     players_in_game: int
     players_waiting: int
-
 
 class RoomRequestType(Enum):
     """ Enumeration of the different types of management requests.  """
@@ -64,11 +62,19 @@ class RoomRequestType(Enum):
     JOIN_FOLLOWER_ONLY = 6
     JOIN_LEADER_ONLY = 7
 
-
 @dataclass(frozen=True)
 class RoomManagementRequest(DataClassJSONMixin):
     type: RoomRequestType
-
+    # This is an optional parameter to add when making a JOIN request.  If
+    # added, the server will resume the game from the provided instruction.  All
+    # instruction UUIDs are unique, the server goes and finds the game
+    # associated with this instruction, and reconstructs the game at that point
+    # (mostly accurately, but not perfectly, see state.py for implementation
+    # details).
+    # If you provide this, it limits who you can be paired with.
+    # TODO(sharf): For now, if this is empty you might match with someone who
+    # provided it. In the future, add stricter matching.
+    join_game_with_instruction_uuid: Optional[str] = None
 
 class RoomResponseType(Enum):
     """ Enumeration of the different types of management responses.  """

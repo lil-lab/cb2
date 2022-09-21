@@ -8,14 +8,25 @@
 import asyncio
 import logging
 import pathlib
+import pygame
 import time
 import uuid
 
 from collections import deque
 from datetime import datetime, timedelta
+from server.actor import Actor
+from server.map_tools.visualize import GameDisplay
 from server.messages import message_from_server
+from server.messages.turn_state import TurnState
+from server.messages.objective import ObjectiveMessage
+from server.messages.state_sync import StateSync
+import server.messages.map_update as map_update
 
 import server.schemas.game as game_db
+import server.schemas.cards as card_db
+import server.schemas.map as map_db
+import server.card as card
+import server.state
 
 from py_client.game_endpoint import GameEndpoint
 from py_client.game_socket import GameSocket
@@ -25,6 +36,7 @@ from server.state_machine_driver import StateMachineDriver
 from server.util import GetCommitHash
 
 logger = logging.getLogger(__name__)
+
 
 # Used to manage state machines for local games, each with two agents.
 # Hand-wavy intended use pseudocode:
@@ -64,6 +76,7 @@ class LocalSocket(GameSocket):
     def send_message(self, message):
         state_machine_driver = self.local_coordinator._state_machine_driver(self.game_name)
         state_machine_driver.drain_messages(self.actor_id, [message])
+        time.sleep(0.1)
 
     def connected(self):
         return self.local_coordinator._game_exists(self.game_name)
@@ -73,12 +86,11 @@ class LocalSocket(GameSocket):
         # Give the state machine a chance to run.
         end_time = datetime.utcnow() + timeout
         # Wait until we have at least one message to return.
+        logger.info(f"Waiting for packet. {self.actor_id}")
         while datetime.utcnow() < end_time:
-            logger.info(f"Waiting for message for {self.actor_id}")
             state_machine_driver = self.local_coordinator._state_machine_driver(self.game_name)
             state_machine_driver.fill_messages(self.actor_id, self.received_messages)
             if len(self.received_messages) > 0:
-                logger.info(f"RECEIVED MESSAGE FOR {self.actor_id}")
                 return self.received_messages.popleft(), ""
             time.sleep(0.1)
         return None, "No messages available."
@@ -118,7 +130,7 @@ class LocalGameCoordinator(object):
         return game_name
     
     # TODO(sharf): Actually implement this...
-    def CreateGameFromDatabase(self, game, game_id: int, instruction_uuid: str):
+    def CreateGameFromDatabase(self, instruction_uuid: str):
         """ Creates a new game from a specific instruction in a recorded game. Exactly two agents can join this game with JoinGame(). 
 
             Returns the game name.
@@ -127,16 +139,33 @@ class LocalGameCoordinator(object):
         if game_name in self._game_drivers:
             raise Exception(f"Game name {game_name} already exists. This should never happen.")
         room_id = game_name
-        # Setup game DB entry.
-        instruction_record = 
-        game_record = game_db.Game.select().where(game_db.Game.id == game_id).get()
-        state_machine = State(room_id, game_record)
+        
+        # For cards, take all cards so far and then delete any CardSets().
+        state_machine = State.InitializeFromExistingState(room_id, instruction_uuid)
+
+        state_sync = state_machine.state(-1)
+
         event_loop = asyncio.get_event_loop()
         self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)
         self._game_tasks[game_name] = event_loop.create_task(self._game_drivers[game_name].run())
         return game_name
-        
     
+    def DrawGame(self, game_name):
+        # Visualize all state here.
+        if game_name not in self._state_machine_driver:
+            raise Exception(f"Game {game_name} does not exist.")
+        display = GameDisplay(800)
+        display.set_config(self._config)
+        state_machine = self._state_machine_driver[game_name].state_machine()
+        state_sync = state_machine.state(-1)
+        display.set_instructions(state_machine._objectives)
+        display.set_map(state_machine.map())
+        cards = state_machine.cards()
+        display.set_props([card.prop() for card in cards])
+        display.set_state_sync(state_sync)
+        display.draw()
+        pygame.display.flip()
+        
     def JoinGame(self, game_name):
         """ Joins a game with the given name.
         
@@ -182,7 +211,6 @@ class LocalGameCoordinator(object):
         """ Cleans up any games that have ended. Call this regularly to avoid memory leaks.
 
             Only deletes a SM if its associated task has ended.
-        
         """
         # list() call is necessary to create a copy. Otherwise we're mutating a
         # list as we iterate through it.

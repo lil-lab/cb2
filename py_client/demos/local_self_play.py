@@ -50,7 +50,8 @@ class PathfindingLeader(threading.Thread):
     def run(self):
         try:
             logger.info(f"LEAD STARTED()")
-            self.game.Initialize()
+            initialized, reason = self.game.Initialize()
+            assert initialized, f"Unable to initialize: {reason}"
             map, cards, turn_state, instructions, (leader, follower), live_feedback = self.game.initial_state()
             while not self.game.over():
                 leader_action = self.get_action(self.game, map, cards, turn_state, instructions, (leader, follower), live_feedback)
@@ -75,7 +76,8 @@ class NaiveFollower(threading.Thread):
     
     def run(self):
         try:
-            self.game.Initialize()
+            initialized, reason = self.game.Initialize()
+            assert initialized, f"Unable to initialize: {reason}"
             map, cards, turn_state, instructions, actors, live_feedback = self.game.initial_state()
             logger.info(f"FOLLOW STARTED()")
             if len(actors) == 1:
@@ -114,7 +116,6 @@ class NaiveFollower(threading.Thread):
             return action
         else:
             # Choose a random action.
-            logger.info(f"RANDOMMMMMMMMMMMMMMMMMMMM")
             action_codes = [FollowAction.ActionCode.FORWARDS, FollowAction.ActionCode.BACKWARDS, FollowAction.ActionCode.TURN_LEFT, FollowAction.ActionCode.TURN_RIGHT]
             action = FollowAction(random.choice(action_codes))
             return action
@@ -124,7 +125,7 @@ class NaiveFollower(threading.Thread):
         if self.exc:
             raise self.exc
 
-def main(config_filepath="server/config/local-covers-config.json"):
+def main(config_filepath="server/config/local-covers-config.json", instruction_uuid="2847819ffad64294b6081fbaa85d0837"):
     nest_asyncio.apply()
     logging.basicConfig(level=logging.INFO)
     config = ReadConfigOrDie(config_filepath)
@@ -134,7 +135,10 @@ def main(config_filepath="server/config/local-covers-config.json"):
     for i in range(100):
         logger.info(f"STARTING GAME {i}")
         coordinator = LocalGameCoordinator(config)
-        game_name = coordinator.CreateGame()
+        if len(instruction_uuid) > 0:
+            game_name = coordinator.CreateGameFromDatabase(instruction_uuid)
+        else:
+            game_name = coordinator.CreateGame()
         leader_game = coordinator.JoinGame(game_name)
         follower_game = coordinator.JoinGame(game_name)
         # Give the game some time to process.
@@ -145,7 +149,6 @@ def main(config_filepath="server/config/local-covers-config.json"):
         follower_agent.daemon = True
         leader_agent.start()
         follower_agent.start()
-        pygame.init()
         event_loop = asyncio.get_event_loop()
         event_loop.run_until_complete(asyncio.sleep(1))
         while not coordinator._state_machine_driver(game_name).done():

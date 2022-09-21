@@ -1,6 +1,7 @@
 """ Used to manage game rooms. """
 from collections import deque
 from dataclasses import dataclass, field
+from itertools import count
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime, timedelta
 
@@ -58,7 +59,6 @@ class SocketInfo:
 
 class RoomManager(object):
     """ Used to manage game rooms. """
-
     def __init__(self):
         self._rooms = {}
         self._room_id_assigner = IdAssigner()
@@ -127,7 +127,7 @@ class RoomManager(object):
         self._is_done = True
 
     def create_room(self, id, game_record: game_db.Game,
-                    type: RoomType = RoomType.GAME, tutorial_name: str = ""):
+                    type: RoomType = RoomType.GAME, tutorial_name: str = "", from_instruction : str = ""):
         self._rooms[id] = Room(
             # Room name.
             "Room #" + str(id) + ("(TUTORIAL)" if type == RoomType.TUTORIAL else ""),
@@ -137,7 +137,8 @@ class RoomManager(object):
             id,
             game_record,
             type,
-            tutorial_name)
+            tutorial_name,
+            from_instruction)
         self._rooms[id].start()
         return self._rooms[id]
 
@@ -206,12 +207,26 @@ class RoomManager(object):
         leaders. """
         while not self._is_done:
             await asyncio.sleep(0)
-            leader, follower = self.get_leader_follower_match()
+            leader, follower, i_uuid = self.get_leader_follower_match()
 
             if (leader is None) or (follower is None):
                 continue
 
             logger.info(f"Creating room for {leader} and {follower}. Queue size: {len(self._player_queue)} Follower Queue: {len(self._follower_queue)}")
+
+            if i_uuid != "":
+                # Start game from a specific point.
+                room = self.create_room(i_uuid, None, RoomType.GAME, "", i_uuid)
+                print("Creating new game from instruction " + room.name())
+                leader_id = room.add_player(leader, Role.LEADER)
+                follower_id = room.add_player(follower, Role.FOLLOWER)
+                self._remotes[leader] = SocketInfo(room.id(), leader_id, Role.LEADER)
+                self._remotes[follower] = SocketInfo(room.id(), follower_id, Role.FOLLOWER)
+                self._pending_room_management_responses[leader].put(
+                    RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.LEADER), None, None))
+                self._pending_room_management_responses[follower].put(
+                    RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.FOLLOWER), None, None))
+                return
 
             # Setup room log directory.
             game_record = game_db.Game()
@@ -297,7 +312,7 @@ class RoomManager(object):
         """
         # First of all, if the first follower has been waiting for 5m, remove them from the queue.
         if len(self._follower_queue) > 0:
-            (ts, follower) = self._follower_queue[0]
+            (ts, follower, i_uuid) = self._follower_queue[0]
             if datetime.now() - ts > timedelta(minutes=5):
                 self._follower_queue.popleft()
                 # Queue a room management response to notify the follower that they've been removed from the queue.
@@ -306,7 +321,7 @@ class RoomManager(object):
         
         # If a general player has been waiting alone for 5m, remove them from the queue.
         if len(self._player_queue) > 0:
-            (ts, player) = self._player_queue[0]
+            (ts, player, i_uuid) = self._player_queue[0]
             if datetime.now() - ts > timedelta(minutes=5):
                 self._player_queue.popleft()
                 # Queue a room management response to notify the player that they've been removed from the queue.
@@ -315,7 +330,7 @@ class RoomManager(object):
         
         # If a leader has been waiting alone for 5m, remove them from the queue.
         if len(self._leader_queue) > 0:
-            (ts, leader) = self._leader_queue[0]
+            (ts, leader, i_uuid) = self._leader_queue[0]
             if datetime.now() - ts > timedelta(minutes=5):
                 self._leader_queue.popleft()
                 # Queue a room management response to notify the leader that they've been removed from the queue.
@@ -324,41 +339,65 @@ class RoomManager(object):
 
         # If there's a leader in the leader queue and a follower in the follower queue, match them.
         if len(self._leader_queue) > 0 and len(self._follower_queue) > 0:
-            (_, leader) = self._leader_queue.popleft()
-            (_, follower) = self._follower_queue.popleft()
-            return leader, follower
+            (_, leader, l_i_uuid) = self._leader_queue.popleft()
+            (_, follower, f_i_uuid) = self._follower_queue.popleft()
+            if l_i_uuid != "":
+                i_uuid = l_i_uuid
+            elif f_i_uuid != "":
+                i_uuid = f_i_uuid
+            else:
+                i_uuid = ""
+            return leader, follower, i_uuid
         
         # If there's no general players, a match can't be made.
         if len(self._player_queue) < 1:
-            return None, None
+            return None, None, ""
         
         # If there's a leader and a general player, match them.
         if len(self._leader_queue) > 0 and len(self._player_queue) > 0:
-            (_, leader) = self._leader_queue.popleft()
-            (_, player) = self._player_queue.popleft()
-            return leader, player
+            (_, leader, l_i_uuid) = self._leader_queue.popleft()
+            (_, player, f_i_uuid) = self._player_queue.popleft()
+            if l_i_uuid != "":
+                i_uuid = l_i_uuid
+            elif f_i_uuid != "":
+                i_uuid = f_i_uuid
+            else:
+                i_uuid = ""
+            return leader, player, i_uuid
 
         # If there's a follower waiting, match them with the first general player.
         if len(self._follower_queue) >= 1:
-            (_, leader) = self._player_queue.popleft()
-            (_, follower) = self._follower_queue.popleft()
-            return leader, follower
+            (_, leader, l_i_uuid) = self._player_queue.popleft()
+            (_, follower, f_i_uuid) = self._follower_queue.popleft()
+            if l_i_uuid != "":
+                i_uuid = l_i_uuid
+            elif f_i_uuid != "":
+                i_uuid = f_i_uuid
+            else:
+                i_uuid = ""
+            return leader, follower, i_uuid
 
         # If there's no follower waiting, check if there's two general players...
         if len(self._player_queue) < 2:
-            return (None, None)
+            return (None, None, "")
 
         # If a general player has been waiting for >= 10 seconds with no follower, match them with another general player.
         (ts, _) = self._player_queue[0] 
         logger.warn(f"AHHH CHANGE THIS BACK TO 10s")
         if datetime.now() - ts > timedelta(seconds=1):
-            (_, player1) = self._player_queue.popleft()
-            (_, player2) = self._player_queue.popleft()
+            (_, player1, i_uuid_1) = self._player_queue.popleft()
+            (_, player2, i_uuid_2) = self._player_queue.popleft()
             leader, follower = self.assign_leader_follower(player1, player2)
+            if i_uuid_1 != "":
+                i_uuid = i_uuid_1
+            elif i_uuid_2 != "":
+                i_uuid = i_uuid_2
+            else:
+                i_uuid = ""
             if leader is None or follower is None:
                 logger.warning("Could not assign leader and follower based on experience. Using random assignment.")
-                return (player1, player2)
-            return leader, follower
+                return (player1, player2, i_uuid)
+            return leader, follower, i_uuid
         return None, None
     
     def handle_tutorial_request(self, tutorial_request, ws):
@@ -371,7 +410,7 @@ class RoomManager(object):
         else:
             logger.warning(f'Room manager received incorrect tutorial request type {tutorial_request.type}.')
     
-    def join_player_queue(self, ws):
+    def join_player_queue(self, ws, instruction_uuid=""):
         if ws in self._player_queue:
             logger.info(f"Join request is from socket which is already in the wait queue. Ignoring.")
             return
@@ -381,11 +420,11 @@ class RoomManager(object):
         if ws in self._leader_queue:
             logger.info(f"Join request is from socket which is already in the leader wait queue. Ignoring.")
             return
-        self._player_queue.append((datetime.now(), ws))
+        self._player_queue.append((datetime.now(), ws, instruction_uuid))
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, len(self._player_queue), Role.NONE), None, None))
 
-    def join_follower_queue(self, ws):
+    def join_follower_queue(self, ws, instruction_uuid=""):
         if ws in self._follower_queue:
             logger.info(f"Join request is from socket which is already in the follower wait queue. Ignoring.")
             return
@@ -395,11 +434,11 @@ class RoomManager(object):
         if ws in self._leader_queue:
             logger.info(f"Join request is from socket which is already in the leader wait queue. Ignoring.")
             return
-        self._follower_queue.append((datetime.now(), ws))
+        self._follower_queue.append((datetime.now(), ws, instruction_uuid))
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, len(self._follower_queue), Role.NONE), None, None))
     
-    def join_leader_queue(self, ws):
+    def join_leader_queue(self, ws, instruction_uuid=""):
         if ws in self._leader_queue:
             logger.info(f"Join request is from socket which is already in the leader wait queue. Ignoring.")
             return
@@ -409,7 +448,7 @@ class RoomManager(object):
         if ws in self._follower_queue:
             logger.info(f"Join request is from leader socket which is already in the follow wait queue. Ignoring.")
             return
-        self._leader_queue.append((datetime.now(), ws))
+        self._leader_queue.append((datetime.now(), ws, instruction_uuid))
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, len(self._leader_queue), Role.NONE), None, None))
 
@@ -460,36 +499,36 @@ class RoomManager(object):
     def remove_socket_from_queue(self, ws):
         player_queue = deque()
         removed = False
-        for ts, element in self._player_queue:
+        for ts, element, i_uuid in self._player_queue:
             if element == ws:
                 logger.info("Removed socket from queue.")
                 removed = True
                 continue
-            player_queue.append((ts, element))
+            player_queue.append((ts, element, i_uuid))
         if not removed:
             logger.warning("Socket not found in queue!")
         self._player_queue = player_queue
 
         follower_queue = deque()
         removed = False
-        for ts, element in self._follower_queue:
+        for ts, element, i_uuid in self._follower_queue:
             if element == ws:
                 logger.info("Removed socket from follower queue.")
                 removed = True
                 continue
-            follower_queue.append((ts, element))
+            follower_queue.append((ts, element, i_uuid))
         if not removed:
             logger.warning("Socket not found in follower queue!")
         self._follower_queue = follower_queue
 
         leader_queue = deque()
         removed = False
-        for ts, element in self._leader_queue:
+        for ts, element, i_uuid in self._leader_queue:
             if element == ws:
                 logger.info("Removed socket from leader queue.")
                 removed = True
                 continue
-            leader_queue.append((ts, element))
+            leader_queue.append((ts, element, i_uuid))
         if not removed:
             logger.warning("Socket not found in leader queue!")
         self._leader_queue = leader_queue
