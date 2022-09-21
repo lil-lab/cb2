@@ -108,6 +108,7 @@ class State(object):
             turn_record.turn_number)
         cards = []
         if len(map.map_data.props) != 0:
+            logger.info(f"Loading cards from map, which contains {len(map.map_data.props)} cards.")
             cards = map.map_data.props
         else:
             logger.error(f"Map {map.id} has no props. Cannot recover cards.")
@@ -618,6 +619,8 @@ class State(object):
             del self._preloaded_actors[role]
             self._actors[actor.actor_id()] = actor
             self._action_history[actor.actor_id()] = []
+            for actor_id in self._actors:
+                self._prop_stale[actor_id] = True
             # Resend the latest turn state.
             self.send_turn_state(self._turn_state)
             # Mark clients as desynced.

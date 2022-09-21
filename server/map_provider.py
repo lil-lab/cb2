@@ -683,6 +683,8 @@ class MapProvider(object):
         # Burn IDs for all the existing cards (so they don't get reused).
         for card in self._cards:
             self._id_assigner.alloc() # Discards a new ID.
+            if card.selected:
+                self._selected_cards[card.id] = card
         # Only spawn cards in the largest contiguous region.
         self._map_metadata = map.metadata
         self._potential_spawn_tiles = sorted_spaces[0]

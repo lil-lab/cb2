@@ -214,9 +214,10 @@ class RoomManager(object):
 
             logger.info(f"Creating room for {leader} and {follower}. Queue size: {len(self._player_queue)} Follower Queue: {len(self._follower_queue)}")
 
-            if i_uuid != "":
+            if i_uuid is not None and i_uuid != "":
+                logger.info(f"Starting game from i_uuid: {i_uuid}")
                 # Start game from a specific point.
-                room = self.create_room(i_uuid, None, RoomType.GAME, "", i_uuid)
+                room = self.create_room(i_uuid, None, RoomType.PRESET_GAME, "", i_uuid)
                 print("Creating new game from instruction " + room.name())
                 leader_id = room.add_player(leader, Role.LEADER)
                 follower_id = room.add_player(follower, Role.FOLLOWER)
@@ -341,9 +342,9 @@ class RoomManager(object):
         if len(self._leader_queue) > 0 and len(self._follower_queue) > 0:
             (_, leader, l_i_uuid) = self._leader_queue.popleft()
             (_, follower, f_i_uuid) = self._follower_queue.popleft()
-            if l_i_uuid != "":
+            if l_i_uuid:
                 i_uuid = l_i_uuid
-            elif f_i_uuid != "":
+            elif f_i_uuid:
                 i_uuid = f_i_uuid
             else:
                 i_uuid = ""
@@ -357,9 +358,9 @@ class RoomManager(object):
         if len(self._leader_queue) > 0 and len(self._player_queue) > 0:
             (_, leader, l_i_uuid) = self._leader_queue.popleft()
             (_, player, f_i_uuid) = self._player_queue.popleft()
-            if l_i_uuid != "":
+            if l_i_uuid:
                 i_uuid = l_i_uuid
-            elif f_i_uuid != "":
+            elif f_i_uuid:
                 i_uuid = f_i_uuid
             else:
                 i_uuid = ""
@@ -369,9 +370,9 @@ class RoomManager(object):
         if len(self._follower_queue) >= 1:
             (_, leader, l_i_uuid) = self._player_queue.popleft()
             (_, follower, f_i_uuid) = self._follower_queue.popleft()
-            if l_i_uuid != "":
+            if l_i_uuid:
                 i_uuid = l_i_uuid
-            elif f_i_uuid != "":
+            elif f_i_uuid:
                 i_uuid = f_i_uuid
             else:
                 i_uuid = ""
@@ -388,9 +389,9 @@ class RoomManager(object):
             (_, player1, i_uuid_1) = self._player_queue.popleft()
             (_, player2, i_uuid_2) = self._player_queue.popleft()
             leader, follower = self.assign_leader_follower(player1, player2)
-            if i_uuid_1 != "":
+            if i_uuid_1:
                 i_uuid = i_uuid_1
-            elif i_uuid_2 != "":
+            elif i_uuid_2:
                 i_uuid = i_uuid_2
             else:
                 i_uuid = ""
@@ -457,12 +458,12 @@ class RoomManager(object):
         worker = GetWorkerFromRemote(ws)
         if worker is None:
             logger.warning(f"Could not get worker from remote. Joining.")
-            self.join_player_queue(ws)
+            self.join_player_queue(ws, instruction_uuid=request.join_game_with_instruction_uuid)
             return
         if worker.qual_level in [WorkerQualLevel.EXPERT, WorkerQualLevel.LEADER]:
-            self.join_player_queue(ws)
+            self.join_player_queue(ws, instruction_uuid=request.join_game_with_instruction_uuid)
         elif worker.qual_level == WorkerQualLevel.FOLLOWER:
-            self.join_follower_queue(ws)
+            self.join_follower_queue(ws, instruction_uuid=request.join_game_with_instruction_uuid)
         else:
             logger.warning(f"Worker has invalid qual level: {worker.qual_level}.")
             self._pending_room_management_responses[ws].put(
@@ -470,12 +471,12 @@ class RoomManager(object):
             return
     
     def handle_follower_only_join_request(self, request, ws):
-        logger.info(f"Received follower only join request from : {str(ws)}. Queue size: {len(self._follower_queue)}")
-        self.join_follower_queue(ws)
+        logger.info(f"Received follower only join request from : {str(ws)}. Queue size: {len(self._follower_queue)}. uuid: {request.join_game_with_instruction_uuid}")
+        self.join_follower_queue(ws, instruction_uuid=request.join_game_with_instruction_uuid)
 
     def handle_leader_only_join_request(self, request, ws):
         logger.info(f"Received leader only join request from : {str(ws)}. Queue size: {len(self._leader_queue)}")
-        self.join_leader_queue(ws)
+        self.join_leader_queue(ws, instruction_uuid=request.join_game_with_instruction_uuid)
 
     def handle_leave_request(self, request, ws):
         if not ws in self._remotes:

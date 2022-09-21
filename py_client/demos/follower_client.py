@@ -36,7 +36,7 @@ def get_active_instruction(instructions):
             return instruction
     return None
 
-def main(host, render=False):
+def main(host, render=False, i_uuid: str = ""):
     client = RemoteClient(host, render)
     connected, reason = client.Connect()
     assert connected, f"Unable to connect: {reason}"
@@ -44,7 +44,8 @@ def main(host, render=False):
     instructions_processed = set()
     instruction_in_progress = False
     active_uuid = None
-    with client.JoinGame(timeout=timedelta(minutes=5), queue_type=RemoteClient.QueueType.FOLLOWER_ONLY) as game:
+    i_uuid = i_uuid.strip()
+    with client.JoinGame(timeout=timedelta(minutes=5), queue_type=RemoteClient.QueueType.FOLLOWER_ONLY, i_uuid=i_uuid.strip()) as game:
         map, cards, turn_state, instructions, actors, feedback = game.initial_state()
         action = FollowAction(FollowAction.ActionCode.NONE)
         while not game.over():

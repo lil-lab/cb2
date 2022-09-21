@@ -32,6 +32,7 @@ class RoomType(Enum):
     NONE = 0
     TUTORIAL = 1
     GAME = 2
+    PRESET_GAME = 3
 
 class Room(object):
     """ Represents a game room. """
@@ -47,37 +48,47 @@ class Room(object):
         self._game_record = game_record
         if self._room_type == RoomType.GAME:
             self._game_record.type = 'game'
-            if from_instruction != None:
-                game_state = State.InitializeFromExistingState(self._id, from_instruction)
-            else:
-                game_state = State(self._id, self._game_record)
+            game_state = State(self._id, self._game_record)
         elif self._room_type == RoomType.TUTORIAL:
             if RoleFromTutorialName(tutorial_name) == Role.LEADER:
                 self._game_record.type = 'lead_tutorial'
             else:
                 self._game_record.type = 'follow_tutorial'
             game_state = TutorialGameState(self._id, tutorial_name, self._game_record)
+        elif self._room_type == RoomType.PRESET_GAME:
+            if not from_instruction:
+                raise ValueError("Preset game must be initialized from an instruction.")
+            game_state = State.InitializeFromExistingState(self._id, from_instruction)
         else:
             game_state = None
-            logger.error("Room started with invalid type NONE.")
+            logger.error(f"Room started with invalid type {self._room_type}.")
         self._state_machine_driver = StateMachineDriver(game_state, self._id)
-        self._game_record.save()
+        if self._room_type != RoomType.PRESET_GAME:
+            self._game_record.save()
         self._update_loop = None
-        log_directory = pathlib.Path(game_record.log_directory)
-        if not os.path.exists(log_directory):
-            logger.warning('Provided log directory does not exist. Game will not be recorded.')
-            return
-        self._log_directory = log_directory
-        messages_from_server_path = pathlib.Path(self._log_directory, 'messages_from_server.jsonl.log')
-        self._messages_from_server_log = messages_from_server_path.open('w')
-        messages_to_server_path = pathlib.Path(self._log_directory, 'messages_to_server.jsonl.log')
-        self._messages_to_server_log = messages_to_server_path.open('w')
+        if self._room_type == RoomType.PRESET_GAME:
+            # Create a dummy log directory for the game that ignores all writes.
+            self._log_directory = pathlib.Path("/dev/null")
+            # Create a dummy file object that ignores all bytes.
+            self._messages_from_server_log = open(os.devnull, 'w')
+            self._messages_to_server_log = open(os.devnull, 'w')
+        else:
+            log_directory = pathlib.Path(game_record.log_directory)
+            if not os.path.exists(log_directory):
+                logger.warning('Provided log directory does not exist. Game will not be recorded.')
+                return
+            self._log_directory = log_directory
+            messages_from_server_path = pathlib.Path(self._log_directory, 'messages_from_server.jsonl.log')
+            self._messages_from_server_log = messages_from_server_path.open('w')
+            messages_to_server_path = pathlib.Path(self._log_directory, 'messages_to_server.jsonl.log')
+            self._messages_to_server_log = messages_to_server_path.open('w')
 
         # Write the current server config to the log_directory as config.json.
-        with open(pathlib.Path(self._log_directory, 'config.json'), 'w') as f:
-            server_config = GlobalConfig()
-            if server_config is not None:
-                f.write(orjson.dumps(server_config).decode('utf-8'))
+        if self._room_type != RoomType.PRESET_GAME:
+            with open(pathlib.Path(self._log_directory, 'config.json'), 'w') as f:
+                server_config = GlobalConfig()
+                if server_config is not None:
+                    f.write(orjson.dumps(server_config).decode('utf-8'))
 
         self._map_update_count = 0
     
@@ -92,7 +103,7 @@ class Room(object):
         id = state_machine.create_actor(role)
         remote = GetRemote(ws)
 
-        if remote != None:
+        if remote != None and self._room_type != RoomType.PRESET_GAME:
             remote_record = clients_db.Remote.select().join(mturk_db.Worker, join_type=peewee.JOIN.LEFT_OUTER).where(
                 clients_db.Remote.hashed_ip==remote.hashed_ip, 
                 clients_db.Remote.remote_port==remote.client_port).get()
@@ -115,7 +126,7 @@ class Room(object):
                     self._game_record.follower = remote_record.worker
             self._game_record.save()
         else:
-            logger.warn(f"Error: socket with null remote encountered??")
+            logger.warn(f"Starting room without remote IP/Port information.")
         self._players.append(id)
         self._player_endpoints.append(ws)
         return id

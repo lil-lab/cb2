@@ -61,11 +61,11 @@ def InterruptMessage():
         type=message_to_server.MessageType.INTERRUPT)
     return message
 
-def JoinQueueMessage():
+def JoinQueueMessage(i_uuid: str = ""):
     message = message_to_server.MessageToServer(
         transmit_time=datetime.utcnow(),
         type=message_to_server.MessageType.ROOM_MANAGEMENT,
-        room_request=message_to_server.RoomManagementRequest(messages.rooms.RoomRequestType.JOIN))
+        room_request=message_to_server.RoomManagementRequest(messages.rooms.RoomRequestType.JOIN, i_uuid))
     return message
 
 def InstructionDoneMessage(uuid):
@@ -75,18 +75,18 @@ def InstructionDoneMessage(uuid):
         objective_complete=ObjectiveCompleteMessage(uuid))
     return message
 
-def JoinFollowerQueueMessage():
+def JoinFollowerQueueMessage(i_uuid: str = ""):
     message = message_to_server.MessageToServer(
         transmit_time=datetime.utcnow(),
         type=message_to_server.MessageType.ROOM_MANAGEMENT,
-        room_request=message_to_server.RoomManagementRequest(messages.rooms.RoomRequestType.JOIN_FOLLOWER_ONLY))
+        room_request=message_to_server.RoomManagementRequest(messages.rooms.RoomRequestType.JOIN_FOLLOWER_ONLY, i_uuid))
     return message
 
-def JoinLeaderQueueMessage():
+def JoinLeaderQueueMessage(i_uuid: str = ""):
     message = message_to_server.MessageToServer(
         transmit_time=datetime.utcnow(),
         type=message_to_server.MessageType.ROOM_MANAGEMENT,
-        room_request=message_to_server.RoomManagementRequest(messages.rooms.RoomRequestType.JOIN_LEADER_ONLY))
+        room_request=message_to_server.RoomManagementRequest(messages.rooms.RoomRequestType.JOIN_LEADER_ONLY, i_uuid))
     return message
 
 def ActionsMessage(actions):
