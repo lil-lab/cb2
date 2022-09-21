@@ -38,13 +38,17 @@ def get_next_card(cards, follower):
 def find_path_to_card(card, follower, map, cards):
     start_location = follower.location()
     end_location = card.prop_info.location
-    card_locations = set([card.prop_info.location for card in cards])
     location_queue = deque()
     location_queue.append((start_location, [start_location]))
+    card_locations = set([card.prop_info.location for card in cards])
+    card_locations.remove(start_location)
+    card_locations.remove(end_location)
     visited_locations = set()
     while len(location_queue) > 0:
         current_location, current_path = location_queue.popleft()
         if current_location in visited_locations:
+            continue
+        if current_location in card_locations:
             continue
         visited_locations.add(current_location)
         if current_location == end_location:
@@ -52,9 +56,7 @@ def find_path_to_card(card, follower, map, cards):
         tile = map.tile_at(current_location)
         for neighbor in tile.cell.coord.neighbors():
             if tile.cell.boundary.get_edge_between(tile.cell.coord, neighbor):
-                break
-            if neighbor in card_locations and neighbor != end_location:
-                break
+                continue
             location_queue.append((neighbor, current_path + [neighbor]))
     return None
 
