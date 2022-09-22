@@ -7,6 +7,7 @@ import fire
 import logging
 import nest_asyncio
 import queue
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,7 @@ def main(url="http://localhost:8080", number_of_leaders = 32):
                 leader_agent.daemon = True
                 leader_agent.start()
                 leaders[i] = leader_agent
+        time.sleep(1)
 
 if __name__ == "__main__":
     fire.Fire(main)
