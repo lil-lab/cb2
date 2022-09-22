@@ -217,8 +217,14 @@ class Room(object):
         out_messages.extend(messages)
 
         for message in messages:
-            log_bytes = orjson.dumps(LogEntryFromOutgoingMessage(player_id, message), option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat).decode('utf-8')
-            self._messages_from_server_log.write(log_bytes + "\n")
+            try:
+                log_bytes = orjson.dumps(LogEntryFromOutgoingMessage(player_id, message), option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat).decode('utf-8')
+                self._messages_from_server_log.write(log_bytes + "\n")
+            except TypeError:
+                logger.info(f"Error with message {message}")
+                while True:
+                    import sys
+                    sys.exit(1)
         return True
 
     def id(self):

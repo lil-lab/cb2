@@ -22,8 +22,9 @@ import server.schemas.game as game_db
 import server.schemas.cards as cards_db
 import server.schemas.map as map_db
 
-from queue import Queue
+from collections import deque
 from datetime import datetime, timedelta
+from queue import Queue
 from typing import List
 
 import asyncio
@@ -72,6 +73,8 @@ def cumulative_turns_added(score):
 # Consume messages from the state machine with fill_messages().
 # You must call drain_messages() before each update() call and fill_messages() after each update() call.
 # It is recommended to use StateMachineDriver to run this class -- see server/state_machine_driver.py for details.
+#
+# In the process of renaming objective -> instruction. You may see the two terms used interchangeably here.
 class State(object):
     @classmethod
     def InitializeFromExistingState(cls, room_id, instruction_uuid: str = ""):
@@ -137,14 +140,11 @@ class State(object):
         self._game_recorder = GameRecorder(None, disabled=True)
         cards = [Card.FromProp(prop) for prop in props]
         self._map_provider = MapProvider(MapType.PRESET, map, cards)
-        self._objectives = instructions
-        self._objectives_stale = {}
-        for objective in self._objectives:
-            if not objective.completed and not objective.cancelled:
-                self._active_objective = objective
-                break
-        self._active_objective = None
-        self._turn_complete_queue = []
+        self._instructions = deque(instructions)
+        self._instruction_history = deque()
+        self._instructions_stale = {}
+        self._turn_complete_queue = deque()
+        self._instruction_complete_queue = deque()
         self._preloaded_actors = {}
         for actor in actors:
             asset_id = AssetId.PLAYER if actor.role() == Role.LEADER else AssetId.FOLLOWER_BOT
@@ -163,17 +163,23 @@ class State(object):
 
         # Maps from actor_id (prop id) to actor object (see definition below).
         self._actors = {}
+        # True if a player was added since the last iteration.
+        self._actors_added = False
 
         self._turn_complete_queue = []
 
-        self._objectives = []
-        self._objectives_stale = {}  # Maps from player_id -> bool if their objective list is stale.
-        self._active_objective = None
+        self._instructions = deque() # A list of unprocessed instructions.
+        self._instruction_history = deque() # All instructions, including completed/cancelled ones.
+        self._instructions_stale = {}  # Maps from player_id -> bool if their objective list is stale.
+        self._instruction_added = False # True if an instruction was added since the last iteration.
+        self._instruction_complete_queue = deque()
 
         self._map_stale = {} # Maps from player_id -> bool if their map is stale.
         self._map_update_count = 0
 
         self._prop_stale = {} # Maps from player_id -> bool if their prop list is stale.
+
+        self._ticks = {} # Maps from player_id -> tick message.
 
         self._synced = {}
         self._action_history = {}
@@ -262,10 +268,16 @@ class State(object):
         self._game_recorder.initial_state(self._map_provider.map(), self._map_provider.prop_update(), self._turn_state, self._actors)
 
     async def update(self):
-        # I haven't estimated the update loop time recently, but it should be
-        # ~50-100us. That means this number overflows in 2 days. Should be good
-        # enough for our purposes. Even if its 1us, that gives us > 1 hour.
-        self._iter = (self._iter + 1) % 2**32
+        send_tick = False
+
+        # Have we received an instruction since the last iteration?
+        if self._instruction_added:
+            self._instruction_added = False
+            send_tick = True
+        
+        if self._actors_added:
+            self._actors_added = False
+            send_tick = True
 
         # Check to see if the game is over.
         if self._turn_state.turns_left <= -1:
@@ -282,13 +294,16 @@ class State(object):
 
         if datetime.utcnow() >= self._turn_state.turn_end:
             self.update_turn()
+            send_tick = True
 
         # If the follower currently has no instructions, end their turn.
         if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
             self.update_turn(force_role_switch=True, end_reason="FollowerFinishedInstructions")
+            send_tick = True
 
         if self._turn_state.turn == Role.FOLLOWER and self._turn_state.moves_remaining <= 0:
             self.update_turn(force_role_switch=True, end_reason="FollowerOutOfMoves")
+            send_tick = True
 
         # Handle actor actions.
         for actor_id in self._actors:
@@ -301,12 +316,14 @@ class State(object):
                     self.desync(actor_id)
                     logger.info(
                         f"Actor {actor_id} is not the current role. Dropping pending action.")
+                    send_tick = True
                     continue
                 if self._turn_state.moves_remaining == 0:
                     actor.drop()
                     self.desync(actor_id)
                     logger.info(
                         f"Actor {actor_id} is out of moves. Dropping pending action.")
+                    send_tick = True
                     continue
                 if self.valid_action(actor_id, proposed_action):
                     self._game_recorder.record_move(actor, proposed_action)
@@ -315,24 +332,33 @@ class State(object):
                     color = Color(0, 0, 1, 1) if not self._current_set_invalid else Color(1, 0, 0, 1)
                     self.check_for_stepped_on_cards(actor_id, proposed_action, color)
                     self.update_turn()
+                    send_tick = True
                 else:
                     actor.drop()
                     self.desync(actor_id)
+                    send_tick = True
                     continue
         
         while len(self._turn_complete_queue) > 0:
-            (id, reason) = self._turn_complete_queue.pop()
+            (id, reason) = self._turn_complete_queue.popleft()
             if id not in self._actors:
                 continue
             actor = self._actors[id]
             if actor.role() == self._turn_state.turn:
                 self.update_turn(force_role_switch=True, end_reason=reason)
+                send_tick = True
                 continue
             # The leader can end the follower's turn via an interruption
             if actor.role() == Role.LEADER and reason == "UserPromptedInterruption":
-                self.cancel_pending_objectives()
+                self.cancel_pending_instructions()
                 self.update_turn(force_role_switch=True, end_reason=reason)
+                send_tick = True
                 continue
+        
+        while len(self._instruction_complete_queue) > 0:
+            (id, objective_complete) = self._instruction_complete_queue.popleft()
+            self._handle_instruction_complete(id, objective_complete)
+            send_tick = True
 
         selected_cards = list(self._map_provider.selected_cards())
         cards_changed = False
@@ -391,6 +417,13 @@ class State(object):
             self._send_state_machine_info = True
             for actor_id in self._actors:
                 self._prop_stale[actor_id] = True
+        
+        # If any state transitions occured which prompt a tick, send one.
+        if send_tick:
+            self._iter = (self._iter + 1) % 2**32
+            tick_message = StateMachineTick(iter=self._iter)
+            for id in self._actors:
+                self._ticks[id] = tick_message
 
     def on_game_over(self):
         self._game_recorder.record_game_over()
@@ -399,8 +432,8 @@ class State(object):
             experience.UpdateWorkerExperienceTable(self._game_recorder.record())
     
     def has_instructions_todo(self):
-        for objective in self._objectives:
-            if not objective.completed and not objective.cancelled:
+        for instruction in self._instructions:
+            if not instruction.completed and not instruction.cancelled:
                 return True
         return False
 
@@ -478,12 +511,12 @@ class State(object):
         elif message.type == message_to_server.MessageType.OBJECTIVE:
             logger.info(
                 f'Objective received. Room: {self._room_id}, Text: {message.objective.text}')
-            self._drain_objective(id, message.objective)
+            self._drain_instruction(id, message.objective)
         elif message.type == message_to_server.MessageType.OBJECTIVE_COMPLETED:
             logger.info(
                 f'Objective Compl received. Room: {self._room_id}, uuid: {message.objective_complete.uuid}')
-            self._drain_objective_complete(id, message.objective_complete)
-            self._log_objectives()
+            self._drain_instruction_complete(id, message.objective_complete)
+            self._log_instructions()
         elif message.type == message_to_server.MessageType.TURN_COMPLETE:
             logger.info(f'Turn Complete received. Room: {self._room_id}')
             self._drain_turn_complete(id, message.turn_complete)
@@ -498,7 +531,7 @@ class State(object):
         elif message.type == message_to_server.MessageType.CANCEL_PENDING_OBJECTIVES:
             logger.info(
                 f'Cancel pending objectives recvd. Room: {self._room_id}, Player: {id}')
-            self._drain_cancel_pending_objectives(id)
+            self._drain_cancel_pending_instructions(id)
         else:
             logger.warn(f'Received unknown packet type: {message.type}')
     
@@ -513,7 +546,7 @@ class State(object):
             return
         self._actors[actor_id].add_action(action)
 
-    def _drain_objective(self, id, objective):
+    def _drain_instruction(self, id, objective):
         if self._actors[id].role() != Role.LEADER:
             logger.warn(
                 f'Warning, objective received from non-leader ID: {str(id)}')
@@ -523,36 +556,14 @@ class State(object):
             return
         # TODO: Make UUID and non-UUID'd objectives separate message types.
         objective.uuid = uuid.uuid4().hex
-        self._game_recorder.record_objective(objective)
-        self._objectives.append(objective)
-        if self._active_objective is None:
-            self._active_objective = objective
+        self._game_recorder.record_instruction(objective)
+        self._instructions.append(objective)
+        self._instruction_added = True
         for actor_id in self._actors:
-            self._objectives_stale[actor_id] = True
+            self._instructions_stale[actor_id] = True
 
-    def _drain_objective_complete(self, id, objective_complete):
-        if self._actors[id].role() != Role.FOLLOWER:
-            logger.warn(
-                f'Warning, obj complete received from non-follower ID: {str(id)}')
-            return
-        for i, objective in enumerate(self._objectives):
-            if objective.uuid == objective_complete.uuid:
-                if self._objectives[i].cancelled:
-                    logger.warn(
-                        f'Warning, obj complete received for cancelled objective: {objective_complete.uuid}')
-                    for actor_id in self._actors:
-                        self._objectives_stale[actor_id] = True
-                    return
-                self._objectives[i].completed = True
-                break
-        # Mark the next "active" objective.
-        if i < len(self._objectives) - 1:
-            self._active_objective = self._objectives[i + 1]
-        else:
-            self._active_objective = None
-        for actor_id in self._actors:
-            self._objectives_stale[actor_id] = True
-        self._game_recorder.record_objective_complete(objective_complete)
+    def _drain_instruction_complete(self, id, objective_complete):
+        self._instruction_complete_queue.append((id, objective_complete))
     
     def _drain_live_feedback(self, id, feedback):
         if config.GlobalConfig() and not config.GlobalConfig().live_feedback_enabled:
@@ -589,7 +600,7 @@ class State(object):
             return
         self._turn_complete_queue.append((id, "UserPrompted"))
     
-    def _drain_cancel_pending_objectives(self, id):
+    def _drain_cancel_pending_instructions(self, id):
         logger.info(f"Cancel pending objectives received from ID: {str(id)}.")
         if self._actors[id].role() != Role.LEADER:
             logger.warn(
@@ -602,19 +613,20 @@ class State(object):
         # Queue up the cancellation.
         self._turn_complete_queue.append((id, "UserPromptedInterruption"))
 
-    def cancel_pending_objectives(self):
+    def cancel_pending_instructions(self):
         # Cancel all objectives.
-        for objective in self._objectives:
-            if not objective.completed:
-                objective.cancelled = True
+        while len(self._instructions) > 0:
+            instruction = self._instructions.popleft()
+            instruction.cancelled = True
+            self._instruction_history.append(instruction)
 
-        self._active_objective = None
         for actor_id in self._actors:
-            self._objectives_stale[actor_id] = True
+            self._instructions_stale[actor_id] = True
         self._game_recorder.record_instruction_cancellation()
 
     def create_actor(self, role):
         if role in self._preloaded_actors:
+            self._actors_added = True
             actor = self._preloaded_actors[role]
             del self._preloaded_actors[role]
             self._actors[actor.actor_id()] = actor
@@ -623,6 +635,7 @@ class State(object):
                 self._prop_stale[actor_id] = True
             # Resend the latest turn state.
             self.send_turn_state(self._turn_state)
+            self.mark_instructions_stale()
             # Mark clients as desynced.
             self.desync_all()
             return actor.actor_id()
@@ -633,17 +646,23 @@ class State(object):
         self._action_history[actor.actor_id()] = []
         # Resend the latest turn state.
         self.send_turn_state(self._turn_state)
+        self.mark_instructions_stale()
         # Mark clients as desynced.
         self.desync_all()
+        self._actors_added = True
         return actor.actor_id()
+    
+    def mark_instructions_stale(self):
+        for actor_id in self._actors:
+            self._instructions_stale[actor_id] = True
 
     def free_actor(self, actor_id):
         if actor_id in self._actors:
             del self._actors[actor_id]
         if actor_id in self._action_history:
             del self._action_history[actor_id]
-        if actor_id in self._objectives_stale:
-            del self._objectives_stale[actor_id]
+        if actor_id in self._instructions_stale:
+            del self._instructions_stale[actor_id]
         if actor_id in self._turn_history:
             del self._turn_history[actor_id]
         self._id_assigner.free(actor_id)
@@ -676,7 +695,7 @@ class State(object):
                 return True
             if len(self._action_history[actor_id]) > 0:
                 return True
-            if self._objectives_stale[actor_id]:
+            if self._instructions_stale[actor_id]:
                 return True
             if not self._turn_history[actor_id].empty():
                 return True
@@ -701,15 +720,10 @@ class State(object):
 
         if messages_added == 0:
             return False
-
-        # We sent messages this iteration. Send a tick.
-        tick_message = StateMachineTick(iter=self._iter)
-        message = message_from_server.StateMachineTickFromServer(tick_message)
-        out_messages.append(message)
         return True
     
-    def _log_objectives(self):
-        for objective in self._objectives:
+    def _log_instructions(self):
+        for objective in self._instructions:
             objective_status_char = 'C' if objective.completed else 'I'
             if objective.cancelled:
                 objective_status_char = 'X'
@@ -743,7 +757,7 @@ class State(object):
             msg = message_from_server.StateSyncFromServer(state_sync)
             return msg
 
-        objectives = self._next_objectives(player_id)
+        objectives = self._next_instructions(player_id)
         if len(objectives) > 0:
             logger.info(
                 f'Room {self._room_id} {len(objectives)} texts for player_id {player_id}')
@@ -762,6 +776,12 @@ class State(object):
             logger.info(
                 f'Room {self._room_id} live feedback {live_feedback} for player_id {player_id}')
             msg = message_from_server.LiveFeedbackFromServer(live_feedback)
+            return msg
+        
+        tick = self._next_tick(player_id)
+        if not tick is None:
+            logger.info(f'Room {self._room_id} tick {tick} for player_id {player_id}')
+            msg = message_from_server.StateMachineTickFromServer(tick)
             return msg
 
         # Nothing to send.
@@ -783,33 +803,26 @@ class State(object):
         self._action_history[actor_id] = []
         return action_history
 
-    def _next_objectives(self, actor_id):
-        if not actor_id in self._objectives_stale:
-            self._objectives_stale[actor_id] = True
-      
-        if not self._objectives_stale[actor_id]:
+    def _next_instructions(self, actor_id):
+        if not actor_id in self._instructions_stale:
+            self._instructions_stale[actor_id] = True
+
+        if not self._instructions_stale[actor_id]:
             return []
-      
+
         # Send the latest objective list and mark as fresh for this player.
-        self._objectives_stale[actor_id] = False
+        self._instructions_stale[actor_id] = False
 
         # For Leaders it's simple, send the current objective list.
         if self._actors[actor_id].role() == Role.LEADER:
-            return self._objectives
+            return list(self._instruction_history) + list(self._instructions)
 
-        # If sending objectives to a follower, don't send unseen instructions.
-        # Only past instructions + the oldest incomplete instruction.
-        objectives = []
-        for objective in self._objectives:
-            if objective.completed:
-                objectives.append(objective)
-            elif objective.cancelled:
-                objectives.append(objective)
-            else:
-                # Only send first "active" objective.
-                objectives.append(objective)
-                break
-        return objectives
+        all_instructions = list(self._instruction_history) + list(self._instructions)
+        follower_instructions = list(self._instruction_history)
+        # Also add the active instruction. Followers can see that too.
+        if len(self._instructions) > 0:
+            follower_instructions.append(self._instructions[0])
+        return follower_instructions
     
     def _next_map_update(self, actor_id):
         if not actor_id in self._map_stale:
@@ -857,6 +870,13 @@ class State(object):
         feedback = live_feedback.LiveFeedbackFromType(self._live_feedback[actor_id])
         self._live_feedback[actor_id] = live_feedback.FeedbackType.NONE
         return feedback
+    
+    def _next_tick(self, player_id):
+        if player_id not in self._ticks:
+            return None
+        tick = self._ticks[player_id]
+        self._ticks[player_id] = None
+        return tick
 
     # Returns the current state of the game.
     def state(self, actor_id=-1):
@@ -899,3 +919,27 @@ class State(object):
             if (action.rotation > 60.01):
                 return False
         return True
+
+    def _handle_instruction_complete(self, id, objective_complete):
+        if self._actors[id].role() != Role.FOLLOWER:
+            logger.warn(
+                f'Warning, obj complete received from non-follower ID: {str(id)}')
+            return
+        if len(self._instructions) == 0:
+            logger.warn(
+                f'Warning, obj complete received with no instructions ID: {str(id)}')
+            return
+        if self._instructions[0].uuid != objective_complete.uuid:
+            logger.warn(
+                f'Warning, obj complete received with wrong uuid ID: {objective_complete.uuid}')
+            return
+        if self._instructions[0].cancelled:
+            logger.warn(
+                f'Warning, obj complete received for cancelled objective ID: {objective_complete.uuid}')
+            return
+        active_instruction = self._instructions.popleft()
+        active_instruction.completed = True
+        self._instruction_history.append(active_instruction)
+        for actor_id in self._actors:
+            self._instructions_stale[actor_id] = True
+        self._game_recorder.record_instruction_complete(objective_complete)

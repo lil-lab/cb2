@@ -315,12 +315,18 @@ namespace Network
         // Return to the main menu.
         public void ReturnToMenu()
         {
-            _networkMapSource.ClearMapUpdate();
+            if (_networkMapSource != null)
+            {
+                _networkMapSource.ClearMapUpdate();
+            }
             _role = Network.Role.NONE;
             _currentTurn = Network.Role.NONE;
-            _router.ClearEntityManager();
-            _router.ClearPlayer();
-            _router.ClearMenuTransitionHandler();
+            if (_router != null)
+            {
+                _router.ClearEntityManager();
+                _router.ClearPlayer();
+                _router.ClearMenuTransitionHandler();
+            }
             SceneManager.LoadScene("menu_scene");
         }
 
@@ -558,7 +564,7 @@ namespace Network
             }
             // If it's been more than 60 seconds since the last poll and _serverConfig is null, poll the server for the config.
             // Alternatively, if _serverConfig is out of date and it's been > 10 seconds since the last poll, also poll the server.
-            if ((_serverConfig == null || (DateTime.UtcNow.Subtract(_serverConfig.timestamp).TotalMinutes > 1)) && 
+            if (((_serverConfig == null) || (DateTime.UtcNow.Subtract(_serverConfig.timestamp).TotalMinutes > 1)) && 
                 (DateTime.UtcNow.Subtract(_lastServerConfigPoll).TotalSeconds > 1) &&
                 !_serverConfigPollInProgress)
             {
@@ -584,10 +590,6 @@ namespace Network
             if (_client.IsClosed())
             {
                 connectionStatus.text = "Disconnected";
-                if (_serverConfig != null) {
-                    _serverConfig = null;
-                    _lastServerConfigPoll = DateTime.MinValue;
-                }
             }
             else if (_client.IsConnected())
             {
@@ -595,6 +597,7 @@ namespace Network
             }
             else if (_client.IsConnecting())
             {
+                _serverConfig = null;
                 connectionStatus.text = "Connecting...";
             }
             else if (_client.IsClosing())

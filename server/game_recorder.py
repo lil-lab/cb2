@@ -25,11 +25,10 @@ class GameRecorder(object):
         if self._disabled:
             return
         self._last_move = None
-        self._active_objective = None
+        self._active_instruction = None
         self._last_turn_state = None
-        self._objective_number = 1
-        self._active_objective = None
-        self._objective_queue = Queue()
+        self._instruction_number = 1
+        self._instruction_queue = Queue()
         self._map_update_count = 1
 
         # Create an entry in the Game database table.
@@ -114,7 +113,7 @@ class GameRecorder(object):
         set_record.score = self._last_turn_state.score + 1
         set_record.save()
 
-    def record_objective(self, objective):
+    def record_instruction(self, objective):
         if self._disabled:
             return
         instruction = schemas.game.Instruction()
@@ -123,20 +122,20 @@ class GameRecorder(object):
         instruction.worker = self._game_record.leader
         instruction.uuid = objective.uuid
         instruction.text = objective.text
-        instruction.instruction_number = self._objective_number
-        self._objective_number +=1
+        instruction.instruction_number = self._instruction_number
+        self._instruction_number +=1
         instruction.turn_issued = self._last_turn_state.turn_number
         instruction.save()
 
-        if self._active_objective is None:
-            self._active_objective = objective
+        if self._active_instruction is None:
+            self._active_instruction = objective
         else:
             try:
-                self._objective_queue.put_nowait(objective)
+                self._instruction_queue.put_nowait(objective)
             except queue.Full:
                 return
     
-    def record_objective_complete(self, objective_complete):
+    def record_instruction_complete(self, objective_complete):
         if self._disabled:
             return
         instruction = schemas.game.Instruction.select().where(
@@ -144,10 +143,10 @@ class GameRecorder(object):
         instruction.turn_completed = self._last_turn_state.turn_number
         instruction.save()
         try:
-            next_active_objective = self._objective_queue.get_nowait()
-            self._active_objective = next_active_objective
+            next_active_instruction = self._instruction_queue.get_nowait()
+            self._active_instruction = next_active_instruction
         except queue.Empty:
-            self._active_objective = None
+            self._active_instruction = None
     
     def record_move(self, actor, proposed_action: Action):
         if self._disabled:
@@ -155,9 +154,9 @@ class GameRecorder(object):
         move = schemas.game.Move()
         move.game = self._game_record
         if actor.role() == Role.FOLLOWER:
-            if self._active_objective is not None:
+            if self._active_instruction is not None:
                 last_obj_record = schemas.game.Instruction.select().where(
-                    schemas.game.Instruction.uuid == self._active_objective.uuid).get()
+                    schemas.game.Instruction.uuid == self._active_instruction.uuid).get()
                 move.instruction = last_obj_record
         move.character_role = actor.role()
         if actor.role == Role.LEADER:
@@ -203,9 +202,9 @@ class GameRecorder(object):
         live_feedback_record.feedback_type = "POSITIVE" if feedback.signal == live_feedback.FeedbackType.POSITIVE else "NEGATIVE"
         
         # Update the follower's state.
-        if self._active_objective is not None:
+        if self._active_instruction is not None:
             last_obj_record = schemas.game.Instruction.select().where(
-                schemas.game.Instruction.uuid == self._active_objective.uuid).get()
+                schemas.game.Instruction.uuid == self._active_instruction.uuid).get()
             live_feedback_record.instruction = last_obj_record
         live_feedback_record.turn_number = self._last_turn_state.turn_number
         if follower is not None:
@@ -215,7 +214,7 @@ class GameRecorder(object):
         live_feedback_record.server_time = datetime.utcnow()
         live_feedback_record.save()
     
-    def mark_objective_cancelled(self, objective):
+    def mark_instruction_cancelled(self, objective):
         if self._disabled:
             return
         instruction_query = schemas.game.Instruction.select().where(
@@ -229,14 +228,16 @@ class GameRecorder(object):
         instruction.save()
     
     def record_instruction_cancellation(self):
-        if self._active_objective != None:
-            self.mark_objective_cancelled(self._active_objective)
-        self._active_objective = None
+        if self._disabled:
+            return
+        if self._active_instruction != None:
+            self.mark_instruction_cancelled(self._active_instruction)
+        self._active_instruction = None
         try:
             while True:
-                objective = self._objective_queue.get_nowait()
+                objective = self._instruction_queue.get_nowait()
                 if not objective.completed and not objective.cancelled:
-                    self.mark_objective_cancelled(objective)
+                    self.mark_instruction_cancelled(objective)
         except queue.Empty:
             return
     
@@ -256,7 +257,7 @@ class GameRecorder(object):
             notes.append("SkippedTurnNoInstructionsTodo")
         if self._last_turn_state.moves_remaining <= 0:
             notes.append("UsedAllMoves")
-        if self._last_turn_state.turn == Role.FOLLOWER and self._objective_queue.empty():
+        if self._last_turn_state.turn == Role.FOLLOWER and self._instruction_queue.empty():
             notes.append("FinishedAllCommands")
         turn.notes = ",".join(notes)
         turn.save()

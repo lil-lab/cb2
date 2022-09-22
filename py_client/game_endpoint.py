@@ -74,6 +74,30 @@ class LeadAction(object):
                 raise TypeError("Instruction must be a string or bytes")
         self.action = (action_code, instruction)
     
+    def __str__(self):
+        action_code = self.action[0]
+        if action_code == LeadAction.ActionCode.FORWARDS:
+            return "FORWARDS"
+        elif action_code == LeadAction.ActionCode.BACKWARDS:
+            return "BACKWARDS"
+        elif action_code == LeadAction.ActionCode.TURN_LEFT:
+            return "TURN_LEFT"
+        elif action_code == LeadAction.ActionCode.TURN_RIGHT:
+            return "TURN_RIGHT"
+        elif action_code == LeadAction.ActionCode.END_TURN:
+            return "END_TURN"
+        elif action_code == LeadAction.ActionCode.INTERRUPT:
+            return "INTERRUPT"
+        elif action_code == LeadAction.ActionCode.SEND_INSTRUCTION:
+            return "SEND_INSTRUCTION: {}".format(self.action[1])
+        elif action_code == LeadAction.ActionCode.NONE:
+            return "NONE"
+        else:
+            return "INVALID"
+    
+    def action_code(self):
+        return self.action[0]
+    
     def message_to_server(self, actor):
         action_code = self.action[0]
         action = None
@@ -109,6 +133,20 @@ class LeadFeedbackAction(object):
     def __init__(self, action_code):
         self.action = action_code
     
+    def __str__(self):
+        action_code = self.action
+        if action_code == LeadFeedbackAction.ActionCode.POSITIVE_FEEDBACK:
+            return "POSITIVE_FEEDBACK"
+        elif action_code == LeadFeedbackAction.ActionCode.NEGATIVE_FEEDBACK:
+            return "NEGATIVE_FEEDBACK"
+        elif action_code == LeadFeedbackAction.ActionCode.NONE:
+            return "NO FEEDBACK"
+        else:
+            return "INVALID FEEDBACK"
+
+    def action_code(self):
+        return self.action[0]
+    
     def message_to_server(self, actor):
         if self.action == LeadFeedbackAction.ActionCode.POSITIVE_FEEDBACK:
             return PositiveFeedbackMessage(), ""
@@ -133,6 +171,24 @@ class FollowAction(object):
         if action_code == FollowAction.ActionCode.INSTRUCTION_DONE:
             assert instruction_uuid != None, "Instruction UUID must be provided for INSTRUCTION_DONE"
         self.action = action_code, instruction_uuid
+    
+    def __str__(self):
+        action_code = self.action[0]
+        if action_code == FollowAction.ActionCode.FORWARDS:
+            return "FORWARDS"
+        elif action_code == FollowAction.ActionCode.BACKWARDS:
+            return "BACKWARDS"
+        elif action_code == FollowAction.ActionCode.TURN_LEFT:
+            return "TURN_LEFT"
+        elif action_code == FollowAction.ActionCode.TURN_RIGHT:
+            return "TURN_RIGHT"
+        elif action_code == FollowAction.ActionCode.INSTRUCTION_DONE:
+            return "INSTRUCTION_DONE: {}".format(self.action[1])
+        else:
+            return "INVALID"
+
+    def action_code(self):
+        return self.action[0]
 
     def message_to_server(self, actor):
         action = None
@@ -150,8 +206,8 @@ class FollowAction(object):
         else:
             return None, "Invalid follow action"
         assert action != None, "Invalid follow action"
-        actor.add_action(action)
-        actor.step()
+        #actor.add_action(action)
+        #actor.step()
         action_message = ActionsMessage([action])
         return action_message, ""
 
@@ -260,17 +316,17 @@ class GameEndpoint(object):
         if isinstance(action, FollowAction):
             if self._player_role != Role.FOLLOWER:
                 raise ValueError("Not a follower, cannot send follow action")
-            if self.turn_state.turn != Role.FOLLOWER and action.action[0] != FollowAction.ActionCode.NONE:
+            if self.turn_state.turn != Role.FOLLOWER and action.action_code() != FollowAction.ActionCode.NONE:
                 raise ValueError(f"Not your turn, cannot send follow action: {action.action}")
         if isinstance(action, LeadAction):
             if self._player_role != Role.LEADER:
                 raise ValueError("Not a leader, cannot send lead action")
-            if self.turn_state.turn != Role.LEADER:
-                raise ValueError("Not your turn, cannot send lead action")
+            if (self.turn_state.turn != Role.LEADER) and (action.action_code() != LeadAction.ActionCode.NONE):
+                raise ValueError(f"Not your turn, cannot send lead action. ts: {self.turn_state}. action: {action.action_code()}")
         if isinstance(action, LeadFeedbackAction):
             if self._player_role != Role.LEADER:
                 raise ValueError("Not a leader, cannot send lead feedback action")
-            if self.turn_state.turn != Role.FOLLOWER:
+            if self.turn_state.turn != Role.FOLLOWER and action.action_code() != LeadFeedbackAction.ActionCode.NONE:
                 raise ValueError("Not follower turn, cannot send lead feedback action")
         message, reason = action.message_to_server(self.player_actor)
         if message != None:
@@ -315,8 +371,6 @@ class GameEndpoint(object):
                         return True
                 return False
             return True
-        else:
-            logger.info(f"Role: {self.player_role()} Waiting for turn: {self.turn_state.turn}")
         
         if ((self.player_role() == Role.LEADER) and self.config.live_feedback_enabled):
             # Check if the follower position has changed since the last tick.
@@ -363,7 +417,6 @@ class GameEndpoint(object):
         if self.render:
             self.pygame_task.cancel()
 
-    
     def __exit__(self, type, value, traceback):
         self.close()
 
@@ -413,9 +466,19 @@ class GameEndpoint(object):
                 self.player_id = state_sync.player_id
                 self._player_role = state_sync.player_role
                 for net_actor in state_sync.actors:
-                    self.actors[net_actor.actor_id] = actor.Actor(net_actor.actor_id, 0, net_actor.actor_role, net_actor.location, False, net_actor.rotation_degrees)
+                    added_actor = actor.Actor(net_actor.actor_id, 0, net_actor.actor_role, net_actor.location, False, net_actor.rotation_degrees)
+                    self.actors[net_actor.actor_id] = added_actor
+                    added_actor.add_action(action.Init(
+                        net_actor.actor_id,
+                        net_actor.location,
+                        net_actor.rotation_degrees))
+                    while added_actor.has_actions():
+                        added_actor.step()
                 self.player_actor = self.actors[self.player_id]
+                logger.info(f"Player start pos: {self.player_actor.location().to_offset_coordinates()}")
+                logger.info(f"Player start orientation: {self.player_actor.heading_degrees()}")
             if response.type == message_from_server.MessageType.MAP_UPDATE:
+                logger.info(f"INIT received map")
                 self.map_update = response.map_update
             if response.type == message_from_server.MessageType.PROP_UPDATE:
                 logger.info(f"INIT received prop")
@@ -425,6 +488,9 @@ class GameEndpoint(object):
                 self.turn_state = response.turn_state
                 if self.over():
                     return False, "Game over"
+            if response.type == message_from_server.MessageType.OBJECTIVE:
+                logger.info(f"INIT received objective")
+                self.instructions = response.objectives
             if response.type == message_from_server.MessageType.STATE_MACHINE_TICK:
                 logger.info(f"Init TICK received")
                 if None not in [self.player_actor, self.map_update, self.prop_update, self.turn_state]:
@@ -468,14 +534,13 @@ class GameEndpoint(object):
                 net_actor.rotation_degrees))
             while actor.has_actions():
                 actor.step()
-            logger.info(f"state sync for actor {net_actor.actor_id}. location: {actor.location().to_offset_coordinates()}")
+            logger.info(f"state sync for actor {net_actor.actor_id}. location: {actor.location().to_offset_coordinates()} rotation: {actor.heading_degrees()}")
 
     def _handle_message(self, message):
         if message.type == message_from_server.MessageType.ACTIONS:
             for action in message.actions:
                 if action.id == self.player_id:
-                    # Skip actions that we made. These are just sent for confirmation.
-                    continue
+                    logger.info(f"Received self-action id: {action.id}")
                 if action.id not in self.actors:
                     if action.id not in self.cards:
                         logger.error(f"Received action for unknown actor: {action.id}")
@@ -484,7 +549,8 @@ class GameEndpoint(object):
                 if actor.role() == Role.FOLLOWER:
                     self._follower_moved = True
                 actor.add_action(action)
-                actor.step()
+                while actor.has_actions():
+                    actor.step()
         elif message.type == message_from_server.MessageType.STATE_SYNC:
             self._handle_state_sync(message.state)
         elif message.type == message_from_server.MessageType.GAME_STATE:
@@ -503,7 +569,7 @@ class GameEndpoint(object):
         elif message.type == message_from_server.MessageType.STATE_MACHINE_TICK:
             return
         else:
-            logger.warn(f"Received unexpected message type: {message.type}")
+            logger.warn(f"Received unexpected message type: {message.type}. msg: {message}")
     
     def _render(self):
         map_update, props, turn_state, instructions, actors, feedback = self._state()

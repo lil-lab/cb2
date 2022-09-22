@@ -67,7 +67,7 @@ def get_instruction_for_card(card, follower, map, game_endpoint, cards):
     distance_to_follower = lambda c: c.prop_info.location.distance_to(follower.location())
     path = find_path_to_card(card, follower, map, cards)
     if not path:
-        return "No path found. :("
+        return "random, random, random, random, random"
     game_vis = game_endpoint.visualization()
     if game_vis is not None:
         game_vis.set_trajectory([(coord, 0) for coord in path])
@@ -120,18 +120,21 @@ def has_instruction_available(instructions):
             return True
     return False
 
-def main(host, render=False):
+def main(host, render=False, i_uuid=""):
     logging.basicConfig(level=logging.INFO)
     client = RemoteClient(host, render)
     connected, reason = client.Connect()
     assert connected, f"Unable to connect: {reason}"
-    with client.JoinGame(timeout=timedelta(minutes=5), queue_type=RemoteClient.QueueType.LEADER_ONLY) as game:
+    with client.JoinGame(timeout=timedelta(minutes=5), queue_type=RemoteClient.QueueType.LEADER_ONLY, i_uuid=i_uuid) as game:
         map, cards, turn_state, instructions, (leader, follower), live_feedback = game.initial_state()
         closest_card = get_next_card(cards, follower)
-        action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower, map, game, cards))
+        if turn_state.turn == Role.LEADER:
+            action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower, map, game, cards))
+        else:
+            action = LeadAction(LeadAction.ActionCode.NONE)
         follower_distance_to_card = float("inf")
         while not game.over():
-            print(f"step()")
+            print(f"step({action})")
             if type(action) == LeadAction and action.action == LeadAction.ActionCode.END_TURN:
                 sleep(0.2)
             map, cards, turn_state, instructions, (leader, follower), live_feedback = game.step(action)
@@ -143,7 +146,7 @@ def main(host, render=False):
                     action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower, map, game, cards))
             if turn_state.turn == Role.FOLLOWER:
                 # Don't give live feedback. Messes with the follower bot at the moment.
-                action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.NONE)
+                action = LeadAction(LeadAction.ActionCode.NONE)
                 continue
     print(f"Game over. Score: {turn_state.score}")
 

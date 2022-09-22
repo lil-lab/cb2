@@ -15,15 +15,20 @@ def actions_from_instruction(instruction):
     actions = []
     instruction_action_codes = instruction.split(",")
     for action_code in instruction_action_codes:
-        action_code = action_code.strip()
-        if action_code == "forward":
+        action_code = action_code.strip().lower()
+        if len(action_code) == 0:
+            continue
+        if "forward".startswith(action_code):
             actions.append(FollowAction(FollowAction.ActionCode.FORWARDS))
-        elif action_code == "backward":
+        elif "backward".startswith(action_code):
             actions.append(FollowAction(FollowAction.ActionCode.BACKWARDS))
-        elif action_code == "left":
+        elif "left".startswith(action_code):
             actions.append(FollowAction(FollowAction.ActionCode.TURN_LEFT))
-        elif action_code == "right":
+        elif "right".startswith(action_code):
             actions.append(FollowAction(FollowAction.ActionCode.TURN_RIGHT))
+        elif "random".startswith(action_code):
+            action_codes = [FollowAction.ActionCode.FORWARDS, FollowAction.ActionCode.BACKWARDS, FollowAction.ActionCode.TURN_LEFT, FollowAction.ActionCode.TURN_RIGHT]
+            actions.append(FollowAction(random.choice(action_codes)))
     if len(actions) == 0:
         # Choose a random action.
         action_codes = [FollowAction.ActionCode.FORWARDS, FollowAction.ActionCode.BACKWARDS, FollowAction.ActionCode.TURN_LEFT, FollowAction.ActionCode.TURN_RIGHT]
@@ -35,6 +40,67 @@ def get_active_instruction(instructions):
         if not instruction.completed and not instruction.cancelled:
             return instruction
     return None
+ 
+class NaiveFollower(object):
+    def __init__(self, game_endpoint):
+        self.instructions_processed = set()
+        self.actions = []
+        self.game = game_endpoint
+        self.exc = None
+    
+    def run(self):
+        try:
+            map, cards, turn_state, instructions, actors, live_feedback = self.game.initial_state()
+            logger.info(f"Initial instructions: {instructions}")
+            if len(actors) == 1:
+                follower = actors[0]
+            else:
+                (leader, follower) = actors
+            if turn_state.turn != Role.FOLLOWER:
+                action = FollowAction(FollowAction.ActionCode.NONE)
+            else:
+                action = self.get_action(self.game, map, cards, turn_state, instructions, actors, live_feedback)
+            logger.info(f"step({str(action)})")
+            map, cards, turn_state, instructions, actors, live_feedback = self.game.step(action)
+            import time
+            while not self.game.over():
+                time.sleep(1) 
+                action = self.get_action(self.game, map, cards, turn_state, instructions, (None, follower), live_feedback)
+                logger.info(f"step({action})")
+                map, cards, turn_state, instructions, actors, live_feedback = self.game.step(action)
+            print(f"Game over. Score: {turn_state.score}")
+        except Exception as e:
+            self.exc = e
+
+    def get_action(self, game, map, cards, turn_state, instructions, actors, feedback):
+        if len(self.actions) == 0:
+            active_instruction = get_active_instruction(instructions)
+            actions = []
+            if active_instruction is not None:
+                actions = actions_from_instruction(active_instruction.text)
+            else:
+                logger.info(f"Num of instructions: {len(instructions)}")
+                for instruction in instructions:
+                    logger.info(f"INSTRUCTION: {instruction}")
+                logger.info(f"step() returned but no active instruction.")
+            self.actions.extend(actions)
+            if active_instruction is not None:
+                self.actions.append(FollowAction(FollowAction.ActionCode.INSTRUCTION_DONE, active_instruction.uuid))
+                self.instructions_processed.add(active_instruction.uuid)
+        if len(self.actions) > 0:
+            action = self.actions[0]
+            self.actions.pop(0)
+            return action
+        else:
+            # Choose a random action.
+            action_codes = [FollowAction.ActionCode.FORWARDS, FollowAction.ActionCode.BACKWARDS, FollowAction.ActionCode.TURN_LEFT, FollowAction.ActionCode.TURN_RIGHT]
+            action = FollowAction(random.choice(action_codes))
+            return action
+
+    def join(self):
+        super().join()
+        if self.exc:
+            raise self.exc
 
 def main(host, render=False, i_uuid: str = ""):
     client = RemoteClient(host, render)
@@ -45,36 +111,10 @@ def main(host, render=False, i_uuid: str = ""):
     instruction_in_progress = False
     active_uuid = None
     i_uuid = i_uuid.strip()
+
     with client.JoinGame(timeout=timedelta(minutes=5), queue_type=RemoteClient.QueueType.FOLLOWER_ONLY, i_uuid=i_uuid.strip()) as game:
-        map, cards, turn_state, instructions, actors, feedback = game.initial_state()
-        action = FollowAction(FollowAction.ActionCode.NONE)
-        while not game.over():
-            print(f"step({action.action})")
-            sleep(0.1)
-            map, cards, turn_state, instructions, actors, feedback = game.step(action)
-            if feedback != None:
-                print(f"FEEDBACK: {feedback}")
-            if game.over():
-                break
-            if turn_state.turn != Role.FOLLOWER:
-                raise Exception("Not follower's turn yet step() returned. Weird!")
-            if len(actions) == 0:
-                active_instruction = get_active_instruction(instructions)
-                if active_instruction is None:
-                    raise Exception("No instructions to follow yet it's our turn??")
-                if active_instruction.uuid in instructions_processed:
-                    continue
-                actions.extend(actions_from_instruction(active_instruction.text))
-                actions.append(FollowAction(FollowAction.ActionCode.INSTRUCTION_DONE, active_instruction.uuid))
-                instructions_processed.add(active_instruction.uuid)
-            if len(actions) > 0:
-                action = actions[0]
-                actions.pop(0)
-            else:
-                # Choose a random action.
-                action_codes = [FollowAction.ActionCode.FORWARDS, FollowAction.ActionCode.BACKWARDS, FollowAction.ActionCode.TURN_LEFT, FollowAction.ActionCode.TURN_RIGHT]
-                action = FollowAction(random.choice(action_codes))
-    print(f"Game over. Score: {turn_state.score}")
+        follower = NaiveFollower(game)
+        follower.run()
 
 if __name__ == "__main__":
     fire.Fire(main)
