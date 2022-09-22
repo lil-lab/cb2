@@ -70,6 +70,7 @@ class RoomManager(object):
         self._base_log_directory = pathlib.Path("/dev/null")
         self._pending_room_management_responses = {}  # {ws: room_management_response}
         self._pending_tutorial_messages = {}  # {ws: tutorial_response}
+        self._matchmaking_exc = None
     
     def register_game_logging_directory(self, dir):
         self._base_log_directory = dir
@@ -209,64 +210,68 @@ class RoomManager(object):
         """ Runs asyncronously, creating rooms for pending followers and
         leaders. """
         while not self._is_done:
-            await asyncio.sleep(0)
-            leader, follower, i_uuid = self.get_leader_follower_match()
+            try:
+                await asyncio.sleep(0.5)
+                leader, follower, i_uuid = self.get_leader_follower_match()
 
-            if (leader is None) or (follower is None):
-                continue
+                if (leader is None) or (follower is None):
+                    continue
 
-            logger.info(f"Creating room for {leader} and {follower}. Queue size: {len(self._player_queue)} Follower Queue: {len(self._follower_queue)}")
+                logger.info(f"Creating room for {leader} and {follower}. Queue size: {len(self._player_queue)} Follower Queue: {len(self._follower_queue)}")
 
-            if i_uuid is not None and i_uuid != "":
-                logger.info(f"Starting game from i_uuid: {i_uuid}")
-                # Start game from a specific point.
-                room = self.create_room(i_uuid, None, RoomType.PRESET_GAME, "", i_uuid)
-                print("Creating new game from instruction " + room.name())
+                if i_uuid is not None and i_uuid != "":
+                    logger.info(f"Starting game from i_uuid: {i_uuid}")
+                    # Start game from a specific point.
+                    room = self.create_room(i_uuid, None, RoomType.PRESET_GAME, "", i_uuid)
+                    print("Creating new game from instruction " + room.name())
+                    leader_id = room.add_player(leader, Role.LEADER)
+                    follower_id = room.add_player(follower, Role.FOLLOWER)
+                    self._remotes[leader] = SocketInfo(room.id(), leader_id, Role.LEADER)
+                    self._remotes[follower] = SocketInfo(room.id(), follower_id, Role.FOLLOWER)
+                    self._pending_room_management_responses[leader].put(
+                        RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.LEADER), None, None))
+                    self._pending_room_management_responses[follower].put(
+                        RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.FOLLOWER), None, None))
+                    continue
+
+                # Setup room log directory.
+                game_record = game_db.Game()
+                game_record.save()
+                game_id = game_record.id
+                game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
+                game_name = f"{game_time}_{game_id}_GAME"
+                log_directory = pathlib.Path(self._base_log_directory, game_name)
+                log_directory.mkdir(parents=False, exist_ok=False)
+                game_record.log_directory = str(log_directory)
+                game_record.server_software_commit = GetCommitHash()
+                game_record.save()
+
+                # Create room.
+                room = self.create_room(game_id, game_record)
+                print("Creating new game " + room.name())
                 leader_id = room.add_player(leader, Role.LEADER)
                 follower_id = room.add_player(follower, Role.FOLLOWER)
                 self._remotes[leader] = SocketInfo(room.id(), leader_id, Role.LEADER)
                 self._remotes[follower] = SocketInfo(room.id(), follower_id, Role.FOLLOWER)
+
+                leader_remote = GetRemote(leader)
+                follower_remote = GetRemote(follower)
+
+                game_info_path = pathlib.Path(log_directory, "game_info.jsonl.log")
+                game_info_log = game_info_path.open("w")
+                game_info = GameInfo(datetime.now(), game_id, game_name, [Role.LEADER, Role.FOLLOWER], [leader_id, follower_id])
+                json_str = orjson.dumps(game_info, option=orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat).decode('utf-8')
+                game_info_log.write(json_str + "\n")
+                game_info_log.close()
+
                 self._pending_room_management_responses[leader].put(
                     RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.LEADER), None, None))
                 self._pending_room_management_responses[follower].put(
                     RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.FOLLOWER), None, None))
-                return
-
-            # Setup room log directory.
-            game_record = game_db.Game()
-            game_record.save()
-            game_id = game_record.id
-            game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
-            game_name = f"{game_time}_{game_id}_GAME"
-            log_directory = pathlib.Path(self._base_log_directory, game_name)
-            log_directory.mkdir(parents=False, exist_ok=False)
-            game_record.log_directory = str(log_directory)
-            game_record.server_software_commit = GetCommitHash()
-            game_record.save()
-
-            # Create room.
-            room = self.create_room(game_id, game_record)
-            print("Creating new game " + room.name())
-            leader_id = room.add_player(leader, Role.LEADER)
-            follower_id = room.add_player(follower, Role.FOLLOWER)
-            self._remotes[leader] = SocketInfo(room.id(), leader_id, Role.LEADER)
-            self._remotes[follower] = SocketInfo(room.id(), follower_id, Role.FOLLOWER)
-
-            leader_remote = GetRemote(leader)
-            follower_remote = GetRemote(follower)
-
-            game_info_path = pathlib.Path(log_directory, "game_info.jsonl.log")
-            game_info_log = game_info_path.open("w")
-            game_info = GameInfo(datetime.now(), game_id, game_name, [Role.LEADER, Role.FOLLOWER], [leader_id, follower_id])
-            json_str = orjson.dumps(game_info, option=orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat).decode('utf-8')
-            game_info_log.write(json_str + "\n")
-            game_info_log.close()
-
-            self._pending_room_management_responses[leader].put(
-                RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.LEADER), None, None))
-            self._pending_room_management_responses[follower].put(
-                RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.FOLLOWER), None, None))
-    
+            except Exception as e:
+                logger.exception(e)
+                self._matchmaking_exc = e
+        
     def assign_leader_follower(self, player1, player2):
         """ Assigns roles to a pair of players. Returns (leader, follower) or (None, None) if missing data on either player. """
         worker1 = GetWorkerFromRemote(player1)
@@ -386,8 +391,8 @@ class RoomManager(object):
             return (None, None, "")
 
         # If a general player has been waiting for >= 10 seconds with no follower, match them with another general player.
-        (ts, _) = self._player_queue[0] 
-        logger.warn(f"AHHH CHANGE THIS BACK TO 10s")
+        (ts, _, _) = self._player_queue[0] 
+        logger.warn(f"================ CHANGE THIS BACK TO 10s")
         if datetime.now() - ts > timedelta(seconds=1):
             (_, player1, i_uuid_1) = self._player_queue.popleft()
             (_, player2, i_uuid_2) = self._player_queue.popleft()
