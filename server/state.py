@@ -91,7 +91,16 @@ class State(object):
             # Hacky, for now just use map before instruction received. Several queued instructions in the meantime could have changed the map.
             logger.warn(f"Map reconstruction might not be accurate. Instruction had no moves, so exact timing of instruction activation unknown.")
             map = map_db.MapUpdate.select().where(map_db.MapUpdate.game == instruction_record.game, map_db.MapUpdate.time <= instruction_record.time).order_by(map_db.MapUpdate.time).get()
-        turn_record = game_db.Turn.select().where(game_db.Turn.game == game_record, game_db.Turn.time <= instruction_record.time).order_by(game_db.Turn.time.desc()).get()
+
+        turn_record_query = game_db.Turn.select().where(game_db.Turn.game == game_record, game_db.Turn.time <= instruction_record.time).order_by(game_db.Turn.time.desc())
+        if turn_record_query.count() == 0:
+            # Initial turn.
+            turn_record = TurnUpdate(
+                Role.LEADER, LEADER_MOVES_PER_TURN, 6,
+                datetime.utcnow() + State.turn_duration(Role.LEADER),
+                datetime.utcnow(), 0, 0, 0)
+        else:
+            turn_record = game_db.Turn.select().where(game_db.Turn.game == game_record, game_db.Turn.time <= instruction_record.time).order_by(game_db.Turn.time.desc()).get()
 
         last_set = cards_db.CardSets.select().join(game_db.Move).where(cards_db.CardSets.game == game_record, cards_db.CardSets.move.server_time <= instruction_record.time).order_by(cards_db.CardSets.move.server_time.desc())
         score = 0
@@ -199,7 +208,7 @@ class State(object):
             self._map_provider = CachedMapRetrieval()
             initial_turn = TurnUpdate(
                 Role.LEADER, LEADER_MOVES_PER_TURN, 6,
-                datetime.utcnow() + self.turn_duration(Role.LEADER),
+                datetime.utcnow() + State.turn_duration(Role.LEADER),
                 datetime.utcnow(), 0, 0, 0)
             self.send_turn_state(initial_turn)
 
@@ -216,6 +225,7 @@ class State(object):
 
         self._current_set_invalid = self._map_provider.selected_cards_collide()
 
+    @classmethod
     def turn_duration(self, role):
         return timedelta(seconds=LEADER_SECONDS_PER_TURN) if role == Role.LEADER else timedelta(seconds=FOLLOWER_SECONDS_PER_TURN)
 
@@ -457,7 +467,7 @@ class State(object):
                 self._prop_stale[actor_id] = True
             end_of_turn = (next_role == Role.LEADER)
             moves_remaining = self.moves_per_turn(next_role)
-            turn_end = datetime.utcnow() + self.turn_duration(next_role)
+            turn_end = datetime.utcnow() + State.turn_duration(next_role)
             if end_of_turn:
                 turns_left -= 1
                 turn_number += 1
