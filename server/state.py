@@ -166,7 +166,7 @@ class State(object):
         # True if a player was added since the last iteration.
         self._actors_added = False
 
-        self._turn_complete_queue = []
+        self._turn_complete_queue = deque()
 
         self._instructions = deque() # A list of unprocessed instructions.
         self._instruction_history = deque() # All instructions, including completed/cancelled ones.
