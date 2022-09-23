@@ -36,7 +36,6 @@ class PathfindingLeader(threading.Thread):
             return LeadFeedbackAction(LeadFeedbackAction.ActionCode.NONE)
         if has_instruction_available(instructions):
             # If the follower already has something to do, just end the turn.
-            logger.info(f"END TURNNNNNNNNNNNNNNNNNNNNNNNN")
             return LeadAction(LeadAction.ActionCode.END_TURN)
         (leader, follower) = actors
         closest_card = get_next_card(cards, follower)

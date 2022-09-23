@@ -64,7 +64,6 @@ class NaiveFollower(object):
             map, cards, turn_state, instructions, actors, live_feedback = self.game.step(action)
             import time
             while not self.game.over():
-                time.sleep(1) 
                 action = self.get_action(self.game, map, cards, turn_state, instructions, (None, follower), live_feedback)
                 logger.info(f"step({action})")
                 map, cards, turn_state, instructions, actors, live_feedback = self.game.step(action)

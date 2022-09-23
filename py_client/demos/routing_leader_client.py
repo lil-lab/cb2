@@ -60,6 +60,9 @@ def find_path_to_card(card, follower, map, cards):
         for neighbor in tile.cell.coord.neighbors():
             if tile.cell.boundary.get_edge_between(tile.cell.coord, neighbor):
                 continue
+            neighbor_tile = map.tile_at(neighbor)
+            if neighbor_tile.cell.boundary.get_edge_between(neighbor, tile.cell.coord):
+                continue
             location_queue.append((neighbor, current_path + [neighbor]))
     return None
 

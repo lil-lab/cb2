@@ -118,8 +118,6 @@ class LeadAction(object):
         else:
             return None, "Invalid lead action"
         assert action != None, "Invalid lead action"
-        actor.add_action(action)
-        actor.step()
         action_message = ActionsMessage([action])
         return action_message, ""
 
@@ -206,8 +204,6 @@ class FollowAction(object):
         else:
             return None, "Invalid follow action"
         assert action != None, "Invalid follow action"
-        #actor.add_action(action)
-        #actor.step()
         action_message = ActionsMessage([action])
         return action_message, ""
 
@@ -365,6 +361,11 @@ class GameEndpoint(object):
     def _can_act(self):
         if (self.player_role() == self.turn_state.turn):
             if self.player_role() == Role.FOLLOWER:
+                # If we're out of movements, the turn is over. This temporary
+                # state used to be emitted by the server. It has since been
+                # fixed, but we still guard against it in the client.
+                if self.turn_state.moves_remaining == 0:
+                    return False
                 # Check if there are active instructions.
                 for instruction in self.instructions:
                     if not instruction.completed and not instruction.cancelled:
@@ -518,10 +519,11 @@ class GameEndpoint(object):
             Returns:
                 (bool, str): A tuple containing if the message was handled, and if not, the reason why.
         """
+        import time
         for net_actor in state_sync.actors:
             if net_actor.actor_id not in self.actors:
                 logger.error(f"Received state sync for unknown actor {net_actor.actor_id}")
-                return False, "Received state sync for unknown actor"
+                return
             actor = self.actors[net_actor.actor_id]
             if actor.role() == Role.FOLLOWER:
                 if net_actor.location != actor.location() or net_actor.rotation_degrees != actor.heading_degrees():
@@ -539,8 +541,6 @@ class GameEndpoint(object):
     def _handle_message(self, message):
         if message.type == message_from_server.MessageType.ACTIONS:
             for action in message.actions:
-                if action.id == self.player_id:
-                    logger.info(f"Received self-action id: {action.id}")
                 if action.id not in self.actors:
                     if action.id not in self.cards:
                         logger.error(f"Received action for unknown actor: {action.id}")

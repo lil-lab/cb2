@@ -301,10 +301,6 @@ class State(object):
             self.update_turn(force_role_switch=True, end_reason="FollowerFinishedInstructions")
             send_tick = True
 
-        if self._turn_state.turn == Role.FOLLOWER and self._turn_state.moves_remaining <= 0:
-            self.update_turn(force_role_switch=True, end_reason="FollowerOutOfMoves")
-            send_tick = True
-
         # Handle actor actions.
         for actor_id in self._actors:
             actor = self._actors[actor_id]
@@ -338,6 +334,10 @@ class State(object):
                     self.desync(actor_id)
                     send_tick = True
                     continue
+
+        if self._turn_state.turn == Role.FOLLOWER and self._turn_state.moves_remaining <= 0:
+            self.update_turn(force_role_switch=True, end_reason="FollowerOutOfMoves")
+            send_tick = True
         
         while len(self._turn_complete_queue) > 0:
             (id, reason) = self._turn_complete_queue.popleft()
@@ -903,9 +903,11 @@ class State(object):
             cartesian = action.displacement.cartesian()
             # Add a small delta for floating point comparison.
             if (math.sqrt(cartesian[0]**2 + cartesian[1]**2) > 1.001):
+                logger.info(f"Invalid action: translation too large {action}")
                 return False
             destination = HecsCoord.add(self._actors[actor_id].location(), action.displacement)
             if self._map_provider.edge_between(self._actors[actor_id].location(), destination):
+                logger.info(f"Invalid action: attempts to move through wall {action}")
                 return False
             forward_location = (self._actors[actor_id]
                             .location()
@@ -914,9 +916,11 @@ class State(object):
                             .location()
                             .neighbor_at_heading(self._actors[actor_id].heading_degrees() + 180))
             if destination not in [forward_location, backward_location]:
+                logger.info(f"Invalid action: attempts to move to {destination.to_offset_coordinates()} which is invalid. Facing: {self._actors[actor_id].heading_degrees()} backward location: {backward_location.to_offset_coordinates()}. exp: {action.expiration}")
                 return False
         if (action.action_type == ActionType.ROTATE):
-            if (action.rotation > 60.01):
+            if (abs(action.rotation) > 60.01):
+                logger.info(f"Invalid action: attempts to rotate too much {action}")
                 return False
         return True
 
