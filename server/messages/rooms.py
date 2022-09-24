@@ -34,6 +34,7 @@ class JoinResponse(DataClassJSONMixin):
     place_in_queue: Optional[int]  # If joined == false.
     role: Role  # If joined == true.
     booted_from_queue: bool = False
+    boot_reason: Optional[str] = ""
 
 
 @dataclass(frozen=True)

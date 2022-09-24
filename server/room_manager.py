@@ -132,7 +132,12 @@ class RoomManager(object):
 
     def create_room(self, id, game_record: game_db.Game,
                     type: RoomType = RoomType.GAME, tutorial_name: str = "", from_instruction : str = ""):
-        self._rooms[id] = Room(
+        """ 
+            Creates a new room & starts an asyncio task to run the room's state machine.
+
+            Returns the room, or None if startup failed. 
+        """
+        room = Room(
             # Room name.
             "Room #" + str(id) + ("(TUTORIAL)" if type == RoomType.TUTORIAL else ""),
             # Max number of players.
@@ -143,6 +148,9 @@ class RoomManager(object):
             type,
             tutorial_name,
             from_instruction)
+        if not room.initialized():
+            return None
+        self._rooms[id] = room
         self._rooms[id].start()
         return self._rooms[id]
 
@@ -190,6 +198,8 @@ class RoomManager(object):
 
         # Create room.
         room = self.create_room(game_id, game_record, RoomType.TUTORIAL, tutorial_name)
+        if room == None:
+            return None
         print("Creating new tutorial room " + room.name())
         role = RoleFromTutorialName(tutorial_name)
         player_id = room.add_player(player, role)
@@ -223,7 +233,25 @@ class RoomManager(object):
                     logger.info(f"Starting game from i_uuid: {i_uuid}")
                     # Start game from a specific point.
                     room = self.create_room(i_uuid, None, RoomType.PRESET_GAME, "", i_uuid)
-                    print("Creating new game from instruction " + room.name())
+                    if (room is None) or (not room.initialized()):
+                        logger.warn(f"Error creating room from UUID {i_uuid}")
+                        # Boot the leader & follower from the queue.
+                        self._pending_room_management_responses[leader].put(
+                            RoomManagementResponse(
+                                RoomResponseType.JOIN_RESPONSE, None, 
+                                JoinResponse(
+                                    False, 0, Role.LEADER, True,
+                                    "Could not create server from provided I_UUID"),
+                                None, None))
+                        self._pending_room_management_responses[follower].put(
+                            RoomManagementResponse(
+                                RoomResponseType.JOIN_RESPONSE, None, 
+                                JoinResponse(
+                                    False, 0, Role.FOLLOWER, True,
+                                    "Could not create server from provided I_UUID"),
+                                None, None))
+                        continue
+                    logger.info(f"Creating new game from instruction {room.name()}")
                     leader_id = room.add_player(leader, Role.LEADER)
                     follower_id = room.add_player(follower, Role.FOLLOWER)
                     self._remotes[leader] = SocketInfo(room.id(), leader_id, Role.LEADER)
@@ -248,6 +276,14 @@ class RoomManager(object):
 
                 # Create room.
                 room = self.create_room(game_id, game_record)
+                if room is None or not room.initialized():
+                    logger.warn(f"Error creating room from UUID {i_uuid}")
+                    # Boot the leader & follower from the queue.
+                    self._pending_room_management_responses[leader].put(
+                        RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, 0, Role.LEADER, True), None, None))
+                    self._pending_room_management_responses[follower].put(
+                        RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, 0, Role.FOLLOWER, True), None, None))
+                    continue
                 print("Creating new game " + room.name())
                 leader_id = room.add_player(leader, Role.LEADER)
                 follower_id = room.add_player(follower, Role.FOLLOWER)

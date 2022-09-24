@@ -272,9 +272,9 @@ class RemoteClient(object):
                     else:
                         logger.info(f"Place in queue: {join_message.place_in_queue}")
                     if join_message.booted_from_queue == True:
-                        logger.info(f"Booted from queue!")
+                        logger.info(f"Booted from queue! Reason: {join_message.boot_reason}")
                         self.init_state = RemoteClient.State.CONNECTED
-                        return False, "Booted from queue"
+                        return False, f"Booted from queue! Reason: {join_message.boot_reason}"
         return False, "Disconnected"
     
     def _receive_message(self, timeout=timedelta(minutes=1)):

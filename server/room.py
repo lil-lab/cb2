@@ -46,6 +46,7 @@ class Room(object):
         self._id = game_id
         self._room_type = type
         self._game_record = game_record
+        self._initialized = False # Set to True at the bottom of this method.
         if self._room_type == RoomType.GAME:
             self._game_record.type = 'game'
             game_state = State(self._id, self._game_record)
@@ -58,10 +59,14 @@ class Room(object):
         elif self._room_type == RoomType.PRESET_GAME:
             if not from_instruction:
                 raise ValueError("Preset game must be initialized from an instruction.")
-            game_state = State.InitializeFromExistingState(self._id, from_instruction)
+            game_state, reason = State.InitializeFromExistingState(self._id, from_instruction)
+            if game_state is None:
+                logger.info(f"Failed to initialize game from instruction: {reason}")
+                return
         else:
             game_state = None
             logger.error(f"Room started with invalid type {self._room_type}.")
+            return
         self._state_machine_driver = StateMachineDriver(game_state, self._id)
         if self._room_type != RoomType.PRESET_GAME:
             self._game_record.save()
@@ -91,6 +96,10 @@ class Room(object):
                     f.write(orjson.dumps(server_config).decode('utf-8'))
 
         self._map_update_count = 0
+        self._initialized = True
+    
+    def initialized(self):
+        return self._initialized
     
     def game_record(self):
         return self._game_record
@@ -169,6 +178,8 @@ class Room(object):
         self._messages_to_server_log.close()
     
     def done(self):
+        if not self._initialized:
+            return
         return self._state_machine_driver.done()
     
     def has_pending_messages(self):

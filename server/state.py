@@ -78,9 +78,15 @@ def cumulative_turns_added(score):
 class State(object):
     @classmethod
     def InitializeFromExistingState(cls, room_id, instruction_uuid: str = ""):
+        """ Initialize the game from a given instruction.
+
+            Returns: (state_machine: State, failure_reason: str = "")
+
+            If return value state_machine is none, the reason for failure is in failure_reason.
+        """
         instruction_query = game_db.Instruction.select().join(game_db.Game).where(game_db.Instruction.uuid == instruction_uuid)
         if instruction_query.count() != 1:
-            raise Exception(f"Single instruction {instruction_uuid} not found. ({instruction_query.count()} found)")
+            return None, f"Single instruction {instruction_uuid} not found. ({instruction_query.count()} found)"
         instruction_record = instruction_query.get()
         game_record = instruction_record.game
         turn_active = game_db.InstructionTurnActive(instruction_record)
@@ -141,9 +147,9 @@ class State(object):
                 follower.add_action(move.action)
                 follower.step()
             else:
-                raise Exception(f"Unknown character role {move.character_role}")
+                return None, f"Unknown character role {move.character_role}"
         s = State(room_id, None, True, map.map_data, cards, turn_state, [instruction], [leader, follower])
-        return s
+        return s, ""
 
     def _init_from_data(self, map, props, turn_state, instructions, actors):
         self._game_recorder = GameRecorder(None, disabled=True)
@@ -161,7 +167,7 @@ class State(object):
             new_actor = Actor(self._map_provider.id_assigner().alloc(), asset_id, actor.role(), spawn_point, False, actor.heading_degrees())
             self._preloaded_actors[actor.role()] = new_actor
         self.send_turn_state(turn_state)
-
+    
     def __init__(self, room_id, game_record, use_preset_data: bool = False, map: MapUpdate = None, props: List[Prop] = [], turn_state: TurnState = None, instructions: List[objective.ObjectiveMessage] = [], actors: List[Actor] = []):
         self._room_id = room_id
 
