@@ -266,7 +266,8 @@ class RemoteClient(object):
                         logger.info(f"Joined room. Role: {join_message.role}")
                         self.init_state = RemoteClient.State.IN_GAME_INIT
                         self.game = GameEndpoint(RemoteSocket(self), self.config, self.render)
-                        self.game._initialize(end_time - datetime.utcnow())
+                        result, reason = self.game._initialize(end_time - datetime.utcnow())
+                        assert result, f"Failed to initialize game: {reason}"
                         self.init_state = RemoteClient.State.GAME_STARTED
                         return True, ""
                     else:

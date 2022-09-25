@@ -59,12 +59,14 @@ def turn_reward(score):
         return 2
     elif score in [7, 8]:
         return 1
+    else:
+        return 0
 
 def cumulative_turns_added(score):
     """ Calculates the cumulative extra turns added since the start of the game for a given score. """
     turns = 0
     for i in range(score):
-        turns += turn_reward(score)
+        turns += turn_reward(i)
     return turns
 
 # The Cerealbar2 State Machine. This is the state machine that is used to drive the game.
@@ -114,6 +116,7 @@ class State(object):
             score = last_set.get().score
 
         turns_left = 6 + cumulative_turns_added(score) - turn_record.turn_number
+        logger.info(f"Turns left: {turns_left}. Start: 6, added: {cumulative_turns_added(score)}, current turn: {turn_record.turn_number}")
         turn_state = TurnState(
             Role.FOLLOWER,
             10, # moves.
