@@ -13,6 +13,7 @@ from py_client.game_endpoint import LeadAction, FollowAction, LeadFeedbackAction
 from py_client.demos.follower_client import *
 from py_client.demos.routing_leader_client import *
 from py_client.local_game_coordinator import LocalGameCoordinator
+from py_client.endpoint_pair import EndpointPair
 
 from server.config.config import ReadConfigOrDie
 import server.db_tools.db_utils as db_utils
@@ -26,12 +27,12 @@ from random import choice
 logger = logging.getLogger(__name__)
 
 class PathfindingLeader(threading.Thread):
-    def __init__(self, game_endpoint):
+    def __init__(self, game):
         super().__init__()
-        self.game = game_endpoint
         self.exc = None
+        self.game = game
 
-    def get_action(self, game, map, cards, turn_state, instructions, actors, feedback):
+    def get_action(self, map, cards, turn_state, instructions, actors, feedback):
         if turn_state.turn != Role.LEADER:
             return LeadFeedbackAction(LeadFeedbackAction.ActionCode.NONE)
         if has_instruction_available(instructions):
@@ -42,62 +43,19 @@ class PathfindingLeader(threading.Thread):
         if closest_card is None:
             logger.warn(f"Need to debug this. Couldn't find a card to route to. Number of cards: {len(cards)}")
             return LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, "Error: no cards found :/")
-        instruction = get_instruction_for_card(closest_card, follower, map, game, cards)
+        instruction = get_instruction_for_card(closest_card, follower, map, self.game, cards)
         logger.info(f"Lead sending: {instruction}")
         return LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=instruction)
-    
-    def run(self):
-        try:
-            logger.info(f"LEAD STARTED()")
-            initialized, reason = self.game.Initialize()
-            assert initialized, f"Unable to initialize: {reason}"
-            map, cards, turn_state, instructions, (leader, follower), live_feedback = self.game.initial_state()
-            if turn_state.turn == Role.LEADER:
-                action = self.get_action(self.game, map, cards, turn_state, instructions, (leader, follower), live_feedback)
-            else:
-                action = LeadAction(LeadAction.ActionCode.NONE)
-            while not self.game.over():
-                leader_action = self.get_action(self.game, map, cards, turn_state, instructions, (leader, follower), live_feedback)
-                logger.info(f"LEAD STEP({str(leader_action)})")
-                map, cards, turn_state, instructions, (leader, follower), live_feedback = self.game.step(leader_action)
-                logger.info(f"LEAD STEP DONE()")
-        except Exception as e:
-            self.exc = e
-        
-    def join(self):
-        super().join()
-        if self.exc:
-            raise self.exc
 
 class NaiveFollower(threading.Thread):
-    def __init__(self, game_endpoint):
+    def __init__(self, game):
         super().__init__()
         self.instructions_processed = set()
         self.actions = []
-        self.game = game_endpoint
         self.exc = None
+        self.game = game
     
-    def run(self):
-        try:
-            initialized, reason = self.game.Initialize()
-            assert initialized, f"Unable to initialize: {reason}"
-            map, cards, turn_state, instructions, actors, live_feedback = self.game.initial_state()
-            if len(actors) == 1:
-                follower = actors[0]
-            else:
-                (leader, follower) = actors
-            if turn_state.turn == Role.FOLLOWER:
-                action = self.get_action(self.game, map, cards, turn_state, instructions, actors, live_feedback)
-            else:
-                action = FollowAction(FollowAction.ActionCode.NONE)
-            map, cards, turn_state, instructions, actors, live_feedback = self.game.step(action)
-            while not self.game.over():
-                action = self.get_action(self.game, map, cards, turn_state, instructions, (None, follower), live_feedback)
-                map, cards, turn_state, instructions, actors, live_feedback = self.game.step(action)
-        except Exception as e:
-            self.exc = e
-
-    def get_action(self, game, map, cards, turn_state, instructions, actors, feedback):
+    def get_action(self, map, cards, turn_state, instructions, actors, feedback):
         if len(self.actions) == 0:
             active_instruction = get_active_instruction(instructions)
             actions = []
@@ -122,10 +80,28 @@ class NaiveFollower(threading.Thread):
             action = FollowAction(random.choice(action_codes))
             return action
 
-    def join(self):
-        super().join()
-        if self.exc:
-            raise self.exc
+def PlayGame(coordinator, i_uuid=""):
+    if len(i_uuid) > 0:
+        game_name = coordinator.CreateGameFromDatabase(i_uuid)
+    else:
+        game_name = coordinator.CreateGame()
+    endpoint_pair = EndpointPair(coordinator, game_name)
+    leader_agent = PathfindingLeader(endpoint_pair.leader())
+    follower_agent = NaiveFollower(endpoint_pair.follower())
+    endpoint_pair.initialize()
+    map, cards, turn_state, instructions, actors, live_feedback = endpoint_pair.initial_state()
+    import time
+    while not endpoint_pair.over():
+        if turn_state.turn == Role.LEADER:
+            leader_action = leader_agent.get_action(map, cards, turn_state, instructions, actors, live_feedback)
+            map, cards, turn_state, instructions, actors, live_feedback = endpoint_pair.step(leader_action)
+        else:
+            follower_action = follower_agent.get_action(map, cards, turn_state, instructions, actors, live_feedback)
+            map, cards, turn_state, instructions, actors, live_feedback = endpoint_pair.step(follower_action)
+        time.sleep(0.5)
+    print(f"Game over. Score: {endpoint_pair.score()}, Duration: {endpoint_pair.duration().total_seconds()}")
+    return endpoint_pair.score(), endpoint_pair.duration().total_seconds()
+
 
 def main(config_filepath="server/config/local-covers-config.json", instruction_uuid=""):
     nest_asyncio.apply()
@@ -134,35 +110,13 @@ def main(config_filepath="server/config/local-covers-config.json", instruction_u
     db_utils.ConnectToDatabase(config)
     scores = []
     durations = []
+    coordinator = LocalGameCoordinator(config, True)
     for i in range(10):
         logger.info(f"========================== STARTING GAME {i} ==========================")
-        coordinator = LocalGameCoordinator(config)
-        if len(instruction_uuid) > 0:
-            game_name = coordinator.CreateGameFromDatabase(instruction_uuid)
-        else:
-            game_name = coordinator.CreateGame()
-        leader_game = coordinator.JoinGame(game_name)
-        follower_game = coordinator.JoinGame(game_name)
-        # Give the game some time to process.
-        coordinator.StartGame(game_name)
-        leader_agent = PathfindingLeader(leader_game)
-        follower_agent = NaiveFollower(follower_game)
-        leader_agent.daemon = True
-        follower_agent.daemon = True
-        leader_agent.start()
-        follower_agent.start()
-        event_loop = asyncio.get_event_loop()
-        event_loop.run_until_complete(asyncio.sleep(1))
-        while not coordinator._state_machine_driver(game_name).done():
-            event_loop.run_until_complete(asyncio.sleep(1))
-            viz = leader_game.visualization()
-            viz.draw()
-            pygame.display.flip()
-        leader_agent.join()
-        follower_agent.join()
-        print(f"Game over. Score: {leader_game.score()}, Duration: {leader_game.game_duration().total_seconds()}")
-        scores.append(leader_game.score())
-        durations.append(leader_game.game_duration().total_seconds())
+        score, duration = PlayGame(coordinator, instruction_uuid)
+        print(f"Game over. Score: {score}, Duration: {duration}")
+        scores.append(score)
+        durations.append(duration)
     # Print out the scores.
     print(f"Mean score: {np.mean(scores)}")
     print(f"Mean duration: {np.mean(durations)}")

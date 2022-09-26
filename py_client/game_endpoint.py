@@ -285,6 +285,9 @@ class GameEndpoint(object):
         self._initial_state_retrieved = True
         return self._state()
     
+    def initialized(self):
+        return self._initial_state_retrieved or self._initial_state_ready
+    
     def step(self, action, wait_for_turn=True):
         """ Executes one action and blocks until the environment is ready for another action.
         
@@ -420,7 +423,7 @@ class GameEndpoint(object):
 
     def __exit__(self, type, value, traceback):
         self.close()
-
+    
     def _state(self):
         leader = None
         follower = None

@@ -67,7 +67,7 @@ class StateMachineDriver(object):
         last_loop = time.time()
         self._state_machine.start()  # Initialize the state machine.
         while not self._state_machine.done():
-            await self.step()
+            self.step()
             poll_period = time.time() - last_loop
             if (poll_period) > 0.1:
                 logging.warn(
@@ -76,9 +76,9 @@ class StateMachineDriver(object):
             await asyncio.sleep(0)
         self._state_machine.on_game_over()
     
-    async def step(self):
+    def step(self):
         self._process_incoming_messages()
-        await self._state_machine.update()
+        self._state_machine.update()
         self._serialize_outgoing_messages()
     
     def done(self):
