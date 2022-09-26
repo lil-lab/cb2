@@ -55,8 +55,6 @@ class StateMachineDriver(object):
             try:
                 message = self._messages_out[player_id].get_nowait()
                 logger.info(f"Sent message type {message.type} for player {player_id}.")
-                if message.type == message_from_server.MessageType.GAME_STATE:
-                    self._sent_log.info(f"Turn: {message.turn_state.turn}")
                 out_messages.append(message)
                 packets_added = True
             except queue.Empty:

@@ -62,7 +62,7 @@ class NaiveFollower(threading.Thread):
             if active_instruction is not None:
                 actions = actions_from_instruction(active_instruction.text)
             else:
-                logger.info(f"Need to debug this.")
+                raise Exception(f"No active instruction. Instructions: {instructions}")
             if len(actions) == 0:
                 action_codes = [FollowAction.ActionCode.FORWARDS, FollowAction.ActionCode.BACKWARDS, FollowAction.ActionCode.TURN_LEFT, FollowAction.ActionCode.TURN_RIGHT]
                 actions = [FollowAction(random.choice(action_codes)) for _ in range(5)]
@@ -94,9 +94,11 @@ def PlayGame(coordinator, i_uuid=""):
     while not endpoint_pair.over():
         if turn_state.turn == Role.LEADER:
             leader_action = leader_agent.get_action(map, cards, turn_state, instructions, actors, live_feedback)
+            logger.info(f"Leader step({leader_action})")
             map, cards, turn_state, instructions, actors, live_feedback = endpoint_pair.step(leader_action)
         else:
             follower_action = follower_agent.get_action(map, cards, turn_state, instructions, actors, live_feedback)
+            logger.info(f"Follower step({follower_action})")
             map, cards, turn_state, instructions, actors, live_feedback = endpoint_pair.step(follower_action)
         time.sleep(0.5)
     print(f"Game over. Score: {endpoint_pair.score()}, Duration: {endpoint_pair.duration().total_seconds()}")

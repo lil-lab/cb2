@@ -86,7 +86,6 @@ class LocalSocket(GameSocket):
         # Give the state machine a chance to run.
         end_time = datetime.utcnow() + timeout
         # Wait until we have at least one message to return.
-        logger.info(f"Waiting for packet. {self.actor_id}")
         while datetime.utcnow() < end_time:
             self.local_coordinator.StepGame(self.game_name)
             state_machine_driver = self.local_coordinator._state_machine_driver(self.game_name)

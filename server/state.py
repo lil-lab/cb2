@@ -778,7 +778,7 @@ class State(object):
 
         objectives = self._next_instructions(player_id)
         if len(objectives) > 0:
-            logger.info(
+            logger.debug(
                 f'Room {self._room_id} {len(objectives)} texts for player_id {player_id}')
             msg = message_from_server.ObjectivesFromServer(objectives)
             return msg
