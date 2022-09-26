@@ -619,6 +619,8 @@ class GameDisplay(object):
             # Create the screen
             self._screen = pygame.display.set_mode((self._screen_size,
                                                     self._screen_size))
+            self._screen = pygame.display.set_mode((self._screen_size,
+                                                    self._screen_size))
             pygame.display.set_caption("Game Visualizer")
             self._pygame_initialized = True
         # Fill the screen with white

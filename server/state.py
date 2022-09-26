@@ -286,7 +286,7 @@ class State(object):
     def start(self):
         self._game_recorder.initial_state(self._map_provider.map(), self._map_provider.prop_update(), self._turn_state, self._actors)
 
-    async def update(self):
+    def update(self):
         send_tick = False
 
         # Have we received an instruction since the last iteration?
@@ -313,11 +313,6 @@ class State(object):
 
         if datetime.utcnow() >= self._turn_state.turn_end:
             self.update_turn()
-            send_tick = True
-
-        # If the follower currently has no instructions, end their turn.
-        if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
-            self.update_turn(force_role_switch=True, end_reason="FollowerFinishedInstructions")
             send_tick = True
 
         # Handle actor actions.
@@ -377,6 +372,11 @@ class State(object):
         while len(self._instruction_complete_queue) > 0:
             (id, objective_complete) = self._instruction_complete_queue.popleft()
             self._handle_instruction_complete(id, objective_complete)
+            send_tick = True
+
+        # If the follower currently has no instructions, end their turn.
+        if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
+            self.update_turn(force_role_switch=True, end_reason="FollowerFinishedInstructions")
             send_tick = True
 
         selected_cards = list(self._map_provider.selected_cards())
@@ -778,7 +778,7 @@ class State(object):
 
         objectives = self._next_instructions(player_id)
         if len(objectives) > 0:
-            logger.info(
+            logger.debug(
                 f'Room {self._room_id} {len(objectives)} texts for player_id {player_id}')
             msg = message_from_server.ObjectivesFromServer(objectives)
             return msg

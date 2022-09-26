@@ -76,7 +76,7 @@ class LocalSocket(GameSocket):
     def send_message(self, message):
         state_machine_driver = self.local_coordinator._state_machine_driver(self.game_name)
         state_machine_driver.drain_messages(self.actor_id, [message])
-        time.sleep(0.001)
+        self.local_coordinator.StepGame(self.game_name)
 
     def connected(self):
         return self.local_coordinator._game_exists(self.game_name)
@@ -86,19 +86,17 @@ class LocalSocket(GameSocket):
         # Give the state machine a chance to run.
         end_time = datetime.utcnow() + timeout
         # Wait until we have at least one message to return.
-        logger.info(f"Waiting for packet. {self.actor_id}")
         while datetime.utcnow() < end_time:
+            self.local_coordinator.StepGame(self.game_name)
             state_machine_driver = self.local_coordinator._state_machine_driver(self.game_name)
             state_machine_driver.fill_messages(self.actor_id, self.received_messages)
             if len(self.received_messages) > 0:
                 return self.received_messages.popleft(), ""
-            time.sleep(0.001)
         return None, "No messages available."
 
 class LocalGameCoordinator(object):
     def __init__(self, config, render_leader=False, render_follower=False):
         self._game_drivers = {} # Game name -> StateMachineDriver
-        self._game_tasks = {} # Game name -> StateMachineDriver asyncio task.
         self._game_endpoints = {} # Game name -> (leader_endpoint, follower_endpoint)
         self._render_leader = render_leader
         self._render_follower = render_follower
@@ -126,7 +124,6 @@ class LocalGameCoordinator(object):
         state_machine = State(room_id, game_record)
         event_loop = asyncio.get_event_loop()
         self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)
-        self._game_tasks[game_name] = event_loop.create_task(self._game_drivers[game_name].run())
         return game_name
     
     # TODO(sharf): Actually implement this...
@@ -147,7 +144,6 @@ class LocalGameCoordinator(object):
 
         event_loop = asyncio.get_event_loop()
         self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)
-        self._game_tasks[game_name] = event_loop.create_task(self._game_drivers[game_name].run())
         return game_name
     
     def DrawGame(self, game_name):
@@ -209,20 +205,16 @@ class LocalGameCoordinator(object):
 
     def StepGame(self, game_name):
         game_driver = self._state_machine_driver(game_name)
-        game_driver.state_machine().step()
+        game_driver.step()
 
     def Cleanup(self):
-        """ Cleans up any games that have ended. Call this regularly to avoid memory leaks.
-
-            Only deletes a SM if its associated task has ended.
-        """
+        """ Cleans up any games that have ended. Call this regularly to avoid memory leaks. """
         # list() call is necessary to create a copy. Otherwise we're mutating a
         # list as we iterate through it.
         for game_name in list(self._game_drivers.keys()):
             game_driver = self._game_drivers[game_name]
-            if self._game_tasks[game_name].done() and game_driver.state_machine().done():
+            if game_driver.state_machine().done():
                 logger.info(f"Game {game_name} has ended. Cleaning up.")
-                del self._game_tasks[game_name]
                 del self._game_drivers[game_name]
 
     def _unique_game_name(cls):
