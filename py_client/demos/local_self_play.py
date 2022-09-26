@@ -52,6 +52,10 @@ class PathfindingLeader(threading.Thread):
             initialized, reason = self.game.Initialize()
             assert initialized, f"Unable to initialize: {reason}"
             map, cards, turn_state, instructions, (leader, follower), live_feedback = self.game.initial_state()
+            if turn_state.turn == Role.LEADER:
+                action = self.get_action(self.game, map, cards, turn_state, instructions, (leader, follower), live_feedback)
+            else:
+                action = LeadAction(LeadAction.ActionCode.NONE)
             while not self.game.over():
                 leader_action = self.get_action(self.game, map, cards, turn_state, instructions, (leader, follower), live_feedback)
                 logger.info(f"LEAD STEP({str(leader_action)})")
@@ -78,19 +82,18 @@ class NaiveFollower(threading.Thread):
             initialized, reason = self.game.Initialize()
             assert initialized, f"Unable to initialize: {reason}"
             map, cards, turn_state, instructions, actors, live_feedback = self.game.initial_state()
-            logger.info(f"FOLLOW STARTED()")
             if len(actors) == 1:
                 follower = actors[0]
             else:
                 (leader, follower) = actors
-            logger.info(f"FOLLOW FIRST STEP()")
-            map, cards, turn_state, instructions, actors, live_feedback = self.game.step(FollowAction(FollowAction.ActionCode.NONE))
-            logger.info(f"FOLLOW FIRST STEP DONE()")
+            if turn_state.turn == Role.FOLLOWER:
+                action = self.get_action(self.game, map, cards, turn_state, instructions, actors, live_feedback)
+            else:
+                action = FollowAction(FollowAction.ActionCode.NONE)
+            map, cards, turn_state, instructions, actors, live_feedback = self.game.step(action)
             while not self.game.over():
                 action = self.get_action(self.game, map, cards, turn_state, instructions, (None, follower), live_feedback)
-                logger.info(f"FOLLOW STEP()")
                 map, cards, turn_state, instructions, actors, live_feedback = self.game.step(action)
-                logger.info(f"FOLLOW STEP DONE()")
         except Exception as e:
             self.exc = e
 
@@ -124,15 +127,15 @@ class NaiveFollower(threading.Thread):
         if self.exc:
             raise self.exc
 
-def main(config_filepath="server/config/local-covers-config.json", instruction_uuid="2847819ffad64294b6081fbaa85d0837"):
+def main(config_filepath="server/config/local-covers-config.json", instruction_uuid=""):
     nest_asyncio.apply()
     logging.basicConfig(level=logging.INFO)
     config = ReadConfigOrDie(config_filepath)
     db_utils.ConnectToDatabase(config)
     scores = []
     durations = []
-    for i in range(100):
-        logger.info(f"STARTING GAME {i}")
+    for i in range(10):
+        logger.info(f"========================== STARTING GAME {i} ==========================")
         coordinator = LocalGameCoordinator(config)
         if len(instruction_uuid) > 0:
             game_name = coordinator.CreateGameFromDatabase(instruction_uuid)
@@ -151,13 +154,13 @@ def main(config_filepath="server/config/local-covers-config.json", instruction_u
         event_loop = asyncio.get_event_loop()
         event_loop.run_until_complete(asyncio.sleep(1))
         while not coordinator._state_machine_driver(game_name).done():
-            event_loop.run_until_complete(asyncio.sleep(0.1))
+            event_loop.run_until_complete(asyncio.sleep(1))
             viz = leader_game.visualization()
             viz.draw()
             pygame.display.flip()
         leader_agent.join()
         follower_agent.join()
-        print(f"Game over.")
+        print(f"Game over. Score: {leader_game.score()}, Duration: {leader_game.game_duration().total_seconds()}")
         scores.append(leader_game.score())
         durations.append(leader_game.game_duration().total_seconds())
     # Print out the scores.

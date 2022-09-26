@@ -76,7 +76,7 @@ class LocalSocket(GameSocket):
     def send_message(self, message):
         state_machine_driver = self.local_coordinator._state_machine_driver(self.game_name)
         state_machine_driver.drain_messages(self.actor_id, [message])
-        time.sleep(0.1)
+        time.sleep(0.001)
 
     def connected(self):
         return self.local_coordinator._game_exists(self.game_name)
@@ -92,7 +92,7 @@ class LocalSocket(GameSocket):
             state_machine_driver.fill_messages(self.actor_id, self.received_messages)
             if len(self.received_messages) > 0:
                 return self.received_messages.popleft(), ""
-            time.sleep(0.1)
+            time.sleep(0.001)
         return None, "No messages available."
 
 class LocalGameCoordinator(object):
@@ -141,8 +141,8 @@ class LocalGameCoordinator(object):
         room_id = game_name
         
         # For cards, take all cards so far and then delete any CardSets().
-        state_machine = State.InitializeFromExistingState(room_id, instruction_uuid)
-
+        state_machine, reason = State.InitializeFromExistingState(room_id, instruction_uuid)
+        assert state_machine != None, f"Failed to initialize state machine from instruction {instruction_uuid}: {reason}"
         state_sync = state_machine.state(-1)
 
         event_loop = asyncio.get_event_loop()
@@ -207,6 +207,10 @@ class LocalGameCoordinator(object):
         """
         leader_endpoint, follower_endpoint = self._game_endpoints[game_name]
 
+    def StepGame(self, game_name):
+        game_driver = self._state_machine_driver(game_name)
+        game_driver.state_machine().step()
+
     def Cleanup(self):
         """ Cleans up any games that have ended. Call this regularly to avoid memory leaks.
 
@@ -237,7 +241,6 @@ class LocalGameCoordinator(object):
     def _state_machine_driver(self, game_name: str):
         if game_name not in self._game_drivers:
             raise ValueError(f"Game {game_name} doesn't exist.")
-        
         return self._game_drivers[game_name]
     
     def _game_exists(self, game_name: str):
