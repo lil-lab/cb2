@@ -71,3 +71,19 @@ https://github.com/greggman/better-unity-webgl-template
   w2ui:
 
 https://w2ui.com/web/get-started/legacy
+
+- For performance profiling and optimization, this tool has been instrumental:
+
+https://github.com/gaogaotiantian/viztracer
+
+For example, you can launch the server like this:
+
+```
+viztracer --tracer_entries=2000000 -m main --config_filepath="config/local-covers-config.json"
+```
+
+Keep in mind that traces are stored in a circular buffer and only the most
+recent ones will be kept -- old ones discarded. A lot of traces happen, so only
+the last few seconds of traces will be kept. This makes it tricky to capture the
+correct moment. --tracer_entries above lets you expand the circular buffer to
+capture a longer moment of time.
