@@ -239,6 +239,9 @@ class State(object):
         return timedelta(seconds=LEADER_SECONDS_PER_TURN) if role == Role.LEADER else timedelta(seconds=FOLLOWER_SECONDS_PER_TURN)
 
     def send_turn_state(self, turn_state):
+        # Avoid unnecessary database writes.
+        if self._turn_state == turn_state:
+            return
         # Record a copy of the current turn state.
         self._game_recorder.record_turn_state(turn_state)
         self._turn_state = turn_state
@@ -247,6 +250,12 @@ class State(object):
                 self._turn_history[actor_id] = Queue()
             self._turn_history[actor_id].put(
                 dataclasses.replace(turn_state))
+    
+    def resend_turn_state(self):
+        for actor_id in self._actors:
+            if not actor_id in self._turn_history:
+                self._turn_history[actor_id] = Queue()
+            self._turn_history[actor_id].put(dataclasses.replace(self._turn_state))
 
     def _next_turn_state(self, actor_id):
         if not actor_id in self._turn_history:
@@ -653,7 +662,7 @@ class State(object):
             for actor_id in self._actors:
                 self._prop_stale[actor_id] = True
             # Resend the latest turn state.
-            self.send_turn_state(self._turn_state)
+            self.resend_turn_state()
             self.mark_instructions_stale()
             # Mark clients as desynced.
             self.desync_all()
@@ -664,7 +673,7 @@ class State(object):
         self._actors[actor.actor_id()] = actor
         self._action_history[actor.actor_id()] = []
         # Resend the latest turn state.
-        self.send_turn_state(self._turn_state)
+        self.resend_turn_state()
         self.mark_instructions_stale()
         # Mark clients as desynced.
         self.desync_all()

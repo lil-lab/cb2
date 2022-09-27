@@ -35,6 +35,12 @@ class TurnState(DataClassJSONMixin):
     game_over: bool
     turn_number: int
 
+    def __hash__(self):
+        return hash((self.turn, self.moves_remaining, self.turns_left, self.turn_end, self.game_start, self.sets_collected, self.score, self.game_over, self.turn_number))
+    
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
+
 @dataclass(frozen=True)
 class TurnComplete(DataClassJSONMixin):
     pass

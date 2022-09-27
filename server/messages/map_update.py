@@ -1,3 +1,5 @@
+import logging
+
 from server.hex import HexCell, HecsCoord
 
 from mashumaro.mixins.json import DataClassJSONMixin
@@ -7,6 +9,8 @@ from enum import Enum
 from marshmallow import fields
 from typing import List
 from server.messages.prop import Prop
+
+logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class Tile(DataClassJSONMixin):
@@ -89,6 +93,7 @@ class MapUpdate(DataClassJSONMixin):
         if hasattr(self, '_tile_cache'):
             if hecs in self._tile_cache:
                 return # Cache up to date.
+            return
         self._tile_cache = {}
         for tile in self.tiles:
             self._tile_cache[tile.cell.coord] = tile

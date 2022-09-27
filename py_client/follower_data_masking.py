@@ -1,13 +1,14 @@
 """ This class defines a set of helper methods to mask game state from the follower's perspective. """
 
 import logging
-
 import copy
-from server.config.config import Config
 
+from collections import deque
+
+from server.config.config import Config
+from server.hex import HecsCoord
 from server.messages.map_update import MapUpdate
 from server.messages.prop import Prop
-
 from server.actor import Actor
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,40 @@ FOLLOWER_FOV = 96.5
 # the object component, not just in source code. The default in the editor might
 # overwrite that value due to the way Unity works).
 UNITY_COORDINATES_SCALE = 3.46
+
+def VisibleCoordinates(follower_actor, config):
+    """ Given an actor, returns all HecsCoords that are visible to that actor. """
+    view_depth = config.fog_end / UNITY_COORDINATES_SCALE
+    # There's something wrong with orientation... I have to put - 60 everywhere
+    # Actor.heading_degrees() (actor.py) is used.
+    follower_orientation = follower_actor.heading_degrees() - 60
+
+    visible_coords = []
+
+    # Get the two neighboring cells to the left and right. Special case them.
+    neighbor_coords = [
+        follower_actor.location().neighbor_at_heading(follower_actor.heading_degrees() - 60),
+        follower_actor.location().neighbor_at_heading(follower_actor.heading_degrees() + 60)
+    ]
+    visible_coords.extend(neighbor_coords)
+
+    # BFS from the follower's location, find all visible coordinates.
+    next_coords = deque([follower_actor.location()])
+    already_visited = set()
+    while len(next_coords) > 0:
+        coord = next_coords.popleft()
+        if coord in already_visited:
+            continue
+        already_visited.add(coord)
+        if coord in visible_coords:
+            continue
+        if not CoordinateIsVisible(coord, follower_actor, config):
+            continue
+        visible_coords.append(coord)
+        for neighbor in coord.neighbors():
+            next_coords.append(neighbor)
+
+    return visible_coords
 
 def CoordinateIsVisible(coord, follower_actor, config):
     """  Returns true if the given coordinate should be visible to the given follower with the given config. """
@@ -72,13 +107,16 @@ def CensorFollowerMap(map_update, follower_actor, config: Config):
     # Actor.heading_degrees() (actor.py) is used.
     follower_orientation = follower_actor.heading_degrees() - 60
 
-    new_tiles = []
     logger.debug(f"Filtering tiles. Follower at {follower_actor.location()} with orientation {follower_orientation} and view depth {view_depth}")
-    for tile in map_update.tiles:
-        if CoordinateIsVisible(tile.cell.coord, follower_actor, config):
-            new_tiles.append(copy.deepcopy(tile))
-    map_update_clone = MapUpdate(map_update.rows, map_update.cols, new_tiles, map_update.metadata)
-    return map_update_clone
+    visible_coords = VisibleCoordinates(follower_actor, config)
+    # MapUpdate.tile_at() makes use of an internal tile cache. Calling it causes
+    # side effects, so don't use a list comprehension here (or you'll recreate
+    # the cache a bunch of times)
+    new_tiles = []
+    for coord in visible_coords:
+        new_tiles.append(map_update.tile_at(coord))
+    filtered_map_update = MapUpdate(map_update.rows, map_update.cols, new_tiles, map_update.metadata)
+    return filtered_map_update
 
 def CensorFollowerProps(props, follower_actor, config):
     """ Removes all props which aren't visible to the follower. 
