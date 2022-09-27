@@ -315,11 +315,6 @@ class State(object):
             self.update_turn()
             send_tick = True
 
-        # If the follower currently has no instructions, end their turn.
-        if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
-            self.update_turn(force_role_switch=True, end_reason="FollowerFinishedInstructions")
-            send_tick = True
-
         # Handle actor actions.
         for actor_id in self._actors:
             actor = self._actors[actor_id]
@@ -377,6 +372,11 @@ class State(object):
         while len(self._instruction_complete_queue) > 0:
             (id, objective_complete) = self._instruction_complete_queue.popleft()
             self._handle_instruction_complete(id, objective_complete)
+            send_tick = True
+
+        # If the follower currently has no instructions, end their turn.
+        if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
+            self.update_turn(force_role_switch=True, end_reason="FollowerFinishedInstructions")
             send_tick = True
 
         selected_cards = list(self._map_provider.selected_cards())

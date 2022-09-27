@@ -100,7 +100,6 @@ def PlayGame(coordinator, i_uuid=""):
             follower_action = follower_agent.get_action(map, cards, turn_state, instructions, actors, live_feedback)
             logger.info(f"Follower step({follower_action})")
             map, cards, turn_state, instructions, actors, live_feedback = endpoint_pair.step(follower_action)
-        time.sleep(0.5)
     print(f"Game over. Score: {endpoint_pair.score()}, Duration: {endpoint_pair.duration().total_seconds()}")
     return endpoint_pair.score(), endpoint_pair.duration().total_seconds()
 
@@ -112,7 +111,7 @@ def main(config_filepath="server/config/local-covers-config.json", instruction_u
     db_utils.ConnectToDatabase(config)
     scores = []
     durations = []
-    coordinator = LocalGameCoordinator(config, True)
+    coordinator = LocalGameCoordinator(config)
     for i in range(10):
         logger.info(f"========================== STARTING GAME {i} ==========================")
         score, duration = PlayGame(coordinator, instruction_uuid)
