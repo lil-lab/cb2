@@ -29,7 +29,7 @@ def main(from_id=0, to_id=0, config_path="config/server-config.json"):
 
     print(f"Reading database from {config.database_path()}")
     # Setup the sqlite database used to record game actions.
-    base.SetDatabase(config.database_path())
+    base.SetDatabase(config)
     base.ConnectDatabase()
     base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
 

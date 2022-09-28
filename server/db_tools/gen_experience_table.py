@@ -15,7 +15,7 @@ def main(config_filepath="config/server-config.json"):
 
     print(f"Reading database from {cfg.database_path()}")
     # Setup the sqlite database used to record game actions.
-    base.SetDatabase(cfg.database_path())
+    base.SetDatabase(cfg)
     base.ConnectDatabase()
     base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
 

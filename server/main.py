@@ -922,7 +922,7 @@ def InitGameRecording(config):
     room_manager.register_game_logging_directory(record_base_dir)
 
     # Setup the sqlite database used to record game actions.
-    base.SetDatabase(config.database_path())
+    base.SetDatabase(config)
     base.ConnectDatabase()
     base.CreateTablesIfNotExists(defaults.ListDefaultTables())
     

@@ -48,7 +48,7 @@ def main(config_filepath="config/server-config.json", experienced_player_ids="",
 
     print(f"Reading database from {config.database_path()}")
     # Setup the sqlite database used to record game actions.
-    base.SetDatabase(config.database_path())
+    base.SetDatabase(config)
     base.ConnectDatabase()
     base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
 

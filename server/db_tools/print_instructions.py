@@ -82,7 +82,7 @@ def main(number=-1, search_term="", research_only=True, config_filepath="config/
 
     print(f"Reading database from {config.database_path()}")
     # Setup the sqlite database used to record game actions.
-    base.SetDatabase(config.database_path())
+    base.SetDatabase(config)
     base.ConnectDatabase()
     base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
 

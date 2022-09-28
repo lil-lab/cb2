@@ -1,7 +1,6 @@
 """ This class defines a set of helper methods to mask game state from the follower's perspective. """
-
+import dataclasses
 import logging
-import copy
 
 from collections import deque
 
@@ -35,10 +34,7 @@ def VisibleCoordinates(follower_actor, config):
     visible_coords = []
 
     # Get the two neighboring cells to the left and right. Special case them.
-    neighbor_coords = [
-        follower_actor.location().neighbor_at_heading(follower_actor.heading_degrees() - 60),
-        follower_actor.location().neighbor_at_heading(follower_actor.heading_degrees() + 60)
-    ]
+    neighbor_coords = CoordinateNeighborCells(follower_actor)
     visible_coords.extend(neighbor_coords)
 
     # BFS from the follower's location, find all visible coordinates.
@@ -51,7 +47,7 @@ def VisibleCoordinates(follower_actor, config):
         already_visited.add(coord)
         if coord in visible_coords:
             continue
-        if not CoordinateIsVisible(coord, follower_actor, config):
+        if not CoordinateInViewingDistance(coord, follower_actor, config) or not CoordinateInFov(coord, follower_actor, config):
             continue
         visible_coords.append(coord)
         for neighbor in coord.neighbors():
@@ -59,20 +55,47 @@ def VisibleCoordinates(follower_actor, config):
 
     return visible_coords
 
+def CoordinateInViewingDistance(coord, follower_actor, config):
+    """  Returns true if the given coordinate should be visible to the given follower with the given config. """
+    view_depth = config.fog_end / UNITY_COORDINATES_SCALE
+    # Check distance.
+    distance = coord.distance_to(follower_actor.location())
+    # Add 0.5 to round up to the next hex cell.
+    return distance <= (view_depth + 0.5)
+
+def CoordinateInFov(coord, follower_actor, config):
+    # There's something wrong with orientation... I have to put - 60 everywhere
+    # Actor.heading_degrees() (actor.py) is used.
+    follower_orientation = follower_actor.heading_degrees() - 60
+
+    # Check FOV. TODO(sharf): Something's not quite right here. Too many tiles are filtered.
+    degrees_to = follower_actor.location().degrees_to_precise(coord) % 360
+    left = (follower_orientation - FOLLOWER_FOV / 2) % 360
+    right = (follower_orientation + FOLLOWER_FOV / 2) % 360
+    if left < right:
+        return left <= degrees_to <= right
+    else:
+        return left <= degrees_to or degrees_to <= right
+
+
+def CoordinateNeighborCells(follower_actor):
+    # Get the two neighboring cells to the left and right. Special case them.
+    return [
+        follower_actor.location().neighbor_at_heading(follower_actor.heading_degrees() - 60),
+        follower_actor.location().neighbor_at_heading(follower_actor.heading_degrees() + 60)
+    ]
+
+
 def CoordinateIsVisible(coord, follower_actor, config):
+    # Get the two neighboring cells to the left and right. Special case them.
+    if coord in CoordinateNeighborCells(follower_actor):
+        return True
+
     """  Returns true if the given coordinate should be visible to the given follower with the given config. """
     view_depth = config.fog_end / UNITY_COORDINATES_SCALE
     # There's something wrong with orientation... I have to put - 60 everywhere
     # Actor.heading_degrees() (actor.py) is used.
     follower_orientation = follower_actor.heading_degrees() - 60
-
-    # Get the two neighboring cells to the left and right. Special case them.
-    neighbor_cells = [
-        follower_actor.location().neighbor_at_heading(follower_actor.heading_degrees() - 60),
-        follower_actor.location().neighbor_at_heading(follower_actor.heading_degrees() + 60)
-    ]
-    if coord in neighbor_cells:
-        return True
 
     # Check distance.
     distance = coord.distance_to(follower_actor.location())
@@ -138,7 +161,7 @@ def CensorFollowerProps(props, follower_actor, config):
     logger.debug(f"Filtering props. Follower at {follower_actor.location()} with orientation {follower_orientation} and view depth {view_depth}")
     for prop in props:
         if CoordinateIsVisible(prop.prop_info.location, follower_actor, config):
-            new_props.append(copy.deepcopy(prop))
+            new_props.append(dataclasses.replace(prop))
     return new_props
 
 def CensorActors(actors, follower_actor, config):

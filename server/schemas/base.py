@@ -1,20 +1,33 @@
 from peewee import *
 from playhouse.sqlite_ext import CSqliteExtDatabase
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 database = CSqliteExtDatabase(None)
 
 class BaseModel(Model):
     class Meta:
         database = database  # Use proxy for our DB.
 
-def SetDatabase(db_path):
+def SetDatabaseByPath(path):
+    database.init(path,
+        pragmas = [
+            ('journal_mode', 'wal'),
+            ('cache_size', -1024 * 64),  # 64MB
+            ('foreign_keys', 1),
+            ('ignore_check_constraints', 0),
+            ('synchronous', 1)
+        ]
+    )
+
+def SetDatabase(config):
+    logger.warn(f"Pragmas: {config.sqlite_pragmas}")
     # Configure our proxy to use the db we specified in config.
     database.init(
-        db_path, 
-        pragmas =
-            [ ('cache_size', -1024 * 64),  # 64MB page-cache. Negative implies kibibytes as units... yeah lol.
-              ('journal_mode', 'wal'),  # Use WAL-mode (you should always use this!).
-              ('foreign_keys', 1)]
+        config.database_path(), 
+        pragmas = config.sqlite_pragmas
     )
 
 def ConnectDatabase():

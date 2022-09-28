@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 def ConnectToDatabase(cfg):
     """ Helper utility to connect to a database given a config object. """
-    base.SetDatabase(cfg.database_path())
+    base.SetDatabase(cfg)
     base.ConnectDatabase()
     base.CreateTablesIfNotExists(defaults_db.ListDefaultTables())
 

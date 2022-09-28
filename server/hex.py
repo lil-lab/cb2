@@ -12,8 +12,9 @@ logger = logging.getLogger()
 
 # HECS-style coordinate class.
 # https://en.wikipedia.org/wiki/Hexagonal_Efficient_Coordinate_System
-@dataclass(frozen=True)
+@dataclass
 class HecsCoord(DataClassJSONMixin):
+    __slots__ = ('a', 'r', 'c')
     a: int
     r: int
     c: int

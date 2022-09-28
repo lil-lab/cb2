@@ -52,7 +52,7 @@ class MainFromBranchWorkerIdTranslater(object):
         raise ValueError(f"Could not find worker with branch mturk id {branch_worker_id}")
 
 def SwitchToDatabase(db):
-    base.SetDatabase(db)
+    base.SetDatabaseByPath(db)
     base.ConnectDatabase()
 
 def main(db_main_path, db_branch_path):

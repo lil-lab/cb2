@@ -47,7 +47,7 @@ def main(config_path="config/latest-analysis.json", no_i_totally_know_what_im_do
     print("Starting...")
 
     # Setup the sqlite database used to record game actions.
-    base.SetDatabase(cfg.database_path())
+    base.SetDatabase(cfg)
     base.ConnectDatabase()
     base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
 

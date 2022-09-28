@@ -19,7 +19,6 @@ class PropType(Enum):
     SIMPLE = 1
     CARD = 2
 
-
 @dataclass
 class GenericPropInfo(DataClassJSONMixin):
     location: HecsCoord
@@ -40,10 +39,12 @@ class CardConfig(DataClassJSONMixin):
 
 @dataclass(frozen=True)
 class SimpleConfig(DataClassJSONMixin):
+    __slots__ = ('asset_id')
     asset_id: int
 
 @dataclass(frozen=True)
 class Prop(DataClassJSONMixin):
+    __slots__ = ('id', 'prop_type', 'prop_info', 'card_init', 'simple_init')
     id: int
     prop_type: PropType
     prop_info: GenericPropInfo

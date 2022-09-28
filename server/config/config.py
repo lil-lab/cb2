@@ -4,10 +4,11 @@ from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime
 from mashumaro.mixins.json import DataClassJSONMixin
 from marshmallow import fields
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import logging
 import pathlib
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -45,16 +46,21 @@ def ValidateConfig(config):
 # doesn't handle the exceptions.
 def ReadConfigOrDie(config_path):
     with open(config_path, 'r') as cfg_file:
-        config = Config.from_json(cfg_file.read())
+        data = yaml.load(cfg_file, Loader=yaml.CLoader)
+        config = Config.from_dict(data)
         valid_config, reason = ValidateConfig(config)
         if not valid_config:
             raise ValueError(f"Config file is invalid: {reason}")
         return config
 
-# For backwards compatibility, the members of this class are ordered by when they were added rather than by relevancy.
-# This is unfortunate, I should probably group config members by category
-# (analysis, server, database, etc) and then have a wrapper which breaks them
-# out that way.
+# For backwards compatibility, the members of this class are ordered by when
+# they were added rather than by relevancy.  This is unfortunate, I should
+# probably group config members by category (analysis, server, database, etc)
+# and then have a wrapper which breaks them out that way.
+#
+# Config files are now YAML instead of JSON! This doesn't change anything, as
+# YAML is actually a superset of JSON. But it lets us add comments to our config
+# files, which is much needed.
 @dataclass
 class Config(DataClassJSONMixin):
     name: str = ""  # The name of the config.
@@ -99,6 +105,15 @@ class Config(DataClassJSONMixin):
     analytics_since_game_id: int = -1 # The game ID to start all statistical/research calculations from (discard before this).
 
     live_feedback_enabled: bool = True # Is leader live feedback enabled for games?
+
+    # Default settings. Safe for use with low-resource AWS server (4g ram,
+    # 2vcpu). In this case, a t4g.medium instance.
+    sqlite_pragmas: List[List[str]] = field(default_factory=lambda: [
+        ("journal_mode", "wal"),
+        ("cache_size", -1024 * 64),
+        ("foreign_keys", "1"),
+        ("synchronous", "off"),
+    ])
 
     # Data path accessors that add the requisite data_prefix.
     def data_directory(self):

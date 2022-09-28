@@ -1,4 +1,5 @@
 import asyncio
+import fire
 import logging
 import matplotlib
 import matplotlib.pyplot as plt
@@ -18,11 +19,11 @@ from py_client.endpoint_pair import EndpointPair
 from server.config.config import ReadConfigOrDie
 import server.db_tools.db_utils as db_utils
 
-import fire
-
 from collections import deque
 from datetime import timedelta
 from random import choice
+
+from time import sleep
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +107,7 @@ def PlayGame(coordinator, i_uuid=""):
 
 def main(config_filepath="server/config/local-covers-config.json", instruction_uuid=""):
     nest_asyncio.apply()
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.WARN)
     config = ReadConfigOrDie(config_filepath)
     db_utils.ConnectToDatabase(config)
     scores = []

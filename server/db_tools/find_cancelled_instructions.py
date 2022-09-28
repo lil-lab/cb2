@@ -63,7 +63,7 @@ def main(config_filepath="config/separated-games-2.json", no_i_totally_know_what
         sys.exit(1)
 
     # Setup the sqlite database used to record game actions.
-    base.SetDatabase(cfg.database_path())
+    base.SetDatabase(cfg)
     base.ConnectDatabase()
     base.CreateTablesIfNotExists(defaults_db.ListDefaultTables())
 

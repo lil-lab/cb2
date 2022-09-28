@@ -116,9 +116,9 @@ class LocalGameCoordinator(object):
         game_id = game_record.id
         game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
         game_name = f"{game_time}_{game_id}_GAME"
-        log_directory = pathlib.Path(self._config.record_directory(), game_name)
-        log_directory.mkdir(parents=False, exist_ok=False)
-        game_record.log_directory = str(log_directory)
+        # log_directory = pathlib.Path(self._config.record_directory(), game_name)
+        # log_directory.mkdir(parents=False, exist_ok=False)
+        # game_record.log_directory = str(log_directory)
         game_record.server_software_commit = GetCommitHash()
         game_record.save()
         state_machine = State(room_id, game_record)

@@ -27,6 +27,8 @@ from datetime import datetime, timedelta
 from queue import Queue
 from typing import List
 
+from server.schemas.base import GetDatabase
+
 import asyncio
 import copy
 import dataclasses
@@ -774,7 +776,7 @@ class State(object):
         prop_update = self._next_prop_update(player_id)
         if prop_update is not None:
             logger.debug(
-                f'Room {self._room_id} prop update {prop_update} for player_id {player_id}')
+                f'Room {self._room_id} prop update with {len(prop_update.props)} for player_id {player_id}')
             return message_from_server.PropUpdateFromServer(prop_update)
 
         if not self.is_synced(player_id):
