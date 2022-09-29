@@ -47,7 +47,9 @@ def VisibleCoordinates(follower_actor, config):
         already_visited.add(coord)
         if coord in visible_coords:
             continue
-        if not CoordinateInViewingDistance(coord, follower_actor, config) or not CoordinateInFov(coord, follower_actor, config):
+        if ((coord != follower_actor.location()) and 
+            (not CoordinateInViewingDistance(coord, follower_actor, config) or
+             not CoordinateInFov(coord, follower_actor, config))):
             continue
         visible_coords.append(coord)
         for neighbor in coord.neighbors():
