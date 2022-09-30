@@ -309,19 +309,6 @@ class State(object):
             self._actors_added = False
             send_tick = True
 
-        # Check to see if the game is over.
-        if self._turn_state.turns_left <= -1:
-            logger.info(
-                f"Game {self._room_id} is out of turns. Game over!")
-            game_over_message = GameOverMessage(
-                self._turn_state.game_start,
-                self._turn_state.sets_collected,
-                self._turn_state.score,
-                self._turn_state.turn_number)
-            self.send_turn_state(game_over_message)
-            self.end_game()
-            return
-
         if datetime.utcnow() >= self._turn_state.turn_end:
             self.update_turn()
             send_tick = True
@@ -447,6 +434,20 @@ class State(object):
             self._send_state_machine_info = True
             for actor_id in self._actors:
                 self._prop_stale[actor_id] = True
+
+        # Check to see if the game is over.
+        if self._turn_state.turns_left <= -1:
+            logger.info(
+                f"Game {self._room_id} is out of turns. Game over!")
+            game_over_message = GameOverMessage(
+                self._turn_state.game_start,
+                self._turn_state.sets_collected,
+                self._turn_state.score,
+                self._turn_state.turn_number)
+            self.send_turn_state(game_over_message)
+            self.end_game()
+            return
+
         
         # If any state transitions occured which prompt a tick, send one.
         if send_tick:
