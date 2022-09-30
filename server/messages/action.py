@@ -10,8 +10,11 @@ from mashumaro.mixins.json import DataClassJSONMixin
 from marshmallow import fields
 
 import dateutil.parser
+import logging
 
 from dateutil import tz
+
+logger = logging.getLogger()
 
 class ActionType(Enum):
     INIT = 0
@@ -49,7 +52,7 @@ def CensorActionForFollower(action, follower):
     """
     if action.border_color == Color(1, 0, 0, 1):
         action = replace(action, border_color=Color(0, 0, 1, 1))
-        print(f"Censored action {action} for follower {follower}")
+        logger.debug(f"Censored action {action} for follower {follower}")
     return action
 
 @dataclass(frozen=True)

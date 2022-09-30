@@ -139,7 +139,10 @@ def CensorFollowerMap(map_update, follower_actor, config: Config):
     # the cache a bunch of times)
     new_tiles = []
     for coord in visible_coords:
-        new_tiles.append(map_update.tile_at(coord))
+        tile = map_update.tile_at(coord)
+        if tile is None:
+            continue
+        new_tiles.append(tile)
     filtered_map_update = MapUpdate(map_update.rows, map_update.cols, new_tiles, map_update.metadata)
     return filtered_map_update
 
