@@ -40,7 +40,7 @@ MAX_NUMBER_OF_OUTPOSTS = 6
 
 PATH_CONNECTION_DISTANCE = 4
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 # A point in a BFS or DFS search from a certain origin.
 @dataclass_json
@@ -927,7 +927,7 @@ map_pool = []
 def CachedMapRetrieval():
     global map_pool
     if len(map_pool) == 0:
-        print(f"Map pool ran out of cached maps. Generating...")
+        logger.info(f"Map pool ran out of cached maps. Generating...")
         return MapProvider(MapType.RANDOM)
     else:
         return map_pool.pop()

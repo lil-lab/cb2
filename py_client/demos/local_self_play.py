@@ -101,7 +101,7 @@ def PlayGame(coordinator, i_uuid=""):
             follower_action = follower_agent.get_action(map, cards, turn_state, instructions, actors, live_feedback)
             logger.info(f"Follower step({follower_action})")
             map, cards, turn_state, instructions, actors, live_feedback = endpoint_pair.step(follower_action)
-    print(f"Game over. Score: {endpoint_pair.score()}, Duration: {endpoint_pair.duration().total_seconds()}")
+    logger.info(f"Game over. Score: {endpoint_pair.score()}, Duration: {endpoint_pair.duration().total_seconds()}")
     return endpoint_pair.score(), endpoint_pair.duration().total_seconds()
 
 
@@ -116,12 +116,12 @@ def main(config_filepath="server/config/local-covers-config.json", instruction_u
     for i in range(10):
         logger.info(f"========================== STARTING GAME {i} ==========================")
         score, duration = PlayGame(coordinator, instruction_uuid)
-        print(f"Game over. Score: {score}, Duration: {duration}")
+        logger.info(f"Game over. Score: {score}, Duration: {duration}")
         scores.append(score)
         durations.append(duration)
     # Print out the scores.
-    print(f"Mean score: {np.mean(scores)}")
-    print(f"Mean duration: {np.mean(durations)}")
+    logger.info(f"Mean score: {np.mean(scores)}")
+    logger.info(f"Mean duration: {np.mean(durations)}")
 
     # Plot a multi-figure diagram. On the left, scatter plot of game durations &
     # scores. On the right, show a histogram of scores.
