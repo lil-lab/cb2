@@ -146,9 +146,8 @@ def high_percent_cancelled_instructions(game_instructions):
 
 def follower_got_lost(game_instructions):
     # Make sure the follower didn't get stuck on an instruction.
-    finished_instructions = game_instructions.where(Instruction.turn_completed != -1)
     follower_got_lost = False
-    for instruction in finished_instructions:
+    for instruction in game_instructions:
         moves = instruction.moves
         if moves.count() >= 25:
             follower_got_lost = True
