@@ -598,7 +598,7 @@ class State(object):
     
     def _drain_live_feedback(self, id, feedback):
         if config.GlobalConfig() and not config.GlobalConfig().live_feedback_enabled:
-            logger.info(f'Live feedback disabled. Dropping message. GRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR (added temp for debug easier viewing)')
+            logger.info(f'Live feedback disabled. Dropping message.')
             return
         if feedback.signal == live_feedback.FeedbackType.NONE:
             logger.info(f'Received live feedback from {id} with type NONE. Dropping.')
