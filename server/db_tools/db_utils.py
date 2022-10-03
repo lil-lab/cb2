@@ -153,6 +153,7 @@ def follower_got_lost(game_instructions):
         if moves.count() >= 25:
             follower_got_lost = True
             break
+    return follower_got_lost
 
 def short_game(game):
     # Make sure the game wasn't just given up on in the first 2 turns.
