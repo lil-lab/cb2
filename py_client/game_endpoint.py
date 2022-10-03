@@ -389,11 +389,7 @@ class GameEndpoint(object):
         while not self.over() and self.socket.connected():
             if datetime.utcnow() > end_time:
                 return False, "Timed out waiting for tick"
-            if self.player_role == Role.FOLLOWER:
-                logger.info(f"FOLLOWER receive...")
             message, reason = self.socket.receive_message(end_time - datetime.utcnow())
-            if self.player_role == Role.FOLLOWER:
-                logger.info(f"FOLLOWER received message: {message}")
             if message is None:
                 logger.warn(f"Received None from _receive_message. Reason: {reason}")
                 continue
