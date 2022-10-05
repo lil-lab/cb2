@@ -52,6 +52,7 @@ from server.messages.rooms import RoomManagementResponse
 from server.messages.rooms import RoomResponseType
 from server.messages.logs import GameLog, GameInfo, LogEntry
 from playhouse.sqlite_ext import CSqliteExtDatabase
+from playhouse.shortcuts import model_to_dict 
 from server.remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTable, LogConnectionEvent
 from server.room_manager import RoomManager
 from server.schemas import base
@@ -520,6 +521,32 @@ async def GameData(request):
             "text": instruction.text
         })
     return web.json_response(json_instructions)
+
+@routes.get('/data/instruction/{i_uuid}')
+async def GameData(request):
+    instruction_uuid = request.match_info.get('i_uuid')
+    instruction = game_db.Instruction.select().join(game_db.Game).where(game_db.Instruction.uuid == instruction_uuid).get()
+    NYC = tz.gettz('America/New_York')
+    return web.json_response(instruction.dict(), dumps=lambda x: orjson.dumps(x, option=orjson.OPT_NAIVE_UTC | orjson.OPT_INDENT_2).decode('utf-8'))
+
+@routes.get('/data/live_feedback/{i_uuid}')
+async def GameData(request):
+    instruction_uuid = request.match_info.get('i_uuid')
+    instruction = game_db.Instruction.select().join(game_db.Game).where(game_db.Instruction.uuid == instruction_uuid).get()
+    json_responses = []
+    for feedback in instruction.feedbacks:
+        json_responses.append(feedback.dict())
+    return web.json_response(json_responses, dumps=lambda x: orjson.dumps(x, option=orjson.OPT_NAIVE_UTC | orjson.OPT_INDENT_2).decode('utf-8'))
+
+@routes.get('/data/moves_for_instruction/{i_uuid}')
+async def GameData(request):
+    instruction_uuid = request.match_info.get('i_uuid')
+    instruction = game_db.Instruction.select().join(game_db.Game).where(game_db.Instruction.uuid == instruction_uuid).get()
+    json_responses = []
+    for move in instruction.moves:
+        json_responses.append(move.dict())
+    return web.json_response(json_responses, dumps=lambda x: orjson.dumps(x, option=orjson.OPT_NAIVE_UTC | orjson.OPT_INDENT_2).decode('utf-8'))
+
 
 @routes.get('/data/moves/{turn_id}')
 async def GameData(request):

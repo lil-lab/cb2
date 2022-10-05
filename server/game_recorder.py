@@ -201,7 +201,7 @@ class GameRecorder(object):
         live_feedback_record.game = self._game_record
         live_feedback_record.feedback_type = "POSITIVE" if feedback.signal == live_feedback.FeedbackType.POSITIVE else "NEGATIVE"
         
-        # Update the follower's state.
+        # Find the instruction that the feedback is for.
         if self._active_instruction is not None:
             last_obj_record = schemas.game.Instruction.select().where(
                 schemas.game.Instruction.uuid == self._active_instruction.uuid).get()

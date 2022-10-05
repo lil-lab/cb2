@@ -6,6 +6,7 @@ from peewee import *
 from server.schemas.clients import *
 
 import orjson
+import json
 
 import datetime
 
@@ -83,6 +84,19 @@ class Instruction(BaseModel):
     turn_completed = IntegerField(default=-1)
     turn_cancelled = IntegerField(default=-1)
 
+    def dict(self):
+        return {
+            'game': self.game_id,
+            'worker': self.worker_id,
+            'uuid': self.uuid,
+            'text': self.text,
+            'time': self.time.isoformat(),
+            'instruction_number': self.instruction_number,
+            'turn_issued': self.turn_issued,
+            'turn_completed': self.turn_completed,
+            'turn_cancelled': self.turn_cancelled,
+        }
+
 class Move(BaseModel):
     game = ForeignKeyField(Game, backref='moves')
     instruction = ForeignKeyField(Instruction, backref='moves', null=True)
@@ -96,6 +110,21 @@ class Move(BaseModel):
     action_code = TextField()  # One of MF (Move Forward), MB (Move Backward), TR (Turn Right), TL (Turn Left). Or invalid if the action was not valid.
     orientation_before = IntegerField()
 
+    def dict(self):
+        return {
+            'game': self.game_id,
+            'instruction': self.instruction_id,
+            'character_role': self.character_role,
+            'worker': self.worker,
+            'turn_number': self.turn_number,
+            'action': json.dumps(self.action, default=str),
+            'position_before': self.position_before,
+            'game_time': self.game_time,
+            'server_time': self.server_time.isoformat(),
+            'action_code': self.action_code,
+            'orientation_before': self.orientation_before,
+        }
+
 class LiveFeedback(BaseModel):
     game = ForeignKeyField(Game, backref='feedbacks')
     feedback_type = TextField()
@@ -105,3 +134,15 @@ class LiveFeedback(BaseModel):
     follower_orientation = FloatField()
     game_time = TextField()
     server_time = DateTimeField()
+
+    def dict(self):
+        return {
+            'game': self.game_id,
+            'feedback_type': self.feedback_type,
+            'instruction': self.instruction.uuid,
+            'turn_number': self.turn_number,
+            'follower_position': self.follower_position,
+            'follower_orientation': self.follower_orientation,
+            'game_time': self.game_time,
+            'server_time': self.server_time.isoformat(),
+        }
