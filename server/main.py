@@ -55,6 +55,8 @@ from playhouse.sqlite_ext import CSqliteExtDatabase
 from playhouse.shortcuts import model_to_dict 
 from server.remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTable, LogConnectionEvent
 from server.room_manager import RoomManager
+from server.lobby import Lobby
+from server.mturk_lobby import MturkLobby
 from server.schemas import base
 from server.db_tools import backup
 
@@ -62,8 +64,8 @@ from datetime import datetime, timezone, timedelta
 
 routes = web.RouteTableDef()
 
-# Keeps track of game state.
-room_manager = RoomManager()
+# One default lobby to keep track of game rooms.
+lobby = MturkLobby("MainLobby")
 
 # Used if run with GUI enabled.
 SCREEN_SIZE = 1000
@@ -159,24 +161,24 @@ async def Js(request):
 @routes.get('/status')
 async def Status(request):
     global assets_map
-    global room_manager
+    global lobby
     remote_table = GetRemoteTable()
-    player_queue = [str(remote_table[x]) for _,x,_ in room_manager.player_queue()]
-    follower_queue = [str(remote_table[x]) for _,x,_ in room_manager.follower_queue()]
-    leader_queue = [str(remote_table[x]) for _,x,_ in room_manager.leader_queue()]
+    player_queue = [str(remote_table[x]) for _,x,_ in lobby.player_queue()]
+    follower_queue = [str(remote_table[x]) for _,x,_ in lobby.follower_queue()]
+    leader_queue = [str(remote_table[x]) for _,x,_ in lobby.leader_queue()]
 
     server_state = {
         "assets": assets_map,
-        "number_rooms": len(room_manager.room_ids()),
+        "number_rooms": len(lobby.room_ids()),
         "map_cache_size": MapPoolSize(),
         "remotes": [str(remote_table[ws]) for ws in remote_table],
-        "room_manager_remotes":[str(room_manager.socket_info(ws)) for ws in remote_table],
-        "rooms": [room_manager.get_room(room_id).state() for room_id in room_manager.room_ids()],
-        "room_selected_cards": [str(room_manager.get_room(room_id).selected_cards()) for room_id in room_manager.room_ids()],
+        "lobby_remotes":[str(lobby.socket_info(ws)) for ws in remote_table],
+        "rooms": [lobby.get_room(room_id).state() for room_id in lobby.room_ids()],
+        "room_selected_cards": [str(lobby.get_room(room_id).selected_cards()) for room_id in lobby.room_ids()],
         "player_queue": player_queue,
         "follower_queue": follower_queue,
         "leader_queue": leader_queue,
-        "room_debug_info": [room_manager.get_room(room_id).debug_status() for room_id in room_manager.room_ids()],
+        "room_debug_info": [lobby.get_room(room_id).debug_status() for room_id in lobby.room_ids()],
     }
     pretty_dumper = lambda x: orjson.dumps(x, option=orjson.OPT_NAIVE_UTC | orjson.OPT_INDENT_2).decode('utf-8')
     return web.json_response(server_state, dumps=pretty_dumper)
@@ -306,7 +308,7 @@ download_status = {
     "log": [],
 }
 
-async def DataDownloader(room_manager):
+async def DataDownloader(lobby):
     global download_requested
     global download_status
     global download_file_path
@@ -367,9 +369,9 @@ async def DataDownloader(room_manager):
                 continue
 
         # Don't start downloads if someone is actively playing a game.
-        if len(room_manager.room_ids()) > 0:
+        if len(lobby.room_ids()) > 0:
             download_status["status"] = "busy"
-            log_entry(f"Waiting on {len(room_manager.room_ids())} active games to finish before downloading.")
+            log_entry(f"Waiting on {len(lobby.room_ids())} active games to finish before downloading.")
             await asyncio.sleep(10)
             continue
             
@@ -695,7 +697,7 @@ async def stats(request):
 
 
 async def stream_game_state(request, ws):
-    global room_manager
+    global lobby
     was_in_room = False
     remote = GetRemote(ws)
     remote.last_ping = datetime.now(timezone.utc)
@@ -708,29 +710,29 @@ async def stream_game_state(request, ws):
                 f"Transmit socket for iphash {remote.hashed_ip} port {remote.client_port}, slow poll period of {poll_period}s")
         last_loop = time.time()
         # If not in a room, drain messages from the room manager.
-        message = room_manager.drain_message(ws)
+        message = lobby.drain_message(ws)
         if message is not None:
             await transmit_bytes(ws, orjson.dumps(message, option=orjson.OPT_NAIVE_UTC))
 
-        if not room_manager.socket_in_room(ws):
+        if not lobby.socket_in_room(ws):
             if was_in_room:
                 logger.info(f"Socket has disappeared after initialization. Ending connection.")
                 await ws.close()
                 return
             continue
 
-        (room_id, player_id, role) = room_manager.socket_info(ws).as_tuple()
-        room = room_manager.get_room(room_id)
+        (room_id, player_id, role) = lobby.socket_info(ws).as_tuple()
+        room = lobby.get_room(room_id)
 
         if room is None:
-            logger.warn(f"Room does not exist but room_manager.socket_in_room(ws) returned true.")
+            logger.warn(f"Room does not exist but lobby.socket_in_room(ws) returned true.")
             continue
 
         if not was_in_room:
             was_in_room = True
             # Make sure we drain pending room manager commands here with sleeps to ensure the client has time to switch scenes.
             # await asyncio.sleep(1.0)
-            message = room_manager.drain_message(ws)
+            message = lobby.drain_message(ws)
             if message is not None:
                 await transmit_bytes(ws, orjson.dumps(message, option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat))
             # await asyncio.sleep(1.0)
@@ -754,7 +756,7 @@ async def stream_game_state(request, ws):
 
 
 async def receive_agent_updates(request, ws):
-    global room_manager
+    global lobby
     async for msg in ws:
         remote = GetRemote(ws)
         if ws.closed:
@@ -780,7 +782,7 @@ async def receive_agent_updates(request, ws):
         message = message_to_server.MessageToServer.from_json(msg.data)
 
         if message.type == message_to_server.MessageType.ROOM_MANAGEMENT:
-            room_manager.handle_request(message, ws)
+            lobby.handle_request(message, ws)
             continue
             
         if message.type == message_to_server.MessageType.PONG:
@@ -794,18 +796,18 @@ async def receive_agent_updates(request, ws):
             remote.latency = ((t3 - t0).total_seconds() - (t2 - t1).total_seconds()) / 2
             continue
 
-        if room_manager.socket_in_room(ws):
+        if lobby.socket_in_room(ws):
             # Only handle in-game actions if we're in a room.
-            (room_id, player_id, _) = room_manager.socket_info(ws).as_tuple()
-            room = room_manager.get_room(room_id)
+            (room_id, player_id, _) = lobby.socket_info(ws).as_tuple()
+            room = lobby.get_room(room_id)
             room.drain_messages(player_id, [message])
         else:
             # Room manager handles out-of-game requests.
-            room_manager.handle_request(message, ws)
+            lobby.handle_request(message, ws)
 
 @routes.get('/player_endpoint')
 async def PlayerEndpoint(request):
-    global room_manager
+    global lobby
     assignment = None
     if "assignmentId" in request.query:
         # If this is an mturk task, log assignment into to the remote table.
@@ -842,7 +844,7 @@ async def PlayerEndpoint(request):
     finally:
         logger.info("player disconnected from : " + request.remote)
         LogConnectionEvent(remote, "Disconnected from Server.")
-        room_manager.disconnect_socket(ws)
+        lobby.disconnect_socket(ws)
         DeleteRemote(ws)
     return ws
 
@@ -889,13 +891,13 @@ async def serve(config):
 
 
 async def draw_gui():
-    global room_manager
-    room = room_manager.get_room_by_name("Room #0")
+    global lobby
+    room = lobby.get_room_by_name("Room #0")
     display = visualize.GameDisplay(SCREEN_SIZE)
     while True:
         await asyncio.sleep(0)
         if room is None:
-            room = room_manager.get_room_by_name("Room #0")
+            room = lobby.get_room_by_name("Room #0")
             continue
         state = room.state()
         map = room.map()
@@ -946,7 +948,7 @@ def InitGameRecording(config):
     record_base_dir.mkdir(parents=False, exist_ok=True)
 
     # Register the logging directory with the room manager.
-    room_manager.register_game_logging_directory(record_base_dir)
+    lobby.register_game_logging_directory(record_base_dir)
 
     # Setup the sqlite database used to record game actions.
     base.SetDatabase(config)
@@ -979,7 +981,7 @@ async def profiler():
 
 def main(config_filepath="server/config/server-config.json"):
     global assets_map
-    global room_manager
+    global lobby
 
     InitPythonLogging()
 
@@ -998,7 +1000,7 @@ def main(config_filepath="server/config/server-config.json"):
     # yappi.start()
 
     assets_map = HashCollectAssets(GlobalConfig().assets_directory())
-    tasks = asyncio.gather(room_manager.matchmake(), room_manager.cleanup_rooms(), serve(GlobalConfig()), MapGenerationTask(room_manager, GlobalConfig()), DataDownloader(room_manager))
+    tasks = asyncio.gather(lobby.matchmake(), lobby.cleanup_rooms(), serve(GlobalConfig()), MapGenerationTask(lobby, GlobalConfig()), DataDownloader(lobby))
     # If map visualization command line flag is enabled, run with the visualize task.
     # if gui:
     #   tasks = asyncio.gather(tasks, draw_gui())
@@ -1010,7 +1012,7 @@ def main(config_filepath="server/config/server-config.json"):
         logger.info(f"Keyboard interrupt received. Exiting.")
         sys.exit(0)
     finally:
-        room_manager.end_server()
+        lobby.end_server()
         loop.close()
         
         # yappi.stop()
