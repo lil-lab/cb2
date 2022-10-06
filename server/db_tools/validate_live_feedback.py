@@ -52,7 +52,7 @@ def main(config_filepath=""):
         except Exception as e:
             continue
     
-    print(f"Games with invalid live feedback: {games_with_invalid_live_feedback}")
+    print(f"{len(games_with_invalid_live_feedback)} Games with invalid live feedback: {games_with_invalid_live_feedback}")
     print(f"Total number of games: {Game.select().count()}")
 
 
