@@ -25,6 +25,7 @@ def main(config_filepath=""):
     base.SetDatabase(config)
     base.ConnectDatabase()
 
+    games_with_invalid_live_feedback = []
     for game in Game.select():
         try:
             turn_times = {} # Maps turn number to (start_time, end_time)
@@ -34,6 +35,7 @@ def main(config_filepath=""):
             
             # Sort events by game_time.
             events.sort(key=lambda x: x[0])
+
 
             # For each feedback, make sure that it happened next to a follower move.
             for feedback in game.feedbacks.order_by(LiveFeedback.game_time):
@@ -46,10 +48,12 @@ def main(config_filepath=""):
                 next_event_leader = events[i][1] == "Role.LEADER" if i + 1 < len(events) else False
                 prev_event_leader = events[i - 1][1] == "Role.LEADER" if i - 1 >= 0 else False
                 if (next_event_leader and prev_event_leader):
-                    print(f"Feedback happened between two leader moves in game {game.id}. Move {i}")
-                    return
+                    games_with_invalid_live_feedback.append(game.id)
         except Exception as e:
             continue
+    
+    print(f"Games with invalid live feedback: {games_with_invalid_live_feedback}")
+    print(f"Total number of games: {Game.select().count()}")
 
 
 if __name__ == "__main__":
