@@ -936,10 +936,10 @@ def MapPoolSize():
     global map_pool
     return len(map_pool)
 
-async def MapGenerationTask(room_manager, config):
+async def MapGenerationTask(lobby, config):
     while True:
         # Only generate maps when there are no active games.
-        if len(room_manager.room_ids()) != 0:
+        if len(lobby.room_ids()) != 0:
             await asyncio.sleep(10)
             continue
 

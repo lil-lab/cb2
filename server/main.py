@@ -54,7 +54,7 @@ from server.messages.logs import GameLog, GameInfo, LogEntry
 from playhouse.sqlite_ext import CSqliteExtDatabase
 from playhouse.shortcuts import model_to_dict 
 from server.remote_table import Remote, AddRemote, GetRemote, DeleteRemote, GetRemoteTable, LogConnectionEvent
-from server.room_manager import RoomManager
+from server.mturk_lobby import MturkLobby
 from server.lobby import Lobby
 from server.mturk_lobby import MturkLobby
 from server.schemas import base
