@@ -21,6 +21,16 @@ public class KeyboardShortcutHandler : MonoBehaviour
             _logger.Info("SendPositiveFeedback(): Live feedback not enabled");
             return;
         }
+        if (Network.NetworkManager.TaggedInstance().CurrentTurn() != Network.Role.FOLLOWER)
+        {
+            _logger.Info("SendPositiveFeedback(): Not follower's turn");
+            return;
+        }
+        if (Network.NetworkManager.TaggedInstance().Role() != Network.Role.LEADER)
+        {
+            _logger.Info("SendPositiveFeedback(): Not leader");
+            return;
+        }
         Network.LiveFeedback feedback = new Network.LiveFeedback();
         feedback.signal = Network.FeedbackType.POSITIVE;
         Network.NetworkManager.TaggedInstance().TransmitLiveFeedback(feedback);
@@ -31,6 +41,16 @@ public class KeyboardShortcutHandler : MonoBehaviour
         if (!Network.NetworkManager.TaggedInstance().ServerConfig().live_feedback_enabled)
         {
             _logger.Info("SendNegativeFeedback(): Live feedback not enabled");
+            return;
+        }
+        if (Network.NetworkManager.TaggedInstance().CurrentTurn() != Network.Role.FOLLOWER)
+        {
+            _logger.Info("SendNegativeFeedback(): Not follower's turn");
+            return;
+        }
+        if (Network.NetworkManager.TaggedInstance().Role() != Network.Role.LEADER)
+        {
+            _logger.Info("SendNegativeFeedback(): Not leader");
             return;
         }
         Network.LiveFeedback feedback = new Network.LiveFeedback();
@@ -91,10 +111,10 @@ public class KeyboardShortcutHandler : MonoBehaviour
         }
 
         // Live feedback keyboard combos.
-        if (Input.GetKey(KeyCode.G)) {
+        if (Input.GetKeyDown(KeyCode.G)) {
             SendPositiveFeedback();
         }
-        if (Input.GetKey(KeyCode.B)) {
+        if (Input.GetKeyDown(KeyCode.B)) {
             SendNegativeFeedback();
         }
     }

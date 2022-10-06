@@ -603,6 +603,13 @@ class State(object):
         if feedback.signal == live_feedback.FeedbackType.NONE:
             logger.info(f'Received live feedback from {id} with type NONE. Dropping.')
             return
+        if self._actors[id].role() != Role.LEADER:
+            logger.warn(
+                f'Warning, live feedback received from non-leader ID: {str(id)}')
+            return
+        if self._turn_state.turn != Role.FOLLOWER:
+            logger.warn(f'Warning, live feedback received during the leader\'s turn.')
+            return
         for actor_id in self._actors:
             self._live_feedback[actor_id] = feedback.signal
         # Find the follower.
