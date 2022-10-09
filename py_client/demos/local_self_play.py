@@ -42,8 +42,8 @@ class PathfindingLeader(threading.Thread):
         (leader, follower) = actors
         closest_card = get_next_card(cards, follower)
         if closest_card is None:
-            logger.warn(f"Need to debug this. Couldn't find a card to route to. Number of cards: {len(cards)}")
-            return LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, "Error: no cards found :/")
+            # Just have the follower make random moves, hope something happens...
+            return LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, "random, random, random, random, random, random")
         instruction = get_instruction_for_card(closest_card, follower, map, self.game, cards)
         logger.info(f"Lead sending: {instruction}")
         return LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=instruction)
@@ -81,11 +81,11 @@ class NaiveFollower(threading.Thread):
             action = FollowAction(random.choice(action_codes))
             return action
 
-def PlayGame(coordinator, i_uuid=""):
+def PlayGame(coordinator, i_uuid="", log_to_db: bool=True):
     if len(i_uuid) > 0:
         game_name = coordinator.CreateGameFromDatabase(i_uuid)
     else:
-        game_name = coordinator.CreateGame()
+        game_name = coordinator.CreateGame(log_to_db=log_to_db)
     endpoint_pair = EndpointPair(coordinator, game_name)
     leader_agent = PathfindingLeader(endpoint_pair.leader())
     follower_agent = NaiveFollower(endpoint_pair.follower())
@@ -102,11 +102,13 @@ def PlayGame(coordinator, i_uuid=""):
             logger.info(f"Follower step({follower_action})")
             map, cards, turn_state, instructions, actors, live_feedback = endpoint_pair.step(follower_action)
     logger.info(f"Game over. Score: {endpoint_pair.score()}, Duration: {endpoint_pair.duration().total_seconds()}")
+    coordinator.Cleanup()
     return endpoint_pair.score(), endpoint_pair.duration().total_seconds()
 
 
 def main(config_filepath="server/config/local-covers-config.json", instruction_uuid=""):
     nest_asyncio.apply()
+    # Disabling most logs improves performance by about 50ms per game.
     logging.basicConfig(level=logging.WARN)
     config = ReadConfigOrDie(config_filepath)
     db_utils.ConnectToDatabase(config)
@@ -120,8 +122,8 @@ def main(config_filepath="server/config/local-covers-config.json", instruction_u
         scores.append(score)
         durations.append(duration)
     # Print out the scores.
-    logger.info(f"Mean score: {np.mean(scores)}")
-    logger.info(f"Mean duration: {np.mean(durations)}")
+    logger.warn(f"Mean score: {np.mean(scores)}")
+    logger.warn(f"Mean duration: {np.mean(durations)}")
 
     # Plot a multi-figure diagram. On the left, scatter plot of game durations &
     # scores. On the right, show a histogram of scores.

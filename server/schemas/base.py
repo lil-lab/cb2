@@ -23,7 +23,7 @@ def SetDatabaseByPath(path):
     )
 
 def SetDatabase(config):
-    logger.warn(f"Pragmas: {config.sqlite_pragmas}")
+    logger.info(f"Pragmas: {config.sqlite_pragmas}")
     # Configure our proxy to use the db we specified in config.
     database.init(
         config.database_path(), 

@@ -36,7 +36,6 @@ class JoinResponse(DataClassJSONMixin):
     booted_from_queue: bool = False
     boot_reason: Optional[str] = ""
 
-
 @dataclass(frozen=True)
 class LeaveRoomNotice(DataClassJSONMixin):
     """ Used to notify a user that they have left the room. 

@@ -1,6 +1,6 @@
 from server.map_provider import CachedMapRetrieval
 from server.messages.logs import GameInfo
-from server.messages.rooms import Role
+from server.messages.rooms import Role, RoomManagementRequest
 from server.messages.rooms import LeaveRoomNotice
 from server.messages.rooms import JoinResponse
 from server.messages.rooms import StatsResponse
@@ -90,6 +90,7 @@ class Lobby(ABC):
         self._room_id_assigner = IdAssigner()
         self._remotes = {}  # {ws: SocketInfo}
         self._is_done = False
+        # Queues of (queue_join_time, websocket, RoomManagementRequest). Players waiting to join a game.
         self._player_queue = deque()
         self._follower_queue = deque()
         self._leader_queue = deque()
@@ -163,13 +164,14 @@ class Lobby(ABC):
         while not self._is_done:
             try:
                 await asyncio.sleep(0.5)
-                leader, follower, i_uuid = self.get_leader_follower_match()
+                leader, follower, request = self.get_leader_follower_match()
 
                 if (leader is None) or (follower is None):
                     continue
 
                 logger.info(f"Creating room for {leader} and {follower}. Queue size: {len(self._player_queue)} Follower Queue: {len(self._follower_queue)}")
 
+                i_uuid = request.join_game_with_instruction_uuid
                 if i_uuid is not None and i_uuid != "":
                     logger.info(f"Starting game from i_uuid: {i_uuid}")
                     # Start game from a specific point.
@@ -218,7 +220,7 @@ class Lobby(ABC):
                 # Create room.
                 room = self.create_room(game_id, game_record)
                 if room is None or not room.initialized():
-                    logger.warn(f"Error creating room from UUID {i_uuid}")
+                    logger.warn(f"Error creating room")
                     # Boot the leader & follower from the queue.
                     self._pending_room_management_responses[leader].put(
                         RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, 0, Role.LEADER, True), None, None))
@@ -361,7 +363,7 @@ class Lobby(ABC):
         else:
             logger.warning(f'Room manager received incorrect tutorial request type {tutorial_request.type}.')
     
-    def join_player_queue(self, ws, instruction_uuid=""):
+    def join_player_queue(self, ws, request : RoomManagementRequest):
         if ws in self._player_queue:
             logger.info(f"Join request is from socket which is already in the wait queue. Ignoring.")
             return
@@ -371,11 +373,11 @@ class Lobby(ABC):
         if ws in self._leader_queue:
             logger.info(f"Join request is from socket which is already in the leader wait queue. Ignoring.")
             return
-        self._player_queue.append((datetime.now(), ws, instruction_uuid))
+        self._player_queue.append((datetime.now(), ws, request))
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, len(self._player_queue), Role.NONE), None, None))
 
-    def join_follower_queue(self, ws, instruction_uuid=""):
+    def join_follower_queue(self, ws, request : RoomManagementRequest):
         if ws in self._follower_queue:
             logger.info(f"Join request is from socket which is already in the follower wait queue. Ignoring.")
             return
@@ -385,11 +387,11 @@ class Lobby(ABC):
         if ws in self._leader_queue:
             logger.info(f"Join request is from socket which is already in the leader wait queue. Ignoring.")
             return
-        self._follower_queue.append((datetime.now(), ws, instruction_uuid))
+        self._follower_queue.append((datetime.now(), ws, request))
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, len(self._follower_queue), Role.NONE), None, None))
     
-    def join_leader_queue(self, ws, instruction_uuid=""):
+    def join_leader_queue(self, ws, request : RoomManagementRequest = None):
         if ws in self._leader_queue:
             logger.info(f"Join request is from socket which is already in the leader wait queue. Ignoring.")
             return
@@ -399,7 +401,7 @@ class Lobby(ABC):
         if ws in self._follower_queue:
             logger.info(f"Join request is from leader socket which is already in the follow wait queue. Ignoring.")
             return
-        self._leader_queue.append((datetime.now(), ws, instruction_uuid))
+        self._leader_queue.append((datetime.now(), ws, request))
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, len(self._leader_queue), Role.NONE), None, None))
 
@@ -408,12 +410,12 @@ class Lobby(ABC):
         worker = GetWorkerFromRemote(ws)
         if worker is None:
             logger.warning(f"Could not get worker from remote. Joining.")
-            self.join_player_queue(ws, instruction_uuid=request.join_game_with_instruction_uuid)
+            self.join_player_queue(ws, request)
             return
         if worker.qual_level in [WorkerQualLevel.EXPERT, WorkerQualLevel.LEADER]:
-            self.join_player_queue(ws, instruction_uuid=request.join_game_with_instruction_uuid)
+            self.join_player_queue(ws, request)
         elif worker.qual_level == WorkerQualLevel.FOLLOWER:
-            self.join_follower_queue(ws, instruction_uuid=request.join_game_with_instruction_uuid)
+            self.join_follower_queue(ws, request)
         else:
             logger.warning(f"Worker has invalid qual level: {worker.qual_level}.")
             self._pending_room_management_responses[ws].put(
@@ -422,11 +424,11 @@ class Lobby(ABC):
     
     def handle_follower_only_join_request(self, request, ws):
         logger.info(f"Received follower only join request from : {str(ws)}. Queue size: {len(self._follower_queue)}. uuid: {request.join_game_with_instruction_uuid}")
-        self.join_follower_queue(ws, instruction_uuid=request.join_game_with_instruction_uuid)
+        self.join_follower_queue(ws, request)
 
     def handle_leader_only_join_request(self, request, ws):
         logger.info(f"Received leader only join request from : {str(ws)}. Queue size: {len(self._leader_queue)}")
-        self.join_leader_queue(ws, instruction_uuid=request.join_game_with_instruction_uuid)
+        self.join_leader_queue(ws, request)
 
     def handle_leave_request(self, request, ws):
         if not ws in self._remotes:
@@ -450,36 +452,36 @@ class Lobby(ABC):
     def remove_socket_from_queue(self, ws):
         player_queue = deque()
         removed = False
-        for ts, element, i_uuid in self._player_queue:
+        for ts, element, request in self._player_queue:
             if element == ws:
                 logger.info("Removed socket from queue.")
                 removed = True
                 continue
-            player_queue.append((ts, element, i_uuid))
+            player_queue.append((ts, element, request))
         if not removed:
             logger.warning("Socket not found in queue!")
         self._player_queue = player_queue
 
         follower_queue = deque()
         removed = False
-        for ts, element, i_uuid in self._follower_queue:
+        for ts, element, request in self._follower_queue:
             if element == ws:
                 logger.info("Removed socket from follower queue.")
                 removed = True
                 continue
-            follower_queue.append((ts, element, i_uuid))
+            follower_queue.append((ts, element, request))
         if not removed:
             logger.warning("Socket not found in follower queue!")
         self._follower_queue = follower_queue
 
         leader_queue = deque()
         removed = False
-        for ts, element, i_uuid in self._leader_queue:
+        for ts, element, request in self._leader_queue:
             if element == ws:
                 logger.info("Removed socket from leader queue.")
                 removed = True
                 continue
-            leader_queue.append((ts, element, i_uuid))
+            leader_queue.append((ts, element, request))
         if not removed:
             logger.warning("Socket not found in leader queue!")
         self._leader_queue = leader_queue

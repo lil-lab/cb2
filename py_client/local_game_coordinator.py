@@ -95,14 +95,14 @@ class LocalSocket(GameSocket):
         return None, "No messages available."
 
 class LocalGameCoordinator(object):
-    def __init__(self, config, render_leader=False, render_follower=False):
+    def __init__(self, config, render_leader:bool = False, render_follower:bool = False):
         self._game_drivers = {} # Game name -> StateMachineDriver
         self._game_endpoints = {} # Game name -> (leader_endpoint, follower_endpoint)
         self._render_leader = render_leader
         self._render_follower = render_follower
         self._config = config
     
-    def CreateGame(self):
+    def CreateGame(self, log_to_db: bool = True):
         """ Creates a new game. Exactly two agents can join this game with JoinGame(). 
 
             Returns the game name.
@@ -112,21 +112,20 @@ class LocalGameCoordinator(object):
             raise Exception(f"Game name {game_name} already exists. This should never happen.")
         room_id = game_name
         # Setup game DB entry.
-        game_record = game_db.Game()
-        game_id = game_record.id
-        game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
-        game_name = f"{game_time}_{game_id}_GAME"
-        # log_directory = pathlib.Path(self._config.record_directory(), game_name)
-        # log_directory.mkdir(parents=False, exist_ok=False)
-        # game_record.log_directory = str(log_directory)
-        game_record.server_software_commit = GetCommitHash()
-        game_record.save()
-        state_machine = State(room_id, game_record)
+        if log_to_db:
+            game_record = game_db.Game()
+            game_id = game_record.id
+            game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
+            game_name = f"{game_time}_{game_id}_GAME"
+            game_record.server_software_commit = GetCommitHash()
+            game_record.save()
+        else:
+            game_record = None
+        state_machine = State(room_id, game_record, log_to_db=log_to_db)
         event_loop = asyncio.get_event_loop()
         self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)
         return game_name
     
-    # TODO(sharf): Actually implement this...
     def CreateGameFromDatabase(self, instruction_uuid: str):
         """ Creates a new game from a specific instruction in a recorded game. Exactly two agents can join this game with JoinGame(). 
 
@@ -215,6 +214,7 @@ class LocalGameCoordinator(object):
             game_driver = self._game_drivers[game_name]
             if game_driver.state_machine().done():
                 logger.info(f"Game {game_name} has ended. Cleaning up.")
+                game_driver.state_machine().on_game_over()
                 del self._game_drivers[game_name]
 
     def _unique_game_name(cls):

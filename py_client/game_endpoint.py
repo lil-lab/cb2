@@ -396,7 +396,8 @@ class GameEndpoint(object):
             self._handle_message(message)
             if message.type == message_from_server.MessageType.STATE_MACHINE_TICK:
                 return True, ""
-        return False, "Game over"
+        # Game over, return True to exit without triggering any errors.
+        return True, ""
 
     # Returns true if the game is over.
     def over(self):

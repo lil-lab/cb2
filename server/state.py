@@ -173,7 +173,7 @@ class State(object):
             self._preloaded_actors[actor.role()] = new_actor
         self.send_turn_state(turn_state)
     
-    def __init__(self, room_id, game_record, use_preset_data: bool = False, map: MapUpdate = None, props: List[Prop] = [], turn_state: TurnState = None, instructions: List[objective.ObjectiveMessage] = [], actors: List[Actor] = []):
+    def __init__(self, room_id, game_record, use_preset_data: bool = False, map: MapUpdate = None, props: List[Prop] = [], turn_state: TurnState = None, instructions: List[objective.ObjectiveMessage] = [], actors: List[Actor] = [], log_to_db: bool = True):
         self._room_id = room_id
 
         # Rolling count of iteration loop. Used to indicate when an iteration of
@@ -213,7 +213,7 @@ class State(object):
             self._init_from_data(map, props, turn_state, instructions, actors)
         else:
             # Records everything that happens in a game.
-            self._game_recorder = GameRecorder(game_record)
+            self._game_recorder = GameRecorder(game_record) if log_to_db else GameRecorder(None, disabled=True)
             # Map props and actors share IDs from the same pool, so the ID assigner
             # is shared to prevent overlap.
             self._map_provider = CachedMapRetrieval()
