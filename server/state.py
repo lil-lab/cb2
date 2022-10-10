@@ -81,7 +81,7 @@ def cumulative_turns_added(score):
 # In the process of renaming objective -> instruction. You may see the two terms used interchangeably here.
 class State(object):
     @classmethod
-    def InitializeFromExistingState(cls, room_id, instruction_uuid: str = ""):
+    def InitializeFromExistingState(cls, room_id, instruction_uuid: str = "", realtime_actions: bool = False):
         """ Initialize the game from a given instruction.
 
             Returns: (state_machine: State, failure_reason: str = "")
@@ -139,8 +139,8 @@ class State(object):
         instruction = objective.ObjectiveMessage(Role.LEADER, instruction_record.text, instruction_record.uuid, False, False)
         initial_state = game_db.InitialState.select().join(game_db.Game).where(game_db.Game.id == game_record.id).get()
 
-        leader = Actor(21, 0, Role.LEADER, initial_state.leader_position, False, initial_state.leader_rotation_degrees)
-        follower = Actor(22, 0, Role.FOLLOWER, initial_state.follower_position, False, initial_state.follower_rotation_degrees)
+        leader = Actor(21, 0, Role.LEADER, initial_state.leader_position, realtime_actions, initial_state.leader_rotation_degrees)
+        follower = Actor(22, 0, Role.FOLLOWER, initial_state.follower_position, realtime_actions, initial_state.follower_rotation_degrees)
 
         moves = game_db.Move.select().join(game_db.Instruction).where(game_db.Move.game_id == game_record.id, game_db.Move.instruction.time < instruction_record.time)
         logger.info(f"Found {moves.count()} moves before instruction {instruction_record.uuid}")
@@ -156,7 +156,7 @@ class State(object):
         s = State(room_id, None, True, map.map_data, cards, turn_state, [instruction], [leader, follower])
         return s, ""
 
-    def _init_from_data(self, map, props, turn_state, instructions, actors):
+    def _init_from_data(self, map, props, turn_state, instructions, actors, realtime_actions: bool = False):
         self._game_recorder = GameRecorder(None, disabled=True)
         cards = [Card.FromProp(prop) for prop in props]
         self._map_provider = MapProvider(MapType.PRESET, map, cards)
@@ -169,11 +169,11 @@ class State(object):
         for actor in actors:
             asset_id = AssetId.PLAYER if actor.role() == Role.LEADER else AssetId.FOLLOWER_BOT
             spawn_point = actor.location()
-            new_actor = Actor(self._map_provider.id_assigner().alloc(), asset_id, actor.role(), spawn_point, False, actor.heading_degrees())
+            new_actor = Actor(self._map_provider.id_assigner().alloc(), asset_id, actor.role(), spawn_point, realtime_actions, actor.heading_degrees())
             self._preloaded_actors[actor.role()] = new_actor
         self.send_turn_state(turn_state)
     
-    def __init__(self, room_id, game_record, use_preset_data: bool = False, map: MapUpdate = None, props: List[Prop] = [], turn_state: TurnState = None, instructions: List[objective.ObjectiveMessage] = [], actors: List[Actor] = [], log_to_db: bool = True):
+    def __init__(self, room_id, game_record, use_preset_data: bool = False, map: MapUpdate = None, props: List[Prop] = [], turn_state: TurnState = None, instructions: List[objective.ObjectiveMessage] = [], actors: List[Actor] = [], log_to_db: bool = True, realtime_actions: bool = False):
         self._room_id = room_id
 
         # Rolling count of iteration loop. Used to indicate when an iteration of
@@ -185,6 +185,7 @@ class State(object):
         self._actors = {}
         # True if a player was added since the last iteration.
         self._actors_added = False
+        self._realtime_actions = realtime_actions
 
         self._turn_complete_queue = deque()
 
@@ -210,7 +211,7 @@ class State(object):
         self._turn_state = None
 
         if use_preset_data:
-            self._init_from_data(map, props, turn_state, instructions, actors)
+            self._init_from_data(map, props, turn_state, instructions, actors, realtime_actions)
         else:
             # Records everything that happens in a game.
             self._game_recorder = GameRecorder(game_record) if log_to_db else GameRecorder(None, disabled=True)
@@ -333,7 +334,14 @@ class State(object):
                         f"Actor {actor_id} is out of moves. Dropping pending action.")
                     send_tick = True
                     continue
-                if self.valid_action(actor_id, proposed_action):
+
+                if not self.valid_action(actor_id, proposed_action):
+                    actor.drop()
+                    self.desync(actor_id)
+                    send_tick = True
+                    continue
+                
+                if ((not actor.is_realtime) or actor.peek_action_done()):
                     self._game_recorder.record_move(actor, proposed_action)
                     actor.step()
                     self.record_action(proposed_action)
@@ -341,11 +349,6 @@ class State(object):
                     self.check_for_stepped_on_cards(actor_id, proposed_action, color)
                     self.update_turn()
                     send_tick = True
-                else:
-                    actor.drop()
-                    self.desync(actor_id)
-                    send_tick = True
-                    continue
 
         if self._turn_state.turn == Role.FOLLOWER and self._turn_state.moves_remaining <= 0:
             self.update_turn(force_role_switch=True, end_reason="FollowerOutOfMoves")
@@ -679,7 +682,7 @@ class State(object):
             return actor.actor_id()
         spawn_point = self._spawn_points.pop() if self._spawn_points else HecsCoord(0, 0, 0)
         asset_id = AssetId.PLAYER if role == Role.LEADER else AssetId.FOLLOWER_BOT
-        actor = Actor(self._id_assigner.alloc(), asset_id, role, spawn_point)
+        actor = Actor(self._id_assigner.alloc(), asset_id, role, spawn_point, realtime=self._realtime_actions)
         self._actors[actor.actor_id()] = actor
         self._action_history[actor.actor_id()] = []
         # Resend the latest turn state.
