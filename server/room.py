@@ -49,7 +49,7 @@ class Room(object):
         self._initialized = False # Set to True at the bottom of this method.
         if self._room_type == RoomType.GAME:
             self._game_record.type = 'game'
-            game_state = State(self._id, self._game_record)
+            game_state = State(self._id, self._game_record, realtime_actions=True)
         elif self._room_type == RoomType.TUTORIAL:
             if RoleFromTutorialName(tutorial_name) == Role.LEADER:
                 self._game_record.type = 'lead_tutorial'
@@ -59,7 +59,7 @@ class Room(object):
         elif self._room_type == RoomType.PRESET_GAME:
             if not from_instruction:
                 raise ValueError("Preset game must be initialized from an instruction.")
-            game_state, reason = State.InitializeFromExistingState(self._id, from_instruction)
+            game_state, reason = State.InitializeFromExistingState(self._id, from_instruction, True)
             if game_state is None:
                 logger.info(f"Failed to initialize game from instruction: {reason}")
                 return
