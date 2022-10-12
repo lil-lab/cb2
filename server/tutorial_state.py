@@ -235,10 +235,9 @@ class TutorialGameState(object):
     def start(self):
         ...
 
-    async def update(self):
+    def update(self):
         self._iter += 1
         self._iter %= 2 ** 32
-        await asyncio.sleep(0.001)
         # Check to see if the game is out of time.
         if self._turn_state.turns_left == -1:
             logging.info(
@@ -751,7 +750,6 @@ class TutorialGameState(object):
         if player_id == self._dummy_character.actor_id():
             return False
         message = self._next_message(player_id)
-        logger.info(f"Filling message: {message} for player {player_id}")
         messages_added = 0
         while message != None:
             out_messages.append(message)
