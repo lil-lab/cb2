@@ -1,4 +1,4 @@
-""" A Lobby for mturk players. """
+""" A Lobby that's open to all players. """
 from typing import Tuple
 from aiohttp import web
 from collections import deque
@@ -43,56 +43,20 @@ import server.schemas.game as game_db
 
 logger = logging.getLogger(__name__)
 
-class MturkLobby(lobby.Lobby):
+class OpenLobby(lobby.Lobby):
     """ Used to manage game rooms. """
     def __init__(self, lobby_name):
         # Call the superconstructor.
         super().__init__(lobby_name=lobby_name)
     
-    def is_mturk_player(self, ws: web.WebSocketResponse) -> bool:
-        return GetWorkerFromRemote(ws) is not None
-    
     # OVERRIDES Lobby.accept_player()
     def accept_player(self, ws: web.WebSocketResponse) -> bool:
-        return self.is_mturk_player(ws)
+        return True
     
     # OVERRIDES Lobby.lobby_type()
     def lobby_type(self) -> LobbyType:
-        return LobbyType.MTURK
+        return LobbyType.OPEN
     
-    def assign_leader_follower(self, player1: web.WebSocketResponse, player2 : web.WebSocketResponse):
-        """ Given two websockets attached to mturk players, assigns roles to
-        each based on experience. Returns (leader, follower) or (None, None) if
-        missing data on either player.
-        """ 
-        worker1 = GetWorkerFromRemote(player1)
-        worker2 = GetWorkerFromRemote(player2)
-        if worker1 is None and worker2 is None:
-            return None, None
-        elif worker1 is None:
-            return player2, player1
-        elif worker2 is None:
-            return player1, player2
-        exp1 = GetWorkerExperienceEntry(worker1.hashed_id)
-        exp2 = GetWorkerExperienceEntry(worker2.hashed_id)
-        # For each exp entry, calculate the average score of the last 5 lead games from last_1k_lead_scores and use that to determine the leader.
-        if exp1 is None or exp2 is None:
-            return None, None
-        if exp1.last_1k_lead_scores is None or exp2.last_1k_lead_scores is None:
-            logger.info(f"No data to determine either player.")
-            return None, None
-        # We have enough data on both players!
-        exp1_lead_games = min(len(exp1.last_1k_lead_scores), 10)
-        leader1_score = sum(exp1.last_1k_lead_scores[-10:]) / exp1_lead_games if exp1_lead_games > 0 else 0
-        exp2_lead_games = min(len(exp2.last_1k_lead_scores), 10)
-        leader2_score = sum(exp2.last_1k_lead_scores[-10:]) / exp2_lead_games if exp2_lead_games > 0 else 0
-        if leader1_score > leader2_score:
-            return player1, player2
-        elif leader1_score < leader2_score:
-            return player2, player1
-        else:
-            return player1, player2
-
     # OVERRIDES Lobby.get_leader_follower_match().
     def get_leader_follower_match(self) -> Tuple[web.WebSocketResponse, web.WebSocketResponse, str]:
         """ Returns a tuple of (leader, follower, instruction_uuid) if there is a match, otherwise returns None.
@@ -116,32 +80,6 @@ class MturkLobby(lobby.Lobby):
             Leaders and followers are removed from their respective queues. If
             either queue is empty, leaves the other untouched.
         """
-        # First of all, if the first follower has been waiting for 5m, remove them from the queue.
-        if len(self._follower_queue) > 0:
-            (ts, follower, i_uuid) = self._follower_queue[0]
-            if datetime.now() - ts > timedelta(minutes=5):
-                self._follower_queue.popleft()
-                # Queue a room management response to notify the follower that they've been removed from the queue.
-                self._pending_room_management_responses[follower].put(
-                    RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, -1, Role.NONE, True), None, None,))
-        
-        # If a general player has been waiting alone for 5m, remove them from the queue.
-        if len(self._player_queue) > 0:
-            (ts, player, i_uuid) = self._player_queue[0]
-            if datetime.now() - ts > timedelta(minutes=5):
-                self._player_queue.popleft()
-                # Queue a room management response to notify the player that they've been removed from the queue.
-                self._pending_room_management_responses[player].put(
-                    RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, -1, Role.NONE, True), None, None))
-        
-        # If a leader has been waiting alone for 5m, remove them from the queue.
-        if len(self._leader_queue) > 0:
-            (ts, leader, i_uuid) = self._leader_queue[0]
-            if datetime.now() - ts > timedelta(minutes=5):
-                self._leader_queue.popleft()
-                # Queue a room management response to notify the leader that they've been removed from the queue.
-                self._pending_room_management_responses[leader].put(
-                    RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, -1, Role.NONE, True), None, None))
 
         # If there's a leader in the leader queue and a follower in the follower queue, match them.
         if len(self._leader_queue) > 0 and len(self._follower_queue) > 0:
@@ -193,7 +131,10 @@ class MturkLobby(lobby.Lobby):
         if datetime.now() - ts > timedelta(seconds=1):
             (_, player1, i_uuid_1) = self._player_queue.popleft()
             (_, player2, i_uuid_2) = self._player_queue.popleft()
-            leader, follower = self.assign_leader_follower(player1, player2)
+            # This is the main difference between this class and mturk lobby. If
+            # two general players are matched, first one is given leader (rather
+            # than choosing based on experience).
+            leader, follower = (player1, player2)
             if i_uuid_1:
                 i_uuid = i_uuid_1
             elif i_uuid_2:

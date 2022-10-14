@@ -88,7 +88,7 @@ class InstructionQuery(object):
     INSTRUCTION_FETCH_URL = '{}/data/instruction/{}'
     MOVE_FETCH_URL = '{}/data/moves_for_instruction/{}'
     LIVE_FEEDBACK_FETCH_URL = '{}/data/live_feedback/{}'
-    def __init__(self, base_url, i_uuid):
+    def __init__(self, base_url, i_uuid=""):
         self._base_url = base_url
         self._instruction_uuid = i_uuid
         self._instruction = {}

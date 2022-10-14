@@ -22,6 +22,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime, timedelta
+from enum import Enum
 from queue import Queue
 from typing import List, Tuple
 
@@ -36,6 +37,11 @@ import pathlib
 import queue
 
 logger = logging.getLogger(__name__)
+
+class LobbyType(Enum):
+    NONE = 0
+    MTURK = 1
+    OPEN = 2
 
 @dataclass_json()
 @dataclass(frozen=True)
@@ -108,6 +114,25 @@ class Lobby(ABC):
         requested.
         """
         ...
+    
+    @abstractmethod
+    def accept_player(self, ws: web.WebSocketResponse) -> bool:
+        """ Returns True if the player is allowed to join the lobby.
+        
+        Users of the lobby class should check with this function before adding a
+        player to the lobby. If this function returns False, then the
+        join_player_queue(), join_follower_queue(), and join_leader_queue() functions
+        will not add the player to a lobby queue.
+        """
+        ...
+    
+    @abstractmethod
+    def lobby_type(self) -> LobbyType:
+        """ Returns the lobby type. """
+        ...
+
+    def lobby_name(self):
+        return self._lobby_name
 
     def register_game_logging_directory(self, dir) -> None:
         """ Each lobby has its own log directory. Game logs are written to this directory. """
@@ -164,6 +189,34 @@ class Lobby(ABC):
         while not self._is_done:
             try:
                 await asyncio.sleep(0.5)
+
+                # If the first follower has been waiting for 5m, remove them from the queue.
+                if len(self._follower_queue) > 0:
+                    (ts, follower, i_uuid) = self._follower_queue[0]
+                    if datetime.now() - ts > timedelta(minutes=5):
+                        self._follower_queue.popleft()
+                        # Queue a room management response to notify the follower that they've been removed from the queue.
+                        self._pending_room_management_responses[follower].put(
+                            RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, -1, Role.NONE, True), None, None,))
+                
+                # If a general player has been waiting alone for 5m, remove them from the queue.
+                if len(self._player_queue) > 0:
+                    (ts, player, i_uuid) = self._player_queue[0]
+                    if datetime.now() - ts > timedelta(minutes=5):
+                        self._player_queue.popleft()
+                        # Queue a room management response to notify the player that they've been removed from the queue.
+                        self._pending_room_management_responses[player].put(
+                            RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, -1, Role.NONE, True), None, None))
+                
+                # If a leader has been waiting alone for 5m, remove them from the queue.
+                if len(self._leader_queue) > 0:
+                    (ts, leader, i_uuid) = self._leader_queue[0]
+                    if datetime.now() - ts > timedelta(minutes=5):
+                        self._leader_queue.popleft()
+                        # Queue a room management response to notify the leader that they've been removed from the queue.
+                        self._pending_room_management_responses[leader].put(
+                            RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, -1, Role.NONE, True), None, None))
+
                 leader, follower, request = self.get_leader_follower_match()
 
                 if (leader is None) or (follower is None):
@@ -199,6 +252,7 @@ class Lobby(ABC):
                     follower_id = room.add_player(follower, Role.FOLLOWER)
                     self._remotes[leader] = SocketInfo(room.id(), leader_id, Role.LEADER)
                     self._remotes[follower] = SocketInfo(room.id(), follower_id, Role.FOLLOWER)
+                    logger.info(f"JOINING ROOM {room.id()} {leader_id} {follower_id}")
                     self._pending_room_management_responses[leader].put(
                         RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(True, 0, Role.LEADER), None, None))
                     self._pending_room_management_responses[follower].put(
@@ -287,7 +341,8 @@ class Lobby(ABC):
             game_record,
             type,
             tutorial_name,
-            from_instruction)
+            from_instruction,
+            self)
         if not room.initialized():
             return None
         self._rooms[id] = room
@@ -373,6 +428,9 @@ class Lobby(ABC):
         if ws in self._leader_queue:
             logger.info(f"Join request is from socket which is already in the leader wait queue. Ignoring.")
             return
+        if not self.accept_player(ws):
+            logger.info(f"Join request not accepted by lobby {self.lobby_name()}.")
+            return
         self._player_queue.append((datetime.now(), ws, request))
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, len(self._player_queue), Role.NONE), None, None))
@@ -387,6 +445,9 @@ class Lobby(ABC):
         if ws in self._leader_queue:
             logger.info(f"Join request is from socket which is already in the leader wait queue. Ignoring.")
             return
+        if not self.accept_player(ws):
+            logger.info(f"Join follow request not accepted by lobby {self.lobby_name()}.")
+            return
         self._follower_queue.append((datetime.now(), ws, request))
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(RoomResponseType.JOIN_RESPONSE, None, JoinResponse(False, len(self._follower_queue), Role.NONE), None, None))
@@ -400,6 +461,9 @@ class Lobby(ABC):
             return
         if ws in self._follower_queue:
             logger.info(f"Join request is from leader socket which is already in the follow wait queue. Ignoring.")
+            return
+        if not self.accept_player(ws):
+            logger.info(f"Join lead request not accepted by lobby {self.lobby_name()}.")
             return
         self._leader_queue.append((datetime.now(), ws, request))
         self._pending_room_management_responses[ws].put(

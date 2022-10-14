@@ -31,7 +31,6 @@ import server.schemas.defaults as defaults
 import server.schemas.clients as clients
 import server.schemas.mturk as mturk
 import server.leaderboard as leaderboard
-
 import server.db_tools.db_utils as db_utils
 
 from aiohttp import web
@@ -59,16 +58,16 @@ from server.lobby import Lobby
 from server.mturk_lobby import MturkLobby
 from server.schemas import base
 from server.db_tools import backup
+from server.lobbies import GetLobbies, LobbyType, InitializeLobbies, GetLobby 
 
 from datetime import datetime, timezone, timedelta
 
 routes = web.RouteTableDef()
 
-# One default lobby to keep track of game rooms.
-lobby = MturkLobby("MainLobby")
-
-# Used if run with GUI enabled.
-SCREEN_SIZE = 1000
+# Lobby names.
+MTURK_LOBBY = "mturk_lobby"
+DEFAULT_LOBBY = "default"
+DEFAULT_LOBBY_ALT = "default_alt"
 
 # Constants which determine server behavior.
 HEARTBEAT_TIMEOUT_S = 20.0
@@ -158,30 +157,39 @@ async def Js(request):
         return web.HTTPNotFound()
     return web.FileResponse(f"server/www/js/{request.match_info['filename']}")
 
-@routes.get('/status')
-async def Status(request):
-    global assets_map
-    global lobby
+def LobbyStatus(player_lobby):
     remote_table = GetRemoteTable()
-    player_queue = [str(remote_table[x]) for _,x,_ in lobby.player_queue()]
-    follower_queue = [str(remote_table[x]) for _,x,_ in lobby.follower_queue()]
-    leader_queue = [str(remote_table[x]) for _,x,_ in lobby.leader_queue()]
+    player_queue = [str(remote_table[x]) for _,x,_ in player_lobby.player_queue()]
+    follower_queue = [str(remote_table[x]) for _,x,_ in player_lobby.follower_queue()]
+    leader_queue = [str(remote_table[x]) for _,x,_ in player_lobby.leader_queue()]
 
-    server_state = {
-        "assets": assets_map,
-        "number_rooms": len(lobby.room_ids()),
-        "map_cache_size": MapPoolSize(),
-        "remotes": [str(remote_table[ws]) for ws in remote_table],
-        "lobby_remotes":[str(lobby.socket_info(ws)) for ws in remote_table],
-        "rooms": [lobby.get_room(room_id).state() for room_id in lobby.room_ids()],
-        "room_selected_cards": [str(lobby.get_room(room_id).selected_cards()) for room_id in lobby.room_ids()],
+    return {
+        "number_rooms": len(player_lobby.room_ids()),
+        "hash": hash(player_lobby),
+        "lobby_remotes":[str(player_lobby.socket_info(ws)) for ws in remote_table if player_lobby.socket_info(ws) is not None],
+        "rooms": [player_lobby.get_room(room_id).state() for room_id in player_lobby.room_ids()],
         "player_queue": player_queue,
         "follower_queue": follower_queue,
         "leader_queue": leader_queue,
-        "room_debug_info": [lobby.get_room(room_id).debug_status() for room_id in lobby.room_ids()],
+        "room_debug_info": [player_lobby.get_room(room_id).debug_status() for room_id in player_lobby.room_ids()],
     }
+
+@routes.get('/status')
+async def Status(request):
+    global assets_map
+    remote_table = GetRemoteTable()
+    lobbies = GetLobbies()
+    status = {
+        "assets": assets_map,
+        "map_cache_size": MapPoolSize(),
+        "remotes": [str(remote_table[ws]) for ws in remote_table],
+        "lobbies": {}
+    }
+    for lobby in lobbies:
+        logger.info(f"Getting status for lobby {lobby.lobby_name()}. hash: {hash(lobby)}")
+        status["lobbies"][lobby.lobby_name()] = LobbyStatus(lobby)
     pretty_dumper = lambda x: orjson.dumps(x, option=orjson.OPT_NAIVE_UTC | orjson.OPT_INDENT_2).decode('utf-8')
-    return web.json_response(server_state, dumps=pretty_dumper)
+    return web.json_response(status, dumps=pretty_dumper)
 
 def FindGameDirectory(game_id):
     record_base_dir = pathlib.Path(GlobalConfig().record_directory())
@@ -308,7 +316,7 @@ download_status = {
     "log": [],
 }
 
-async def DataDownloader(lobby):
+async def DataDownloader(lobbies):
     global download_requested
     global download_status
     global download_file_path
@@ -368,9 +376,13 @@ async def DataDownloader(lobby):
                 download_status["log"] = []
                 continue
 
+        # Check lobbies to see if there are any active games.
+        for lobby in lobbies:
+            if len(lobby.room_ids()) > 0:
+                download_status["status"] = "busy"
+                break
         # Don't start downloads if someone is actively playing a game.
-        if len(lobby.room_ids()) > 0:
-            download_status["status"] = "busy"
+        if download_status["status"] == "busy":
             log_entry(f"Waiting on {len(lobby.room_ids())} active games to finish before downloading.")
             await asyncio.sleep(10)
             continue
@@ -696,8 +708,7 @@ async def stats(request):
     return web.json_response(json_stats)
 
 
-async def stream_game_state(request, ws):
-    global lobby
+async def stream_game_state(request, ws, lobby):
     was_in_room = False
     remote = GetRemote(ws)
     remote.last_ping = datetime.now(timezone.utc)
@@ -755,8 +766,8 @@ async def stream_game_state(request, ws):
                         default=datetime.isoformat))
 
 
-async def receive_agent_updates(request, ws):
-    global lobby
+async def receive_agent_updates(request, ws, lobby):
+    logger.info(f"LOBBY: {lobby.lobby_name()}")
     async for msg in ws:
         remote = GetRemote(ws)
         if ws.closed:
@@ -807,7 +818,12 @@ async def receive_agent_updates(request, ws):
 
 @routes.get('/player_endpoint')
 async def PlayerEndpoint(request):
-    global lobby
+    if "lobby_name" in request.query:
+        lobby = GetLobby(request.query["lobby_name"])
+        if lobby == None:
+            return web.Response(status=404, text="Lobby not found.")
+    else:
+        lobby = GetLobby(DEFAULT_LOBBY)
     assignment = None
     if "assignmentId" in request.query:
         # If this is an mturk task, log assignment into to the remote table.
@@ -840,7 +856,7 @@ async def PlayerEndpoint(request):
     AddRemote(ws, remote, assignment)
     LogConnectionEvent(remote, "Connected to Server.")
     try:
-        await asyncio.gather(receive_agent_updates(request, ws), stream_game_state(request, ws))
+        await asyncio.gather(receive_agent_updates(request, ws, lobby), stream_game_state(request, ws, lobby))
     finally:
         logger.info("player disconnected from : " + request.remote)
         LogConnectionEvent(remote, "Disconnected from Server.")
@@ -889,32 +905,6 @@ async def serve(config):
     while True:
         await asyncio.sleep(1)
 
-
-async def draw_gui():
-    global lobby
-    room = lobby.get_room_by_name("Room #0")
-    display = visualize.GameDisplay(SCREEN_SIZE)
-    while True:
-        await asyncio.sleep(0)
-        if room is None:
-            room = lobby.get_room_by_name("Room #0")
-            continue
-        state = room.state()
-        map = room.map()
-        display.set_map(map)
-        display.set_game_state(state)
-        display.draw()
-        pygame.display.flip()
-        event = pygame.event.wait(10)
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            return
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
-                pygame.quit()
-                return
-
-
 def InitPythonLogging():
     """  Server logging intended for debugging a server crash.
     
@@ -937,18 +927,22 @@ def InitGameRecording(config):
     Each game is given a game id. Logs for a single game are stored in a
     directory with a name of the form: 
 
-    game_records/<datetime>_<game_id>_<game_type>/...
+    game_records/<lobby_name>/<datetime>_<game_id>_<game_type>/...
 
     where <datetime> is in iso8601 format.
     <game_id> can be used to lookup the game in the database.
-    <game_type> is GAME or TUTORIAL."""
-    record_base_dir = pathlib.Path(config.record_directory())
-
-    # Create the directory if it doesn't exist.
-    record_base_dir.mkdir(parents=False, exist_ok=True)
-
-    # Register the logging directory with the room manager.
-    lobby.register_game_logging_directory(record_base_dir)
+    <game_type> is GAME or TUTORIAL.
+    <lobby_name> is the name of the lobby that the game was in.
+    """
+    for lobby in GetLobbies():
+        if lobby.lobby_name() == "":
+            logger.warn(f"Skipping game recording for lobby with empty name.")
+            continue
+        record_base_dir = pathlib.Path(config.record_directory()) / lobby.lobby_name()
+        # Create the directory if it doesn't exist.
+        record_base_dir.mkdir(parents=False, exist_ok=True)
+        # Register the logging directory with the room manager.
+        lobby.register_game_logging_directory(record_base_dir)
 
     # Setup the sqlite database used to record game actions.
     base.SetDatabase(config)
@@ -984,8 +978,18 @@ def main(config_filepath="server/config/server-config.json"):
     global lobby
 
     InitPythonLogging()
-
     InitGlobalConfig(config_filepath)
+    InitializeLobbies([
+        (MTURK_LOBBY, LobbyType.MTURK),
+        (DEFAULT_LOBBY, LobbyType.OPEN),
+        (DEFAULT_LOBBY_ALT, LobbyType.OPEN),
+    ])
+
+    a = GetLobby(MTURK_LOBBY)
+    b = GetLobby(DEFAULT_LOBBY)
+    assert hash(a) is not hash(b), "AHH INITIALIZATION ERR"
+    logger.info(f"hash of mturk lobby: {hash(a)}")
+    logger.info(f"hash of default lobby: {hash(b)}")
 
     logger.info(f"Config file parsed.");
     logger.info(f"data prefix: {GlobalConfig().data_prefix}")
@@ -999,11 +1003,14 @@ def main(config_filepath="server/config/server-config.json"):
     # yappi.set_clock_type("cpu") # Use set_clock_type("wall") for wall time
     # yappi.start()
 
+    lobbies = GetLobbies()
+    lobby_coroutines = []
+    for lobby in lobbies:
+        lobby_coroutines.append(lobby.matchmake())
+        lobby_coroutines.append(lobby.cleanup_rooms())
+
     assets_map = HashCollectAssets(GlobalConfig().assets_directory())
-    tasks = asyncio.gather(lobby.matchmake(), lobby.cleanup_rooms(), serve(GlobalConfig()), MapGenerationTask(lobby, GlobalConfig()), DataDownloader(lobby))
-    # If map visualization command line flag is enabled, run with the visualize task.
-    # if gui:
-    #   tasks = asyncio.gather(tasks, draw_gui())
+    tasks = asyncio.gather(*lobby_coroutines, serve(GlobalConfig()), MapGenerationTask(lobby, GlobalConfig()), DataDownloader(lobby))
     loop = asyncio.get_event_loop()
     # loop.set_debug(enabled=True)
     try:

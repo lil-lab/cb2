@@ -37,7 +37,8 @@ class RoomType(Enum):
 class Room(object):
     """ Represents a game room. """
     def __init__(self, name: str, max_players: int, game_id: int, game_record,
-                 type: RoomType = RoomType.GAME, tutorial_name: str = "", from_instruction: str = ""):
+                 type: RoomType = RoomType.GAME, tutorial_name: str = "",
+                 from_instruction: str = "", lobby = None):
         """ from_instruction is the UUID of an instruction to start the game from. """
         self._name = name
         self._max_players = max_players
@@ -47,14 +48,15 @@ class Room(object):
         self._room_type = type
         self._game_record = game_record
         self._initialized = False # Set to True at the bottom of this method.
+        game_type_prefix = f"{lobby.lobby_name()}|{lobby.lobby_type()}|" if lobby is not None else ""
         if self._room_type == RoomType.GAME:
-            self._game_record.type = 'game'
+            self._game_record.type = game_type_prefix + 'game'
             game_state = State(self._id, self._game_record, realtime_actions=True)
         elif self._room_type == RoomType.TUTORIAL:
             if RoleFromTutorialName(tutorial_name) == Role.LEADER:
-                self._game_record.type = 'lead_tutorial'
+                self._game_record.type = game_type_prefix + 'lead_tutorial'
             else:
-                self._game_record.type = 'follow_tutorial'
+                self._game_record.type = game_type_prefix + 'follow_tutorial'
             game_state = TutorialGameState(self._id, tutorial_name, self._game_record)
         elif self._room_type == RoomType.PRESET_GAME:
             if not from_instruction:

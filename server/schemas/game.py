@@ -12,7 +12,8 @@ import datetime
 
 class Game(BaseModel):
     id = AutoField()
-    type = TextField(null=True) # 'game', 'lead_tutorial', or 'follow_tutorial'
+    # type is: [<lobby-name>|<lobby-type>|]<game-type>. game-type:'game', 'lead_tutorial', or 'follow_tutorial'.
+    type = TextField(null=True) 
     log_directory = TextField(null=True) # Directory where logs are stored.
     world_seed = TextField(null=True)
     leader = ForeignKeyField(Worker, backref='lead_games', null=True)
