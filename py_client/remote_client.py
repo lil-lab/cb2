@@ -189,10 +189,14 @@ class RemoteClient(object):
                 TimeoutError: If the game did not start within the timeout.
         """
         in_queue, reason = self._join_queue(queue_type, i_uuid)
-        assert in_queue, f"Failed to join queue: {reason}"
+        if not in_queue:
+            return None, f"Failed to join queue: {reason}" 
+
         game_joined, reason = self._wait_for_game(timeout)
-        assert game_joined, f"Failed to join game: {reason}"
-        return self.game
+        if not game_joined:
+            return None, f"Failed to join game: {reason}"
+        
+        return self.game, ""
     
     def _send_message(self, message):
         """ Sends a message to the server.
