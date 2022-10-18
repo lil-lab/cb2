@@ -1,0 +1,15 @@
+
+{
+    "name": "Local server config",
+    "comment": "This config is used for launching the server from your local machine.",
+    "data_prefix": "~/cb2-game-data",
+    "fog_start": 10,
+    "fog_end": 17,
+    "fps_limit": 30,
+    "sqlite_pragmas": [
+        ["journal_mode", "wal"],
+        ["cache_size", -1024 * 64],
+        ["foreign_keys", "1"],
+        ["synchronous", "off"]
+    ]
+}

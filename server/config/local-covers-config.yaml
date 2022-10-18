@@ -1,0 +1,19 @@
+{
+    "name": "Local server config",
+    "comment": "Launches the server from your local machine. Card covers enabled.",
+    "data_prefix": "~/cb2-game-data",
+    "card_covers": true,
+    "fog_start": 13,
+    "fog_end": 20,
+    "fps_limit": 30,
+    "map_cache_size": 10,
+    "live_feedback_enabled": true,
+    "sqlite_pragmas": [
+        ['cache_size', -1048576], # 1MB cache size. Negative implies kibibyte units.
+        ['journal_mode', 'wal'],  # Use WAL-mode
+        ['synchronous', 'off'],  # Use normal sync mode.
+        ['temp_store', 'memory'],  # Use memory for temp storage.
+        ['mmap_size', '30000000000'], # 30GB mmap size.
+        ['foreign_keys', 1],
+    ]
+}
