@@ -6,8 +6,11 @@ Cereal Bar V2
   - [Setup](#setup)
     - [Cloning the repository.](#cloning-the-repository)
     - [Download Submodules](#download-submodules)
+    - [Python Dependencies](#python-dependencies)
     - [Server](#server)
     - [Client](#client)
+    - [Deploying the server to a new machine.](#deploying-the-server-to-a-new-machine)
+    - [Client API.](#client-api)
   - [Deploying a WebGL Client](#deploying-a-webgl-client)
   - [Server Endpoints](#server-endpoints)
   - [Resources](#resources)
@@ -60,18 +63,18 @@ Dependencies can be installed with:
 Launch the server on your desktop with:
 
 ```
-python3 -m server.main --config_filepath="server/config/local-config.json"
+python3 -m server.main --config_filepath="server/config/local-config.yaml"
 ```
 
 To launch the server on a deployment machine, you'll want to use the SystemD
 daemon. This can be installed with the `deploy/deploy.sh` script. It makes use
-of the special config file `config/server-config.json`.
+of the special config file `server/config/server-config.yaml`.
 
 When you're done, you can quit the python venv with `deactivate` on the command line.
 
 ### Client
 
-The client is a Unity project developed using `Version 2020.3.25f1`. This is contained in the `game/` directory. No setup should be necessary, just open the project in Unity.
+The client is a Unity project developed using Unity `Version 2020.3.25f1`. This is contained in the `game/` directory. No setup should be necessary, just open the project in Unity.
 
 ### Deploying the server to a new machine.
 
@@ -79,10 +82,9 @@ The script `deploy/deploy.sh` should take care of everything. This installs a
 SystemD Daemon which handles the CB2 server. See `deploy/systemd/README.md` for
 more. 
 
-### OpenAI Gym
+### Client API.
 
-The OpenAI Gym takes the same state machine used by the CB2 server and runs it
-locally. This is used to train agents.
+This repository contains a client API for writing agents which can interact with CB2. The client API is contained in directory `py_client/`, which contains a README with further information.
 
 Deploying a WebGL Client
 ------------------------
