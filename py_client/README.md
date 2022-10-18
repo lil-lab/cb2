@@ -16,12 +16,13 @@ client = RemoteClient("http://localhost:8080", render=True)
 connected, reason = client.Connect()
 assert connected, f"Unable to connect: {reason}"
 leader_agent = ...
-with client.JoinGame(timeout=timedelta(minutes=5), queue_type=RemoteClient.QueueType.LEADER_ONLY) as game:
-    map, cards, turn_state, instructions, (leader, follower), live_feedback = game.initial_state()
+game, reason = client.JoinGame(queue_type=RemoteClient.QueueType.LEADER_ONLY)
+assert game is not None, f"Unable to join game: {reason}"
+map, cards, turn_state, instructions, (leader, follower), live_feedback = game.initial_state()
+action = leader_agent.get_action(map, cards, turn_state, instructions)
+while not game.over():
+    map, cards, turn_state, instructions, (leader, follower), live_feedback = game.step(action)
     action = leader_agent.get_action(map, cards, turn_state, instructions)
-    while not game.over():
-        map, cards, turn_state, instructions, (leader, follower), live_feedback = game.step(action)
-        action = leader_agent.get_action(map, cards, turn_state, instructions)
 ```
 
 For more realistic examples, see `routing_leader_client.py` and `follower_client.py` in `py_client/demos/`.
