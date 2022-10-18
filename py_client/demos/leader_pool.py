@@ -40,7 +40,8 @@ class PathfindingLeader(threading.Thread):
             client = RemoteClient(self.url, render=False)
             joined, reason = client.Connect()
             assert joined, f"Unable to join: {reason}"
-            self.game = client.JoinGame(queue_type=RemoteClient.QueueType.LEADER_ONLY)
+            self.game, reason = client.JoinGame(queue_type=RemoteClient.QueueType.LEADER_ONLY)
+            assert self.game is not None, f"Unable to join game: {reason}"
             map, cards, turn_state, instructions, (leader, follower), live_feedback = self.game.initial_state()
             while not self.game.over():
                 leader_action = self.get_action(self.game, map, cards, turn_state, instructions, (leader, follower), live_feedback)

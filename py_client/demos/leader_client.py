@@ -53,33 +53,34 @@ def main(host, render=False):
     client = RemoteClient(host, render)
     connected, reason = client.Connect()
     assert connected, f"Unable to connect: {reason}"
-    with client.JoinGame(timeout=timedelta(minutes=5), queue_type=RemoteClient.QueueType.LEADER_ONLY) as game:
-        map, cards, turn_state, instructions, (leader, follower), live_feedback = game.initial_state()
+    game, reason = client.JoinGame(timeout=timedelta(minutes=5), queue_type=RemoteClient.QueueType.LEADER_ONLY)
+    assert game is not None, f"Unable to join game: {reason}"
+    map, cards, turn_state, instructions, (leader, follower), live_feedback = game.initial_state()
+    closest_card = get_next_card(cards, follower)
+    action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower))
+    follower_distance_to_card = float("inf")
+    while not game.over():
+        print(f"step()")
+        if type(action) == LeadAction and action.action == LeadAction.ActionCode.END_TURN:
+            sleep(2)
+        map, cards, turn_state, instructions, (leader, follower), live_feedback = game.step(action)
         closest_card = get_next_card(cards, follower)
-        action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower))
-        follower_distance_to_card = float("inf")
-        while not game.over():
-            print(f"step()")
-            if type(action) == LeadAction and action.action == LeadAction.ActionCode.END_TURN:
-                sleep(2)
-            map, cards, turn_state, instructions, (leader, follower), live_feedback = game.step(action)
-            closest_card = get_next_card(cards, follower)
-            if turn_state.turn == Role.LEADER:
-                if has_instruction_available(instructions):
-                    action = LeadAction(LeadAction.ActionCode.END_TURN)
-                else:
-                    action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower))
-            if turn_state.turn == Role.FOLLOWER:
-                if closest_card != None:
-                    distance_to_card = get_distance_to_card(closest_card, follower)
-                    if distance_to_card < follower_distance_to_card:
-                        action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.POSITIVE_FEEDBACK)
-                    elif distance_to_card > follower_distance_to_card:
-                        action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.NEGATIVE_FEEDBACK)
-                    else:
-                        action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.NONE)
+        if turn_state.turn == Role.LEADER:
+            if has_instruction_available(instructions):
+                action = LeadAction(LeadAction.ActionCode.END_TURN)
+            else:
+                action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower))
+        if turn_state.turn == Role.FOLLOWER:
+            if closest_card != None:
+                distance_to_card = get_distance_to_card(closest_card, follower)
+                if distance_to_card < follower_distance_to_card:
+                    action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.POSITIVE_FEEDBACK)
+                elif distance_to_card > follower_distance_to_card:
+                    action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.NEGATIVE_FEEDBACK)
                 else:
                     action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.NONE)
+            else:
+                action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.NONE)
     print(f"Game over. Score: {turn_state.score}")
 
 if __name__ == "__main__":

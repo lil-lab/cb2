@@ -128,29 +128,30 @@ def main(host, render=False, i_uuid=""):
     client = RemoteClient(host, render)
     connected, reason = client.Connect()
     assert connected, f"Unable to connect: {reason}"
-    with client.JoinGame(timeout=timedelta(minutes=5), queue_type=RemoteClient.QueueType.LEADER_ONLY, i_uuid=i_uuid) as game:
-        map, cards, turn_state, instructions, (leader, follower), live_feedback = game.initial_state()
+    game, reason = client.JoinGame(timeout=timedelta(minutes=5), queue_type=RemoteClient.QueueType.LEADER_ONLY, i_uuid=i_uuid)
+    assert game is not None, f"Unable to join game: {reason}"
+    map, cards, turn_state, instructions, (leader, follower), live_feedback = game.initial_state()
+    closest_card = get_next_card(cards, follower)
+    if turn_state.turn == Role.LEADER:
+        action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower, map, game, cards))
+    else:
+        action = LeadAction(LeadAction.ActionCode.NONE)
+    follower_distance_to_card = float("inf")
+    while not game.over():
+        print(f"step({action})")
+        if type(action) == LeadAction and action.action == LeadAction.ActionCode.END_TURN:
+            sleep(0.2)
+        map, cards, turn_state, instructions, (leader, follower), live_feedback = game.step(action)
         closest_card = get_next_card(cards, follower)
         if turn_state.turn == Role.LEADER:
-            action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower, map, game, cards))
-        else:
+            if has_instruction_available(instructions):
+                action = LeadAction(LeadAction.ActionCode.END_TURN)
+            else:
+                action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower, map, game, cards))
+        if turn_state.turn == Role.FOLLOWER:
+            # Don't give live feedback. Messes with the follower bot at the moment.
             action = LeadAction(LeadAction.ActionCode.NONE)
-        follower_distance_to_card = float("inf")
-        while not game.over():
-            print(f"step({action})")
-            if type(action) == LeadAction and action.action == LeadAction.ActionCode.END_TURN:
-                sleep(0.2)
-            map, cards, turn_state, instructions, (leader, follower), live_feedback = game.step(action)
-            closest_card = get_next_card(cards, follower)
-            if turn_state.turn == Role.LEADER:
-                if has_instruction_available(instructions):
-                    action = LeadAction(LeadAction.ActionCode.END_TURN)
-                else:
-                    action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower, map, game, cards))
-            if turn_state.turn == Role.FOLLOWER:
-                # Don't give live feedback. Messes with the follower bot at the moment.
-                action = LeadAction(LeadAction.ActionCode.NONE)
-                continue
+            continue
     print(f"Game over. Score: {turn_state.score}")
 
 if __name__ == "__main__":

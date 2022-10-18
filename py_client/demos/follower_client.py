@@ -111,9 +111,10 @@ def main(host, render=False, i_uuid: str = ""):
     active_uuid = None
     i_uuid = i_uuid.strip()
 
-    with client.JoinGame(timeout=timedelta(minutes=5), queue_type=RemoteClient.QueueType.FOLLOWER_ONLY, i_uuid=i_uuid.strip()) as game:
-        follower = NaiveFollower(game)
-        follower.run()
+    game, reason = client.JoinGame(timeout=timedelta(minutes=5), queue_type=RemoteClient.QueueType.FOLLOWER_ONLY, i_uuid=i_uuid.strip())
+    assert game is not None, f"Unable to join game: {reason}"
+    follower = NaiveFollower(game)
+    follower.run()
 
 if __name__ == "__main__":
     fire.Fire(main)
