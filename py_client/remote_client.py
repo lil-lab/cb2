@@ -86,18 +86,20 @@ class RemoteClient(object):
         ERROR = 8
         MAX = 9
 
-    def __init__(self, url, render=False):
+    def __init__(self, url, render=False, lobby_name="bot-sandbox"):
         """ Constructor.
 
             Args:
                 url: (str) The URL of the server to connect to. Include http:// or https://!
                 render: (bool) Whether to render the game using pygame, for the user to see.
+                lobby_name: (str) The name of the lobby to join. Default is bot-sandbox. Please don't join other lobbies unless you have contacted the owners of the server.
         """
         self.session = None
         self.ws = None
         self.render = render # Whether to render the game with pygame.
         self.Reset()
         self.url = url
+        self.lobby_name = lobby_name
         self.event_loop = asyncio.get_event_loop()
         logging.basicConfig(level=logging.INFO)
         # Lets us synchronously block on an event loop that's already running.
@@ -125,6 +127,8 @@ class RemoteClient(object):
             return False, f"Could not get config from {config_url}: {config_response.status_code}"
         self.config = Config.from_json(config_response.text)
         url = f"{self.url}/player_endpoint"
+        if self.lobby_name != "":
+            url += f"?lobby_name={self.lobby_name}"
         logger.info(f"Connecting to {url}...")
         session = aiohttp.ClientSession()
         ws = self.event_loop.run_until_complete(session.ws_connect(url))

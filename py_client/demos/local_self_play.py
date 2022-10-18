@@ -28,7 +28,7 @@ from time import sleep
 logger = logging.getLogger(__name__)
 
 class PathfindingLeader(threading.Thread):
-    def __init__(self, game):
+    def __init__(self, game=None):
         super().__init__()
         self.exc = None
         self.game = game
@@ -91,7 +91,6 @@ def PlayGame(coordinator, i_uuid="", log_to_db: bool=True):
     follower_agent = NaiveFollower(endpoint_pair.follower())
     endpoint_pair.initialize()
     map, cards, turn_state, instructions, actors, live_feedback = endpoint_pair.initial_state()
-    import time
     while not endpoint_pair.over():
         if turn_state.turn == Role.LEADER:
             leader_action = leader_agent.get_action(map, cards, turn_state, instructions, actors, live_feedback)

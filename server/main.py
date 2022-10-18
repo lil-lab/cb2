@@ -67,7 +67,7 @@ routes = web.RouteTableDef()
 # Lobby names.
 MTURK_LOBBY = "mturk_lobby"
 DEFAULT_LOBBY = "default"
-DEFAULT_LOBBY_ALT = "default_alt"
+BOT_SANDBOX = "bot-sandbox"
 
 # Constants which determine server behavior.
 HEARTBEAT_TIMEOUT_S = 20.0
@@ -982,7 +982,7 @@ def main(config_filepath="server/config/server-config.yaml"):
     InitializeLobbies([
         (MTURK_LOBBY, LobbyType.MTURK),
         (DEFAULT_LOBBY, LobbyType.OPEN),
-        (DEFAULT_LOBBY_ALT, LobbyType.OPEN),
+        (BOT_SANDBOX, LobbyType.OPEN),
     ])
 
     a = GetLobby(MTURK_LOBBY)
