@@ -54,7 +54,7 @@ class StateMachineDriver(object):
         while True:
             try:
                 message = self._messages_out[player_id].get_nowait()
-                logger.info(f"Sent message type {message.type} for player {player_id}.")
+                logger.debug(f"Sent message type {message.type} for player {player_id}.")
                 out_messages.append(message)
                 packets_added = True
             except queue.Empty:

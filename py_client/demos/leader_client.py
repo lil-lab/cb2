@@ -1,13 +1,11 @@
 from math import degrees
 from time import sleep
 from py_client.remote_client import RemoteClient
-from py_client.game_endpoint import LeadAction, FollowAction, LeadFeedbackAction, Role
+from py_client.game_endpoint import Action, LeadFeedbackAction, Role
 
 import fire
 
 from datetime import timedelta
-
-from random import choice
 
 def card_collides(cards, new_card):
     card_colors = [card.card_init.color for card in cards]
@@ -57,30 +55,30 @@ def main(host, render=False):
     assert game is not None, f"Unable to join game: {reason}"
     map, cards, turn_state, instructions, (leader, follower), live_feedback = game.initial_state()
     closest_card = get_next_card(cards, follower)
-    action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower))
+    action = Action.SendInstruction(get_instruction_for_card(closest_card, follower))
     follower_distance_to_card = float("inf")
     while not game.over():
         print(f"step()")
-        if type(action) == LeadAction and action.action == LeadAction.ActionCode.END_TURN:
+        if action.is_end_turn():
             sleep(2)
         map, cards, turn_state, instructions, (leader, follower), live_feedback = game.step(action)
         closest_card = get_next_card(cards, follower)
         if turn_state.turn == Role.LEADER:
             if has_instruction_available(instructions):
-                action = LeadAction(LeadAction.ActionCode.END_TURN)
+                action = Action.EndTurn()
             else:
-                action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower))
+                action = Action.SendInstruction(get_instruction_for_card(closest_card, follower))
         if turn_state.turn == Role.FOLLOWER:
             if closest_card != None:
                 distance_to_card = get_distance_to_card(closest_card, follower)
                 if distance_to_card < follower_distance_to_card:
-                    action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.POSITIVE_FEEDBACK)
+                    action = Action.PositiveFeedback()
                 elif distance_to_card > follower_distance_to_card:
-                    action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.NEGATIVE_FEEDBACK)
+                    action = Action.NegativeFeedback()
                 else:
-                    action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.NONE)
+                    action = Action.NoopAction()
             else:
-                action = LeadFeedbackAction(LeadFeedbackAction.ActionCode.NONE)
+                action = Action.NoopAction()
     print(f"Game over. Score: {turn_state.score}")
 
 if __name__ == "__main__":

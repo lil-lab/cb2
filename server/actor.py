@@ -66,7 +66,7 @@ class Actor(object):
 
     def location(self):
         return self._location
-
+    
     def heading_degrees(self):
         return int(self._heading_degrees)
 
@@ -89,6 +89,15 @@ class Actor(object):
     
     def peek_action_done(self):
         return (datetime.now() - self._action_start_timestamp).total_seconds() >= self.peek().duration_s
+    
+    def ProjectedLocation(self):
+        return self._projected_location
+    
+    def ForwardLocation(self):
+        return HecsCoord.add(self._projected_location, HecsCoord.origin().neighbor_at_heading(self._projected_heading))
+    
+    def BackwardLocation(self):
+        return HecsCoord.add(self._projected_location, HecsCoord.origin().neighbor_at_heading(self._projected_heading).negate())
     
     def WalkForwardsAction(self):
         displacement = HecsCoord.origin().neighbor_at_heading(self._projected_heading)

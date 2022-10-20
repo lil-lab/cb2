@@ -3,10 +3,12 @@ intended to be used for developers creating interactive bots that play CB2.
 """
 import asyncio
 import logging
+import numpy as np
 import pygame
 import sys
 
 import server.messages as messages
+from server.messages import map_update
 import server.messages.state_sync as state_sync
 import server.actor as actor
 
@@ -55,7 +57,11 @@ async def pygame_event_handler():
         pygame_handle_events()
         await asyncio.sleep(0.1)
 
-class LeadAction(object):
+class Action(object):
+    """ Defines the actions that agents can take in-game. 
+    
+    Actions are passed as the primary argument to step() to control the agent.
+    """
     class ActionCode(Enum):
         NONE = 0
         FORWARDS = 1
@@ -65,32 +71,184 @@ class LeadAction(object):
         END_TURN = 5
         INTERRUPT = 6
         SEND_INSTRUCTION = 7
-        MAX = 8
+        INSTRUCTION_DONE = 8
+        POSITIVE_FEEDBACK = 9
+        NEGATIVE_FEEDBACK = 10
+        MAX = 11
+    
+    # Helper initialization functions.
+    @staticmethod
+    def Forwards():
+        return Action(Action.ActionCode.FORWARDS)
 
-    def __init__(self, action_code, instruction=None):
-        if action_code == LeadAction.ActionCode.SEND_INSTRUCTION:
+    @staticmethod
+    def Backwards():
+        return Action(Action.ActionCode.BACKWARDS)
+    
+    @staticmethod
+    def Left():
+        return Action(Action.ActionCode.TURN_LEFT)
+    
+    @staticmethod
+    def Right():
+        return Action(Action.ActionCode.TURN_RIGHT)
+    
+    @staticmethod
+    def EndTurn():
+        return Action(Action.ActionCode.END_TURN)
+    
+    @staticmethod
+    def Interrupt():
+        return Action(Action.ActionCode.INTERRUPT)
+    
+    @staticmethod
+    def SendInstruction(instruction):
+        return Action(Action.ActionCode.SEND_INSTRUCTION, instruction)
+    
+    @staticmethod
+    def InstructionDone(iuuid):
+        return Action(Action.ActionCode.INSTRUCTION_DONE, i_uuid=iuuid)
+    
+    @staticmethod
+    def PositiveFeedback():
+        return Action(Action.ActionCode.POSITIVE_FEEDBACK)
+    
+    @staticmethod
+    def NegativeFeedback():
+        return Action(Action.ActionCode.NEGATIVE_FEEDBACK)
+    
+    @staticmethod
+    def NoopAction():
+        return Action(Action.ActionCode.NONE)
+    
+    # Functions useful for action validation logic.
+    @staticmethod
+    def LeaderActions():
+        return set([
+            Action.ActionCode.FORWARDS,
+            Action.ActionCode.BACKWARDS,
+            Action.ActionCode.TURN_LEFT,
+            Action.ActionCode.TURN_RIGHT,
+            Action.ActionCode.END_TURN,
+            Action.ActionCode.INTERRUPT,
+            Action.ActionCode.SEND_INSTRUCTION,
+        ])
+    
+    @staticmethod
+    def LeaderFeedbackActions():
+        return set([
+            Action.ActionCode.POSITIVE_FEEDBACK,
+            Action.ActionCode.NEGATIVE_FEEDBACK,
+        ])
+
+    @staticmethod
+    def FollowerActions():
+        return set([
+            Action.ActionCode.FORWARDS,
+            Action.ActionCode.BACKWARDS,
+            Action.ActionCode.TURN_LEFT,
+            Action.ActionCode.TURN_RIGHT,
+            Action.ActionCode.INSTRUCTION_DONE,
+        ])
+    
+    @staticmethod
+    def MovementActions():
+        return set([
+            Action.ActionCode.FORWARDS,
+            Action.ActionCode.BACKWARDS,
+            Action.ActionCode.TURN_LEFT,
+            Action.ActionCode.TURN_RIGHT,
+        ])
+    
+    # Define hash and eq comparison.
+    def __hash__(self):
+        return hash(self.action)
+    
+    def __eq__(self, other):
+        return self.action == other.action
+    
+    @staticmethod
+    def ActionMaskFromActor(actor, map):
+        """ Calculates an action mask for the given actor/map. """
+        if actor.role() == Role.LEADER:
+            actions = set(Action.LeaderActions())
+        elif actor.role() == Role.FOLLOWER:
+            actions = set(Action.FollowerActions())
+        else:
+            raise ValueError("Invalid role: {}".format(actor.role))
+        # Test forward collision.
+        loc = actor.ProjectedLocation()
+        forward = actor.ForwardLocation()
+        tile = map.tile_at(loc)
+        if tile.cell.boundary.get_edge_between(loc, forward):
+            actions.remove(Action.ActionCode.FORWARDS)
+        
+        # Test backward collision.
+        backward = actor.BackwardLocation()
+        if tile.cell.boundary.get_edge_between(loc, backward):
+            actions.remove(Action.ActionCode.BACKWARDS)
+        return Action.ActionMaskFromSet(actions)
+
+    @staticmethod
+    def ActionMaskFromSet(actions):
+        mask = np.array([False] * Action.ActionCode.MAX.value)
+        for action in actions:
+            mask[action.value] = True
+        return mask
+
+    def __init__(self, action_code, instruction=None, i_uuid=None):
+        if action_code == Action.ActionCode.SEND_INSTRUCTION:
             assert instruction != None, "Instruction must be provided for SEND_INSTRUCTION"
             if type(instruction) not in [str, bytes]:
                 raise TypeError("Instruction must be a string or bytes")
-        self.action = (action_code, instruction)
+            self.action = (action_code, instruction)
+            return
+        if action_code == Action.ActionCode.INSTRUCTION_DONE:
+            assert i_uuid != None, "i_uuid must be provided for INSTRUCTION_DONE"
+            if type(i_uuid) not in [str, bytes]:
+                raise TypeError("i_uuid must be a string or bytes")
+            self.action = (action_code, i_uuid)
+            return
+        self.action = (action_code, None)
     
+    def is_leader_action(self) -> bool:
+        return self.action[0] in Action.LeaderActions()
+    
+    def is_follower_action(self) -> bool:
+        return self.action[0] in Action.FollowerActions()
+    
+    def is_leader_feedback_action(self) -> bool:
+        return self.action[0] in Action.LeaderFeedbackActions()
+    
+    def is_noop(self) -> bool:
+        return self.action[0] == Action.ActionCode.NONE
+    
+    def is_end_turn(self) -> bool:
+        return self.action[0] == Action.ActionCode.END_TURN
+
     def __str__(self):
         action_code = self.action[0]
-        if action_code == LeadAction.ActionCode.FORWARDS:
+        if action_code == Action.ActionCode.FORWARDS:
             return "FORWARDS"
-        elif action_code == LeadAction.ActionCode.BACKWARDS:
+        elif action_code == Action.ActionCode.BACKWARDS:
             return "BACKWARDS"
-        elif action_code == LeadAction.ActionCode.TURN_LEFT:
+        elif action_code == Action.ActionCode.TURN_LEFT:
             return "TURN_LEFT"
-        elif action_code == LeadAction.ActionCode.TURN_RIGHT:
+        elif action_code == Action.ActionCode.TURN_RIGHT:
             return "TURN_RIGHT"
-        elif action_code == LeadAction.ActionCode.END_TURN:
+        elif action_code == Action.ActionCode.END_TURN:
             return "END_TURN"
-        elif action_code == LeadAction.ActionCode.INTERRUPT:
+        elif action_code == Action.ActionCode.INTERRUPT:
             return "INTERRUPT"
-        elif action_code == LeadAction.ActionCode.SEND_INSTRUCTION:
+        elif action_code == Action.ActionCode.SEND_INSTRUCTION:
             return "SEND_INSTRUCTION: {}".format(self.action[1])
-        elif action_code == LeadAction.ActionCode.NONE:
+        elif action_code == Action.ActionCode.INSTRUCTION_DONE:
+            return "INSTRUCTION_DONE: {}".format(self.action[1])
+        if action_code == Action.ActionCode.POSITIVE_FEEDBACK:
+            return "POSITIVE_FEEDBACK"
+        elif action_code == Action.ActionCode.NEGATIVE_FEEDBACK:
+            return "NEGATIVE_FEEDBACK"
+        elif action_code == Action.ActionCode.NONE:
             return "NONE"
         else:
             return "INVALID"
@@ -101,111 +259,28 @@ class LeadAction(object):
     def message_to_server(self, actor):
         action_code = self.action[0]
         action = None
-        if action_code == LeadAction.ActionCode.FORWARDS:
+        if action_code == Action.ActionCode.FORWARDS:
             action = actor.WalkForwardsAction()
-        elif action_code == LeadAction.ActionCode.BACKWARDS:
+        elif action_code == Action.ActionCode.BACKWARDS:
             action = actor.WalkBackwardsAction()
-        elif action_code == LeadAction.ActionCode.TURN_LEFT:
+        elif action_code == Action.ActionCode.TURN_LEFT:
             action = actor.TurnLeftAction()
-        elif action_code == LeadAction.ActionCode.TURN_RIGHT:
+        elif action_code == Action.ActionCode.TURN_RIGHT:
             action = actor.TurnRightAction()
-        elif action_code == LeadAction.ActionCode.END_TURN:
+        elif action_code == Action.ActionCode.END_TURN:
             return EndTurnMessage(), ""
-        elif action_code == LeadAction.ActionCode.INTERRUPT:
+        elif action_code == Action.ActionCode.INTERRUPT:
             return InterruptMessage(), ""
-        elif action_code == LeadAction.ActionCode.SEND_INSTRUCTION:
+        elif action_code == Action.ActionCode.SEND_INSTRUCTION:
             return InstructionMessage(self.action[1]), ""
+        elif action_code == Action.ActionCode.INSTRUCTION_DONE:
+            return InstructionDoneMessage(self.action[1]), ""
         else:
             return None, "Invalid lead action"
         assert action != None, "Invalid lead action"
         action_message = ActionsMessage([action])
         return action_message, ""
 
-
-class LeadFeedbackAction(object):
-    class ActionCode(Enum):
-        NONE = 0
-        POSITIVE_FEEDBACK = 1
-        NEGATIVE_FEEDBACK = 2
-        MAX = 3
-    def __init__(self, action_code):
-        self.action = action_code
-    
-    def __str__(self):
-        action_code = self.action
-        if action_code == LeadFeedbackAction.ActionCode.POSITIVE_FEEDBACK:
-            return "POSITIVE_FEEDBACK"
-        elif action_code == LeadFeedbackAction.ActionCode.NEGATIVE_FEEDBACK:
-            return "NEGATIVE_FEEDBACK"
-        elif action_code == LeadFeedbackAction.ActionCode.NONE:
-            return "NO FEEDBACK"
-        else:
-            return "INVALID FEEDBACK"
-
-    def action_code(self):
-        return self.action[0]
-    
-    def message_to_server(self, actor):
-        if self.action == LeadFeedbackAction.ActionCode.POSITIVE_FEEDBACK:
-            return PositiveFeedbackMessage(), ""
-        elif self.action == LeadFeedbackAction.ActionCode.NEGATIVE_FEEDBACK:
-            return NegativeFeedbackMessage(), ""
-        elif self.action == LeadFeedbackAction.ActionCode.NONE:
-            return None, ""
-        else:
-            return None, "Invalid lead feedback action"
-
-class FollowAction(object):
-    class ActionCode(Enum):
-        NONE = 0
-        FORWARDS = 1
-        BACKWARDS = 2
-        TURN_LEFT = 3
-        TURN_RIGHT = 4
-        INSTRUCTION_DONE = 5
-        MAX = 6
-
-    def __init__(self, action_code, instruction_uuid=None):
-        if action_code == FollowAction.ActionCode.INSTRUCTION_DONE:
-            assert instruction_uuid != None, "Instruction UUID must be provided for INSTRUCTION_DONE"
-        self.action = action_code, instruction_uuid
-    
-    def __str__(self):
-        action_code = self.action[0]
-        if action_code == FollowAction.ActionCode.FORWARDS:
-            return "FORWARDS"
-        elif action_code == FollowAction.ActionCode.BACKWARDS:
-            return "BACKWARDS"
-        elif action_code == FollowAction.ActionCode.TURN_LEFT:
-            return "TURN_LEFT"
-        elif action_code == FollowAction.ActionCode.TURN_RIGHT:
-            return "TURN_RIGHT"
-        elif action_code == FollowAction.ActionCode.INSTRUCTION_DONE:
-            return "INSTRUCTION_DONE: {}".format(self.action[1])
-        else:
-            return "INVALID"
-
-    def action_code(self):
-        return self.action[0]
-
-    def message_to_server(self, actor):
-        action = None
-        action_code = self.action[0]
-        if action_code == FollowAction.ActionCode.FORWARDS:
-            action = actor.WalkForwardsAction()
-        elif action_code == FollowAction.ActionCode.BACKWARDS:
-            action = actor.WalkBackwardsAction()
-        elif action_code == FollowAction.ActionCode.TURN_LEFT:
-            action = actor.TurnLeftAction()
-        elif action_code == FollowAction.ActionCode.TURN_RIGHT:
-            action = actor.TurnRightAction()
-        elif action_code == FollowAction.ActionCode.INSTRUCTION_DONE:
-            return InstructionDoneMessage(self.action[1]), ""
-        else:
-            return None, "Invalid follow action"
-        assert action != None, "Invalid follow action"
-        action_message = ActionsMessage([action])
-        return action_message, ""
 
 # client = Cb2Client(url)
 # joined, reason = await client.Connect()
@@ -256,7 +331,7 @@ class GameEndpoint(object):
         self.display = GameDisplay(SCREEN_SIZE)
         self.display.set_config(self.config)
         if self.render:
-            logger.info(f"Setting up display for rendering...")
+            logger.debug(f"Setting up display for rendering...")
             if self.pygame_task:
                 self.pygame_task.cancel()
             loop = asyncio.get_event_loop()
@@ -312,21 +387,18 @@ class GameEndpoint(object):
         #   Wait for tick
         #   Process messages
         # Return
-        if isinstance(action, FollowAction):
-            if self._player_role != Role.FOLLOWER:
-                raise ValueError("Not a follower, cannot send follow action")
-            if self.turn_state.turn != Role.FOLLOWER and action.action_code() != FollowAction.ActionCode.NONE:
-                raise ValueError(f"Not your turn, cannot send follow action: {action.action}")
-        if isinstance(action, LeadAction):
-            if self._player_role != Role.LEADER:
-                raise ValueError("Not a leader, cannot send lead action")
-            if (self.turn_state.turn != Role.LEADER) and (action.action_code() != LeadAction.ActionCode.NONE):
-                raise ValueError(f"Not your turn, cannot send lead action. ts: {self.turn_state}. action: {action.action_code()}")
-        if isinstance(action, LeadFeedbackAction):
-            if self._player_role != Role.LEADER:
-                raise ValueError("Not a leader, cannot send lead feedback action")
-            if self.turn_state.turn != Role.FOLLOWER and action.action_code() != LeadFeedbackAction.ActionCode.NONE:
-                raise ValueError("Not follower turn, cannot send lead feedback action")
+        if self._player_role == Role.FOLLOWER:
+            valid_actions = Action.FollowerActions()
+            # noop is always valid
+            valid_actions.add(Action.ActionCode.NONE)
+        elif self._player_role == Role.LEADER:
+            valid_actions = Action.LeaderActions() if self.turn_state.turn == Role.LEADER else Action.LeaderFeedbackActions()
+            # noop is always valid
+            valid_actions.add(Action.ActionCode.NONE)
+        else:
+            valid_actions = set()
+        if action.action_code() not in valid_actions:
+            raise ValueError(f"Player is role {self._player_role} and turn {self.turn_state.turn} but sent inappropriate action: {action}")
         message, reason = action.message_to_server(self.player_actor)
         if message != None:
             self.socket.send_message(message)
@@ -409,6 +481,13 @@ class GameEndpoint(object):
     def game_duration(self):
         return (datetime.utcnow() - self.turn_state.game_start)
     
+    def action_mask(self):
+        """ Returns a mask of type np.ndarray filled with either 0 or -inf. Indicates which actions are currently valid. """
+        map_update, props, ts, instrs, actors, feedback = self._state()
+        if ts.turn != self.player_role():
+            return Action.ActionMaskFromSet(set())
+        return Action.ActionMaskFromActor(self.player_actor, map_update)
+    
     def __enter__(self):
         return self
     
@@ -453,7 +532,7 @@ class GameEndpoint(object):
             return
         
         end_time = datetime.utcnow() + timeout
-        logger.info(f"Beginning INIT")
+        logger.debug(f"Beginning INIT")
         while self.socket.connected():
             if datetime.utcnow() > end_time:
                 raise Exception("Timed out waiting for game")
@@ -462,7 +541,7 @@ class GameEndpoint(object):
                 logger.warn(f"No message received from _receive_message(). Reason: {reason}")
                 continue
             if response.type == message_from_server.MessageType.STATE_SYNC:
-                logger.info(f"INIT received state sync.")
+                logger.debug(f"INIT received state sync.")
                 state_sync = response.state
                 self.player_id = state_sync.player_id
                 self._player_role = state_sync.player_role
@@ -476,26 +555,26 @@ class GameEndpoint(object):
                     while added_actor.has_actions():
                         added_actor.step()
                 self.player_actor = self.actors[self.player_id]
-                logger.info(f"Player start pos: {self.player_actor.location().to_offset_coordinates()}")
-                logger.info(f"Player start orientation: {self.player_actor.heading_degrees()}")
+                logger.debug(f"Player start pos: {self.player_actor.location().to_offset_coordinates()}")
+                logger.debug(f"Player start orientation: {self.player_actor.heading_degrees()}")
             if response.type == message_from_server.MessageType.MAP_UPDATE:
-                logger.info(f"INIT received map")
+                logger.debug(f"INIT received map")
                 self.map_update = response.map_update
             if response.type == message_from_server.MessageType.PROP_UPDATE:
-                logger.info(f"INIT received prop")
+                logger.debug(f"INIT received prop")
                 self._handle_prop_update(response.prop_update)
             if response.type == message_from_server.MessageType.GAME_STATE:
-                logger.info(f"INIT received turn state")
+                logger.debug(f"INIT received turn state")
                 self.turn_state = response.turn_state
                 if self.over():
                     return False, "Game over"
             if response.type == message_from_server.MessageType.OBJECTIVE:
-                logger.info(f"INIT received objective")
+                logger.debug(f"INIT received objective")
                 self.instructions = response.objectives
             if response.type == message_from_server.MessageType.STATE_MACHINE_TICK:
-                logger.info(f"Init TICK received")
+                logger.debug(f"Init TICK received")
                 if None not in [self.player_actor, self.map_update, self.prop_update, self.turn_state]:
-                    logger.info(f"Init DONE for {self._player_role}")
+                    logger.debug(f"Init DONE for {self._player_role}")
                     self._initial_state_ready = True
                     if self.render:
                         self._render()
@@ -519,7 +598,6 @@ class GameEndpoint(object):
             Returns:
                 (bool, str): A tuple containing if the message was handled, and if not, the reason why.
         """
-        import time
         for net_actor in state_sync.actors:
             if net_actor.actor_id not in self.actors:
                 logger.error(f"Received state sync for unknown actor {net_actor.actor_id}")
@@ -536,7 +614,7 @@ class GameEndpoint(object):
                 net_actor.rotation_degrees))
             while actor.has_actions():
                 actor.step()
-            logger.info(f"state sync for actor {net_actor.actor_id}. location: {actor.location().to_offset_coordinates()} rotation: {actor.heading_degrees()}")
+            logger.debug(f"state sync for actor {net_actor.actor_id}. location: {actor.location().to_offset_coordinates()} rotation: {actor.heading_degrees()}")
 
     def _handle_message(self, message):
         if message.type == message_from_server.MessageType.ACTIONS:

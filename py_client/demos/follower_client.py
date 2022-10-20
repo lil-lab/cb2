@@ -1,11 +1,10 @@
 from math import degrees
 from time import sleep
 from py_client.remote_client import RemoteClient, Role
-from py_client.game_endpoint import LeadAction, FollowAction, Role
+from py_client.game_endpoint import Action, Role
 
 import fire
 import logging
-import random
 
 from datetime import timedelta
 
@@ -19,20 +18,18 @@ def actions_from_instruction(instruction):
         if len(action_code) == 0:
             continue
         if "forward".startswith(action_code):
-            actions.append(FollowAction(FollowAction.ActionCode.FORWARDS))
+            actions.append(Action.Forwards())
         elif "backward".startswith(action_code):
-            actions.append(FollowAction(FollowAction.ActionCode.BACKWARDS))
+            actions.append(Action.Backwards())
         elif "left".startswith(action_code):
-            actions.append(FollowAction(FollowAction.ActionCode.TURN_LEFT))
+            actions.append(Action.Left())
         elif "right".startswith(action_code):
-            actions.append(FollowAction(FollowAction.ActionCode.TURN_RIGHT))
+            actions.append(Action.Right())
         elif "random".startswith(action_code):
-            action_codes = [FollowAction.ActionCode.FORWARDS, FollowAction.ActionCode.BACKWARDS, FollowAction.ActionCode.TURN_LEFT, FollowAction.ActionCode.TURN_RIGHT]
-            actions.append(FollowAction(random.choice(action_codes)))
+            actions.append(Action.RandomMovementAction())
     if len(actions) == 0:
         # Choose a random action.
-        action_codes = [FollowAction.ActionCode.FORWARDS, FollowAction.ActionCode.BACKWARDS, FollowAction.ActionCode.TURN_LEFT, FollowAction.ActionCode.TURN_RIGHT]
-        action = FollowAction(random.choice(action_codes))
+        action = Action.RandomMovementAction()
     return actions
 
 def get_active_instruction(instructions):
@@ -57,7 +54,7 @@ class NaiveFollower(object):
             else:
                 (leader, follower) = actors
             if turn_state.turn != Role.FOLLOWER:
-                action = FollowAction(FollowAction.ActionCode.NONE)
+                action = Action.NoopAction()
             else:
                 action = self.get_action(self.game, map, cards, turn_state, instructions, actors, live_feedback)
             logger.info(f"step({str(action)})")
@@ -84,7 +81,7 @@ class NaiveFollower(object):
                 logger.info(f"step() returned but no active instruction.")
             self.actions.extend(actions)
             if active_instruction is not None:
-                self.actions.append(FollowAction(FollowAction.ActionCode.INSTRUCTION_DONE, active_instruction.uuid))
+                self.actions.append(Action.InstructionDone(active_instruction.uuid))
                 self.instructions_processed.add(active_instruction.uuid)
         if len(self.actions) > 0:
             action = self.actions[0]
@@ -92,9 +89,7 @@ class NaiveFollower(object):
             return action
         else:
             # Choose a random action.
-            action_codes = [FollowAction.ActionCode.FORWARDS, FollowAction.ActionCode.BACKWARDS, FollowAction.ActionCode.TURN_LEFT, FollowAction.ActionCode.TURN_RIGHT]
-            action = FollowAction(random.choice(action_codes))
-            return action
+            return Action.RandomMovementAction()
 
     def join(self):
         super().join()

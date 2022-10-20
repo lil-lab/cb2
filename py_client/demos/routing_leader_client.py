@@ -3,7 +3,7 @@ import logging
 from math import degrees
 from time import sleep
 from py_client.remote_client import RemoteClient
-from py_client.game_endpoint import LeadAction, FollowAction, LeadFeedbackAction, Role
+from py_client.game_endpoint import Action, Role
 
 import fire
 import threading
@@ -11,8 +11,6 @@ import threading
 from collections import deque
 
 from datetime import timedelta
-
-from random import choice
 
 logger = logging.getLogger(__name__)
 
@@ -133,24 +131,24 @@ def main(host, render=False, i_uuid=""):
     map, cards, turn_state, instructions, (leader, follower), live_feedback = game.initial_state()
     closest_card = get_next_card(cards, follower)
     if turn_state.turn == Role.LEADER:
-        action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower, map, game, cards))
+        action = Action.SendInstruction(get_instruction_for_card(closest_card, follower, map, game, cards))
     else:
-        action = LeadAction(LeadAction.ActionCode.NONE)
+        action = Action.NoopAction()
     follower_distance_to_card = float("inf")
     while not game.over():
         print(f"step({action})")
-        if type(action) == LeadAction and action.action == LeadAction.ActionCode.END_TURN:
+        if action.is_end_turn():
             sleep(0.2)
         map, cards, turn_state, instructions, (leader, follower), live_feedback = game.step(action)
         closest_card = get_next_card(cards, follower)
         if turn_state.turn == Role.LEADER:
             if has_instruction_available(instructions):
-                action = LeadAction(LeadAction.ActionCode.END_TURN)
+                action = Action.EndTurn()
             else:
-                action = LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=get_instruction_for_card(closest_card, follower, map, game, cards))
+                action = Action.SendInstruction(get_instruction_for_card(closest_card, follower, map, game, cards))
         if turn_state.turn == Role.FOLLOWER:
             # Don't give live feedback. Messes with the follower bot at the moment.
-            action = LeadAction(LeadAction.ActionCode.NONE)
+            action = Action.NoopAction()
             continue
     print(f"Game over. Score: {turn_state.score}")
 

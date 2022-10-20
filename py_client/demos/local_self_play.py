@@ -10,7 +10,7 @@ import threading
 
 from math import degrees
 from py_client.remote_client import RemoteClient
-from py_client.game_endpoint import LeadAction, FollowAction, LeadFeedbackAction, Role
+from py_client.game_endpoint import Action, Role
 from py_client.demos.follower_client import *
 from py_client.demos.routing_leader_client import *
 from py_client.local_game_coordinator import LocalGameCoordinator
@@ -21,7 +21,6 @@ import server.db_tools.db_utils as db_utils
 
 from collections import deque
 from datetime import timedelta
-from random import choice
 
 from time import sleep
 
@@ -35,18 +34,18 @@ class PathfindingLeader(threading.Thread):
 
     def get_action(self, map, cards, turn_state, instructions, actors, feedback):
         if turn_state.turn != Role.LEADER:
-            return LeadFeedbackAction(LeadFeedbackAction.ActionCode.NONE)
+            return Action.NoopAction()
         if has_instruction_available(instructions):
             # If the follower already has something to do, just end the turn.
-            return LeadAction(LeadAction.ActionCode.END_TURN)
+            return Action.EndTurn()
         (leader, follower) = actors
         closest_card = get_next_card(cards, follower)
         if closest_card is None:
             # Just have the follower make random moves, hope something happens...
-            return LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, "random, random, random, random, random, random")
+            return Action.SendInstruction("random, random, random, random, random, random")
         instruction = get_instruction_for_card(closest_card, follower, map, self.game, cards)
         logger.info(f"Lead sending: {instruction}")
-        return LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=instruction)
+        return Action.SendInstruction(instruction)
 
 class NaiveFollower(threading.Thread):
     def __init__(self, game):
@@ -65,11 +64,10 @@ class NaiveFollower(threading.Thread):
             else:
                 raise Exception(f"No active instruction. Instructions: {instructions}")
             if len(actions) == 0:
-                action_codes = [FollowAction.ActionCode.FORWARDS, FollowAction.ActionCode.BACKWARDS, FollowAction.ActionCode.TURN_LEFT, FollowAction.ActionCode.TURN_RIGHT]
-                actions = [FollowAction(random.choice(action_codes)) for _ in range(5)]
+                actions = [Action.RandomMovementAction() for _ in range(5)]
             self.actions.extend(actions)
             if active_instruction is not None:
-                self.actions.append(FollowAction(FollowAction.ActionCode.INSTRUCTION_DONE, active_instruction.uuid))
+                self.actions.append(Action.InstructionDone(active_instruction.uuid))
                 self.instructions_processed.add(active_instruction.uuid)
         if len(self.actions) > 0:
             action = self.actions[0]
@@ -77,9 +75,7 @@ class NaiveFollower(threading.Thread):
             return action
         else:
             # Choose a random action.
-            action_codes = [FollowAction.ActionCode.FORWARDS, FollowAction.ActionCode.BACKWARDS, FollowAction.ActionCode.TURN_LEFT, FollowAction.ActionCode.TURN_RIGHT]
-            action = FollowAction(random.choice(action_codes))
-            return action
+            return Action.RandomMovementAction()
 
 def PlayGame(coordinator, i_uuid="", log_to_db: bool=True):
     if len(i_uuid) > 0:
@@ -100,6 +96,7 @@ def PlayGame(coordinator, i_uuid="", log_to_db: bool=True):
             follower_action = follower_agent.get_action(map, cards, turn_state, instructions, actors, live_feedback)
             logger.info(f"Follower step({follower_action})")
             map, cards, turn_state, instructions, actors, live_feedback = endpoint_pair.step(follower_action)
+        # logger.info(f"Action mask: {endpoint_pair.leader().action_mask()}")
     logger.info(f"Game over. Score: {endpoint_pair.score()}, Duration: {endpoint_pair.duration().total_seconds()}")
     coordinator.Cleanup()
     return endpoint_pair.score(), endpoint_pair.duration().total_seconds()
@@ -108,12 +105,12 @@ def PlayGame(coordinator, i_uuid="", log_to_db: bool=True):
 def main(config_filepath="server/config/local-covers-config.yaml", instruction_uuid=""):
     nest_asyncio.apply()
     # Disabling most logs improves performance by about 50ms per game.
-    logging.basicConfig(level=logging.WARN)
+    logging.basicConfig(level=logging.INFO)
     config = ReadConfigOrDie(config_filepath)
     db_utils.ConnectToDatabase(config)
     scores = []
     durations = []
-    coordinator = LocalGameCoordinator(config)
+    coordinator = LocalGameCoordinator(config, False, False)
     for i in range(10):
         logger.info(f"========================== STARTING GAME {i} ==========================")
         score, duration = PlayGame(coordinator, instruction_uuid)
@@ -121,8 +118,8 @@ def main(config_filepath="server/config/local-covers-config.yaml", instruction_u
         scores.append(score)
         durations.append(duration)
     # Print out the scores.
-    logger.warn(f"Mean score: {np.mean(scores)}")
-    logger.warn(f"Mean duration: {np.mean(durations)}")
+    logger.info(f"Mean score: {np.mean(scores)}")
+    logger.info(f"Mean duration: {np.mean(durations)}")
 
     # Plot a multi-figure diagram. On the left, scatter plot of game durations &
     # scores. On the right, show a histogram of scores.

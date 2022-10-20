@@ -1,5 +1,5 @@
 """ A wrapper for two game endpoints that allows them to play against each other in the same game. """
-from py_client.game_endpoint import GameEndpoint, FollowAction, LeadAction, Role
+from py_client.game_endpoint import GameEndpoint, Action, Role
 
 import logging
 
@@ -55,12 +55,12 @@ class EndpointPair(object):
         if self.turn == Role.LEADER:
             leader_result = self._leader.step(action, wait_for_turn=False)
             map, cards, turn_state, instructions, actors, live_feedback = leader_result
-            follower_result = self._follower.step(FollowAction(FollowAction.ActionCode.NONE), wait_for_turn=False)
+            follower_result = self._follower.step(Action.NoopAction(), wait_for_turn=False)
             self.turn = turn_state.turn
         elif self.turn == Role.FOLLOWER:
             follower_result = self._follower.step(action, wait_for_turn=False)
             map, cards, turn_state, instructions, actors, live_feedback = follower_result
-            leader_result = self._leader.step(LeadAction(LeadAction.ActionCode.NONE), wait_for_turn=False)
+            leader_result = self._leader.step(Action.NoopAction(), wait_for_turn=False)
             self.turn = turn_state.turn
         else:
             raise Exception(f"Invalid turn state {self.turn}.")

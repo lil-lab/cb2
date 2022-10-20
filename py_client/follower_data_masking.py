@@ -132,7 +132,6 @@ def CensorFollowerMap(map_update, follower_actor, config: Config):
     # Actor.heading_degrees() (actor.py) is used.
     follower_orientation = follower_actor.heading_degrees() - 60
 
-    logger.debug(f"Filtering tiles. Follower at {follower_actor.location()} with orientation {follower_orientation} and view depth {view_depth}")
     visible_coords = VisibleCoordinates(follower_actor, config)
     # MapUpdate.tile_at() makes use of an internal tile cache. Calling it causes
     # side effects, so don't use a list comprehension here (or you'll recreate
@@ -163,7 +162,6 @@ def CensorFollowerProps(props, follower_actor, config):
     follower_orientation = follower_actor.heading_degrees() - 60
 
     new_props = []
-    logger.debug(f"Filtering props. Follower at {follower_actor.location()} with orientation {follower_orientation} and view depth {view_depth}")
     for prop in props:
         if CoordinateIsVisible(prop.prop_info.location, follower_actor, config):
             new_props.append(dataclasses.replace(prop))
@@ -186,7 +184,6 @@ def CensorActors(actors, follower_actor, config):
     follower_orientation = follower_actor.heading_degrees() - 60
 
     new_actors = []
-    logger.debug(f"Filtering props. Follower at {follower_actor.location()} with orientation {follower_orientation} and view depth {view_depth}")
     for actor in actors:
         if CoordinateIsVisible(actor.location(), follower_actor, config):
             new_actors.append(Actor(actor.actor_id(), actor.asset_id(), actor.role(), actor.location(), False, actor.heading_degrees()))

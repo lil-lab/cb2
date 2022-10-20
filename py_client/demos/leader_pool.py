@@ -20,17 +20,17 @@ class PathfindingLeader(threading.Thread):
 
     def get_action(self, game, map, cards, turn_state, instructions, actors, feedback):
         if turn_state.turn != Role.LEADER:
-            return LeadFeedbackAction(LeadFeedbackAction.ActionCode.NONE)
+            return Action.NoopAction()
         if has_instruction_available(instructions):
             # If the follower already has something to do, just end the turn.
-            return LeadAction(LeadAction.ActionCode.END_TURN)
+            return Action.EndTurn()
         (leader, follower) = actors
         closest_card = get_next_card(cards, follower)
         if closest_card is None:
             logger.warn(f"Need to debug this. Couldn't find a card to route to. Number of cards: {len(cards)}")
-            return LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, "Error: no cards found :/")
+            return Action.SendInstruction("Error: no cards found :/")
         instruction = get_instruction_for_card(closest_card, follower, map, game, cards)
-        return LeadAction(LeadAction.ActionCode.SEND_INSTRUCTION, instruction=instruction)
+        return Action.SendInstruction(instruction=instruction)
     
     def run(self):
         try:

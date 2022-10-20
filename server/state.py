@@ -118,7 +118,7 @@ class State(object):
             score = last_set.get().score
 
         turns_left = 6 + cumulative_turns_added(score) - turn_record.turn_number
-        logger.info(f"Turns left: {turns_left}. Start: 6, added: {cumulative_turns_added(score)}, current turn: {turn_record.turn_number}")
+        logger.debug(f"Turns left: {turns_left}. Start: 6, added: {cumulative_turns_added(score)}, current turn: {turn_record.turn_number}")
         turn_state = TurnState(
             Role.FOLLOWER,
             10, # moves.
@@ -131,7 +131,7 @@ class State(object):
             turn_record.turn_number)
         cards = []
         if len(map.map_data.props) != 0:
-            logger.info(f"Loading cards from map, which contains {len(map.map_data.props)} cards.")
+            logger.debug(f"Loading cards from map, which contains {len(map.map_data.props)} cards.")
             cards = map.map_data.props
         else:
             logger.error(f"Map {map.id} has no props. Cannot recover cards.")
@@ -143,7 +143,7 @@ class State(object):
         follower = Actor(22, 0, Role.FOLLOWER, initial_state.follower_position, realtime_actions, initial_state.follower_rotation_degrees)
 
         moves = game_db.Move.select().join(game_db.Instruction).where(game_db.Move.game_id == game_record.id, game_db.Move.instruction.time < instruction_record.time)
-        logger.info(f"Found {moves.count()} moves before instruction {instruction_record.uuid}")
+        logger.debug(f"Found {moves.count()} moves before instruction {instruction_record.uuid}")
         for move in moves:
             if move.character_role == "Role.LEADER":
                 leader.add_action(move.action)
@@ -153,7 +153,7 @@ class State(object):
                 follower.step()
             else:
                 return None, f"Unknown character role {move.character_role}"
-        s = State(room_id, None, True, map.map_data, cards, turn_state, [instruction], [leader, follower])
+        s = State(room_id, None, True, map.map_data, cards, turn_state, [instruction], [leader, follower], realtime_actions=realtime_actions, log_to_db=False)
         return s, ""
 
     def _init_from_data(self, map, props, turn_state, instructions, actors, realtime_actions: bool = False):
@@ -270,7 +270,7 @@ class State(object):
             return None
 
     def end_game(self):
-        logger.info(f"Game ending.")
+        logger.debug(f"Game ending.")
         self._done = True
 
     def record_action(self, action):
@@ -318,19 +318,18 @@ class State(object):
         for actor_id in self._actors:
             actor = self._actors[actor_id]
             while actor.has_actions():
-                logger.info(f"Actor {actor_id} has pending actions.")
                 proposed_action = actor.peek()
                 if not self._turn_state.turn == actor.role():
                     actor.drop()
                     self.desync(actor_id)
-                    logger.info(
+                    logger.debug(
                         f"Actor {actor_id} is not the current role. Dropping pending action.")
                     send_tick = True
                     continue
                 if self._turn_state.moves_remaining == 0:
                     actor.drop()
                     self.desync(actor_id)
-                    logger.info(
+                    logger.debug(
                         f"Actor {actor_id} is out of moves. Dropping pending action.")
                     send_tick = True
                     continue
@@ -341,7 +340,7 @@ class State(object):
                     send_tick = True
                     continue
                 
-                if ((not actor.is_realtime) or actor.peek_action_done()):
+                if ((not self._realtime_actions) or (not actor.is_realtime) or actor.peek_action_done()):
                     self._game_recorder.record_move(actor, proposed_action)
                     actor.step()
                     self.record_action(proposed_action)
@@ -393,7 +392,7 @@ class State(object):
                 self.record_action(card_select_action)
         
         if not self._map_provider.selected_cards_collide() and self._current_set_invalid:
-            logger.info("Marking set as clear (not invalid) because it is smaller than 3.")
+            logger.debug("Marking set as clear (not invalid) because it is smaller than 3.")
             self._current_set_invalid = False
             cards_changed = True
             for card in selected_cards:
@@ -423,7 +422,7 @@ class State(object):
             # the previous 3, which is confusing to the user.
             self._map_provider.add_random_unique_set()
             # Clear card state and remove the cards in the winning set.
-            logger.info("Clearing selected cards")
+            logger.debug("Clearing selected cards")
             for card in selected_cards:
                 self._map_provider.set_selected(card.id, False)
                 actions = SetCompletionActions(card.id)
@@ -440,7 +439,7 @@ class State(object):
 
         # Check to see if the game is over.
         if self._turn_state.turns_left <= -1:
-            logger.info(
+            logger.debug(
                 f"Game {self._room_id} is out of turns. Game over!")
             game_over_message = GameOverMessage(
                 self._turn_state.game_start,
@@ -525,7 +524,7 @@ class State(object):
         stepped_on_card = self._map_provider.card_by_location(actor.location())
         # If the actor just moved and stepped on a card, mark it as selected.
         if (action.action_type == ActionType.TRANSLATE) and (stepped_on_card is not None):
-            logger.info(
+            logger.debug(
                 f"Player {actor.actor_id()} stepped on card {str(stepped_on_card)}.")
             selected = not stepped_on_card.selected
             self._map_provider.set_selected(stepped_on_card.id, selected)
@@ -540,30 +539,30 @@ class State(object):
 
     def _drain_message(self, id, message):
         if message.type == message_to_server.MessageType.ACTIONS:
-            logger.info(f'Actions received. Room: {self._room_id}')
+            logger.debug(f'Actions received. Room: {self._room_id}')
             self._drain_actions(id, message.actions)
         elif message.type == message_to_server.MessageType.OBJECTIVE:
-            logger.info(
+            logger.debug(
                 f'Objective received. Room: {self._room_id}, Text: {message.objective.text}')
             self._drain_instruction(id, message.objective)
         elif message.type == message_to_server.MessageType.OBJECTIVE_COMPLETED:
-            logger.info(
+            logger.debug(
                 f'Objective Compl received. Room: {self._room_id}, uuid: {message.objective_complete.uuid}')
             self._drain_instruction_complete(id, message.objective_complete)
             self._log_instructions()
         elif message.type == message_to_server.MessageType.TURN_COMPLETE:
-            logger.info(f'Turn Complete received. Room: {self._room_id}')
+            logger.debug(f'Turn Complete received. Room: {self._room_id}')
             self._drain_turn_complete(id, message.turn_complete)
         elif message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
-            logger.info(
+            logger.debug(
                 f'Sync request recvd. Room: {self._room_id}, Player: {id}')
             self.desync(id)
         elif message.type == message_to_server.MessageType.LIVE_FEEDBACK:
-            logger.info(
+            logger.debug(
                 f'Live feedback recvd. Room: {self._room_id}, Player: {id}')
             self._drain_live_feedback(id, message.live_feedback)
         elif message.type == message_to_server.MessageType.CANCEL_PENDING_OBJECTIVES:
-            logger.info(
+            logger.debug(
                 f'Cancel pending objectives recvd. Room: {self._room_id}, Player: {id}')
             self._drain_cancel_pending_instructions(id)
         else:
@@ -571,7 +570,7 @@ class State(object):
     
     def _drain_actions(self, id, actions):
         for action in actions:
-            logger.info(f'{action.id}:{action.displacement}')
+            logger.debug(f'{action.id}:{action.displacement}')
             self._drain_action(id, action)
 
     def _drain_action(self, actor_id, action):
@@ -601,10 +600,10 @@ class State(object):
     
     def _drain_live_feedback(self, id, feedback):
         if config.GlobalConfig() and not config.GlobalConfig().live_feedback_enabled:
-            logger.info(f'Live feedback disabled. Dropping message.')
+            logger.debug(f'Live feedback disabled. Dropping message.')
             return
         if feedback.signal == live_feedback.FeedbackType.NONE:
-            logger.info(f'Received live feedback from {id} with type NONE. Dropping.')
+            logger.debug(f'Received live feedback from {id} with type NONE. Dropping.')
             return
         if self._actors[id].role() != Role.LEADER:
             logger.warn(
@@ -642,7 +641,7 @@ class State(object):
         self._turn_complete_queue.append((id, "UserPrompted"))
     
     def _drain_cancel_pending_instructions(self, id):
-        logger.info(f"Cancel pending objectives received from ID: {str(id)}.")
+        logger.debug(f"Cancel pending objectives received from ID: {str(id)}.")
         if self._actors[id].role() != Role.LEADER:
             logger.warn(
                 f'Warning, objective cancellation from non-leader ID: {str(id)}')
@@ -768,7 +767,7 @@ class State(object):
             objective_status_char = 'C' if objective.completed else 'I'
             if objective.cancelled:
                 objective_status_char = 'X'
-            logger.info(f'\t {objective_status_char} | {objective.text} | {objective.uuid}')
+            logger.debug(f'\t {objective_status_char} | {objective.text} | {objective.uuid}')
     
     def _next_message(self, player_id):
         actions = self._next_actions(player_id)
@@ -794,7 +793,7 @@ class State(object):
             state_sync = self.sync_message_for_transmission(player_id)
             logger.debug(
                 f'Room {self._room_id} state sync: {state_sync} for player_id {player_id}')
-            logger.info(f"State sync with {player_id} and # {len(state_sync.actors)} actors")
+            logger.debug(f"State sync with {player_id} and # {len(state_sync.actors)} actors")
             msg = message_from_server.StateSyncFromServer(state_sync)
             return msg
 
@@ -814,14 +813,14 @@ class State(object):
 
         live_feedback = self._next_live_feedback(player_id)
         if not live_feedback is None:
-            logger.info(
+            logger.debug(
                 f'Room {self._room_id} live feedback {live_feedback} for player_id {player_id}')
             msg = message_from_server.LiveFeedbackFromServer(live_feedback)
             return msg
         
         tick = self._next_tick(player_id)
         if not tick is None:
-            logger.info(f'Room {self._room_id} tick {tick} for player_id {player_id}')
+            logger.debug(f'Room {self._room_id} tick {tick} for player_id {player_id}')
             msg = message_from_server.StateMachineTickFromServer(tick)
             return msg
 
@@ -944,11 +943,11 @@ class State(object):
             cartesian = action.displacement.cartesian()
             # Add a small delta for floating point comparison.
             if (math.sqrt(cartesian[0]**2 + cartesian[1]**2) > 1.001):
-                logger.info(f"Invalid action: translation too large {action}")
+                logger.debug(f"Invalid action: translation too large {action}")
                 return False
             destination = HecsCoord.add(self._actors[actor_id].location(), action.displacement)
             if self._map_provider.edge_between(self._actors[actor_id].location(), destination):
-                logger.info(f"Invalid action: attempts to move through wall {action}")
+                logger.debug(f"Invalid action: attempts to move through wall {action}")
                 return False
             forward_location = (self._actors[actor_id]
                             .location()
@@ -957,11 +956,11 @@ class State(object):
                             .location()
                             .neighbor_at_heading(self._actors[actor_id].heading_degrees() + 180))
             if destination not in [forward_location, backward_location]:
-                logger.info(f"Invalid action: attempts to move to {destination.to_offset_coordinates()} which is invalid. Facing: {self._actors[actor_id].heading_degrees()} backward location: {backward_location.to_offset_coordinates()}. exp: {action.expiration}")
+                logger.debug(f"Invalid action: attempts to move to {destination.to_offset_coordinates()} which is invalid. Facing: {self._actors[actor_id].heading_degrees()} backward location: {backward_location.to_offset_coordinates()}. exp: {action.expiration}")
                 return False
         if (action.action_type == ActionType.ROTATE):
             if (abs(action.rotation) > 60.01):
-                logger.info(f"Invalid action: attempts to rotate too much {action}")
+                logger.debug(f"Invalid action: attempts to rotate too much {action}")
                 return False
         return True
 

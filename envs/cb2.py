@@ -290,7 +290,7 @@ class CerealBar2Env(gym.Env):
             "turns_remaining": [turn_state.turns_left],
             "score": [turn_state.score],
         }
-        action_mask = None # TODO(sharf): Implement action mask.
+        action_mask = self.game.action_mask()
         aux_info = AuxiliaryInfo(
             self.game_info.agent_role,
             self.game_info.env_mode,

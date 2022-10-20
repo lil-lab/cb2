@@ -121,7 +121,7 @@ class LocalGameCoordinator(object):
             game_record.save()
         else:
             game_record = None
-        state_machine = State(room_id, game_record, log_to_db=log_to_db)
+        state_machine = State(room_id, game_record, log_to_db=log_to_db, realtime_actions=False)
         event_loop = asyncio.get_event_loop()
         self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)
         return game_name
@@ -137,7 +137,7 @@ class LocalGameCoordinator(object):
         room_id = game_name
         
         # For cards, take all cards so far and then delete any CardSets().
-        state_machine, reason = State.InitializeFromExistingState(room_id, instruction_uuid)
+        state_machine, reason = State.InitializeFromExistingState(room_id, instruction_uuid, realtime_actions=False)
         assert state_machine != None, f"Failed to initialize state machine from instruction {instruction_uuid}: {reason}"
         state_sync = state_machine.state(-1)
 

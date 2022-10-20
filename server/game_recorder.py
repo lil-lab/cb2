@@ -188,7 +188,6 @@ class GameRecorder(object):
         else:
             move_code = "INVALID"
         move.action_code = move_code
-        logger.info(f"========== MOVE CODE: {move_code}")
         self._last_move = move
         move.save()
     
