@@ -5,6 +5,7 @@ import asyncio
 import logging
 import numpy as np
 import pygame
+import random
 import sys
 
 import server.messages as messages
@@ -160,6 +161,10 @@ class Action(object):
             Action.ActionCode.TURN_RIGHT,
         ])
     
+    @staticmethod
+    def RandomMovementAction():
+        return Action(random.choice(list(Action.MovementActions())))
+    
     # Define hash and eq comparison.
     def __hash__(self):
         return hash(self.action)
@@ -179,14 +184,14 @@ class Action(object):
         # Test forward collision.
         loc = actor.ProjectedLocation()
         forward = actor.ForwardLocation()
-        tile = map.tile_at(loc)
-        if tile.cell.boundary.get_edge_between(loc, forward):
+        if map.get_edge_between(loc, forward):
             actions.remove(Action.ActionCode.FORWARDS)
         
         # Test backward collision.
         backward = actor.BackwardLocation()
-        if tile.cell.boundary.get_edge_between(loc, backward):
+        if map.get_edge_between(loc, backward):
             actions.remove(Action.ActionCode.BACKWARDS)
+        
         return Action.ActionMaskFromSet(actions)
 
     @staticmethod
@@ -483,10 +488,9 @@ class GameEndpoint(object):
     
     def action_mask(self):
         """ Returns a mask of type np.ndarray filled with either 0 or -inf. Indicates which actions are currently valid. """
-        map_update, props, ts, instrs, actors, feedback = self._state()
-        if ts.turn != self.player_role():
+        if self.turn_state.turn != self.player_role():
             return Action.ActionMaskFromSet(set())
-        return Action.ActionMaskFromActor(self.player_actor, map_update)
+        return Action.ActionMaskFromActor(self.player_actor, self.map_update)
     
     def __enter__(self):
         return self

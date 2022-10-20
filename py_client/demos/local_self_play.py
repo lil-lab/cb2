@@ -93,10 +93,16 @@ def PlayGame(coordinator, i_uuid="", log_to_db: bool=True):
             logger.info(f"Leader step({leader_action})")
             map, cards, turn_state, instructions, actors, live_feedback = endpoint_pair.step(leader_action)
         else:
+            logger.info("=====================")
+            action_mask = endpoint_pair.follower().action_mask()
+            for action_code in Action.ActionCode:
+                if action_code.value >= len(action_mask):
+                    continue
+                if action_mask[action_code.value]:
+                    logger.info(f"Action {action_code} is available.")
             follower_action = follower_agent.get_action(map, cards, turn_state, instructions, actors, live_feedback)
             logger.info(f"Follower step({follower_action})")
             map, cards, turn_state, instructions, actors, live_feedback = endpoint_pair.step(follower_action)
-        # logger.info(f"Action mask: {endpoint_pair.leader().action_mask()}")
     logger.info(f"Game over. Score: {endpoint_pair.score()}, Duration: {endpoint_pair.duration().total_seconds()}")
     coordinator.Cleanup()
     return endpoint_pair.score(), endpoint_pair.duration().total_seconds()
@@ -110,7 +116,7 @@ def main(config_filepath="server/config/local-covers-config.yaml", instruction_u
     db_utils.ConnectToDatabase(config)
     scores = []
     durations = []
-    coordinator = LocalGameCoordinator(config, False, False)
+    coordinator = LocalGameCoordinator(config, render_leader=False, render_follower=False)
     for i in range(10):
         logger.info(f"========================== STARTING GAME {i} ==========================")
         score, duration = PlayGame(coordinator, instruction_uuid)

@@ -78,6 +78,23 @@ class MapUpdate(DataClassJSONMixin):
     metadata: MapMetadata = field(default_factory=MapMetadata)
     props: List[Prop] = None
 
+    def get_edge_between(self, hecs_a: HecsCoord, hecs_b: HecsCoord):
+        """ Returns the edge between the two given HECS coordinates.
+        
+        Assumes they are adjacent, else undefined behavior.
+
+        Returns true if there is an edge (obstacle) between the two coordinates.
+        """
+        tile_a = self.tile_at(hecs_a)
+        tile_b = self.tile_at(hecs_b)
+        # If either tile is off-map, return that there is an edge.
+        if tile_a is None or tile_b is None:
+            logger.info(f"NONE: {tile_a} {tile_b}")
+            return True
+        bound_a = tile_a.cell.boundary
+        bound_b = tile_b.cell.boundary
+        return bound_a.get_edge_between(hecs_a, hecs_b) or bound_b.get_edge_between(hecs_b, hecs_a)
+
     def tile_at(self, r, c):
         """ Returns the tile at the given row and column. """
         location = HecsCoord.from_offset(r, c)
