@@ -457,6 +457,7 @@ class State(object):
         if cards_changed:
             # We've changed cards, so we need to mark the map as stale for all players.
             self._prop_update = self._map_provider.prop_update()
+            self._prop_update = map_utils.CensorPropForFollower(self._prop_update, None)
             self._send_state_machine_info = True
             for actor_id in self._actors:
                 self._prop_stale[actor_id] = True
@@ -512,6 +513,7 @@ class State(object):
             self._prop_update = self._map_provider.prop_update()
             for actor_id in self._actors:
                 self._prop_stale[actor_id] = True
+            self._prop_update = map_utils.CensorPropForFollower(self._prop_update, None)
             end_of_turn = (next_role == Role.LEADER)
             moves_remaining = self.moves_per_turn(next_role)
             turn_end = datetime.utcnow() + State.turn_duration(next_role)
@@ -915,16 +917,11 @@ class State(object):
         if not self._prop_stale[actor_id]:
             return None
         
-        prop_update = self._prop_update
-
-        if self._actors[actor_id].role() == Role.FOLLOWER:
-            prop_update = map_utils.CensorPropForFollower(prop_update, self._actors[actor_id])
-        
         # Record the prop update to the database.
-        self._game_recorder.record_prop_update(prop_update)
+        self._game_recorder.record_prop_update(self._prop_update)
 
         self._prop_stale[actor_id] = False
-        return prop_update
+        return self._prop_update
         
     def _next_live_feedback(self, actor_id):
         if actor_id not in self._live_feedback:

@@ -436,14 +436,15 @@ def CensorMapForFollower(map_update, follower):
     map_update_clone = copy.deepcopy(map_update)
     return map_update_clone
 
-def CensorPropForFollower(prop_update, follower):
+def CensorPropForFollower(prop_update, follower = None):
     """ Censors information from a map that the follower isn't supposed to have.
+
+    Can optionally supply the follower to get more specific censorship, like only hiding nearby cards.
     """
     prop_update_clone = dataclasses.replace(prop_update)
     for i, _ in enumerate(prop_update_clone.props):
         if prop_update_clone.props[i].prop_type == prop.PropType.CARD:
             if prop_update_clone.props[i].prop_info.border_color == action.Color(1, 0, 0, 1):
-                logger.info("Censoring card for follower {}".format(follower))
                 prop_update_clone.props[i].prop_info.border_color = action.Color(0, 0, 1, 1)
             if not prop_update_clone.props[i].card_init.selected:
                 prop_update_clone.props[i].card_init.hidden = True

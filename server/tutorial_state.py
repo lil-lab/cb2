@@ -121,6 +121,10 @@ class TutorialGameState(object):
         elif (self._player_role == Role.FOLLOWER):
             dummy_character_id = self.create_actor(Role.LEADER, True)
             self._dummy_character = self._actors[dummy_character_id]
+        if (self._player_role == Role.LEADER):
+            self._prop_update = map_utils.CensorPropForFollower(self._prop_update, self._dummy_character)
+        else:
+            self._prop_update = map_utils.CensorMapForFollower(self._prop_update, None)
 
     def player_ids(self):
         return self._actors.keys()
