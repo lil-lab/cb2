@@ -241,6 +241,7 @@ class State(object):
         self._done = False
 
         self._current_set_invalid = self._map_provider.selected_cards_collide()
+        self._prop_update = map_utils.CensorPropForFollower(self._prop_update, None)
 
     @classmethod
     def turn_duration(self, role):
