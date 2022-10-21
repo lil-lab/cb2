@@ -1,7 +1,8 @@
 """ A set of general utilities that are used across the server. """
 
-import subprocess
 import pathlib
+import subprocess
+import time
 
 MAX_ID = 1000000
 
@@ -37,3 +38,33 @@ def GetCommitHash():
     """
     return subprocess.check_output(['git', 'rev-parse', 'HEAD'], 
             cwd=pathlib.Path(__file__).parent).decode('utf-8').strip()
+
+class CountDownTimer(object):
+    """ A timer used to track if a certain duration has elapsed.
+    
+        Pass in a duration in seconds. Call start() to start the timer.
+        Call expired() to check if the timer has expired.
+        clear() stops the timer, resetting all state. If the timer is not
+        started, expired() will return False.
+        
+    """
+    def __init__(self, duration_s: float):
+        self._duration_s = duration_s
+        self._end_time = None
+    
+    def start(self):
+        """ Starts the timer. Does nothing if the timer is already started """
+        if self._end_time is not None:
+            return
+        self._end_time = time.time() + self._duration_s
+    
+    def clear(self):
+        """ Stops the timer. Resets all state. """
+        self._end_time = None
+    
+    def expired(self):
+        """ Returns true if the timer has expired. """
+        if self._end_time is None:
+            return False
+        return time.time() > self._end_time
+    

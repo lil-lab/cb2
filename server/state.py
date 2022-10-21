@@ -11,13 +11,16 @@ from server.hex import HecsCoord
 from server.map_provider import MapProvider, MapType, CachedMapRetrieval
 from server.card import CardSelectAction, SetCompletionActions, Card
 from server.messages.turn_state import TurnState, GameOverMessage, TurnUpdate
-
 from server.game_recorder import GameRecorder
 from server.state_machine_driver import StateMachineDriver
+from server.util import CountDownTimer
+from server.schemas.base import GetDatabase
+from server.messages.state_sync import StateMachineTick
 
 import server.config.config as config
 import server.experience as experience
 import server.leaderboard as leaderboard
+import server.map_utils as map_utils
 import server.schemas.game as game_db
 import server.schemas.cards as cards_db
 import server.schemas.map as map_db
@@ -26,8 +29,6 @@ from collections import deque
 from datetime import datetime, timedelta
 from queue import Queue
 from typing import List
-
-from server.schemas.base import GetDatabase
 
 import asyncio
 import copy
@@ -38,14 +39,13 @@ import random
 import uuid
 import queue
 
-import server.map_utils as map_utils
-from server.messages.state_sync import StateMachineTick
-
 LEADER_MOVES_PER_TURN = 5
 FOLLOWER_MOVES_PER_TURN = 10
 
 LEADER_SECONDS_PER_TURN = 50
 FOLLOWER_SECONDS_PER_TURN = 15
+
+FOLLOWER_TURN_END_DELAY_SECONDS = 1
 
 logger = logging.getLogger(__name__)
 
@@ -210,6 +210,11 @@ class State(object):
         
         self._turn_state = None
 
+        # We need to add a delay to the end of the follower's turn. So instead of ending the 
+        # turn immediately, we start the follower turn delay timer. When the timer reachers 
+        self._follower_turn_end_timer = CountDownTimer(duration_s=FOLLOWER_TURN_END_DELAY_SECONDS)
+        self._follower_turn_end_reason = ""
+
         if use_preset_data:
             self._init_from_data(map, props, turn_state, instructions, actors, realtime_actions)
         else:
@@ -350,8 +355,13 @@ class State(object):
                     send_tick = True
 
         if self._turn_state.turn == Role.FOLLOWER and self._turn_state.moves_remaining <= 0:
-            self.update_turn(force_role_switch=True, end_reason="FollowerOutOfMoves")
-            send_tick = True
+            if self._realtime_actions:
+                # Start end-turn timer.
+                self._follower_turn_end_reason = "FollowerOutOfMoves"
+                self._follower_turn_end_timer.start()
+            else:
+                self.update_turn(force_role_switch=True, end_reason="FollowerOutOfMoves")
+                send_tick = True
         
         while len(self._turn_complete_queue) > 0:
             (id, reason) = self._turn_complete_queue.popleft()
@@ -376,7 +386,21 @@ class State(object):
 
         # If the follower currently has no instructions, end their turn.
         if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
-            self.update_turn(force_role_switch=True, end_reason="FollowerFinishedInstructions")
+            if self._realtime_actions:
+                # Start end-turn timer.
+                self._follower_turn_end_reason = "FollowerFinishedInstructions"
+                self._follower_turn_end_timer.start()
+                new_turn_state = dataclasses.replace(self._turn_state, moves_remaining=0)
+                self.send_turn_state(new_turn_state)
+                send_tick = True
+            else:
+                self.update_turn(force_role_switch=True, end_reason="FollowerFinishedInstructions")
+                send_tick = True
+        
+        if self._realtime_actions and self._follower_turn_end_timer.expired():
+            self._follower_turn_end_timer.clear()
+            self.update_turn(force_role_switch=True, end_reason=self._follower_turn_end_reason)
+            self._follower_turn_end_reason = ""
             send_tick = True
 
         selected_cards = list(self._map_provider.selected_cards())
