@@ -436,16 +436,33 @@ def CensorMapForFollower(map_update, follower):
     map_update_clone = copy.deepcopy(map_update)
     return map_update_clone
 
-def CensorPropForFollower(prop_update, follower = None):
-    """ Censors information from a map that the follower isn't supposed to have.
+def CensorCards(prop_update, follower = None):
+    """ Censors card information from a map that the follower isn't supposed to have.
 
     Can optionally supply the follower to get more specific censorship, like only hiding nearby cards.
     """
-    prop_update_clone = dataclasses.replace(prop_update)
-    for i, _ in enumerate(prop_update_clone.props):
-        if prop_update_clone.props[i].prop_type == prop.PropType.CARD:
-            if prop_update_clone.props[i].prop_info.border_color == action.Color(1, 0, 0, 1):
-                prop_update_clone.props[i].prop_info.border_color = action.Color(0, 0, 1, 1)
-            if not prop_update_clone.props[i].card_init.selected:
-                prop_update_clone.props[i].card_init.hidden = True
-    return prop_update_clone
+    props = []
+    for i, prop_item in enumerate(prop_update.props):
+        hidden = prop_item.card_init.hidden
+        if prop_item.prop_type == prop_item.prop_type.CARD:
+            if not prop_item.card_init.selected:
+                hidden = True
+        
+        new_card_init = dataclasses.replace(prop_item.card_init, hidden=hidden)
+        props.append(dataclasses.replace(prop_item, card_init=new_card_init))
+    return dataclasses.replace(prop_update, props=props)
+
+def CensorCardBorders(prop_update, follower = None):
+    """ Censors border information from a map that the follower isn't supposed to have.
+
+    Can optionally supply the follower to get more specific censorship, like only hiding nearby cards.
+    """
+    props = []
+    for i, prop in enumerate(prop_update.props):
+        border_color = prop.prop_info.border_color
+        if prop.prop_type == prop.prop_type.CARD:
+            if prop.prop_info.border_color == action.Color(1, 0, 0, 1):
+                border_color = action.Color(0, 0, 1, 1)
+        new_prop_info = dataclasses.replace(prop.prop_info, border_color=border_color)
+        props.append(dataclasses.replace(prop, prop_info=new_prop_info))
+    return dataclasses.replace(prop_update, props=props)
