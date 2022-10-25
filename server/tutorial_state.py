@@ -887,6 +887,7 @@ class TutorialGameState(object):
 
         if self._actors[actor_id].role() == Role.FOLLOWER:
             prop_update = map_utils.CensorCardBorders(prop_update, self._actors[actor_id])
+            prop_update = map_utils.CensorCards(prop_update, self._actors[actor_id])
         
         # Record the prop update to the database.
         prop_record = prop_db.PropUpdate()
