@@ -122,7 +122,7 @@ class TutorialGameState(object):
             dummy_character_id = self.create_actor(Role.LEADER, True)
             self._dummy_character = self._actors[dummy_character_id]
         if (self._player_role == Role.LEADER):
-            self._prop_update = map_utils.CensorPropForFollower(self._prop_update, self._dummy_character)
+            self._prop_update = map_utils.CensorCards(self._prop_update, self._dummy_character)
         else:
             self._prop_update = map_utils.CensorMapForFollower(self._prop_update, None)
 
@@ -886,7 +886,7 @@ class TutorialGameState(object):
         prop_update = self._prop_update
 
         if self._actors[actor_id].role() == Role.FOLLOWER:
-            prop_update = map_utils.CensorPropForFollower(prop_update, self._actors[actor_id])
+            prop_update = map_utils.CensorCardBorders(prop_update, self._actors[actor_id])
         
         # Record the prop update to the database.
         prop_record = prop_db.PropUpdate()

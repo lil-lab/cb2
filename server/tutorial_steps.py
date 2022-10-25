@@ -8,7 +8,7 @@ from enum import Enum
 TOOLTIP_X = 0.3
 TOOLTIP_Y = 0.3
 
-logger = logging.getLogger
+logger = logging.getLogger(__name__)
 
 LEADER_TUTORIAL_STEPS = [
     TutorialStep(
@@ -61,7 +61,7 @@ LEADER_TUTORIAL_STEPS = [
         None,
     ),
     TutorialStep(
-        [Indicator(HecsCoord(0, 2, 0)), Indicator(HecsCoord(1, 0, 1)), Indicator(HecsCoord(0, 3, 2))],
+        [Indicator(HecsCoord(0, 2, 0)), Indicator(HecsCoord(1, 0, 1)), Indicator(HecsCoord(1, 2, 1))],
         Tooltip("",
                 "First, let's plan to collect this set of three cards. Each color, shape, and count is unique, so this set will give us a point. (press \"shift\" to continue)",
                 TooltipType.UNTIL_DISMISSED),
