@@ -29,9 +29,18 @@ class EndpointPair(object):
             self._initial_state = self._follower.initial_state()
         self.turn = turn_state.turn
     
+    # Used to retrieve action masks for the leader and follower.
+    def leader_mask(self):
+        return self._leader.action_mask()
+
+    def follower_mask(self):
+        return self._follower.action_mask()
+
+
+    # Deprecated -- Gives low-level access to underlying endpoint objects.
     def leader(self):
         return self._leader
-    
+
     def follower(self):
         return self._follower
     
