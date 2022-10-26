@@ -94,10 +94,10 @@ Camera:
   field of view: 80.12116
   orthographic: 0
   orthographic size: 5
-  m_Depth: -1
+  m_Depth: 1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 247
+    m_Bits: 1271
   m_RenderingPath: 1
   m_TargetTexture: {fileID: 8400000, guid: 583879c6f9dcc44a3845724e7ef37549, type: 2}
   m_TargetDisplay: 0
@@ -247,7 +247,7 @@ Camera:
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 247
+    m_Bits: 1271
   m_RenderingPath: 1
   m_TargetTexture: {fileID: 8400000, guid: f4b017f0c79c84c15b37014040c8cc64, type: 2}
   m_TargetDisplay: 0

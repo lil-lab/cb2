@@ -129,7 +129,9 @@ public class CardBuilder
         Prop prop = new Prop(cardSlot, BaseAssetId(_count));
         prop.AddAction(Init.InitAt(_location, _rotationDegrees));
         GameObject outline = card.transform.Find("outline").gameObject;
+        GameObject followerOutline = card.transform.Find("follower_outline").gameObject;
         prop.SetOutline(outline);
+        prop.SetFollowerOutline(followerOutline);
         GameObject cover = card.transform.Find("cover").gameObject;
         if (_covered)
         {

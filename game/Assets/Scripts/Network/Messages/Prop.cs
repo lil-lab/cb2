@@ -11,6 +11,8 @@ namespace Network
         public bool collide;  // Whether actors can collide with the prop.
         public int border_radius;  // The radius of the prop's outline.
         public Network.Color border_color;
+        // What border color the follower sees.
+        public Network.Color border_color_follower;
     }
 
     [Serializable]

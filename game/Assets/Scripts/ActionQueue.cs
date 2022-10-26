@@ -35,6 +35,7 @@ public class ActionQueue
         public float Opacity;  // Used for UI element animations.
         public float DurationS;  // Duration in seconds.
         public DateTime Expiration;  // If the action delays past this deadline, fastforward to next action.
+        public Network.Color BorderColorFollowerPov;  // Color of the object's outline, if applicable.
     };
 
     // A kind of action (walk, skip, jump). This is distinctly different from 

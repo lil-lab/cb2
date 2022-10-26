@@ -3,7 +3,9 @@ using UnityEngine;
 
 public class Outline : ActionQueue.IAction
 {
-    public static Outline Select(float radius, Network.Color borderColor, float durationS)
+    private static string TAG = "Outline";
+    private Logger _logger;
+    public static Outline Select(float radius, Network.Color borderColor, float durationS, Network.Color borderColorFollowerPov)
     {
         return new Outline(
             new ActionQueue.ActionInfo()
@@ -15,6 +17,7 @@ public class Outline : ActionQueue.IAction
                 BorderColor = borderColor,
                 DurationS = durationS,
                 Expiration = DateTime.Now.AddSeconds(10),
+                BorderColorFollowerPov = borderColorFollowerPov,
             }
         );
     }
@@ -30,6 +33,7 @@ public class Outline : ActionQueue.IAction
                 BorderColor = Network.Color.Blue,
                 DurationS = durationS,
                 Expiration = DateTime.Now.AddSeconds(10),
+                BorderColorFollowerPov = Network.Color.Blue,
             }
         );
     }
@@ -46,6 +50,7 @@ public class Outline : ActionQueue.IAction
                 BorderColor = Network.Color.Blue,
                 DurationS = durationS,
                 Expiration = DateTime.Now.AddSeconds(10),
+                BorderColorFollowerPov = Network.Color.Blue,
             }
         );
     }
@@ -55,6 +60,7 @@ public class Outline : ActionQueue.IAction
     public Outline(ActionQueue.ActionInfo info)
     {
         _info = info;
+        _logger = Logger.GetOrCreateTrackedLogger(TAG);
     }
 
     public float DurationS() { return _info.DurationS; }
@@ -72,6 +78,7 @@ public class Outline : ActionQueue.IAction
         interp.HeadingDegrees = initialConditions.HeadingDegrees;
         interp.BorderRadius = Mathf.Lerp(initialConditions.BorderRadius, end.BorderRadius, progress);
         interp.BorderColor = _info.BorderColor;  // Never interpolate colors.
+        interp.BorderColorFollowerPov = _info.BorderColorFollowerPov;  // Never interpolate colors.
         interp.Animation = _info.Type;
         return interp;
     }
@@ -80,6 +87,7 @@ public class Outline : ActionQueue.IAction
     {
         s.BorderRadius = _info.BorderRadius;
         s.BorderColor = _info.BorderColor;
+        s.BorderColorFollowerPov = _info.BorderColorFollowerPov;
         return s;
     }
 
@@ -97,6 +105,7 @@ public class Outline : ActionQueue.IAction
             border_color = _info.BorderColor,
             opacity = _info.Opacity,
             expiration = _info.Expiration.ToString("o"),
+            border_color_follower_pov = _info.BorderColorFollowerPov,
         };
     }
 }

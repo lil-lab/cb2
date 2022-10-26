@@ -409,6 +409,7 @@ class TutorialGameState(object):
         if cards_changed:
             # We've changed cards, so we need to mark the map as stale for all players.
             self._prop_update = self._map_provider.prop_update()
+            self._prop_update = map_utils.CensorCards(self._prop_update, self._actors[actor_id])
             for actor_id in self._actors:
                 self._prop_stale[actor_id] = True
 
@@ -828,9 +829,6 @@ class TutorialGameState(object):
             return []
         action_history = self._action_history[actor_id]
 
-        if actor.role() == Role.FOLLOWER:
-            action_history = [CensorActionForFollower(action, actor) for action in action_history]
-
         # Log actions sent to client.
         for action in action_history:
             self._sent_log.info(f"to: {actor_id} action: {action}")
@@ -884,10 +882,6 @@ class TutorialGameState(object):
             return None
         
         prop_update = self._prop_update
-
-        if self._actors[actor_id].role() == Role.FOLLOWER:
-            prop_update = map_utils.CensorCardBorders(prop_update, self._actors[actor_id])
-            prop_update = map_utils.CensorCards(prop_update, self._actors[actor_id])
         
         # Record the prop update to the database.
         prop_record = prop_db.PropUpdate()

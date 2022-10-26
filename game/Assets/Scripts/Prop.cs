@@ -7,6 +7,8 @@ public class Prop
     private GameObject _asset;
     private IAssetSource.AssetId _assetId;
 
+    private State.Continuous _lastState;
+
     private float _walkSpeed = 1.0f;
 
     // If set (see SetOutline()), contains a reference to the outline geometry for this prop.
@@ -17,6 +19,8 @@ public class Prop
     private GameObject _cover;
 
     private Logger _logger;
+
+    GameObject _followerPovOutline;
 
     public static Prop FromNetwork(Network.Prop netProp)
     {
@@ -66,6 +70,16 @@ public class Prop
     public void SetOutline(GameObject outline)
     {
         _outline = outline;
+        int LayerLeaderOutlines = LayerMask.NameToLayer("leader_outlines");
+        _outline.layer = LayerLeaderOutlines;
+    }
+
+    public void SetFollowerOutline(GameObject outline) 
+    {
+        // Make a clone of this outline geometry for the follower camera.
+        _followerPovOutline = outline;
+        int LayerFollowerOutlines = LayerMask.NameToLayer("follower_outlines");
+        _followerPovOutline.layer = LayerFollowerOutlines;
     }
 
     public void SetCover(GameObject cover)
@@ -125,24 +139,33 @@ public class Prop
         if (IsDestroyed()) return;
 
         State.Continuous state = _actionQueue.ContinuousState();
+        _lastState = state;
         // Update current location, orientation, and animation based on action queue.
         _asset.transform.position = Scale() * state.Position;
         _asset.transform.rotation = Quaternion.AngleAxis(state.HeadingDegrees, new Vector3(0, 1, 0));
 
         // If the object has an outline geometry, conditionally scale and draw it.
-        if (_outline != null)
-        {
+        if (_outline != null) {
             MeshRenderer renderer = _outline.GetComponent<MeshRenderer>();
+            MeshRenderer followerRenderer = _followerPovOutline.GetComponent<MeshRenderer>();
             if (renderer != null)
             {
-                renderer.enabled = state.BorderRadius > 0;
-                float z_scale = 1.0f + (state.BorderRadius / 100);
-                float x_scale = 1.0f + (2.0f * state.BorderRadius / 100);
+                renderer.enabled = _lastState.BorderRadius > 0;
+                followerRenderer.enabled = _lastState.BorderRadius > 0;
+                float z_scale = 1.0f + (_lastState.BorderRadius / 100);
+                float x_scale = 1.0f + (2.0f * _lastState.BorderRadius / 100);
                 float height = _outline.transform.localScale.y;
                 _outline.transform.localScale = new Vector3(x_scale, height, z_scale);
-                Color borderColor = (state.BorderColor != null) ? state.BorderColor.ToUnity() : Color.magenta;
+                _followerPovOutline.transform.localScale = new Vector3(x_scale, _followerPovOutline.transform.localScale.y, z_scale);
+                Color borderColor = (_lastState.BorderColor != null) ? _lastState.BorderColor.ToUnity() : Color.magenta;
+                Color followerBorderColor = (_lastState.BorderColorFollowerPov != null) ? _lastState.BorderColorFollowerPov.ToUnity() : Color.magenta;
+                if ((followerBorderColor.r > 0) && (followerBorderColor.b < 1)) {
+                    _logger.Error("Follower border color is not blue: " + _lastState.BorderColorFollowerPov);
+                }
                 renderer.material.SetColor("_Color", borderColor);
                 renderer.material.SetColor("_EmissionColor", borderColor);
+                followerRenderer.material.SetColor("_Color", followerBorderColor);
+                followerRenderer.material.SetColor("_EmissionColor", followerBorderColor);
             }
         }
 

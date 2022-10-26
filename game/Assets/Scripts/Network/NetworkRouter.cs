@@ -155,7 +155,8 @@ namespace Network
                             netProp.id,
                             Outline.Select(netProp.prop_info.border_radius,
                                            netProp.prop_info.border_color,
-                                           0.1f));
+                                           0.1f,
+                                           netProp.prop_info.border_color_follower));
                     }
                     continue;
                 }
@@ -349,6 +350,7 @@ namespace Network
                 BorderRadius = networkAction.border_radius,
                 BorderColor = networkAction.border_color,
                 Expiration = expiration,
+                BorderColorFollowerPov = networkAction.border_color_follower_pov,
             };
             ActionQueue.IAction action;
             switch (networkAction.action_type)

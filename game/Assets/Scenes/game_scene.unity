@@ -2010,6 +2010,10 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 6140040725572061401, guid: 9f705b6f894394c128168ee780869b7d, type: 3}
+      propertyPath: m_CullingMask.m_Bits
+      value: 2487
+      objectReference: {fileID: 0}
     - target: {fileID: 6140040725572061402, guid: 9f705b6f894394c128168ee780869b7d, type: 3}
       propertyPath: m_RootOrder
       value: 12
@@ -2973,6 +2977,10 @@ PrefabInstance:
     - target: {fileID: 8953867425919117917, guid: ab5396ebe8af642868fde7b5e496839a, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8953867425919117918, guid: ab5396ebe8af642868fde7b5e496839a, type: 3}
+      propertyPath: m_CullingMask.m_Bits
+      value: 2487
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ab5396ebe8af642868fde7b5e496839a, type: 3}

@@ -864,9 +864,6 @@ class State(object):
         if len(action_history) == 0:
             return []
 
-        if actor.role() == Role.FOLLOWER:
-            action_history = [CensorActionForFollower(action, actor) for action in action_history]
-
         # Log actions sent to client.
         self._action_history[actor_id] = []
         return action_history
@@ -920,8 +917,6 @@ class State(object):
             return None
         
         prop_update = self._prop_update
-        if self._actors[actor_id].role() == Role.FOLLOWER:
-            prop_update = map_utils.CensorCardBorders(self._prop_update, self._actors[actor_id])
         
         # Record the prop update to the database.
         self._game_recorder.record_prop_update(prop_update)

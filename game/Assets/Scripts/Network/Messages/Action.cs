@@ -57,6 +57,11 @@ namespace Network
             return new UnityEngine.Color(r, g, b, a);
         }
 
+        public override string ToString()
+        {
+            return string.Format("({0}, {1}, {2}, {3})", r, g, b, a);
+        }
+
         // RGBA. Floating point. 0 to 1.
         public float r;
         public float g;
@@ -77,5 +82,6 @@ namespace Network
         public float opacity;  // Used to animate some UI elements.
         public float duration_s;
         public string expiration;  // DateTime in ISO 8601.
+        public Color border_color_follower_pov;  // Outline color from follower's POV.
     }
 }  // namespace Network

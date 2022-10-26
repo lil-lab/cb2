@@ -440,6 +440,11 @@ def CensorCards(prop_update, follower = None):
     """ Censors card information from a map that the follower isn't supposed to have.
 
     Can optionally supply the follower to get more specific censorship, like only hiding nearby cards.
+
+    Since this just marks card_init.hidden = True, it doesn't actually remove
+    information -- just lets clients know that they shouldn't show this to the
+    follower. This is useful for the leader client, which needs to render a
+    follower viewpoint, so the leader can see the follower POV.
     """
     props = []
     for i, prop_item in enumerate(prop_update.props):
@@ -450,19 +455,4 @@ def CensorCards(prop_update, follower = None):
         
         new_card_init = dataclasses.replace(prop_item.card_init, hidden=hidden)
         props.append(dataclasses.replace(prop_item, card_init=new_card_init))
-    return dataclasses.replace(prop_update, props=props)
-
-def CensorCardBorders(prop_update, follower = None):
-    """ Censors border information from a map that the follower isn't supposed to have.
-
-    Can optionally supply the follower to get more specific censorship, like only hiding nearby cards.
-    """
-    props = []
-    for i, prop in enumerate(prop_update.props):
-        border_color = prop.prop_info.border_color
-        if prop.prop_type == prop.prop_type.CARD:
-            if prop.prop_info.border_color == action.Color(1, 0, 0, 1):
-                border_color = action.Color(0, 0, 1, 1)
-        new_prop_info = dataclasses.replace(prop.prop_info, border_color=border_color)
-        props.append(dataclasses.replace(prop, prop_info=new_prop_info))
     return dataclasses.replace(prop_update, props=props)

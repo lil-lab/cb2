@@ -67,17 +67,27 @@ def CardBlink(card_id, number_blinks, duration_s, color):
     blink_duration_on = blink_duration * blink_duty_cycle
     blink_duration_off = blink_duration - blink_duration_on
     return (number_blinks * [
-        CardSelectAction(card_id, True, color, blink_duration_on),
-        CardSelectAction(card_id, False, color, blink_duration_off),
+        CardSelectAction(card_id, True, color, blink_duration_on, action.Color(0, 1, 0, 1)),
+        CardSelectAction(card_id, False, color, blink_duration_off, action.Color(0, 1, 0, 1)),
     ])
 
-def CardSelectAction(card_id, selected, color=action.Color(0, 0, 1, 1), duration_s=0.2):
+def CardSelectAction(card_id, selected, color=action.Color(0, 0, 1, 1), duration_s=0.2, follower_border_color=action.Color(0, 0, 1, 1)):
     NYC = tz.gettz('America/New_York')
     action_type = ActionType.OUTLINE
     radius = OUTLINE_RADIUS if selected else 0
     expiration = datetime.datetime.now(NYC) + datetime.timedelta(seconds=10)
-    return Action(card_id, action_type, AnimationType.NONE, HecsCoord(0, 0, 0),
-                  0, radius, color, duration_s, expiration)
+    return Action(
+        card_id,
+        action_type,
+        AnimationType.NONE,
+        HecsCoord(0, 0, 0),
+        0,
+        radius,
+        color,
+        duration_s,
+        expiration,
+        # Default follower POV border color to blue.
+        follower_border_color)
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
@@ -120,7 +130,13 @@ class Card:
                         self.id,
                         prop.PropType.CARD,
                         prop.GenericPropInfo(
-                            self.location, self.rotation_degrees, False, OUTLINE_RADIUS, self.border_color),
+                            self.location,
+                            self.rotation_degrees,
+                            False,
+                            OUTLINE_RADIUS,
+                            self.border_color,
+                            # Always set follower POV border colors to blue.
+                            action.Color(0, 0, 1, 1)),
                         prop.CardConfig(
                             self.color,
                             self.shape,

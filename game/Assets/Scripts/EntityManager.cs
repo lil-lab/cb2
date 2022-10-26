@@ -16,6 +16,14 @@ public class EntityManager : MonoBehaviour
         _logger = Logger.GetOrCreateTrackedLogger(TAG);
     }
 
+    public static EntityManager TaggedInstance()
+    {
+        GameObject obj = GameObject.FindGameObjectWithTag(EntityManager.TAG);
+        if (obj == null)
+            return null;
+        return obj.GetComponent<EntityManager>();
+    }
+
     private Dictionary<int, Actor> _actors;
     private Dictionary<int, Prop> _props;
     private List<Prop> _graveyard;
@@ -35,6 +43,11 @@ public class EntityManager : MonoBehaviour
     public int NumberOfProps()
     {
         return _props.Count;
+    }
+
+    public List<Prop> Props()
+    {
+        return _props.Values.ToList();
     }
 
     public void AddAction(int id, ActionQueue.IAction action)

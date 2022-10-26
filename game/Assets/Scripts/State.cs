@@ -11,6 +11,7 @@ namespace State
 		public Network.Color BorderColor;
         public float Opacity;
 		public ActionQueue.AnimationType Animation;
+        public Network.Color BorderColorFollowerPov;
     }
 
 	[Serializable]
@@ -25,6 +26,7 @@ namespace State
 		// If true, the asset should be removed from the world. Used to queue up
 		// deallocation after an animation has occured.
 		public bool EndOfLife;
+        public Network.Color BorderColorFollowerPov;
 
 	    public Vector3 Vector()
 	    { 
@@ -43,6 +45,7 @@ namespace State
 				HeadingDegrees = HeadingDegrees,
 				BorderRadius = BorderRadius,
 				BorderColor = BorderColor,
+				BorderColorFollowerPov = BorderColorFollowerPov,
                 Opacity = Opacity,
 				Animation = ActionQueue.AnimationType.IDLE,
 			};

@@ -8,6 +8,7 @@ from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime, timedelta
 from mashumaro.mixins.json import DataClassJSONMixin
 from marshmallow import fields
+from typing import Optional
 
 import dateutil.parser
 import logging
@@ -68,6 +69,7 @@ class Action(DataClassJSONMixin):
     expiration: datetime = field(
         metadata={"deserialize": "pendulum", "serialize": pass_through}
     )
+    border_color_follower_pov: Optional[Color] # From follover's point of view.
 
 def Delay(id, duration):
     NYC = tz.gettz('America/New_York')

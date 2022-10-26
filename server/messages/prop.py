@@ -26,6 +26,7 @@ class GenericPropInfo(DataClassJSONMixin):
     collide: bool
     border_radius: int
     border_color: action.Color = action.Color(0, 0, 1, 1)
+    border_color_follower: action.Color = action.Color(0, 0, 1, 1)
 
 
 @dataclass
