@@ -65,7 +65,7 @@ from datetime import datetime, timezone, timedelta
 routes = web.RouteTableDef()
 
 # Lobby names.
-MTURK_LOBBY = "mturk_lobby"
+MTURK_LOBBY = "mturk-lobby"
 DEFAULT_LOBBY = "default"
 BOT_SANDBOX = "bot-sandbox"
 
@@ -984,12 +984,6 @@ def main(config_filepath="server/config/server-config.yaml"):
         (DEFAULT_LOBBY, LobbyType.OPEN),
         (BOT_SANDBOX, LobbyType.OPEN),
     ])
-
-    a = GetLobby(MTURK_LOBBY)
-    b = GetLobby(DEFAULT_LOBBY)
-    assert hash(a) is not hash(b), "AHH INITIALIZATION ERR"
-    logger.info(f"hash of mturk lobby: {hash(a)}")
-    logger.info(f"hash of default lobby: {hash(b)}")
 
     logger.info(f"Config file parsed.");
     logger.info(f"data prefix: {GlobalConfig().data_prefix}")
