@@ -9,6 +9,7 @@ import asyncio
 import logging
 import pathlib
 import pygame
+import sys
 import time
 import uuid
 
@@ -102,11 +103,17 @@ class LocalGameCoordinator(object):
         self._render_follower = render_follower
         self._config = config
     
-    def CreateGame(self, log_to_db: bool = True):
+    def CreateGame(self, log_to_db: bool = True, realtime_actions = False):
         """ Creates a new game. Exactly two agents can join this game with JoinGame(). 
 
             Returns the game name.
         """
+        if realtime_actions and 'unittest' not in sys.modules:
+            logger.warn(' '.join([
+                "Warning, realtime actions are intended for unit tests.",
+                "Enabling them in self-play will cause the game to run very",
+                "slowly as the state machine waits for each animation to",
+                "complete."]))
         game_name = self._unique_game_name()
         if game_name in self._game_drivers:
             raise Exception(f"Game name {game_name} already exists. This should never happen.")

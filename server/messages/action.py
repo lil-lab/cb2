@@ -69,7 +69,7 @@ class Action(DataClassJSONMixin):
     expiration: datetime = field(
         metadata={"deserialize": "pendulum", "serialize": pass_through}
     )
-    border_color_follower_pov: Optional[Color] # From follover's point of view.
+    border_color_follower_pov: Optional[Color] = None # From follover's point of view.
 
 def Delay(id, duration):
     NYC = tz.gettz('America/New_York')

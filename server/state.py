@@ -311,14 +311,17 @@ class State(object):
         # Have we received an instruction since the last iteration?
         if self._instruction_added:
             self._instruction_added = False
+            logger.debug(f"New instruction added.")
             send_tick = True
         
         if self._actors_added:
             self._actors_added = False
+            logger.debug(f"New actors added.")
             send_tick = True
 
         if datetime.utcnow() >= self._turn_state.turn_end:
             self.update_turn()
+            logger.debug(f"Turn timed out.")
             send_tick = True
 
         # Handle actor actions.
@@ -331,6 +334,7 @@ class State(object):
                     self.desync(actor_id)
                     logger.debug(
                         f"Actor {actor_id} is not the current role. Dropping pending action.")
+                    logger.debug(f"action out of turn tick.")
                     send_tick = True
                     continue
                 if self._turn_state.moves_remaining == 0:
@@ -338,12 +342,14 @@ class State(object):
                     self.desync(actor_id)
                     logger.debug(
                         f"Actor {actor_id} is out of moves. Dropping pending action.")
+                    logger.debug(f"actor out of moves but sent action tick.")
                     send_tick = True
                     continue
 
                 if not self.valid_action(actor_id, proposed_action):
                     actor.drop()
                     self.desync(actor_id)
+                    logger.debug(f"actor invalid action tick.")
                     send_tick = True
                     continue
                 
@@ -354,6 +360,7 @@ class State(object):
                     color = Color(0, 0, 1, 1) if not self._current_set_invalid else Color(1, 0, 0, 1)
                     self.check_for_stepped_on_cards(actor_id, proposed_action, color)
                     self.update_turn()
+                    logger.debug(f"Action occured tick.")
                     send_tick = True
 
         if self._turn_state.turn == Role.FOLLOWER and self._turn_state.moves_remaining <= 0:
@@ -363,6 +370,7 @@ class State(object):
                 self._follower_turn_end_timer.start()
             else:
                 self.update_turn(force_role_switch=True, end_reason="FollowerOutOfMoves")
+                logger.debug(f"follower out of moves tick.")
                 send_tick = True
         
         while len(self._turn_complete_queue) > 0:
@@ -372,18 +380,21 @@ class State(object):
             actor = self._actors[id]
             if actor.role() == self._turn_state.turn:
                 self.update_turn(force_role_switch=True, end_reason=reason)
+                logger.debug(f"turn ended tick.")
                 send_tick = True
                 continue
             # The leader can end the follower's turn via an interruption
             if actor.role() == Role.LEADER and reason == "UserPromptedInterruption":
                 self.cancel_pending_instructions()
                 self.update_turn(force_role_switch=True, end_reason=reason)
+                logger.debug(f"interruption tick.")
                 send_tick = True
                 continue
         
         while len(self._instruction_complete_queue) > 0:
             (id, objective_complete) = self._instruction_complete_queue.popleft()
             self._handle_instruction_complete(id, objective_complete)
+            logger.debug(f"instruction complete tick.")
             send_tick = True
 
         # If the follower currently has no instructions, end their turn.
@@ -394,15 +405,16 @@ class State(object):
                 self._follower_turn_end_timer.start()
                 new_turn_state = dataclasses.replace(self._turn_state, moves_remaining=0)
                 self.send_turn_state(new_turn_state)
-                send_tick = True
             else:
                 self.update_turn(force_role_switch=True, end_reason="FollowerFinishedInstructions")
+                logger.debug(f"No realtime actions follower turn ended.")
                 send_tick = True
         
         if self._realtime_actions and self._follower_turn_end_timer.expired():
             self._follower_turn_end_timer.clear()
             self.update_turn(force_role_switch=True, end_reason=self._follower_turn_end_reason)
             self._follower_turn_end_reason = ""
+            logger.debug(f"Follower Turn Ended.")
             send_tick = True
 
         selected_cards = list(self._map_provider.selected_cards())
@@ -476,14 +488,39 @@ class State(object):
             self.send_turn_state(game_over_message)
             self.end_game()
             return
-
         
         # If any state transitions occured which prompt a tick, send one.
         if send_tick:
             self._iter = (self._iter + 1) % 2**32
+            logger.debug(f"============================================== Sending tick {self._iter}")
             tick_message = StateMachineTick(iter=self._iter)
             for id in self._actors:
                 self._ticks[id] = tick_message
+    
+    def tick_count(self):
+        """ State machine event tick count.
+        
+        The state machine keeps a counter which gets incremented whenever an
+        in-game event occurs. Events which are casually linked (E.x.  a card is
+        selected, completing a set, which causes the score to increase) should
+        occur in the same tick. This can be used as a time-independent and
+        deterministic (almost) ordering of events in the game.
+
+        Limits to determinism:
+        If some events happen during the same state machine poll period, they
+        will get put into the same tick. The poll period is roughly 2ms (though
+        you should measure this directly, as it will change depending on server
+        resources availability and CB2 software version). Since arrival time of
+        events depends on the timing of external factors (network messages,
+        etc), it results in slightly
+        nondeterministic behavior.  For example, an actor joining usually gets
+        its own tick, but if two actors join simultaneously (within ~2ms) they
+        will both happen on the same tick. This means that the tick count can't
+        always be relied upon to be deterministically the same, given the same
+        events occuring (unless those events themselves are deterministic, like
+        in unit tests or local self play with non-random agents).
+        """
+        return self._iter
 
     def on_game_over(self):
         self._game_recorder.record_game_over()
