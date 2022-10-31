@@ -13,7 +13,6 @@ profile = "black"
 
 [tool.autoflake]
 remove-all-unused-imports=true
-remove-unused-variables=true
 remove-duplicate-keys=true
 
 [tool.black]

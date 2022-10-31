@@ -165,11 +165,6 @@ def CensorFollowerProps(props, follower_actor, config):
         follower_actor: The follower actor. Used to find the actor's location & heading.
         config: The game configuration. Used to determine follower visibility.
     """
-    config.fog_end / UNITY_COORDINATES_SCALE
-    # There's something wrong with orientation... I have to put - 60 everywhere
-    # Actor.heading_degrees() (actor.py) is used.
-    follower_actor.heading_degrees() - 60
-
     new_props = []
     for prop in props:
         if CoordinateIsVisible(prop.prop_info.location, follower_actor, config):
@@ -188,11 +183,6 @@ def CensorActors(actors, follower_actor, config):
         follower_actor: The follower actor. Used to find the actor's location & heading.
         config: The game configuration. Used to determine follower visibility.
     """
-    config.fog_end / UNITY_COORDINATES_SCALE
-    # There's something wrong with orientation... I have to put - 60 everywhere
-    # Actor.heading_degrees() (actor.py) is used.
-    follower_actor.heading_degrees() - 60
-
     new_actors = []
     for actor in actors:
         if CoordinateIsVisible(actor.location(), follower_actor, config):
