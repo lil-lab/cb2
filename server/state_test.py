@@ -18,7 +18,7 @@ class RandomRealtimeLocalSelfPlayTest(unittest.TestCase):
     Uses the pyclient local self-play API. 
     """
     def setUp(self):
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging.INFO)
         self.config = Config(
             card_covers = True,
             comment = "State Machine Unit Test Config",
@@ -86,7 +86,7 @@ class RandomRealtimeLocalSelfPlayTest(unittest.TestCase):
         # 19         | Leader sends instruction.
         # 20         | Leader ends turn.
         # 21         | Follower completes instruction.
-        self.assertEquals(self.coordinator._state_machine_driver(self.game_name).state_machine().tick_count(), 21, 'Game should have ended after 21 ticks.')
+        self.assertEqual(self.coordinator._state_machine_driver(self.game_name).state_machine().tick_count(), 21, 'Game should have ended after 21 ticks.')
 
 if __name__ == "__main__":
     unittest.main()

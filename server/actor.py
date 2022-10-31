@@ -1,15 +1,15 @@
 
-from .assets import AssetId
-from .messages.action import Action, Color, ActionType, Walk, Turn
-from .messages.rooms import Role
-from .messages import message_from_server
-from .messages import message_to_server
-from .messages import objective, state_sync
-from .hex import HecsCoord
-from .map_provider import MapProvider, MapType
-from .card import CardSelectAction
-from .util import IdAssigner
-from .messages.turn_state import TurnState, GameOverMessage, TurnUpdate
+from server.assets import AssetId
+from server.messages.action import Action, Color, ActionType, Walk, Turn
+from server.messages.rooms import Role
+from server.messages import message_from_server
+from server.messages import message_to_server
+from server.messages import objective, state_sync
+from server.hex import HecsCoord
+from server.map_provider import MapProvider, MapType
+from server.card import CardSelectAction
+from server.util import IdAssigner
+from server.messages.turn_state import TurnState, GameOverMessage, TurnUpdate
 
 import aiohttp
 import asyncio
