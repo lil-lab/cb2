@@ -7,6 +7,7 @@ Cereal Bar V2
     - [Cloning the repository.](#cloning-the-repository)
     - [Download Submodules](#download-submodules)
     - [Python Dependencies](#python-dependencies)
+    - [Pre-commit hooks.](#pre-commit-hooks)
     - [Server](#server)
     - [Client](#client)
     - [Deploying the server to a new machine.](#deploying-the-server-to-a-new-machine)
@@ -57,8 +58,21 @@ Dependencies can be installed with:
 
 ```python3 -m pip install -r requirements.txt```
 
+### Pre-commit hooks.
 
-### Server 
+Install pre-commit hooks with
+
+```pre-commit install```
+
+If you don't have pre-commit already, you can get it by refreshing dependencies.
+
+```python3 -m pip install -r requirements.txt```
+
+On every commit, your commit will be blocked if any of the hooks defined in `.pre-commit-config.yaml` fail.
+
+Hooks only run on files that you touch, so if you touch a new file with linter errors, you may inherit some legacy linter rrors. Don't have the time? Need to just commit? Try `git commit --no-verify`.
+
+### Server
 
 Launch the server on your desktop with:
 
@@ -80,7 +94,7 @@ The client is a Unity project developed using Unity `Version 2020.3.25f1`. This 
 
 The script `deploy/deploy.sh` should take care of everything. This installs a
 SystemD Daemon which handles the CB2 server. See `deploy/systemd/README.md` for
-more. 
+more.
 
 ### Client API.
 

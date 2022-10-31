@@ -1,38 +1,44 @@
-
-from server.config.config import Config
-from server.state import State
-from server.messages.rooms import Role
-from py_client.endpoint_pair import EndpointPair
-from py_client.game_endpoint import Action
-from py_client.local_game_coordinator import LocalGameCoordinator
-
+"""Unit tests for state machine code."""
 import logging
 import unittest
 
+from py_client.endpoint_pair import EndpointPair
+from py_client.game_endpoint import Action
+from py_client.local_game_coordinator import LocalGameCoordinator
+from server.config.config import Config
+from server.messages.rooms import Role
+
 logger = logging.getLogger(__name__)
 
-# Ideas for future: Make a test that starts from pre-defined point. Make test that uses realtime animations instead of instant play (local self play disables waiting for action animations in state machine).
+# Ideas for future: Make a test that starts from pre-defined point in game. Make
+# test that uses realtime animations instead of instant play (local self play
+# disables waiting for action animations in state machine).
 class RandomRealtimeLocalSelfPlayTest(unittest.TestCase):
-    """ Runs integration tests on the state machine.
-    
-    Uses the pyclient local self-play API. 
+    """Runs integration tests on the state machine.
+
+    Uses the pyclient local self-play API.
     """
+
     def setUp(self):
         logging.basicConfig(level=logging.INFO)
         self.config = Config(
-            card_covers = True,
-            comment = "State Machine Unit Test Config",
+            card_covers=True,
+            comment="State Machine Unit Test Config",
             live_feedback_enabled=True,
         )
         self.coordinator = LocalGameCoordinator(self.config)
-        self.game_name = self.coordinator.CreateGame(log_to_db=False, realtime_actions=True)
+        self.game_name = self.coordinator.CreateGame(
+            log_to_db=False, realtime_actions=True
+        )
         self.endpoint_pair = EndpointPair(self.coordinator, self.game_name)
 
     def test_short_game(self):
-        """ Tests the shortest possible game -- each turn, the leader and follower end their turn as quickly as possible. """
+        """Tests the shortest possible game.
+
+        each turn, the leader and follower end their turn as quickly as possible."""
         self.endpoint_pair.initialize()
         self.coordinator.StepGame(self.game_name)
-        map, cards, turn_state, instructions, actors, live_feedback = self.endpoint_pair.initial_state()
+        _, _, turn_state, instructions, _, _ = self.endpoint_pair.initial_state()
         while not self.endpoint_pair.over():
             if turn_state.turn == Role.LEADER:
                 # If there's an active instruction, end turn.
@@ -42,7 +48,7 @@ class RandomRealtimeLocalSelfPlayTest(unittest.TestCase):
                         action = Action.EndTurn()
                 if action is None:
                     action = Action.SendInstruction("TEST")
-                map, cards, turn_state, instructions, actors, live_feedback = self.endpoint_pair.step(action)
+                _, _, turn_state, instructions, _, _ = self.endpoint_pair.step(action)
             else:
                 instruction_uuid = None
                 for instruction in instructions:
@@ -52,7 +58,9 @@ class RandomRealtimeLocalSelfPlayTest(unittest.TestCase):
                 # The follower should never not have an instruction.
                 self.assertIsNotNone(instruction_uuid)
                 follower_action = Action.InstructionDone(instruction_uuid)
-                map, cards, turn_state, instructions, actors, live_feedback = self.endpoint_pair.step(follower_action)
+                _, _, turn_state, instructions, _, _ = self.endpoint_pair.step(
+                    follower_action
+                )
         logger.info(f"Game over. Leader score: {turn_state.score}")
         # Expected tick count...
         # Tick Count | Reason
@@ -86,7 +94,12 @@ class RandomRealtimeLocalSelfPlayTest(unittest.TestCase):
         # 19         | Leader sends instruction.
         # 20         | Leader ends turn.
         # 21         | Follower completes instruction.
-        self.assertEqual(self.coordinator._state_machine_driver(self.game_name).state_machine().tick_count(), 21, 'Game should have ended after 21 ticks.')
+        self.assertEqual(
+            self.coordinator.TickCount(self.game_name),
+            21,
+            "Game should have ended after 21 ticks.",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

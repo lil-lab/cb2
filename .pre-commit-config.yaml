@@ -1,0 +1,47 @@
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v2.3.0
+  hooks:
+  -   id: check-yaml
+  -   id: end-of-file-fixer
+  -   id: trailing-whitespace
+- repo: https://github.com/psf/black
+  rev: 22.10.0
+  hooks:
+  -   id: black
+- repo: https://github.com/PyCQA/autoflake
+  rev: v1.7.7
+  hooks:
+  -   id: autoflake
+# - repo: https://github.com/crate-ci/typos
+#   rev: v1.12.12
+#   hooks:
+#     - id: typos
+- repo: https://github.com/pycqa/isort
+  rev: 5.5.2
+  hooks:
+    - id: isort
+- repo: local
+  hooks:
+    - id: pylint
+      name: pylint
+      entry: pylint
+      language: system
+      types: [python]
+      args:
+        [
+          "-rn", # Only display messages
+          "-sn", # Don't display the score
+          "--rcfile=pylintrc", # Link to your config file
+          "--load-plugins=pylint.extensions.docparams", # Load an extension
+        ]
+- repo: local
+  hooks:
+    - id: unittests
+      name: run unit tests
+      entry: python -m unittest
+      language: system
+      pass_filenames: false
+      args: ["discover"]
+default_language_version:
+  python: python3.10.8
