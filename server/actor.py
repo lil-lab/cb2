@@ -1,32 +1,18 @@
-
-from server.assets import AssetId
-from server.messages.action import Action, Color, ActionType, Walk, Turn
-from server.messages.rooms import Role
-from server.messages import message_from_server
-from server.messages import message_to_server
-from server.messages import objective, state_sync
-from server.hex import HecsCoord
-from server.map_provider import MapProvider, MapType
-from server.card import CardSelectAction
-from server.util import IdAssigner
-from server.messages.turn_state import TurnState, GameOverMessage, TurnUpdate
-
-import aiohttp
-import asyncio
-import dataclasses
 import logging
-import math
-import random
-import time
-import uuid
-
+from datetime import datetime
 from queue import Queue
-from datetime import datetime, timedelta
+
+from server.hex import HecsCoord
+from server.messages import state_sync
+from server.messages.action import ActionType, Turn, Walk
 
 logger = logging.getLogger(__name__)
 
+
 class Actor(object):
-    def __init__(self, actor_id, asset_id, role, spawn, realtime=False, spawn_rotation_degrees=0):
+    def __init__(
+        self, actor_id, asset_id, role, spawn, realtime=False, spawn_rotation_degrees=0
+    ):
         self._actor_id = actor_id
         self._asset_id = asset_id
         self._realtime = realtime
@@ -51,12 +37,14 @@ class Actor(object):
         return self._role
 
     def add_action(self, action):
-        # Certain actions aren't cumulative. 
+        # Certain actions aren't cumulative.
         if action.action_type == ActionType.INIT:
             self._projected_location = action.displacement
             self._projected_heading = action.rotation
         else:
-            self._projected_location = HecsCoord.add(self._location, action.displacement)
+            self._projected_location = HecsCoord.add(
+                self._location, action.displacement
+            )
             self._projected_heading += action.rotation
             self._projected_heading %= 360
         self._actions.put(action)
@@ -66,57 +54,70 @@ class Actor(object):
 
     def location(self):
         return self._location
-    
+
     def heading_degrees(self):
         return int(self._heading_degrees)
 
     def state(self):
-        return state_sync.Actor(self.actor_id(), self.asset_id(),
-                                self._location, self._heading_degrees, self._role)
+        return state_sync.Actor(
+            self.actor_id(),
+            self.asset_id(),
+            self._location,
+            self._heading_degrees,
+            self._role,
+        )
 
     def peek(self):
-        """ Peeks at the next action without consuming it. """
+        """Peeks at the next action without consuming it."""
         return self._actions.queue[0]
-    
+
     # This is used for the tutorial automated agent. A realtime actor processes
-    # actions in realtime. Instead of actions occuring immediately (and leaving
+    # actions in realtime. Instead of actions occurring immediately (and leaving
     # the delay + animation up to the client), they wait in the queue until the
     # duration of the action is complete. This is to orchestrate multiple
     # different actions on different actors/props s.t. they are not all
     # simultaneous.
     def is_realtime(self):
         return self._realtime
-    
+
     def peek_action_done(self):
-        return (datetime.now() - self._action_start_timestamp).total_seconds() >= self.peek().duration_s
-    
+        return (
+            datetime.now() - self._action_start_timestamp
+        ).total_seconds() >= self.peek().duration_s
+
     def ProjectedLocation(self):
         return self._projected_location
-    
+
     def ForwardLocation(self):
-        return HecsCoord.add(self._projected_location, HecsCoord.origin().neighbor_at_heading(self._projected_heading))
-    
+        return HecsCoord.add(
+            self._projected_location,
+            HecsCoord.origin().neighbor_at_heading(self._projected_heading),
+        )
+
     def BackwardLocation(self):
-        return HecsCoord.add(self._projected_location, HecsCoord.origin().neighbor_at_heading(self._projected_heading).negate())
-    
+        return HecsCoord.add(
+            self._projected_location,
+            HecsCoord.origin().neighbor_at_heading(self._projected_heading).negate(),
+        )
+
     def WalkForwardsAction(self):
         displacement = HecsCoord.origin().neighbor_at_heading(self._projected_heading)
         return Walk(self.actor_id(), displacement)
-    
+
     def WalkBackwardsAction(self):
         # Note that the displacement is negated on the next line.
         displacement = HecsCoord.origin().neighbor_at_heading(self._projected_heading)
         return Walk(self.actor_id(), displacement.negate())
-    
+
     def TurnLeftAction(self):
         return Turn(self.actor_id(), -60)
-    
+
     def TurnRightAction(self):
         return Turn(self.actor_id(), 60)
-    
+
     def WalkForwards(self):
         self.add_action(self.WalkForwardsAction())
-    
+
     def WalkBackwards(self):
         self.add_action(self.WalkBackwardsAction())
 
@@ -127,7 +128,7 @@ class Actor(object):
         self.add_action(self.TurnRightAction())
 
     def step(self):
-        """ Executes & consumes an action from the queue."""
+        """Executes & consumes an action from the queue."""
         if not self.has_actions():
             return
         action = self._actions.get()
@@ -143,7 +144,7 @@ class Actor(object):
         self._action_start_timestamp = datetime.now()
 
     def drop(self):
-        """ Drops an action instead of acting upon it."""
+        """Drops an action instead of acting upon it."""
         if not self.has_actions():
             return
         _ = self._actions.get()

@@ -1,8 +1,9 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+
 from mashumaro.mixins.json import DataClassJSONMixin
-from dataclasses_json import dataclass_json, config, LetterCase
 
 from server.messages.rooms import Role
+
 
 @dataclass
 class ObjectiveMessage(DataClassJSONMixin):
@@ -11,6 +12,7 @@ class ObjectiveMessage(DataClassJSONMixin):
     uuid: str = ""
     completed: bool = False
     cancelled: bool = False
+
 
 @dataclass(frozen=True)
 class ObjectiveCompleteMessage(DataClassJSONMixin):

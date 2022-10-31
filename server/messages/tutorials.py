@@ -1,24 +1,17 @@
 """ Defines tutorial messages. """
-from enum import Enum
-from mashumaro.mixins.json import DataClassJSONMixin
-from server.messages.action import Action
-from server.messages.rooms import RoomManagementRequest, Role
-from server.messages.objective import ObjectiveMessage, ObjectiveCompleteMessage
-from server.messages.turn_state import TurnComplete
-
-from dataclasses import dataclass, field
-from dataclasses_json import dataclass_json, config, LetterCase
-from datetime import date
-from datetime import datetime
-from server.hex import HecsCoord
-from marshmallow import fields
-from typing import List, Optional
-
-import dateutil.parser
 import logging
-import typing
+from dataclasses import dataclass
+from datetime import date
+from enum import Enum
+from typing import List
+
+from mashumaro.mixins.json import DataClassJSONMixin
+
+from server.hex import HecsCoord
+from server.messages.rooms import Role
 
 logger = logging.getLogger()
+
 
 class FollowerActions(Enum):
     NONE = 0
@@ -28,6 +21,7 @@ class FollowerActions(Enum):
     TURN_RIGHT = 4
     INSTRUCTION_DONE = 5
     END_TURN = 6
+
 
 class TooltipType(Enum):
     NONE = 0
@@ -43,19 +37,23 @@ class TooltipType(Enum):
     UNTIL_TURN_ENDED = 7
     FOLLOWER_TURN = 8
 
+
 @dataclass(frozen=True)
 class Tooltip(DataClassJSONMixin):
     highlighted_component_tag: str
     text: str
     type: TooltipType
 
+
 @dataclass(frozen=True)
 class Indicator(DataClassJSONMixin):
     location: HecsCoord
 
+
 @dataclass(frozen=True)
 class Instruction(DataClassJSONMixin):
     text: str
+
 
 @dataclass(frozen=True)
 class TutorialStep(DataClassJSONMixin):
@@ -64,10 +62,12 @@ class TutorialStep(DataClassJSONMixin):
     instruction: Instruction
     other_player_turn: List[FollowerActions] = None
 
+
 @dataclass(frozen=True)
 class TutorialComplete(DataClassJSONMixin):
     tutorial_name: str
     completion_date: str
+
 
 class TutorialRequestType(Enum):
     NONE = 0
@@ -85,6 +85,7 @@ class TutorialResponseType(Enum):
 LEADER_TUTORIAL = "leader_tutorial"
 FOLLOWER_TUTORIAL = "follower_tutorial"
 
+
 def RoleFromTutorialName(tutorial_name):
     if tutorial_name == LEADER_TUTORIAL:
         return Role.LEADER
@@ -94,10 +95,12 @@ def RoleFromTutorialName(tutorial_name):
         logger.warn(f"Received invalid tutorial name: {tutorial_name}")
         return Role.NONE
 
+
 @dataclass(frozen=True)
 class TutorialRequest(DataClassJSONMixin):
     type: TutorialRequestType
     tutorial_name: str
+
 
 @dataclass(frozen=True)
 class TutorialResponse(DataClassJSONMixin):
@@ -106,8 +109,15 @@ class TutorialResponse(DataClassJSONMixin):
     step: TutorialStep
     complete: TutorialComplete
 
+
 def TutorialCompletedResponse(tutorial_name):
-    return TutorialResponse(TutorialResponseType.COMPLETE, tutorial_name, None, TutorialComplete(tutorial_name, str(date.today())))
+    return TutorialResponse(
+        TutorialResponseType.COMPLETE,
+        tutorial_name,
+        None,
+        TutorialComplete(tutorial_name, str(date.today())),
+    )
+
 
 def TutorialResponseFromStep(tutorial_name, step):
     return TutorialResponse(TutorialResponseType.STEP, tutorial_name, step, None)

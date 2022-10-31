@@ -1,5 +1,6 @@
 from enum import IntEnum
 
+
 class AssetId(IntEnum):
     PLAYER = 0
     PLAYER_WITH_CAM = 1
@@ -44,13 +45,21 @@ class AssetId(IntEnum):
     CARD_BASE_6 = 40
     MOUNTAIN_TILE_TREE = 41
     SNOWY_MOUNTAIN_TILE_TREE = 42
-    EMPTY_TILE = 100 # Used for map gen, should never appear in network protocol.
-    NONE = 101 # Invalid value. Used for padding/masking unknown values.
-    MAX = 102 # Maximum possible value. Subject to change.
+    EMPTY_TILE = 100  # Used for map gen, should never appear in network protocol.
+    NONE = 101  # Invalid value. Used for padding/masking unknown values.
+    MAX = 102  # Maximum possible value. Subject to change.
+
 
 def TreeAssets():
-    """ Returns a list of snow-themed assets. """
-    return [AssetId.GROUND_TILE_TREE, AssetId.GROUND_TILE_TREE_BROWN, AssetId.GROUND_TILE_TREES_2, AssetId.GROUND_TILE_TREE_DARKGREEN, AssetId.GROUND_TILE_TREE_SOLIDBROWN]
+    """Returns a list of snow-themed assets."""
+    return [
+        AssetId.GROUND_TILE_TREE,
+        AssetId.GROUND_TILE_TREE_BROWN,
+        AssetId.GROUND_TILE_TREES_2,
+        AssetId.GROUND_TILE_TREE_DARKGREEN,
+        AssetId.GROUND_TILE_TREE_SOLIDBROWN,
+    ]
+
 
 def SnowifyAssetId(asset_id):
     if asset_id == AssetId.GROUND_TILE:
@@ -76,17 +85,42 @@ def SnowifyAssetId(asset_id):
     else:
         return asset_id
 
+
 def is_snowy(asset_id):
-    return asset_id in [AssetId.SNOWY_GROUND_TILE, AssetId.SNOWY_GROUND_TILE_TREES_2, AssetId.SNOWY_GROUND_TILE_ROCKY, AssetId.SNOWY_GROUND_TILE_STONES, AssetId.SNOWY_MOUNTAIN_TILE, AssetId.SNOWY_RAMP_TO_MOUNTAIN, AssetId.GROUND_TILE_TREE_SNOW, AssetId.SNOWY_MOUNTAIN_TILE_TREE]
+    return asset_id in [
+        AssetId.SNOWY_GROUND_TILE,
+        AssetId.SNOWY_GROUND_TILE_TREES_2,
+        AssetId.SNOWY_GROUND_TILE_ROCKY,
+        AssetId.SNOWY_GROUND_TILE_STONES,
+        AssetId.SNOWY_MOUNTAIN_TILE,
+        AssetId.SNOWY_RAMP_TO_MOUNTAIN,
+        AssetId.GROUND_TILE_TREE_SNOW,
+        AssetId.SNOWY_MOUNTAIN_TILE_TREE,
+    ]
+
 
 def SnowAssets():
-    """ Snowy tiles. """
-    return [AssetId.SNOWY_GROUND_TILE, AssetId.SNOWY_GROUND_TILE_TREES_2, AssetId.SNOWY_GROUND_TILE_ROCKY, AssetId.SNOWY_GROUND_TILE_STONES, AssetId.GROUND_TILE_TREE_SNOW]
+    """Snowy tiles."""
+    return [
+        AssetId.SNOWY_GROUND_TILE,
+        AssetId.SNOWY_GROUND_TILE_TREES_2,
+        AssetId.SNOWY_GROUND_TILE_ROCKY,
+        AssetId.SNOWY_GROUND_TILE_STONES,
+        AssetId.GROUND_TILE_TREE_SNOW,
+    ]
+
 
 def TreeFrequencies():
-    """ Returns a list of len(TreeAssets()) with the "proper" frequency of each asset. """
+    """Returns a list of len(TreeAssets()) with the "proper" frequency of each asset."""
     return [0.3, 0.1, 0.15, 0.2, 0.2]
 
+
 def NatureAssets():
-    """ Trees, stones, or any other sort of blocking tile that would fit in a forest. """
-    return TreeAssets() + [AssetId.GROUND_TILE_STONES, AssetId.GROUND_TILE_ROCKY, AssetId.GROUND_TILE_STONES_BROWNBUSH, AssetId.GROUND_TILE_STONES_GREYBUSH, AssetId.GROUND_TILE_STONES_GREENBUSH]
+    """Trees, stones, or any other sort of blocking tile that would fit in a forest."""
+    return TreeAssets() + [
+        AssetId.GROUND_TILE_STONES,
+        AssetId.GROUND_TILE_ROCKY,
+        AssetId.GROUND_TILE_STONES_BROWNBUSH,
+        AssetId.GROUND_TILE_STONES_GREYBUSH,
+        AssetId.GROUND_TILE_STONES_GREENBUSH,
+    ]

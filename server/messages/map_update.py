@@ -1,16 +1,15 @@
 import logging
-
-from server.hex import HexCell, HecsCoord
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import List
 
 from mashumaro.mixins.json import DataClassJSONMixin
-from dataclasses import dataclass, field
-from dataclasses_json import dataclass_json, config, LetterCase
-from enum import Enum
-from marshmallow import fields
-from typing import List
+
+from server.hex import HecsCoord, HexCell
 from server.messages.prop import Prop
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class Tile(DataClassJSONMixin):
@@ -18,18 +17,22 @@ class Tile(DataClassJSONMixin):
     cell: HexCell
     rotation_degrees: int
 
+
 @dataclass
 class City(DataClassJSONMixin):
     r: int
     c: int
     size: int
 
+
 class LakeType(Enum):
-    """ The type of lake to generate."""
+    """The type of lake to generate."""
+
     RANDOM = 0
     L_SHAPED = 1
     ISLAND = 2
     REGULAR = 3
+
 
 @dataclass
 class Lake(DataClassJSONMixin):
@@ -38,11 +41,13 @@ class Lake(DataClassJSONMixin):
     size: int
     type: LakeType = LakeType.REGULAR
 
+
 class MountainType(Enum):
     NONE = 0
     SMALL = 1
     MEDIUM = 2
     LARGE = 3
+
 
 @dataclass
 class Mountain(DataClassJSONMixin):
@@ -51,7 +56,8 @@ class Mountain(DataClassJSONMixin):
     type: MountainType
     snowy: bool
 
-# A collection of 3-4 tiles that are path-connected (BFS) to two other features. 
+
+# A collection of 3-4 tiles that are path-connected (BFS) to two other features.
 @dataclass
 class Outpost(DataClassJSONMixin):
     r: int
@@ -59,6 +65,7 @@ class Outpost(DataClassJSONMixin):
     connection_a: HecsCoord
     connection_b: HecsCoord
     tiles: List[Tile]  # Tiles. HECS coordinates will be ignored.
+
 
 @dataclass
 class MapMetadata(DataClassJSONMixin):
@@ -70,6 +77,7 @@ class MapMetadata(DataClassJSONMixin):
     partition_locations: List[Tile] = field(default_factory=list)
     partition_sizes: List[int] = field(default_factory=list)
 
+
 @dataclass
 class MapUpdate(DataClassJSONMixin):
     rows: int
@@ -79,8 +87,8 @@ class MapUpdate(DataClassJSONMixin):
     props: List[Prop] = None
 
     def get_edge_between(self, hecs_a: HecsCoord, hecs_b: HecsCoord):
-        """ Returns the edge between the two given HECS coordinates.
-        
+        """Returns the edge between the two given HECS coordinates.
+
         Assumes they are adjacent, else undefined behavior.
 
         Returns true if there is an edge (obstacle) between the two coordinates.
@@ -93,13 +101,15 @@ class MapUpdate(DataClassJSONMixin):
             return True
         bound_a = tile_a.cell.boundary
         bound_b = tile_b.cell.boundary
-        return bound_a.get_edge_between(hecs_a, hecs_b) or bound_b.get_edge_between(hecs_b, hecs_a)
+        return bound_a.get_edge_between(hecs_a, hecs_b) or bound_b.get_edge_between(
+            hecs_b, hecs_a
+        )
 
     def tile_at(self, r, c):
-        """ Returns the tile at the given row and column. """
+        """Returns the tile at the given row and column."""
         location = HecsCoord.from_offset(r, c)
         self.tile_at(location)
-    
+
     def tile_at(self, hecs: HecsCoord):
         self._refresh_tile_cache(hecs)
         if hecs not in self._tile_cache:
@@ -107,9 +117,9 @@ class MapUpdate(DataClassJSONMixin):
         return self._tile_cache[hecs]
 
     def _refresh_tile_cache(self, hecs: HecsCoord):
-        if hasattr(self, '_tile_cache'):
+        if hasattr(self, "_tile_cache"):
             if hecs in self._tile_cache:
-                return # Cache up to date.
+                return  # Cache up to date.
             return
         self._tile_cache = {}
         for tile in self.tiles:

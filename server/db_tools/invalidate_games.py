@@ -1,28 +1,20 @@
 """ Permanently modifies the database to invalidate certain games. Proceed with caution! """
-from map_tools import visualize
-from playhouse.sqlite_ext import CSqliteExtDatabase
-import peewee
-import schemas.defaults
-import schemas.game
-
-from schemas.game import Turn
-from schemas.game import Game
-from schemas.game import Instruction
-from schemas.game import Move
-from schemas.map import MapUpdate
-from schemas.mturk import Worker
-from schemas import base
-from config.config import Config
 
 import fire
-import pathlib
+import schemas.defaults
+import schemas.game
+from config.config import Config
+from schemas import base
+from schemas.game import Game
+
 
 # Attempts to parse the config file. If there's any parsing or file errors,
 # doesn't handle the exceptions.
 def ReadConfigOrDie(config_path):
-    with open(config_path, 'r') as cfg_file:
+    with open(config_path, "r") as cfg_file:
         config = Config.from_json(cfg_file.read())
         return config
+
 
 def main(from_id=0, to_id=0, config_path="config/server-config.json"):
     config = ReadConfigOrDie(config_path)
@@ -39,8 +31,9 @@ def main(from_id=0, to_id=0, config_path="config/server-config.json"):
         print(f"Invalidating game {game.id}...")
         game.valid = False
         game.save()
-    
+
     print(f"Done.")
+
 
 if __name__ == "__main__":
     fire.Fire(main)

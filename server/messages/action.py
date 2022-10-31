@@ -1,21 +1,17 @@
-from enum import Enum
-
-from mashumaro import pass_through
-from server.hex import HecsCoord
-
+import logging
 from dataclasses import dataclass, field, replace
-from dataclasses_json import dataclass_json, config, LetterCase
 from datetime import datetime, timedelta
-from mashumaro.mixins.json import DataClassJSONMixin
-from marshmallow import fields
+from enum import Enum
 from typing import Optional
 
-import dateutil.parser
-import logging
-
 from dateutil import tz
+from mashumaro import pass_through
+from mashumaro.mixins.json import DataClassJSONMixin
+
+from server.hex import HecsCoord
 
 logger = logging.getLogger()
+
 
 class ActionType(Enum):
     INIT = 0
@@ -24,6 +20,7 @@ class ActionType(Enum):
     TRANSLATE = 3
     OUTLINE = 4
     DEATH = 5
+
 
 class AnimationType(Enum):
     NONE = 0
@@ -35,6 +32,7 @@ class AnimationType(Enum):
     SKIPPING = 6
     ROTATE = 7
 
+
 @dataclass(frozen=True)
 class Color(DataClassJSONMixin):
     r: float
@@ -43,18 +41,21 @@ class Color(DataClassJSONMixin):
     a: float
 
     def __eq__(self, rhs):
-        return self.r == rhs.r and self.g == rhs.g and self.b == rhs.b and self.a == rhs.a
+        return (
+            self.r == rhs.r and self.g == rhs.g and self.b == rhs.b and self.a == rhs.a
+        )
 
 
 def CensorActionForFollower(action, follower):
-    """ Censors actions to hide information that followers aren't supposed to see.
-    
-        For now, replaces red border colors with blue.
+    """Censors actions to hide information that followers aren't supposed to see.
+
+    For now, replaces red border colors with blue.
     """
     if action.border_color == Color(1, 0, 0, 1):
         action = replace(action, border_color=Color(0, 0, 1, 1))
         logger.debug(f"Censored action {action} for follower {follower}")
     return action
+
 
 @dataclass(frozen=True)
 class Action(DataClassJSONMixin):
@@ -69,10 +70,11 @@ class Action(DataClassJSONMixin):
     expiration: datetime = field(
         metadata={"deserialize": "pendulum", "serialize": pass_through}
     )
-    border_color_follower_pov: Optional[Color] = None # From follover's point of view.
+    border_color_follower_pov: Optional[Color] = None  # From follover's point of view.
+
 
 def Delay(id, duration):
-    NYC = tz.gettz('America/New_York')
+    NYC = tz.gettz("America/New_York")
     return Action(
         id=id,
         action_type=ActionType.INSTANT,
@@ -82,11 +84,12 @@ def Delay(id, duration):
         border_radius=0,
         border_color=Color(0, 0, 0, 0),
         duration_s=duration,
-        expiration=datetime.now(NYC) + timedelta(seconds=10)
+        expiration=datetime.now(NYC) + timedelta(seconds=10),
     )
 
+
 def Init(id, location, orientation):
-    NYC = tz.gettz('America/New_York')
+    NYC = tz.gettz("America/New_York")
     return Action(
         id=id,
         action_type=ActionType.INIT,
@@ -96,11 +99,12 @@ def Init(id, location, orientation):
         border_radius=0,
         border_color=Color(0, 0, 0, 0),
         duration_s=0.01,
-        expiration=datetime.now(NYC) + timedelta(seconds=10)
+        expiration=datetime.now(NYC) + timedelta(seconds=10),
     )
 
+
 def Turn(id, angle, duration=0.33):
-    NYC = tz.gettz('America/New_York')
+    NYC = tz.gettz("America/New_York")
     return Action(
         id=id,
         action_type=ActionType.ROTATE,
@@ -110,11 +114,12 @@ def Turn(id, angle, duration=0.33):
         border_radius=0,
         border_color=Color(0, 0, 0, 0),
         duration_s=duration,
-        expiration=datetime.now(NYC) + timedelta(seconds=10)
+        expiration=datetime.now(NYC) + timedelta(seconds=10),
     )
 
+
 def Walk(id, displacement, duration=0.45):
-    NYC = tz.gettz('America/New_York')
+    NYC = tz.gettz("America/New_York")
     return Action(
         id=id,
         action_type=ActionType.TRANSLATE,
@@ -124,5 +129,5 @@ def Walk(id, displacement, duration=0.45):
         border_radius=0,
         border_color=Color(0, 0, 0, 0),
         duration_s=duration,
-        expiration=datetime.now(NYC) + timedelta(seconds=10)
+        expiration=datetime.now(NYC) + timedelta(seconds=10),
     )

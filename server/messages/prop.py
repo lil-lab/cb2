@@ -1,23 +1,21 @@
-from enum import Enum
-from server.hex import HecsCoord
-import server.card as card
-
 from dataclasses import dataclass, field
-from dataclasses_json import dataclass_json, config, LetterCase
-from mashumaro.mixins.json import DataClassJSONMixin
-from datetime import datetime
-from marshmallow import fields
-from server.messages import action
+from enum import Enum
 from typing import List, Optional
 
-import dateutil.parser
+from mashumaro.mixins.json import DataClassJSONMixin
+
+from server.card_enums import Color, Shape
+from server.hex import HecsCoord
+from server.messages import action
 
 # TODO(sharf): This file is unnecessarily and prematurely abstracted. Props -> Cards, and simplify everything.
+
 
 class PropType(Enum):
     NONE = 0
     SIMPLE = 1
     CARD = 2
+
 
 @dataclass
 class GenericPropInfo(DataClassJSONMixin):
@@ -31,21 +29,22 @@ class GenericPropInfo(DataClassJSONMixin):
 
 @dataclass
 class CardConfig(DataClassJSONMixin):
-    color: card.Color
-    shape: card.Shape
+    color: Color
+    shape: Shape
     count: int
     selected: bool
-    hidden: Optional[bool] = False # Whether the client should cover the card.
+    hidden: Optional[bool] = False  # Whether the client should cover the card.
 
 
 @dataclass(frozen=True)
 class SimpleConfig(DataClassJSONMixin):
-    __slots__ = ('asset_id')
+    __slots__ = "asset_id"
     asset_id: int
+
 
 @dataclass(frozen=True)
 class Prop(DataClassJSONMixin):
-    __slots__ = ('id', 'prop_type', 'prop_info', 'card_init', 'simple_init')
+    __slots__ = ("id", "prop_type", "prop_info", "card_init", "simple_init")
     id: int
     prop_type: PropType
     prop_info: GenericPropInfo
@@ -53,6 +52,7 @@ class Prop(DataClassJSONMixin):
     # Only one of these is populated, depending on this prop's prop_type.
     card_init: Optional[CardConfig]  # Only used for Card props.
     simple_init: Optional[SimpleConfig]  # Only used for Simple props.
+
 
 @dataclass(frozen=True)
 class PropUpdate(DataClassJSONMixin):

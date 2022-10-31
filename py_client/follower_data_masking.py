@@ -1,14 +1,11 @@
 """ This class defines a set of helper methods to mask game state from the follower's perspective. """
 import dataclasses
 import logging
-
 from collections import deque
 
-from server.config.config import Config
-from server.hex import HecsCoord
-from server.messages.map_update import MapUpdate
-from server.messages.prop import Prop
 from server.actor import Actor
+from server.config.config import Config
+from server.messages.map_update import MapUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -24,12 +21,13 @@ FOLLOWER_FOV = 96.5
 # overwrite that value due to the way Unity works).
 UNITY_COORDINATES_SCALE = 3.46
 
+
 def VisibleCoordinates(follower_actor, config):
-    """ Given an actor, returns all HecsCoords that are visible to that actor. """
-    view_depth = config.fog_end / UNITY_COORDINATES_SCALE
+    """Given an actor, returns all HecsCoords that are visible to that actor."""
+    config.fog_end / UNITY_COORDINATES_SCALE
     # There's something wrong with orientation... I have to put - 60 everywhere
     # Actor.heading_degrees() (actor.py) is used.
-    follower_orientation = follower_actor.heading_degrees() - 60
+    follower_actor.heading_degrees() - 60
 
     visible_coords = []
 
@@ -47,9 +45,10 @@ def VisibleCoordinates(follower_actor, config):
         already_visited.add(coord)
         if coord in visible_coords:
             continue
-        if ((coord != follower_actor.location()) and 
-            (not CoordinateInViewingDistance(coord, follower_actor, config) or
-             not CoordinateInFov(coord, follower_actor, config))):
+        if (coord != follower_actor.location()) and (
+            not CoordinateInViewingDistance(coord, follower_actor, config)
+            or not CoordinateInFov(coord, follower_actor, config)
+        ):
             continue
         visible_coords.append(coord)
         for neighbor in coord.neighbors():
@@ -57,13 +56,15 @@ def VisibleCoordinates(follower_actor, config):
 
     return visible_coords
 
+
 def CoordinateInViewingDistance(coord, follower_actor, config):
-    """  Returns true if the given coordinate should be visible to the given follower with the given config. """
+    """Returns true if the given coordinate should be visible to the given follower with the given config."""
     view_depth = config.fog_end / UNITY_COORDINATES_SCALE
     # Check distance.
     distance = coord.distance_to(follower_actor.location())
     # Add 0.5 to round up to the next hex cell.
     return distance <= (view_depth + 0.5)
+
 
 def CoordinateInFov(coord, follower_actor, config):
     # There's something wrong with orientation... I have to put - 60 everywhere
@@ -83,8 +84,12 @@ def CoordinateInFov(coord, follower_actor, config):
 def CoordinateNeighborCells(follower_actor):
     # Get the two neighboring cells to the left and right. Special case them.
     return [
-        follower_actor.location().neighbor_at_heading(follower_actor.heading_degrees() - 60),
-        follower_actor.location().neighbor_at_heading(follower_actor.heading_degrees() + 60)
+        follower_actor.location().neighbor_at_heading(
+            follower_actor.heading_degrees() - 60
+        ),
+        follower_actor.location().neighbor_at_heading(
+            follower_actor.heading_degrees() + 60
+        ),
     ]
 
 
@@ -116,21 +121,22 @@ def CoordinateIsVisible(coord, follower_actor, config):
     else:
         return left <= degrees_to or degrees_to <= right
 
-def CensorFollowerMap(map_update, follower_actor, config: Config):
-    """ Removes all map tiles which aren't visible to the follower. 
 
-        This is done by defining a circle sector (pie slice). The center (point of the slice) is at the follower's location.
-        The arc spans the FOV, at a radius defined by the config fog distance (fog_end).
-        
-        Args:
-            map_update: The map to censor.
-            follower_actor: The follower actor. Used to find the actor's location & heading.
-            config: The game configuration. Used to determine follower visibility.
+def CensorFollowerMap(map_update, follower_actor, config: Config):
+    """Removes all map tiles which aren't visible to the follower.
+
+    This is done by defining a circle sector (pie slice). The center (point of the slice) is at the follower's location.
+    The arc spans the FOV, at a radius defined by the config fog distance (fog_end).
+
+    Args:
+        map_update: The map to censor.
+        follower_actor: The follower actor. Used to find the actor's location & heading.
+        config: The game configuration. Used to determine follower visibility.
     """
-    view_depth = config.fog_end / UNITY_COORDINATES_SCALE
+    config.fog_end / UNITY_COORDINATES_SCALE
     # There's something wrong with orientation... I have to put - 60 everywhere
     # Actor.heading_degrees() (actor.py) is used.
-    follower_orientation = follower_actor.heading_degrees() - 60
+    follower_actor.heading_degrees() - 60
 
     visible_coords = VisibleCoordinates(follower_actor, config)
     # MapUpdate.tile_at() makes use of an internal tile cache. Calling it causes
@@ -142,24 +148,27 @@ def CensorFollowerMap(map_update, follower_actor, config: Config):
         if tile is None:
             continue
         new_tiles.append(tile)
-    filtered_map_update = MapUpdate(map_update.rows, map_update.cols, new_tiles, map_update.metadata)
+    filtered_map_update = MapUpdate(
+        map_update.rows, map_update.cols, new_tiles, map_update.metadata
+    )
     return filtered_map_update
 
-def CensorFollowerProps(props, follower_actor, config):
-    """ Removes all props which aren't visible to the follower. 
 
-        This is done by defining a circle sector (pie slice). The center (point of the slice) is at the follower's location.
-        The arc spans the FOV, at a radius defined by the config fog distance (fog_end).
-        
-        Args:
-            props: A list of server/messages/props.py Prop objects to filter.
-            follower_actor: The follower actor. Used to find the actor's location & heading.
-            config: The game configuration. Used to determine follower visibility.
+def CensorFollowerProps(props, follower_actor, config):
+    """Removes all props which aren't visible to the follower.
+
+    This is done by defining a circle sector (pie slice). The center (point of the slice) is at the follower's location.
+    The arc spans the FOV, at a radius defined by the config fog distance (fog_end).
+
+    Args:
+        props: A list of server/messages/props.py Prop objects to filter.
+        follower_actor: The follower actor. Used to find the actor's location & heading.
+        config: The game configuration. Used to determine follower visibility.
     """
-    view_depth = config.fog_end / UNITY_COORDINATES_SCALE
+    config.fog_end / UNITY_COORDINATES_SCALE
     # There's something wrong with orientation... I have to put - 60 everywhere
     # Actor.heading_degrees() (actor.py) is used.
-    follower_orientation = follower_actor.heading_degrees() - 60
+    follower_actor.heading_degrees() - 60
 
     new_props = []
     for prop in props:
@@ -167,24 +176,34 @@ def CensorFollowerProps(props, follower_actor, config):
             new_props.append(dataclasses.replace(prop))
     return new_props
 
-def CensorActors(actors, follower_actor, config):
-    """ Removes all actors which aren't visible to the follower. 
 
-        This is done by defining a circle sector (pie slice). The center (point of the slice) is at the follower's location.
-        The arc spans the FOV, at a radius defined by the config fog distance (fog_end).
-        
-        Args:
-            actors: A list of server/actor.py Actor objects to filter.
-            follower_actor: The follower actor. Used to find the actor's location & heading.
-            config: The game configuration. Used to determine follower visibility.
+def CensorActors(actors, follower_actor, config):
+    """Removes all actors which aren't visible to the follower.
+
+    This is done by defining a circle sector (pie slice). The center (point of the slice) is at the follower's location.
+    The arc spans the FOV, at a radius defined by the config fog distance (fog_end).
+
+    Args:
+        actors: A list of server/actor.py Actor objects to filter.
+        follower_actor: The follower actor. Used to find the actor's location & heading.
+        config: The game configuration. Used to determine follower visibility.
     """
-    view_depth = config.fog_end / UNITY_COORDINATES_SCALE
+    config.fog_end / UNITY_COORDINATES_SCALE
     # There's something wrong with orientation... I have to put - 60 everywhere
     # Actor.heading_degrees() (actor.py) is used.
-    follower_orientation = follower_actor.heading_degrees() - 60
+    follower_actor.heading_degrees() - 60
 
     new_actors = []
     for actor in actors:
         if CoordinateIsVisible(actor.location(), follower_actor, config):
-            new_actors.append(Actor(actor.actor_id(), actor.asset_id(), actor.role(), actor.location(), False, actor.heading_degrees()))
+            new_actors.append(
+                Actor(
+                    actor.actor_id(),
+                    actor.asset_id(),
+                    actor.role(),
+                    actor.location(),
+                    False,
+                    actor.heading_degrees(),
+                )
+            )
     return new_actors

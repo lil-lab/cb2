@@ -3,35 +3,38 @@ intended to be used for developers creating interactive bots that play CB2.
 """
 import asyncio
 import logging
-import numpy as np
-import pygame
 import random
 import sys
-
-import server.messages as messages
-from server.messages import map_update
-import server.messages.state_sync as state_sync
-import server.actor as actor
-
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from enum import Enum
 
-from py_client.client_messages import *
-from py_client.follower_data_masking import CensorFollowerMap, CensorFollowerProps, CensorActors
+import numpy as np
+import pygame
+
+import server.actor as actor
+import server.messages.state_sync as state_sync
+from py_client.client_messages import (
+    ActionsMessage,
+    EndTurnMessage,
+    InstructionDoneMessage,
+    InstructionMessage,
+    InterruptMessage,
+    LeaveMessage,
+    PongMessage,
+)
+from py_client.follower_data_masking import (
+    CensorActors,
+    CensorFollowerMap,
+    CensorFollowerProps,
+)
 from py_client.game_socket import GameSocket
 from server.config.config import Config
-from server.hex import HecsCoord
 from server.main import HEARTBEAT_TIMEOUT_S
-from server.messages.action import Action, CensorActionForFollower, Walk, Turn
-from server.messages import message_from_server
-from server.messages import message_to_server
-from server.messages import action
-from server.messages import turn_state
-from server.messages.objective import ObjectiveMessage
-from server.messages.prop import PropType
-from server.messages.rooms import Role 
 from server.map_tools.visualize import GameDisplay
+from server.messages import action, message_from_server
+from server.messages.action import Action
+from server.messages.prop import PropType
+from server.messages.rooms import Role
 
 logger = logging.getLogger(__name__)
 
@@ -41,28 +44,32 @@ SCREEN_SIZE = 800
 # I dont' think I need this anymore. This is an attempt to export the Role symbol so that users of this package can access it.
 Role = Role
 
+
 def pygame_handle_events():
-    """ Checks if a key has been pressed and then exits the program. """
+    """Checks if a key has been pressed and then exits the program."""
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             sys.exit(0)
 
+
 async def pygame_event_handler():
-    """ Background task to handle pygame events.
+    """Background task to handle pygame events.
 
     This is a coroutine. Recommended to start as an asyncio task and killed with
     task.Cancel().
-    
+
     """
     while True:
         pygame_handle_events()
         await asyncio.sleep(0.1)
 
+
 class Action(object):
-    """ Defines the actions that agents can take in-game. 
-    
+    """Defines the actions that agents can take in-game.
+
     Actions are passed as the primary argument to step() to control the agent.
     """
+
     class ActionCode(Enum):
         NONE = 0
         FORWARDS = 1
@@ -76,7 +83,7 @@ class Action(object):
         POSITIVE_FEEDBACK = 9
         NEGATIVE_FEEDBACK = 10
         MAX = 11
-    
+
     # Helper initialization functions.
     @staticmethod
     def Forwards():
@@ -85,96 +92,104 @@ class Action(object):
     @staticmethod
     def Backwards():
         return Action(Action.ActionCode.BACKWARDS)
-    
+
     @staticmethod
     def Left():
         return Action(Action.ActionCode.TURN_LEFT)
-    
+
     @staticmethod
     def Right():
         return Action(Action.ActionCode.TURN_RIGHT)
-    
+
     @staticmethod
     def EndTurn():
         return Action(Action.ActionCode.END_TURN)
-    
+
     @staticmethod
     def Interrupt():
         return Action(Action.ActionCode.INTERRUPT)
-    
+
     @staticmethod
     def SendInstruction(instruction):
         return Action(Action.ActionCode.SEND_INSTRUCTION, instruction)
-    
+
     @staticmethod
     def InstructionDone(iuuid):
         return Action(Action.ActionCode.INSTRUCTION_DONE, i_uuid=iuuid)
-    
+
     @staticmethod
     def PositiveFeedback():
         return Action(Action.ActionCode.POSITIVE_FEEDBACK)
-    
+
     @staticmethod
     def NegativeFeedback():
         return Action(Action.ActionCode.NEGATIVE_FEEDBACK)
-    
+
     @staticmethod
     def NoopAction():
         return Action(Action.ActionCode.NONE)
-    
+
     # Functions useful for action validation logic.
     @staticmethod
     def LeaderActions():
-        return set([
-            Action.ActionCode.FORWARDS,
-            Action.ActionCode.BACKWARDS,
-            Action.ActionCode.TURN_LEFT,
-            Action.ActionCode.TURN_RIGHT,
-            Action.ActionCode.END_TURN,
-            Action.ActionCode.INTERRUPT,
-            Action.ActionCode.SEND_INSTRUCTION,
-        ])
-    
+        return set(
+            [
+                Action.ActionCode.FORWARDS,
+                Action.ActionCode.BACKWARDS,
+                Action.ActionCode.TURN_LEFT,
+                Action.ActionCode.TURN_RIGHT,
+                Action.ActionCode.END_TURN,
+                Action.ActionCode.INTERRUPT,
+                Action.ActionCode.SEND_INSTRUCTION,
+            ]
+        )
+
     @staticmethod
     def LeaderFeedbackActions():
-        return set([
-            Action.ActionCode.POSITIVE_FEEDBACK,
-            Action.ActionCode.NEGATIVE_FEEDBACK,
-        ])
+        return set(
+            [
+                Action.ActionCode.POSITIVE_FEEDBACK,
+                Action.ActionCode.NEGATIVE_FEEDBACK,
+            ]
+        )
 
     @staticmethod
     def FollowerActions():
-        return set([
-            Action.ActionCode.FORWARDS,
-            Action.ActionCode.BACKWARDS,
-            Action.ActionCode.TURN_LEFT,
-            Action.ActionCode.TURN_RIGHT,
-            Action.ActionCode.INSTRUCTION_DONE,
-        ])
-    
+        return set(
+            [
+                Action.ActionCode.FORWARDS,
+                Action.ActionCode.BACKWARDS,
+                Action.ActionCode.TURN_LEFT,
+                Action.ActionCode.TURN_RIGHT,
+                Action.ActionCode.INSTRUCTION_DONE,
+            ]
+        )
+
     @staticmethod
     def MovementActions():
-        return set([
-            Action.ActionCode.FORWARDS,
-            Action.ActionCode.BACKWARDS,
-            Action.ActionCode.TURN_LEFT,
-            Action.ActionCode.TURN_RIGHT,
-        ])
-    
+        return set(
+            [
+                Action.ActionCode.FORWARDS,
+                Action.ActionCode.BACKWARDS,
+                Action.ActionCode.TURN_LEFT,
+                Action.ActionCode.TURN_RIGHT,
+            ]
+        )
+
     @staticmethod
     def RandomMovementAction():
         return Action(random.choice(list(Action.MovementActions())))
-    
+
     # Define hash and eq comparison.
     def __hash__(self):
         return hash(self.action)
-    
+
     def __eq__(self, other):
         return self.action == other.action
-    
+
     @staticmethod
     def ActionMaskFromActor(actor, map):
-        """ Calculates an action mask for the given actor/map. """
+        """Calculates an action mask for the given actor/map."""
         if actor.role() == Role.LEADER:
             actions = set(Action.LeaderActions())
         elif actor.role() == Role.FOLLOWER:
@@ -186,12 +201,12 @@ class Action(object):
         forward = actor.ForwardLocation()
         if map.get_edge_between(loc, forward):
             actions.remove(Action.ActionCode.FORWARDS)
-        
+
         # Test backward collision.
         backward = actor.BackwardLocation()
         if map.get_edge_between(loc, backward):
             actions.remove(Action.ActionCode.BACKWARDS)
-        
+
         return Action.ActionMaskFromSet(actions)
 
     @staticmethod
@@ -203,7 +218,9 @@ class Action(object):
 
     def __init__(self, action_code, instruction=None, i_uuid=None):
         if action_code == Action.ActionCode.SEND_INSTRUCTION:
-            assert instruction != None, "Instruction must be provided for SEND_INSTRUCTION"
+            assert (
+                instruction != None
+            ), "Instruction must be provided for SEND_INSTRUCTION"
             if type(instruction) not in [str, bytes]:
                 raise TypeError("Instruction must be a string or bytes")
             self.action = (action_code, instruction)
@@ -215,19 +232,19 @@ class Action(object):
             self.action = (action_code, i_uuid)
             return
         self.action = (action_code, None)
-    
+
     def is_leader_action(self) -> bool:
         return self.action[0] in Action.LeaderActions()
-    
+
     def is_follower_action(self) -> bool:
         return self.action[0] in Action.FollowerActions()
-    
+
     def is_leader_feedback_action(self) -> bool:
         return self.action[0] in Action.LeaderFeedbackActions()
-    
+
     def is_noop(self) -> bool:
         return self.action[0] == Action.ActionCode.NONE
-    
+
     def is_end_turn(self) -> bool:
         return self.action[0] == Action.ActionCode.END_TURN
 
@@ -257,10 +274,10 @@ class Action(object):
             return "NONE"
         else:
             return "INVALID"
-    
+
     def action_code(self):
         return self.action[0]
-    
+
     def message_to_server(self, actor):
         action_code = self.action[0]
         action = None
@@ -298,13 +315,14 @@ class Action(object):
 #         observation, action_space = game.step(action)
 #         action = leader_agent.act(observation, action_space)
 class GameEndpoint(object):
-    """ A high-level interface to interact with a CB2 game.
+    """A high-level interface to interact with a CB2 game.
 
     Do not initialize yourself. Use RemoteClient.JoinGame() or
     LocalGameCoordinator.JoinGame() instead. See remote_client.py and
-    local_game_coordinator.py for examples. 
-    
+    local_game_coordinator.py for examples.
+
     """
+
     def __init__(self, game_socket: GameSocket, config: Config, render=False):
         self.socket = game_socket
         self.config = config
@@ -341,20 +359,20 @@ class GameEndpoint(object):
                 self.pygame_task.cancel()
             loop = asyncio.get_event_loop()
             self.pygame_task = loop.create_task(pygame_event_handler())
-    
+
     def visualization(self):
         return self.display
-    
+
     def player_role(self):
         return self._player_role
-    
+
     def actor_from_role(self, role):
         for actor_id in self.actors:
             actor = self.actors[actor_id]
             if actor.role() == role:
                 return actor
         return None
-    
+
     def initial_state(self):
         if self._initial_state_retrieved:
             logger.warn("Initial state already retrieved")
@@ -364,26 +382,30 @@ class GameEndpoint(object):
             return None
         self._initial_state_retrieved = True
         return self._state()
-    
+
     def initialized(self):
         return self._initial_state_retrieved or self._initial_state_ready
-    
+
     def step(self, action, wait_for_turn=True):
-        """ Executes one action and blocks until the environment is ready for another action.
-        
-            For local games, we provide wait_for_turn as a parameter to disable
-            blocking. Do NOT use for remote games.  This is hacky, but in short
-            step() blocks until the game is ready for the next action for the
-            player's role. If the follower calls this and ends their turn, then
-            it will block until they receive a message from the leader. But that
-            will never happen, because the leader will be blocked by the
-            follower's step(). The long-term solution is to make step() return
-            if either role can act, and then rely on the user to call step()
-            with an action from the correct agent (this will be verified).
+        """Executes one action and blocks until the environment is ready for another action.
+
+        For local games, we provide wait_for_turn as a parameter to disable
+        blocking. Do NOT use for remote games.  This is hacky, but in short
+        step() blocks until the game is ready for the next action for the
+        player's role. If the follower calls this and ends their turn, then
+        it will block until they receive a message from the leader. But that
+        will never happen, because the leader will be blocked by the
+        follower's step(). The long-term solution is to make step() return
+        if either role can act, and then rely on the user to call step()
+        with an action from the correct agent (this will be verified).
         """
         # If too much time passes between calls to step(), log an error.
-        if datetime.now() - self.last_step_call > timedelta(seconds=HEARTBEAT_TIMEOUT_S):
-            logger.warn(f"NOTE: Over {HEARTBEAT_TIMEOUT_S} seconds between calls to step(). Must call step more frequently than this, or the server will disconnect.")
+        if datetime.now() - self.last_step_call > timedelta(
+            seconds=HEARTBEAT_TIMEOUT_S
+        ):
+            logger.warn(
+                f"NOTE: Over {HEARTBEAT_TIMEOUT_S} seconds between calls to step(). Must call step more frequently than this, or the server will disconnect."
+            )
 
         # Step() pseudocode:
         # Send action.
@@ -397,13 +419,19 @@ class GameEndpoint(object):
             # noop is always valid
             valid_actions.add(Action.ActionCode.NONE)
         elif self._player_role == Role.LEADER:
-            valid_actions = Action.LeaderActions() if self.turn_state.turn == Role.LEADER else Action.LeaderFeedbackActions()
+            valid_actions = (
+                Action.LeaderActions()
+                if self.turn_state.turn == Role.LEADER
+                else Action.LeaderFeedbackActions()
+            )
             # noop is always valid
             valid_actions.add(Action.ActionCode.NONE)
         else:
             valid_actions = set()
         if action.action_code() not in valid_actions:
-            raise ValueError(f"Player is role {self._player_role} and turn {self.turn_state.turn} but sent inappropriate action: {action}")
+            raise ValueError(
+                f"Player is role {self._player_role} and turn {self.turn_state.turn} but sent inappropriate action: {action}"
+            )
         message, reason = action.message_to_server(self.player_actor)
         if message != None:
             self.socket.send_message(message)
@@ -437,9 +465,9 @@ class GameEndpoint(object):
 
         self.last_step_call = datetime.now()
         return state
-    
+
     def _can_act(self):
-        if (self.player_role() == self.turn_state.turn):
+        if self.player_role() == self.turn_state.turn:
             if self.player_role() == Role.FOLLOWER:
                 # If we're out of movements, the turn is over. This temporary
                 # state used to be emitted by the server. It has since been
@@ -452,15 +480,15 @@ class GameEndpoint(object):
                         return True
                 return False
             return True
-        
-        if ((self.player_role() == Role.LEADER) and self.config.live_feedback_enabled):
+
+        if (self.player_role() == Role.LEADER) and self.config.live_feedback_enabled:
             # Check if the follower position has changed since the last tick.
             return self._follower_moved
-        
+
         return False
 
     def _wait_for_tick(self, timeout=timedelta(seconds=60)):
-        """ Waits for a tick """
+        """Waits for a tick"""
         start_time = datetime.utcnow()
         end_time = start_time + timeout
         while not self.over() and self.socket.connected():
@@ -479,22 +507,22 @@ class GameEndpoint(object):
     # Returns true if the game is over.
     def over(self):
         return self.turn_state.game_over or not self.socket.connected()
-    
+
     def score(self):
         return self.turn_state.score
-    
+
     def game_duration(self):
-        return (datetime.utcnow() - self.turn_state.game_start)
-    
+        return datetime.utcnow() - self.turn_state.game_start
+
     def action_mask(self):
-        """ Returns a mask of type np.ndarray filled with either 0 or -inf. Indicates which actions are currently valid. """
+        """Returns a mask of type np.ndarray filled with either 0 or -inf. Indicates which actions are currently valid."""
         if self.turn_state.turn != self.player_role():
             return Action.ActionMaskFromSet(set())
         return Action.ActionMaskFromActor(self.player_actor, self.map_update)
-    
+
     def __enter__(self):
         return self
-    
+
     def close(self):
         if not self.over() and self.socket.connected():
             self.socket.send_message(LeaveMessage())
@@ -503,7 +531,7 @@ class GameEndpoint(object):
 
     def __exit__(self, type, value, traceback):
         self.close()
-    
+
     def _state(self):
         leader = None
         follower = None
@@ -521,28 +549,39 @@ class GameEndpoint(object):
             map_update = CensorFollowerMap(map_update, follower, self.config)
             props = CensorFollowerProps(props, follower, self.config)
             actors = CensorActors(actors, follower, self.config)
-        return map_update, props, self.turn_state, self.instructions, actors, self.live_feedback
-    
+        return (
+            map_update,
+            props,
+            self.turn_state,
+            self.instructions,
+            actors,
+            self.live_feedback,
+        )
+
     def Initialize(self, timeout=timedelta(seconds=60)):
         return self._initialize()
-    
-    def _initialize(self, timeout=timedelta(seconds=60)):
-        """ Initializes the game state. 
 
-            Initially, the game expects a certain number of messages to be sent. _initialize() blocks until these are received and then returns.
+    def _initialize(self, timeout=timedelta(seconds=60)):
+        """Initializes the game state.
+
+        Initially, the game expects a certain number of messages to be sent. _initialize() blocks until these are received and then returns.
         """
         if self._initial_state_ready:
             logger.warn("Initial state already ready")
             return
-        
+
         end_time = datetime.utcnow() + timeout
         logger.debug(f"Beginning INIT")
         while self.socket.connected():
             if datetime.utcnow() > end_time:
                 raise Exception("Timed out waiting for game")
-            response, reason = self.socket.receive_message(timeout=end_time - datetime.utcnow())
+            response, reason = self.socket.receive_message(
+                timeout=end_time - datetime.utcnow()
+            )
             if response is None:
-                logger.warn(f"No message received from _receive_message(). Reason: {reason}")
+                logger.warn(
+                    f"No message received from _receive_message(). Reason: {reason}"
+                )
                 continue
             if response.type == message_from_server.MessageType.STATE_SYNC:
                 logger.debug(f"INIT received state sync.")
@@ -550,17 +589,31 @@ class GameEndpoint(object):
                 self.player_id = state_sync.player_id
                 self._player_role = state_sync.player_role
                 for net_actor in state_sync.actors:
-                    added_actor = actor.Actor(net_actor.actor_id, 0, net_actor.actor_role, net_actor.location, False, net_actor.rotation_degrees)
-                    self.actors[net_actor.actor_id] = added_actor
-                    added_actor.add_action(action.Init(
+                    added_actor = actor.Actor(
                         net_actor.actor_id,
+                        0,
+                        net_actor.actor_role,
                         net_actor.location,
-                        net_actor.rotation_degrees))
+                        False,
+                        net_actor.rotation_degrees,
+                    )
+                    self.actors[net_actor.actor_id] = added_actor
+                    added_actor.add_action(
+                        action.Init(
+                            net_actor.actor_id,
+                            net_actor.location,
+                            net_actor.rotation_degrees,
+                        )
+                    )
                     while added_actor.has_actions():
                         added_actor.step()
                 self.player_actor = self.actors[self.player_id]
-                logger.debug(f"Player start pos: {self.player_actor.location().to_offset_coordinates()}")
-                logger.debug(f"Player start orientation: {self.player_actor.heading_degrees()}")
+                logger.debug(
+                    f"Player start pos: {self.player_actor.location().to_offset_coordinates()}"
+                )
+                logger.debug(
+                    f"Player start orientation: {self.player_actor.heading_degrees()}"
+                )
             if response.type == message_from_server.MessageType.MAP_UPDATE:
                 logger.debug(f"INIT received map")
                 self.map_update = response.map_update
@@ -577,48 +630,63 @@ class GameEndpoint(object):
                 self.instructions = response.objectives
             if response.type == message_from_server.MessageType.STATE_MACHINE_TICK:
                 logger.debug(f"Init TICK received")
-                if None not in [self.player_actor, self.map_update, self.prop_update, self.turn_state]:
+                if None not in [
+                    self.player_actor,
+                    self.map_update,
+                    self.prop_update,
+                    self.turn_state,
+                ]:
                     logger.debug(f"Init DONE for {self._player_role}")
                     self._initial_state_ready = True
                     if self.render:
                         self._render()
                     return True, ""
                 else:
-                    logger.warn(f"Init not ready. Player role: {self._player_role}, map update: {self.map_update is not None}, prop update: {self.prop_update is not None}, turn state: {self.turn_state is not None}")
+                    logger.warn(
+                        f"Init not ready. Player role: {self._player_role}, map update: {self.map_update is not None}, prop update: {self.prop_update is not None}, turn state: {self.turn_state is not None}"
+                    )
         return False, "Game initialization timed out."
-    
+
     def _handle_prop_update(self, prop_update):
         self.prop_update = prop_update
         self.cards = {}
         for prop in prop_update.props:
             if prop.prop_type == PropType.CARD:
                 self.cards[prop.id] = prop
-    
+
     def _handle_state_sync(self, state_sync):
-        """ Handles a state sync message.
-        
-            Args:
-                state_sync: The state sync message to handle.
-            Returns:
-                (bool, str): A tuple containing if the message was handled, and if not, the reason why.
+        """Handles a state sync message.
+
+        Args:
+            state_sync: The state sync message to handle.
+        Returns:
+            (bool, str): A tuple containing if the message was handled, and if not, the reason why.
         """
         for net_actor in state_sync.actors:
             if net_actor.actor_id not in self.actors:
-                logger.error(f"Received state sync for unknown actor {net_actor.actor_id}")
+                logger.error(
+                    f"Received state sync for unknown actor {net_actor.actor_id}"
+                )
                 return
             actor = self.actors[net_actor.actor_id]
             if actor.role() == Role.FOLLOWER:
-                if net_actor.location != actor.location() or net_actor.rotation_degrees != actor.heading_degrees():
+                if (
+                    net_actor.location != actor.location()
+                    or net_actor.rotation_degrees != actor.heading_degrees()
+                ):
                     self._follower_moved = True
             while actor.has_actions():
                 actor.drop()
-            actor.add_action(action.Init(
-                net_actor.actor_id,
-                net_actor.location,
-                net_actor.rotation_degrees))
+            actor.add_action(
+                action.Init(
+                    net_actor.actor_id, net_actor.location, net_actor.rotation_degrees
+                )
+            )
             while actor.has_actions():
                 actor.step()
-            logger.debug(f"state sync for actor {net_actor.actor_id}. location: {actor.location().to_offset_coordinates()} rotation: {actor.heading_degrees()}")
+            logger.debug(
+                f"state sync for actor {net_actor.actor_id}. location: {actor.location().to_offset_coordinates()} rotation: {actor.heading_degrees()}"
+            )
 
     def _handle_message(self, message):
         if message.type == message_from_server.MessageType.ACTIONS:
@@ -651,23 +719,31 @@ class GameEndpoint(object):
         elif message.type == message_from_server.MessageType.STATE_MACHINE_TICK:
             return
         else:
-            logger.warn(f"Received unexpected message type: {message.type}. msg: {message}")
-    
+            logger.warn(
+                f"Received unexpected message type: {message.type}. msg: {message}"
+            )
+
     def _render(self):
         if not self.render:
             return
         map_update, props, turn_state, instructions, actors, feedback = self._state()
         actor_states = [a.state() for a in actors]
-        self.display.set_state_sync(state_sync.StateSync(len(actors), actor_states, self.player_id, self.player_role()))
+        self.display.set_state_sync(
+            state_sync.StateSync(
+                len(actors), actor_states, self.player_id, self.player_role()
+            )
+        )
         self.display.set_props(props)
         self.display.set_map(map_update)
         self.display.set_instructions(instructions)
         self.display.draw()
         pygame.display.flip()
-    
+
     def _generate_state_sync(self):
         actor_states = []
         for a in self.actors:
             actor_states.append(self.actors[a].state())
         role = self.player_role()
-        return state_sync.StateSync(len(self.actors), actor_states, self.player_id, role)
+        return state_sync.StateSync(
+            len(self.actors), actor_states, self.player_id, role
+        )

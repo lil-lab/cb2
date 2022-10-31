@@ -1,13 +1,8 @@
+from dataclasses import dataclass
 from enum import Enum
-from server.hex import HecsCoord
 
-from dataclasses import dataclass, field
-from dataclasses_json import dataclass_json, config, LetterCase
-from datetime import datetime
 from mashumaro.mixins.json import DataClassJSONMixin
-from marshmallow import fields
 
-import dateutil.parser
 
 class FeedbackType(Enum):
     NONE = 0
@@ -15,9 +10,11 @@ class FeedbackType(Enum):
     NEGATIVE = 2
     MAX = 3
 
+
 @dataclass(frozen=True)
 class LiveFeedback(DataClassJSONMixin):
     signal: FeedbackType = FeedbackType.NONE
+
 
 def LiveFeedbackFromType(feedback_type):
     return LiveFeedback(feedback_type)

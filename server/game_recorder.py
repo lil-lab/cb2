@@ -1,26 +1,26 @@
 import logging
 import queue
 import random
-
-import server.schemas as schemas
-import server.messages.live_feedback as live_feedback
-
 from datetime import datetime
 from queue import Queue
 
+import server.messages.live_feedback as live_feedback
+import server.schemas as schemas
+from server.hex import HecsCoord
 from server.messages.action import Action
 from server.messages.rooms import Role
-from server.hex import HecsCoord
 
 logger = logging.getLogger(__name__)
 
-class GameRecorder(object):
-    """ Helper class to record everything that happens in a game.
 
-        Logs all messages and also populates the database.
+class GameRecorder(object):
+    """Helper class to record everything that happens in a game.
+
+    Logs all messages and also populates the database.
     """
+
     def __init__(self, game_record, disabled=False):
-        """ Parameter disabled is used to disable logging. Useful for testing and certain other situations. """
+        """Parameter disabled is used to disable logging. Useful for testing and certain other situations."""
         self._disabled = disabled
         if self._disabled:
             return
@@ -38,12 +38,12 @@ class GameRecorder(object):
         self._game_record.valid = True
         self._game_record.who_is_agent = ""
         self._game_record.save()
-    
+
     def record(self):
         if self._disabled:
             return None
         return self._game_record
-    
+
     def initial_state(self, map_update, prop_update, turn_state, actors):
         if self._disabled:
             return
@@ -59,16 +59,18 @@ class GameRecorder(object):
             elif actor.role() == Role.FOLLOWER:
                 follower = actor
         if leader is None or follower is None:
-            logger.warn(f"Unable to log initial state for game {self._game_record.id}. Leader or follower None.")
+            logger.warn(
+                f"Unable to log initial state for game {self._game_record.id}. Leader or follower None."
+            )
             return
         initial_state = schemas.game.InitialState(
-            game = self._game_record,
-            leader_id = leader.actor_id(),
-            follower_id = follower.actor_id(),
-            leader_position = leader.location(),
+            game=self._game_record,
+            leader_id=leader.actor_id(),
+            follower_id=follower.actor_id(),
+            leader_position=leader.location(),
             leader_rotation_degrees=leader.heading_degrees(),
-            follower_position = follower.location(),
-            follower_rotation_degrees=follower.heading_degrees()
+            follower_position=follower.location(),
+            follower_rotation_degrees=follower.heading_degrees(),
         )
         initial_state.save()
 
@@ -83,7 +85,7 @@ class GameRecorder(object):
         map_record.map_update_number = self._map_update_count
         self._map_update_count += 1
         map_record.save()
-    
+
     def record_prop_update(self, prop_update):
         if self._disabled:
             return
@@ -92,7 +94,7 @@ class GameRecorder(object):
         prop_record.prop_data = prop_update
         prop_record.game = self._game_record
         prop_record.save()
-    
+
     def record_card_selection(self, card):
         if self._disabled:
             return
@@ -103,7 +105,7 @@ class GameRecorder(object):
         card_record = self._get_or_create_card_record(card)
         selection_record.card = card_record
         selection_record.save()
-    
+
     def record_card_set(self):
         if self._disabled:
             return
@@ -123,7 +125,7 @@ class GameRecorder(object):
         instruction.uuid = objective.uuid
         instruction.text = objective.text
         instruction.instruction_number = self._instruction_number
-        self._instruction_number +=1
+        self._instruction_number += 1
         instruction.turn_issued = self._last_turn_state.turn_number
         instruction.save()
 
@@ -134,12 +136,15 @@ class GameRecorder(object):
                 self._instruction_queue.put_nowait(objective)
             except queue.Full:
                 return
-    
+
     def record_instruction_complete(self, objective_complete):
         if self._disabled:
             return
-        instruction = schemas.game.Instruction.select().where(
-            schemas.game.Instruction.uuid==objective_complete.uuid).get()
+        instruction = (
+            schemas.game.Instruction.select()
+            .where(schemas.game.Instruction.uuid == objective_complete.uuid)
+            .get()
+        )
         instruction.turn_completed = self._last_turn_state.turn_number
         instruction.save()
         try:
@@ -147,7 +152,7 @@ class GameRecorder(object):
             self._active_instruction = next_active_instruction
         except queue.Empty:
             self._active_instruction = None
-    
+
     def record_move(self, actor, proposed_action: Action):
         if self._disabled:
             return
@@ -155,8 +160,13 @@ class GameRecorder(object):
         move.game = self._game_record
         if actor.role() == Role.FOLLOWER:
             if self._active_instruction is not None:
-                last_obj_record = schemas.game.Instruction.select().where(
-                    schemas.game.Instruction.uuid == self._active_instruction.uuid).get()
+                last_obj_record = (
+                    schemas.game.Instruction.select()
+                    .where(
+                        schemas.game.Instruction.uuid == self._active_instruction.uuid
+                    )
+                    .get()
+                )
                 move.instruction = last_obj_record
         move.character_role = actor.role()
         if actor.role == Role.LEADER:
@@ -172,7 +182,9 @@ class GameRecorder(object):
         move.server_time = datetime.utcnow()
         move_code = ""
         forward_location = actor.location().neighbor_at_heading(actor.heading_degrees())
-        backward_location = actor.location().neighbor_at_heading(actor.heading_degrees() + 180)
+        backward_location = actor.location().neighbor_at_heading(
+            actor.heading_degrees() + 180
+        )
         new_location = HecsCoord.add(actor.location(), proposed_action.displacement)
         if new_location == forward_location:
             move_code = "MF"
@@ -190,7 +202,7 @@ class GameRecorder(object):
         move.action_code = move_code
         self._last_move = move
         move.save()
-    
+
     def record_live_feedback(self, feedback, follower):
         if self._disabled:
             return
@@ -198,26 +210,36 @@ class GameRecorder(object):
         # the move that the live feedback is for.
         live_feedback_record = schemas.game.LiveFeedback()
         live_feedback_record.game = self._game_record
-        live_feedback_record.feedback_type = "POSITIVE" if feedback.signal == live_feedback.FeedbackType.POSITIVE else "NEGATIVE"
-        
+        live_feedback_record.feedback_type = (
+            "POSITIVE"
+            if feedback.signal == live_feedback.FeedbackType.POSITIVE
+            else "NEGATIVE"
+        )
+
         # Find the instruction that the feedback is for.
         if self._active_instruction is not None:
-            last_obj_record = schemas.game.Instruction.select().where(
-                schemas.game.Instruction.uuid == self._active_instruction.uuid).get()
+            last_obj_record = (
+                schemas.game.Instruction.select()
+                .where(schemas.game.Instruction.uuid == self._active_instruction.uuid)
+                .get()
+            )
             live_feedback_record.instruction = last_obj_record
         live_feedback_record.turn_number = self._last_turn_state.turn_number
         if follower is not None:
             live_feedback_record.follower_position = follower.location()
             live_feedback_record.follower_orientation = follower.heading_degrees()
-        live_feedback_record.game_time = datetime.utcnow() - self._game_record.start_time
+        live_feedback_record.game_time = (
+            datetime.utcnow() - self._game_record.start_time
+        )
         live_feedback_record.server_time = datetime.utcnow()
         live_feedback_record.save()
-    
+
     def mark_instruction_cancelled(self, objective):
         if self._disabled:
             return
         instruction_query = schemas.game.Instruction.select().where(
-            schemas.game.Instruction.uuid==objective.uuid)
+            schemas.game.Instruction.uuid == objective.uuid
+        )
         if instruction_query.count() == 0:
             logger.warn(f"Could not find instruction record for {objective.uuid}")
             return
@@ -225,7 +247,7 @@ class GameRecorder(object):
         logger.info(f"Canceling instruction {instruction.text}")
         instruction.turn_cancelled = self._last_turn_state.turn_number
         instruction.save()
-    
+
     def record_instruction_cancellation(self):
         if self._disabled:
             return
@@ -239,7 +261,7 @@ class GameRecorder(object):
                     self.mark_instruction_cancelled(objective)
         except queue.Empty:
             return
-    
+
     def record_end_of_turn(self, force_role_switch, end_reason, turn_skipped):
         if self._disabled:
             return
@@ -248,7 +270,9 @@ class GameRecorder(object):
         # Due to a change in how turns are counted, each turn now
         # includes movements for both roles. This field is now deprecated.
         turn.role = ""
-        turn.turn_number = self._last_turn_state.turn_number  # Recording the turn that just ended.
+        turn.turn_number = (
+            self._last_turn_state.turn_number
+        )  # Recording the turn that just ended.
         end_method = end_reason if force_role_switch else "RanOutOfTime"
         turn.end_method = end_method
         notes = []
@@ -256,11 +280,14 @@ class GameRecorder(object):
             notes.append("SkippedTurnNoInstructionsTodo")
         if self._last_turn_state.moves_remaining <= 0:
             notes.append("UsedAllMoves")
-        if self._last_turn_state.turn == Role.FOLLOWER and self._instruction_queue.empty():
+        if (
+            self._last_turn_state.turn == Role.FOLLOWER
+            and self._instruction_queue.empty()
+        ):
             notes.append("FinishedAllCommands")
         turn.notes = ",".join(notes)
         turn.save()
-    
+
     def record_turn_state(self, turn_state):
         if self._disabled:
             return
@@ -280,6 +307,12 @@ class GameRecorder(object):
     def _get_or_create_card_record(self, card):
         if self._disabled:
             return
-        record, created = schemas.cards.Card.get_or_create(game=self._game_record, count=card.count,color=str(card.color),shape=str(card.shape),
-                                                location=card.location, defaults={'turn_created': self._last_turn_state.turn_number})
+        record, created = schemas.cards.Card.get_or_create(
+            game=self._game_record,
+            count=card.count,
+            color=str(card.color),
+            shape=str(card.shape),
+            location=card.location,
+            defaults={"turn_created": self._last_turn_state.turn_number},
+        )
         return record

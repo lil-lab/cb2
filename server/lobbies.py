@@ -1,12 +1,12 @@
+from typing import List, Tuple
+
 from server.lobby import Lobby, LobbyType
 from server.mturk_lobby import MturkLobby
 from server.open_lobby import OpenLobby
 
-from enum import Enum
-from typing import List, Tuple
-
 # Map from lobby name to lobby.
 lobbies = {}
+
 
 def InitializeLobbies(lobbies: List[Tuple[str, LobbyType]]):
     for (lobby_name, lobby_type) in lobbies:
@@ -14,15 +14,18 @@ def InitializeLobbies(lobbies: List[Tuple[str, LobbyType]]):
             continue
         CreateLobby(lobby_name, lobby_type)
 
-def GetLobby(lobby_name : str) -> Lobby:
+
+def GetLobby(lobby_name: str) -> Lobby:
     return lobbies.get(lobby_name, None)
+
 
 def GetLobbies() -> List[Lobby]:
     return list(lobbies.values())
 
-def CreateLobby(lobby_name : str, lobby_type : LobbyType):
+
+def CreateLobby(lobby_name: str, lobby_type: LobbyType):
     if lobby_type == LobbyType.NONE:
-        return 
+        return
     elif lobby_type == LobbyType.MTURK:
         lobbies[lobby_name] = MturkLobby(lobby_name)
     elif lobby_type == LobbyType.OPEN:

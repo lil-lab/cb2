@@ -1,23 +1,23 @@
-from server.assets import AssetId
-from server.messages.map_update import MapUpdate
-from server.messages.bug_report import BugReport
-from server.messages.prop import PropType, GenericPropInfo, CardConfig, Prop
-from server.card import Shape, Color
-from server.hex import HexBoundary, Edges
-from server.messages.rooms import Role
-from server.actor import Actor
-
-import math
 import logging
-import pygame
-import pygame.font
+import math
+import pathlib
 import random
 import sys
-import pathlib
 
+import pygame
+import pygame.font
 import pygame.freetype
+
+from server.actor import Actor
+from server.assets import AssetId
+from server.card import Color, Shape
+from server.hex import Edges
+from server.messages.bug_report import BugReport
+from server.messages.prop import PropType
+from server.messages.rooms import Role
+
 pygame.freetype.init()
-INSTRUCTION_FONT = pygame.freetype.SysFont('Times New Roman', 30)
+INSTRUCTION_FONT = pygame.freetype.SysFont("Times New Roman", 30)
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +38,11 @@ FOLLOWER_FOV = 96.5
 UNITY_COORDINATES_SCALE = 3.46
 
 pygame.font.init()
-GAME_FONT = pygame.font.SysFont('Helvetica', 30)
+GAME_FONT = pygame.font.SysFont("Helvetica", 30)
+
 
 def wait_for_key():
-    """ Waits for a key to be pressed and then exits the program. """
+    """Waits for a key to be pressed and then exits the program."""
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -49,8 +50,9 @@ def wait_for_key():
             if event.type == pygame.KEYDOWN:
                 return
 
+
 def PygameColorFromCardColor(card_color):
-    """ Matches an instance of card.Color to a pygame color object."""
+    """Matches an instance of card.Color to a pygame color object."""
     if card_color == Color.BLACK:
         return pygame.Color("black")
     elif card_color == Color.BLUE:
@@ -66,21 +68,22 @@ def PygameColorFromCardColor(card_color):
     elif card_color == Color.YELLOW:
         return pygame.Color("yellow")
 
-def asset_id_to_color(asset_id):
-    """ Matches each asset id (in AssetId) with a unique color.
 
-        GROUND_TILE -> Light Green
-        GROUND_TILE_ROCKY -> Grey-Blue
-        GROUND_TILE_STONES -> Grey-Blue
-        GROUND_TILE_TREES -> Green
-        GROUND_TILE_TREES_2 -> Green
-        GROUND_TILE_FOREST -> Dark Green
-        GROUND_TILE_HOUSE -> Red
-        GROUND_TILE_STREETLIGHT -> Yellow
-        MOUNTAIN_TILE -> Brown
-        RAMP_TO_MOUNTAIN -> Tan
-    
-        Defaults to white if unknown.
+def asset_id_to_color(asset_id):
+    """Matches each asset id (in AssetId) with a unique color.
+
+    GROUND_TILE -> Light Green
+    GROUND_TILE_ROCKY -> Grey-Blue
+    GROUND_TILE_STONES -> Grey-Blue
+    GROUND_TILE_TREES -> Green
+    GROUND_TILE_TREES_2 -> Green
+    GROUND_TILE_FOREST -> Dark Green
+    GROUND_TILE_HOUSE -> Red
+    GROUND_TILE_STREETLIGHT -> Yellow
+    MOUNTAIN_TILE -> Brown
+    RAMP_TO_MOUNTAIN -> Tan
+
+    Defaults to white if unknown.
     """
     if asset_id == AssetId.GROUND_TILE:
         return pygame.Color("lightgreen")
@@ -142,14 +145,20 @@ def asset_id_to_color(asset_id):
         return pygame.Color("grey")
     elif asset_id == AssetId.GROUND_TILE_STONES_GREYBUSH:
         return pygame.Color("grey")
-    elif asset_id in [AssetId.GROUND_TILE_TREE, AssetId.GROUND_TILE_TREE_BROWN,
-                      AssetId.GROUND_TILE_TREE, AssetId.SNOWY_GROUND_TILE_TREES_2,
-                      AssetId.GROUND_TILE_TREE_SOLIDBROWN, AssetId.MOUNTAIN_TILE_TREE,
-                      AssetId.GROUND_TILE_TREE_DARKGREEN]:
+    elif asset_id in [
+        AssetId.GROUND_TILE_TREE,
+        AssetId.GROUND_TILE_TREE_BROWN,
+        AssetId.GROUND_TILE_TREE,
+        AssetId.SNOWY_GROUND_TILE_TREES_2,
+        AssetId.GROUND_TILE_TREE_SOLIDBROWN,
+        AssetId.MOUNTAIN_TILE_TREE,
+        AssetId.GROUND_TILE_TREE_DARKGREEN,
+    ]:
         return pygame.Color("green")
     else:
         print("Unknown asset ID encountered (color): " + str(asset_id))
         return pygame.Color("white")
+
 
 def asset_id_to_icon(asset_id):
     if asset_id == AssetId.GROUND_TILE:
@@ -228,6 +237,7 @@ def asset_id_to_icon(asset_id):
         print("Unknown asset ID encountered (img): " + str(asset_id))
         return ""
 
+
 def draw_wrapped(display, instruction_text, max_width=50):
     words = instruction_text.split(" ")
     lines = []
@@ -242,14 +252,21 @@ def draw_wrapped(display, instruction_text, max_width=50):
     screen_size = display._screen_size
     for i, line in enumerate(lines):
         (line_text, _) = INSTRUCTION_FONT.render(line, pygame.Color(90, 90, 90))
-        display._screen.blit(line_text, (screen_size * 0.5 - line_text.get_width() / 2, screen_size * 0.75 + i * 30))
-    
-def get_hexagon_vertices(x, y, width, height, rotation):
-    """ Gets the vertices of a hexagon.
+        display._screen.blit(
+            line_text,
+            (
+                screen_size * 0.5 - line_text.get_width() / 2,
+                screen_size * 0.75 + i * 30,
+            ),
+        )
 
-        x, y: The center of the hexagon.
-        width, height: The width and height of the hexagon.
-        rotation: The rotation of the hexagon.
+
+def get_hexagon_vertices(x, y, width, height, rotation):
+    """Gets the vertices of a hexagon.
+
+    x, y: The center of the hexagon.
+    width, height: The width and height of the hexagon.
+    rotation: The rotation of the hexagon.
     """
     vertices = []
 
@@ -266,16 +283,16 @@ def get_hexagon_vertices(x, y, width, height, rotation):
         vertices.append((x_vertex, y_vertex))
 
     return vertices
-    
+
 
 def draw_hexagon(screen, x, y, width, height, color, rotation, boundary):
-    """ Draws a hexagon to the screen.
+    """Draws a hexagon to the screen.
 
-        x, y: The center of the hexagon.
-        width, height: The width and height of the hexagon.
-        color: The color of the hexagon.
-        rotation: The rotation of the hexagon.
-        boundary: which walls are blocked.
+    x, y: The center of the hexagon.
+    width, height: The width and height of the hexagon.
+    color: The color of the hexagon.
+    rotation: The rotation of the hexagon.
+    boundary: which walls are blocked.
     """
     # Get the vertices of the hexagon.
     vertices = get_hexagon_vertices(x, y, width, height, rotation)
@@ -287,47 +304,58 @@ def draw_hexagon(screen, x, y, width, height, color, rotation, boundary):
     line_color = pygame.Color("black")
     if boundary.get_edge(Edges.UPPER_RIGHT):
         pygame.draw.line(screen, line_color, vertices[0], vertices[1], line_width)
-    
+
     if boundary.get_edge(Edges.RIGHT):
         pygame.draw.line(screen, line_color, vertices[1], vertices[2], line_width)
-        
+
     if boundary.get_edge(Edges.LOWER_RIGHT):
         pygame.draw.line(screen, line_color, vertices[2], vertices[3], line_width)
 
     if boundary.get_edge(Edges.LOWER_LEFT):
         pygame.draw.line(screen, line_color, vertices[3], vertices[4], line_width)
-    
+
     if boundary.get_edge(Edges.LEFT):
         pygame.draw.line(screen, line_color, vertices[4], vertices[5], line_width)
-    
+
     if boundary.get_edge(Edges.UPPER_LEFT):
         pygame.draw.line(screen, line_color, vertices[5], vertices[0], line_width)
 
-def draw_card(screen, x, y, width, height, card_info):
-    """ Draws a card to the screen.
 
-        screen: A pygame screen to draw to.
-        x, y: The center of the card.
-        width, height: The width and height of the card.
-        card_info: Card info, including shape, color, and more.
+def draw_card(screen, x, y, width, height, card_info):
+    """Draws a card to the screen.
+
+    screen: A pygame screen to draw to.
+    x, y: The center of the card.
+    width, height: The width and height of the card.
+    card_info: Card info, including shape, color, and more.
     """
     # Draw the card as a rectangle with a white fill and 1px black border.
-    pygame.draw.rect(screen, pygame.Color("white"), (x - width / 2, y - height / 2, width, height), 0)
-    outline_color = pygame.Color("blue") if card_info.selected else pygame.Color("black")
+    pygame.draw.rect(
+        screen, pygame.Color("white"), (x - width / 2, y - height / 2, width, height), 0
+    )
+    outline_color = (
+        pygame.Color("blue") if card_info.selected else pygame.Color("black")
+    )
     outline_radius = 5 if card_info.selected else 1
-    pygame.draw.rect(screen, outline_color, (x - width / 2, y - height / 2, width, height), outline_radius)
+    pygame.draw.rect(
+        screen,
+        outline_color,
+        (x - width / 2, y - height / 2, width, height),
+        outline_radius,
+    )
 
     for i in range(card_info.count):
         color = PygameColorFromCardColor(card_info.color)
-        offset = - (height / 5) * ((card_info.count) / 2) + (height / 5) * i
+        offset = -(height / 5) * ((card_info.count) / 2) + (height / 5) * i
         draw_shape(screen, x, y + offset, card_info.shape, color)
 
-def draw_shape(screen, x, y, shape, color):
-    """ Draws a shape to the screen.
 
-        screen: A pygame screen to draw to.
-        x, y: The center of the shape.
-        shape: The shape to draw.
+def draw_shape(screen, x, y, shape, color):
+    """Draws a shape to the screen.
+
+    screen: A pygame screen to draw to.
+    x, y: The center of the shape.
+    shape: The shape to draw.
     """
     (x, y) = (int(x), int(y))
     if shape == Shape.PLUS:
@@ -336,19 +364,38 @@ def draw_shape(screen, x, y, shape, color):
     elif shape == Shape.TORUS:
         pygame.draw.circle(screen, color, (x, y), 2, 0)
     elif shape == Shape.HEART:
-        pygame.draw.polygon(screen, color, ((x, y + 3), (x - 4, y - 1), (x - 2, y - 3), (x, y - 1), (x + 2, y - 3), (x + 4, y - 1)), 0)
+        pygame.draw.polygon(
+            screen,
+            color,
+            (
+                (x, y + 3),
+                (x - 4, y - 1),
+                (x - 2, y - 3),
+                (x, y - 1),
+                (x + 2, y - 3),
+                (x + 4, y - 1),
+            ),
+            0,
+        )
     elif shape == Shape.DIAMOND:
-        pygame.draw.polygon(screen, color, ((x, y + 3), (x - 3, y), (x, y - 3), (x + 3, y)), 0)
+        pygame.draw.polygon(
+            screen, color, ((x, y + 3), (x - 3, y), (x, y - 3), (x + 3, y)), 0
+        )
     elif shape == Shape.SQUARE:
         pygame.draw.rect(screen, color, (x - 2.5, y - 2.5, 5, 5), 0)
     elif shape == Shape.STAR:
-        pygame.draw.polygon(screen, color, ((x - 3, y - 1), (x + 3, y - 1), (x, y + 5)), 0)
-        pygame.draw.polygon(screen, color, ((x - 3, y + 3), (x + 3, y + 3), (x, y - 3)), 0)
+        pygame.draw.polygon(
+            screen, color, ((x - 3, y - 1), (x + 3, y - 1), (x, y + 5)), 0
+        )
+        pygame.draw.polygon(
+            screen, color, ((x - 3, y + 3), (x + 3, y + 3), (x, y - 3)), 0
+        )
     elif shape == Shape.TRIANGLE:
         vertices = [(x, y - 2.5), (x - 2.5, y + 2.5), (x + 2.5, y + 2.5)]
         pygame.draw.polygon(screen, color, vertices, 0)
 
-def draw_map_and_wait(map_update): 
+
+def draw_map_and_wait(map_update):
     display = GameDisplay(SCREEN_SIZE)
 
     display.set_map(map_update)
@@ -357,8 +404,10 @@ def draw_map_and_wait(map_update):
     pygame.display.flip()
     wait_for_key()
 
+
 class GameDisplay(object):
-    """ A class that displays the game state to the screen. """
+    """A class that displays the game state to the screen."""
+
     def __init__(self, screen_size):
         self._screen_size = screen_size
         self._cell_width = self._cell_height = 0
@@ -366,7 +415,7 @@ class GameDisplay(object):
         self._props = None
         self._config = None
         self._state_sync = None
-        self._trajectory = None # A list of Hecscoords. A follower's pathway to draw.
+        self._trajectory = None  # A list of Hecscoords. A follower's pathway to draw.
         self._positive_markers = None
         self._negative_markers = None
         self._instructions = None
@@ -375,39 +424,39 @@ class GameDisplay(object):
         # necessarily involving pygame. Pygame doesn't play nicely on background
         # threads, but someone might want to initialize this object on a
         # background thread and have draw() get called later in the main thread.
-        # As such, pygame intialization is only called when draw() is called.
+        # As such, pygame initialization is only called when draw() is called.
         self._pygame_initialized = False
-    
+
     # This is the CB2 server config. Includes fog distance, and some other stuff relevant to game display (card covers, etc.)
     def set_config(self, config):
         self._config = config
-    
+
     def screen(self):
         return self._screen
-    
+
     def set_map(self, map):
         self._map = map
         screen_size = self._screen_size - 2 * BORDER
-        self._cell_height = (screen_size / self._map.rows)
-        self._cell_width = (screen_size / self._map.cols)
+        self._cell_height = screen_size / self._map.rows
+        self._cell_width = screen_size / self._map.cols
         # Determine which cell dimension is smaller. Recalculate the other dimension
         # to maintain the aspect ratio.
         if self._cell_width > self._cell_height:
-            self._cell_width = self._cell_height * (1/1.5) * math.sqrt(3)
+            self._cell_width = self._cell_height * (1 / 1.5) * math.sqrt(3)
         else:
             self._cell_height = self._cell_width * 1.5 / math.sqrt(3)
-        if hasattr(map, 'props') and map.props:
+        if hasattr(map, "props") and map.props:
             self._props = map.props
-    
+
     def set_props(self, props):
         self._props = props
-    
+
     def set_trajectory(self, trajectory):
         self._trajectory = trajectory
-    
+
     def set_positive_markers(self, positive_locations):
         self._positive_markers = positive_locations
-    
+
     def set_negative_markers(self, negative_locations):
         self._negative_markers = negative_locations
 
@@ -415,9 +464,9 @@ class GameDisplay(object):
         self._state_sync = state_sync
 
     def transform_to_screen_coords(self, coords):
-        """ Transforms the given map x, y coordinates to screen coordinates.
+        """Transforms the given map x, y coordinates to screen coordinates.
 
-            coords: An (x, y) tuple of map coordinates.
+        coords: An (x, y) tuple of map coordinates.
         """
         (x, y) = coords
         x_scale = self._cell_width * 0.9
@@ -427,7 +476,7 @@ class GameDisplay(object):
         y = (y + 1) * y_scale
         y += BORDER
         return (x, y)
-    
+
     def visualize_map(self):
         if self._map is None:
             return
@@ -440,17 +489,26 @@ class GameDisplay(object):
 
             # Get the center of the hexagonal cell.
             cell = tile.cell
-            (center_x, center_y) = self.transform_to_screen_coords(cell.coord.cartesian())
+            (center_x, center_y) = self.transform_to_screen_coords(
+                cell.coord.cartesian()
+            )
 
             # Get the boundary of the cell.
             boundary = cell.boundary
 
             # Draw the cell.
-            draw_hexagon(self._screen, center_x, center_y, self._cell_width,
-                         self._cell_height, color, tile.rotation_degrees,
-                         boundary)
+            draw_hexagon(
+                self._screen,
+                center_x,
+                center_y,
+                self._cell_width,
+                self._cell_height,
+                color,
+                tile.rotation_degrees,
+                boundary,
+            )
 
-            asset_icon = asset_id_to_icon(asset_id)            
+            asset_icon = asset_id_to_icon(asset_id)
             if not pathlib.Path(asset_icon).is_file():
                 continue
             # Draw the asset label.
@@ -459,7 +517,9 @@ class GameDisplay(object):
             icon_width = int(self._cell_width * 0.8)
             icon_height = int(self._cell_height * 0.8)
             icon = pygame.transform.scale(icon, (icon_width, icon_height))
-            self._screen.blit(icon, (center_x - icon_width/2, center_y - icon_height/2))
+            self._screen.blit(
+                icon, (center_x - icon_width / 2, center_y - icon_height / 2)
+            )
 
     def visualize_props(self):
         if self._props is None:
@@ -472,9 +532,14 @@ class GameDisplay(object):
             # Get the card location.
             loc = prop.prop_info.location
             (center_x, center_y) = self.transform_to_screen_coords(loc.cartesian())
-            draw_card(self._screen, center_x, center_y,
-                      self._cell_width / 2, self._cell_height * 0.7,
-                      prop.card_init)
+            draw_card(
+                self._screen,
+                center_x,
+                center_y,
+                self._cell_width / 2,
+                self._cell_height * 0.7,
+                prop.card_init,
+            )
 
     def visualize_actor(self, actor_index):
         actor = self._state_sync.actors[actor_index]
@@ -482,22 +547,28 @@ class GameDisplay(object):
         pygame.draw.circle(self._screen, pygame.Color("red"), (x, y), 10)
         heading = actor.rotation_degrees - 60
         pointer_length = 20
-        pygame.draw.line(self._screen, pygame.Color("red"), (x, y),
-                    (x + pointer_length * math.cos(math.radians(heading)),
-                    y + pointer_length * math.sin(math.radians(heading))))
+        pygame.draw.line(
+            self._screen,
+            pygame.Color("red"),
+            (x, y),
+            (
+                x + pointer_length * math.cos(math.radians(heading)),
+                y + pointer_length * math.sin(math.radians(heading)),
+            ),
+        )
         actor_id = actor.actor_id
         text = GAME_FONT.render(str(actor_id), False, pygame.Color("black"))
         self._screen.blit(text, (x - text.get_width() / 2, y - text.get_height() / 2))
-    
+
     def set_instructions(self, instructions):
         self._instructions = instructions
-    
+
     def visualize_state_sync(self):
         if self._map is None or self._state_sync is None:
             return
         for i in range(self._state_sync.population):
             self.visualize_actor(i)
-    
+
     def visualize_trajectory(self):
         if self._trajectory is None or len(self._trajectory) == 0:
             return
@@ -518,9 +589,12 @@ class GameDisplay(object):
             y2 += offset[1]
             # Choose a color that gets brighter with each segment
             trajectory_color = pygame.Color(base_trajectory_color)
-            trajectory_color.hsva = (trajectory_color.hsva[0], trajectory_color.hsva[1],
-                                    max(trajectory_color.hsva[2] - i * 1, 0),
-                                    trajectory_color.hsva[3])
+            trajectory_color.hsva = (
+                trajectory_color.hsva[0],
+                trajectory_color.hsva[1],
+                max(trajectory_color.hsva[2] - i * 1, 0),
+                trajectory_color.hsva[3],
+            )
             pygame.draw.line(self._screen, trajectory_color, (x1, y1), (x2, y2), 2)
         # Draw a circle at the beginning of the trajectory.
         (start_pos, start_heading) = self._trajectory[0]
@@ -532,7 +606,9 @@ class GameDisplay(object):
         heading_offset = 6
         x_offset = heading_offset * math.cos(math.radians(heading))
         y_offset = heading_offset * math.sin(math.radians(heading))
-        pygame.draw.circle(self._screen, pygame.Color("black"), (x + x_offset, y + y_offset), 4)
+        pygame.draw.circle(
+            self._screen, pygame.Color("black"), (x + x_offset, y + y_offset), 4
+        )
 
     def visualize_markers(self):
         if self._positive_markers is None or len(self._positive_markers) == 0:
@@ -543,19 +619,23 @@ class GameDisplay(object):
             orientation_offset = 15
             x_offset = orientation_offset * math.cos(math.radians(heading))
             y_offset = orientation_offset * math.sin(math.radians(heading))
-            pygame.draw.circle(self._screen, pygame.Color("green"), (x + x_offset, y + y_offset), 7)
+            pygame.draw.circle(
+                self._screen, pygame.Color("green"), (x + x_offset, y + y_offset), 7
+            )
 
         if self._negative_markers is None or len(self._negative_markers) == 0:
             return
-        
+
         for (hecs, orientation) in self._negative_markers:
             (x, y) = self.transform_to_screen_coords(hecs.cartesian())
             heading = orientation - 60
             orientation_offset = 15
             x_offset = orientation_offset * math.cos(math.radians(heading))
             y_offset = orientation_offset * math.sin(math.radians(heading))
-            pygame.draw.circle(self._screen, pygame.Color("red"), (x + x_offset, y + y_offset), 7)
-        
+            pygame.draw.circle(
+                self._screen, pygame.Color("red"), (x + x_offset, y + y_offset), 7
+            )
+
     def visualize_follower_visibility(self):
         if self._config is None:
             return
@@ -564,7 +644,9 @@ class GameDisplay(object):
         follower = None
         for i, actor in enumerate(self._state_sync.actors):
             if actor.actor_role == Role.FOLLOWER:
-                follower = Actor(i, 0, Role.FOLLOWER, actor.location, False, actor.rotation_degrees)
+                follower = Actor(
+                    i, 0, Role.FOLLOWER, actor.location, False, actor.rotation_degrees
+                )
                 break
         if follower is None:
             return
@@ -572,35 +654,66 @@ class GameDisplay(object):
         pygame_distance = fog_distance_hex_coordinates
         follower_location = follower.location().cartesian()
 
-        box_corner = self.transform_to_screen_coords((follower_location[0] - pygame_distance, follower_location[1] - pygame_distance))
-        box_corner_2 = self.transform_to_screen_coords((follower_location[0] + pygame_distance, follower_location[1] + pygame_distance))
+        box_corner = self.transform_to_screen_coords(
+            (
+                follower_location[0] - pygame_distance,
+                follower_location[1] - pygame_distance,
+            )
+        )
+        box_corner_2 = self.transform_to_screen_coords(
+            (
+                follower_location[0] + pygame_distance,
+                follower_location[1] + pygame_distance,
+            )
+        )
         box_width = box_corner_2[0] - box_corner[0]
         box_height = box_corner_2[1] - box_corner[1]
         box_around_follower = pygame.Rect(
-            box_corner[0], # Left.
-            box_corner[1], # Top.
-            box_width,
-            box_height)
-        follower_left_angle_degrees = (follower.heading_degrees() - 60) - FOLLOWER_FOV / 2
-        follower_right_angle_degrees = (follower.heading_degrees() - 60) + FOLLOWER_FOV / 2
+            box_corner[0], box_corner[1], box_width, box_height  # Left.  # Top.
+        )
+        follower_left_angle_degrees = (
+            follower.heading_degrees() - 60
+        ) - FOLLOWER_FOV / 2
+        follower_right_angle_degrees = (
+            follower.heading_degrees() - 60
+        ) + FOLLOWER_FOV / 2
         # Convert to radians
         follower_left_angle_radians = math.radians(follower_left_angle_degrees)
         follower_right_angle_radians = math.radians(follower_right_angle_degrees)
-        pygame.draw.arc(self._screen, pygame.Color(0, 100, 200, 200), box_around_follower, -follower_right_angle_radians, -follower_left_angle_radians, 3)
-        arc_endpoint = (follower_location[0] + pygame_distance * math.cos(follower_left_angle_radians), follower_location[1] + pygame_distance * math.sin(follower_left_angle_radians))
+        pygame.draw.arc(
+            self._screen,
+            pygame.Color(0, 100, 200, 200),
+            box_around_follower,
+            -follower_right_angle_radians,
+            -follower_left_angle_radians,
+            3,
+        )
+        arc_endpoint = (
+            follower_location[0]
+            + pygame_distance * math.cos(follower_left_angle_radians),
+            follower_location[1]
+            + pygame_distance * math.sin(follower_left_angle_radians),
+        )
         pygame.draw.line(
             self._screen,
             pygame.Color(0, 100, 200, 200),
             self.transform_to_screen_coords(follower_location),
             self.transform_to_screen_coords(arc_endpoint),
-            3) # Width.
-        arc_endpoint_2 = (follower_location[0] + pygame_distance * math.cos(follower_right_angle_radians), follower_location[1] + pygame_distance * math.sin(follower_right_angle_radians))
+            3,
+        )  # Width.
+        arc_endpoint_2 = (
+            follower_location[0]
+            + pygame_distance * math.cos(follower_right_angle_radians),
+            follower_location[1]
+            + pygame_distance * math.sin(follower_right_angle_radians),
+        )
         pygame.draw.line(
             self._screen,
             pygame.Color(0, 100, 200, 200),
             self.transform_to_screen_coords(follower_location),
             self.transform_to_screen_coords(arc_endpoint_2),
-            3) # Width.
+            3,
+        )  # Width.
 
     def visualize_instructions(self):
         if not self._instructions or len(self._instructions) == 0:
@@ -617,14 +730,16 @@ class GameDisplay(object):
             # Initialize pygame.
             pygame.init()
             # Create the screen
-            self._screen = pygame.display.set_mode((self._screen_size,
-                                                    self._screen_size))
-            self._screen = pygame.display.set_mode((self._screen_size,
-                                                    self._screen_size))
+            self._screen = pygame.display.set_mode(
+                (self._screen_size, self._screen_size)
+            )
+            self._screen = pygame.display.set_mode(
+                (self._screen_size, self._screen_size)
+            )
             pygame.display.set_caption("Game Visualizer")
             self._pygame_initialized = True
         # Fill the screen with white
-        self._screen.fill((255,255,255))
+        self._screen.fill((255, 255, 255))
         # Draw map elements.
         self.visualize_map()
         self.visualize_props()
@@ -634,8 +749,9 @@ class GameDisplay(object):
         self.visualize_follower_visibility()
         self.visualize_instructions()
 
+
 def main():
-    """ Reads a JSON bug report from a file provided on the command line and displays the map to the user. """
+    """Reads a JSON bug report from a file provided on the command line and displays the map to the user."""
     # Check that the correct number of arguments were provided.
     if len(sys.argv) != 2:
         print("Usage: python visualize.py <bug_report.json>")
@@ -645,6 +761,7 @@ def main():
     with open(sys.argv[1], "r") as file:
         bug_report = BugReport.from_json(file.read())
         draw_map_and_wait(bug_report.map_update)
+
 
 if __name__ == "__main__":
     main()

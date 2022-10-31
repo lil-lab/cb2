@@ -1,32 +1,24 @@
-from dataclasses import dataclass
-import gym
-import numpy as np
-import pathlib
 import string
-import uuid
-from py_client.endpoint_pair import EndpointPair
-
-import server.assets as assets
-import server.hex as hex
-from server.map_provider import MAP_HEIGHT, MAP_WIDTH
-import server.messages.live_feedback as live_feedback
-import server.messages.message_from_server as message_from_server
-import server.messages.prop as prop
-import server.schemas as schemas
-import server.state as state
-import server.card as card
-
-from datetime import datetime
+from dataclasses import dataclass
 from enum import Enum
-from gym import spaces
-from gym import register
 from typing import Optional
 
-from py_client.remote_client import RemoteClient
+import gym
+import numpy as np
+from gym import register, spaces
+
+import server.assets as assets
+import server.card as card
+import server.hex as hex
+import server.messages.live_feedback as live_feedback
+import server.messages.prop as prop
+import server.state as state
+from py_client.endpoint_pair import EndpointPair
 from py_client.local_game_coordinator import LocalGameCoordinator
-from server.util import GetCommitHash
-from server.map_tools.visualize import GameDisplay
+from py_client.remote_client import RemoteClient
+from server.map_provider import MAP_HEIGHT, MAP_WIDTH
 from server.messages.rooms import Role
+
 
 class LeadActions(Enum):
     NONE = 0
@@ -70,6 +62,7 @@ class AuxiliaryInfo:
 
 
 DEFAULT_MAX_INSTRUCTION_LENGTH = 1000  # Chars.
+
 
 class CerealBar2Env(gym.Env):
     metadata = {"render_modes": ["human", "headless"], "render_fps": 4}
@@ -118,51 +111,52 @@ class CerealBar2Env(gym.Env):
     """
 
     def __init__(
-            self,
-            game_mode: EnvMode = EnvMode.NONE,
-            game_name: str = "",
-            game_coordinator: Optional[LocalGameCoordinator] = None,
-            server_url: str = "",
-            server_queue_type: RemoteClient.QueueType = RemoteClient.QueueType.DEFAULT,
-            render_mode: Optional[str] = None,
-            max_instruction_length: int = DEFAULT_MAX_INSTRUCTION_LENGTH):
-        """ CB2 Env Constructor.
+        self,
+        game_mode: EnvMode = EnvMode.NONE,
+        game_name: str = "",
+        game_coordinator: Optional[LocalGameCoordinator] = None,
+        server_url: str = "",
+        server_queue_type: RemoteClient.QueueType = RemoteClient.QueueType.DEFAULT,
+        render_mode: Optional[str] = None,
+        max_instruction_length: int = DEFAULT_MAX_INSTRUCTION_LENGTH,
+    ):
+        """CB2 Env Constructor.
 
-            Creates a Cereal Bar 2 OpenAI Gym environment.
+        Creates a Cereal Bar 2 OpenAI Gym environment.
 
-            OpenAI gym isn't built for multi-agent play, and CB2 is a two-agent
-            game. To make up for this, clients are linked implicitly. There are
-            several modes to start a CB2 Environment in:
+        OpenAI gym isn't built for multi-agent play, and CB2 is a two-agent
+        game. To make up for this, clients are linked implicitly. There are
+        several modes to start a CB2 Environment in:
 
-            LOCAL:
-                In this mode, the game is played locally. No network sockets are
-                used, and all packets are passed directly as python objects to a CB2
-                state machine running in the same process. Because of this, super
-                fast games can be achieved. If a game is run locally, a unique
-                game_name must be provided (and only two clients can use the same
-                game name). This is used to pair with the other client.
+        LOCAL:
+            In this mode, the game is played locally. No network sockets are
+            used, and all packets are passed directly as python objects to a CB2
+            state machine running in the same process. Because of this, super
+            fast games can be achieved. If a game is run locally, a unique
+            game_name must be provided (and only two clients can use the same
+            game name). This is used to pair with the other client.
 
-                Two agents that use the same game_name will be paired together in
-                the same game. It is invalid for more than two agents to use the
-                same game_name. The first environment created is always the leader,
-                and the second is the follower. This can be verified by checking the
-                action_space variable, as it differs for leader and follower.
+            Two agents that use the same game_name will be paired together in
+            the same game. It is invalid for more than two agents to use the
+            same game_name. The first environment created is always the leader,
+            and the second is the follower. This can be verified by checking the
+            action_space variable, as it differs for leader and follower.
 
-            REMOTE:
-                In this mode, the game is played remotely on a server. It is unknown
-                who the other player is (could be a human or another agent), and
-                step() will block until a move is possible. This could be quiet a
-                while (~1 minute) if playing against a human. If connecting to a
-                server, a server_url must be provided.
+        REMOTE:
+            In this mode, the game is played remotely on a server. It is unknown
+            who the other player is (could be a human or another agent), and
+            step() will block until a move is possible. This could be quiet a
+            while (~1 minute) if playing against a human. If connecting to a
+            server, a server_url must be provided.
 
-            Args:
-                game_mode: Mode to start the environment in. See above for details.
-                game_name: Unique name of the game to play. Required in LOCAL mode.
-                game_coordinator: Coordinates multiagent environments in LOCAL mode.
-                server_url: URL of the CB2 server. Required in REMOTE mode.
-                server_queue_type: Server queue to join (leader/remote/default).
-                render_mode: Env display mode. "human" for GUI or None for headless.
-                max_instruction_length: Max length of instructions in chars.
+        Args:
+            game_mode: Mode to start the environment in. See above for details.
+            game_name: Unique name of the game to play. Required in LOCAL mode.
+            game_coordinator: Coordinates multiagent environments in LOCAL mode.
+            server_url: URL of the CB2 server. Required in REMOTE mode.
+            server_queue_type: Server queue to join (leader/remote/default).
+            render_mode: Env display mode. "human" for GUI or None for headless.
+            max_instruction_length: Max length of instructions in chars.
         """
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -181,47 +175,119 @@ class CerealBar2Env(gym.Env):
             self.game_info.server_url = server_url
             self.server_queue_type = server_queue_type
 
-        self.observation_space = spaces.Dict({
-            "actors": spaces.Dict({
-                "leader": spaces.Box(low=np.array([0, 0]), high=np.array([MAP_HEIGHT, MAP_WIDTH]), dtype=np.int16),
-                "follower": spaces.Box(low=np.array([0, 0]), high=np.array([MAP_HEIGHT, MAP_WIDTH]), dtype=np.int16),
-            }),
-            "map": spaces.Dict({
-                "asset_ids": spaces.Box(low=0, high=int(assets.AssetId.EMPTY_TILE.value), shape=[MAP_HEIGHT, MAP_WIDTH], dtype=np.int16),
-                "boundaries": spaces.Box(low=0, high=int(hex.HexBoundary.MAX_VAL), shape=np.array([MAP_HEIGHT, MAP_WIDTH]), dtype=np.int8),
-                "orientations": spaces.Box(low=0, high=360, shape=(MAP_HEIGHT, MAP_WIDTH), dtype=np.int16),
-            }),
-            "cards": spaces.Dict({
-                "counts": spaces.Box(low=0, high=3, shape=(MAP_HEIGHT, MAP_WIDTH), dtype=np.int8),
-                "colors": spaces.Box(low=0, high=int(card.Color.MAX.value), shape=(MAP_HEIGHT, MAP_WIDTH), dtype=np.int8),
-                "shapes": spaces.Box(low=0, high=int(card.Shape.MAX.value), shape=(MAP_HEIGHT, MAP_WIDTH), dtype=np.int8),
-                "selected": spaces.Box(low=0, high=card.SelectedState.MAX.value, shape=(MAP_HEIGHT, MAP_WIDTH), dtype=np.int8),
-            }),
-            "instructions": spaces.Sequence(spaces.Text(max_length=max_instruction_length, min_length=0, charset=string.printable)),
-            "turn_state": spaces.Dict({
-                "role": spaces.Discrete(state.Role.MAX.value),
-                "moves_remaining": spaces.Box(low=0, high=65536, shape=(1,), dtype=np.int16),
-                "turns_remaining": spaces.Box(low=0, high=65536, shape=(1,), dtype=np.int16),
-                "score": spaces.Box(low=0, high=65536, shape=(1,), dtype=np.int16),
-            }),
-            # Feedback is either positive, negative, or none.
-            "feedback": spaces.Discrete(live_feedback.FeedbackType.MAX.value),
-        })
+        self.observation_space = spaces.Dict(
+            {
+                "actors": spaces.Dict(
+                    {
+                        "leader": spaces.Box(
+                            low=np.array([0, 0]),
+                            high=np.array([MAP_HEIGHT, MAP_WIDTH]),
+                            dtype=np.int16,
+                        ),
+                        "follower": spaces.Box(
+                            low=np.array([0, 0]),
+                            high=np.array([MAP_HEIGHT, MAP_WIDTH]),
+                            dtype=np.int16,
+                        ),
+                    }
+                ),
+                "map": spaces.Dict(
+                    {
+                        "asset_ids": spaces.Box(
+                            low=0,
+                            high=int(assets.AssetId.EMPTY_TILE.value),
+                            shape=[MAP_HEIGHT, MAP_WIDTH],
+                            dtype=np.int16,
+                        ),
+                        "boundaries": spaces.Box(
+                            low=0,
+                            high=int(hex.HexBoundary.MAX_VAL),
+                            shape=np.array([MAP_HEIGHT, MAP_WIDTH]),
+                            dtype=np.int8,
+                        ),
+                        "orientations": spaces.Box(
+                            low=0,
+                            high=360,
+                            shape=(MAP_HEIGHT, MAP_WIDTH),
+                            dtype=np.int16,
+                        ),
+                    }
+                ),
+                "cards": spaces.Dict(
+                    {
+                        "counts": spaces.Box(
+                            low=0, high=3, shape=(MAP_HEIGHT, MAP_WIDTH), dtype=np.int8
+                        ),
+                        "colors": spaces.Box(
+                            low=0,
+                            high=int(card.Color.MAX.value),
+                            shape=(MAP_HEIGHT, MAP_WIDTH),
+                            dtype=np.int8,
+                        ),
+                        "shapes": spaces.Box(
+                            low=0,
+                            high=int(card.Shape.MAX.value),
+                            shape=(MAP_HEIGHT, MAP_WIDTH),
+                            dtype=np.int8,
+                        ),
+                        "selected": spaces.Box(
+                            low=0,
+                            high=card.SelectedState.MAX.value,
+                            shape=(MAP_HEIGHT, MAP_WIDTH),
+                            dtype=np.int8,
+                        ),
+                    }
+                ),
+                "instructions": spaces.Sequence(
+                    spaces.Text(
+                        max_length=max_instruction_length,
+                        min_length=0,
+                        charset=string.printable,
+                    )
+                ),
+                "turn_state": spaces.Dict(
+                    {
+                        "role": spaces.Discrete(state.Role.MAX.value),
+                        "moves_remaining": spaces.Box(
+                            low=0, high=65536, shape=(1,), dtype=np.int16
+                        ),
+                        "turns_remaining": spaces.Box(
+                            low=0, high=65536, shape=(1,), dtype=np.int16
+                        ),
+                        "score": spaces.Box(
+                            low=0, high=65536, shape=(1,), dtype=np.int16
+                        ),
+                    }
+                ),
+                # Feedback is either positive, negative, or none.
+                "feedback": spaces.Discrete(live_feedback.FeedbackType.MAX.value),
+            }
+        )
 
-        self.lead_action_space = spaces.Dict({
-            "action": spaces.Discrete(LeadActions.MAX.value),
-            "instructions": spaces.Sequence(spaces.Text(max_length=max_instruction_length, min_length=0, charset=string.printable))
-        })
+        self.lead_action_space = spaces.Dict(
+            {
+                "action": spaces.Discrete(LeadActions.MAX.value),
+                "instructions": spaces.Sequence(
+                    spaces.Text(
+                        max_length=max_instruction_length,
+                        min_length=0,
+                        charset=string.printable,
+                    )
+                ),
+            }
+        )
 
-        self.follow_action_space = spaces.Dict({
-            "action": spaces.Discrete(FollowActions.MAX.value),
-        })
+        self.follow_action_space = spaces.Dict(
+            {
+                "action": spaces.Discrete(FollowActions.MAX.value),
+            }
+        )
 
         # Start with leader turn.
         self.action_space = self.lead_action_space
 
     def reset(self):
-        """ Initializes the environment to the initial state.
+        """Initializes the environment to the initial state.
 
         Returns the initial environment state.
         """
@@ -240,19 +306,23 @@ class CerealBar2Env(gym.Env):
         return self.gym_state_from_client_state(self.game.step(action))
 
     def gym_state_from_client_state(self, state):
-        """ Converts to OpenAI gym (observation, reward, done, info) from CB2 pyclient state. """
+        """Converts to OpenAI gym (observation, reward, done, info) from CB2 pyclient state."""
         map_update, props, turn_state, instructions, actors, feedback = state
         (leader, follower) = actors
         actors = {
             "leader": leader.location().to_offset_coordinates(),
             "follower": follower.location().to_offset_coordinates(),
         }
-        asset_ids = [[assets.AssetId.NONE for _ in range(
-            map_update.cols)] for _ in range(map_update.rows)]
-        boundaries = [[-1 for _ in range(map_update.cols)]
-                        for _ in range(map_update.rows)]
+        asset_ids = [
+            [assets.AssetId.NONE for _ in range(map_update.cols)]
+            for _ in range(map_update.rows)
+        ]
+        boundaries = [
+            [-1 for _ in range(map_update.cols)] for _ in range(map_update.rows)
+        ]
         orientations = [
-            [0 for _ in range(map_update.cols)] for _ in range(map_update.rows)]
+            [0 for _ in range(map_update.cols)] for _ in range(map_update.rows)
+        ]
         for tile in map_update.tiles:
             row, col = tile.cell.coord.to_offset_coordinates()
             asset_ids[row][col] = tile.asset_id
@@ -263,14 +333,20 @@ class CerealBar2Env(gym.Env):
             "boundaries": boundaries,
             "orientations": orientations,
         }
-        card_counts = [[0 for _ in range(map_update.cols)]
-                        for _ in range(map_update.rows)]
-        card_colors = [[card.Color.NONE for _ in range(
-            map_update.cols)] for _ in range(map_update.rows)]
-        card_shapes = [[card.Shape.NONE for _ in range(
-            map_update.cols)] for _ in range(map_update.rows)]
-        card_selected = [[False for _ in range(
-            map_update.cols)] for _ in range(map_update.rows)]
+        card_counts = [
+            [0 for _ in range(map_update.cols)] for _ in range(map_update.rows)
+        ]
+        card_colors = [
+            [card.Color.NONE for _ in range(map_update.cols)]
+            for _ in range(map_update.rows)
+        ]
+        card_shapes = [
+            [card.Shape.NONE for _ in range(map_update.cols)]
+            for _ in range(map_update.rows)
+        ]
+        card_selected = [
+            [False for _ in range(map_update.cols)] for _ in range(map_update.rows)
+        ]
         for p in props:
             if p.prop_type == prop.PropType.CARD:
                 (row, col) = p.prop_info.location.to_offset_coordinates()
@@ -282,7 +358,7 @@ class CerealBar2Env(gym.Env):
             "counts": card_counts,
             "colors": card_colors,
             "shapes": card_shapes,
-            "selected": card_selected
+            "selected": card_selected,
         }
         openai_turn_state = {
             "role": turn_state.turn,
@@ -296,21 +372,27 @@ class CerealBar2Env(gym.Env):
             self.game_info.env_mode,
             self.game_info.server_url,
             self.game_info.game_name,
-            action_mask)
-        return {
-            "actors": actors,
-            "map": map,
-            "cards": cards,
-            "instructions": instructions,
-            "turn_state": openai_turn_state,
-            "feedback": feedback,
-        }, turn_state.score, turn_state.game_over, aux_info
+            action_mask,
+        )
+        return (
+            {
+                "actors": actors,
+                "map": map,
+                "cards": cards,
+                "instructions": instructions,
+                "turn_state": openai_turn_state,
+                "feedback": feedback,
+            },
+            turn_state.score,
+            turn_state.game_over,
+            aux_info,
+        )
 
 
 register(
     id="CerealBar2-v0",
     entry_point="envs.cb2:CerealBar2Env",
-    max_episode_steps=10000, # Should be impossible to reach.
+    max_episode_steps=10000,  # Should be impossible to reach.
     nondeterministic=False,
     reward_threshold=None,
 )

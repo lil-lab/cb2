@@ -2,13 +2,10 @@ import asyncio
 import logging
 import queue
 import time
-
 from queue import Queue
-from server.messages import message_from_server
-
-from server.messages.message_from_server import MessageFromServer
 
 logger = logging.getLogger(__name__)
+
 
 class StateMachineDriver(object):
     """
@@ -22,30 +19,30 @@ class StateMachineDriver(object):
         self._state_machine = state_machine
 
         # Logging init.
-        self._recvd_log = logging.getLogger(f'room_{room_id}.recv')
-        self._record_log = logging.getLogger(f'room_{room_id}.log')
-        self._sent_log = logging.getLogger(f'room_{room_id}.sent')
+        self._recvd_log = logging.getLogger(f"room_{room_id}.recv")
+        self._record_log = logging.getLogger(f"room_{room_id}.log")
+        self._sent_log = logging.getLogger(f"room_{room_id}.sent")
         self._recvd_log.info("State created.")
         self._record_log.info("State created.")
         self._sent_log.info("State created.")
         self._room_id = room_id
 
         # Message output. Each iteration loop, messages are serialized into per-player queues for sending.
-        self._messages_out = {} # Player ID -> Queue() of messages
+        self._messages_out = {}  # Player ID -> Queue() of messages
         # Linear message input. As network packets come in, they are placed in a queue for processing.
-        self._messages_in = Queue() # Queue() of (player_id, message) tuples
-    
+        self._messages_in = Queue()  # Queue() of (player_id, message) tuples
+
     def state_machine(self):
         return self._state_machine
 
     def drain_messages(self, id, messages):
         for m in messages:
             self._messages_in.put((id, m))
-    
+
     def fill_messages(self, player_id, out_messages):
-        """ Fills out_messages with MessageFromServer objects to send to the
+        """Fills out_messages with MessageFromServer objects to send to the
         indicated player and returns True.
-        
+
             If no message is available, returns False.
         """
         if player_id not in self._messages_out:
@@ -54,13 +51,15 @@ class StateMachineDriver(object):
         while True:
             try:
                 message = self._messages_out[player_id].get_nowait()
-                logger.debug(f"Sent message type {message.type} for player {player_id}.")
+                logger.debug(
+                    f"Sent message type {message.type} for player {player_id}."
+                )
                 out_messages.append(message)
                 packets_added = True
             except queue.Empty:
                 break
         return packets_added
-    
+
     async def run(self):
         last_loop = time.time()
         self._state_machine.start()  # Initialize the state machine.
@@ -68,26 +67,25 @@ class StateMachineDriver(object):
             self.step()
             poll_period = time.time() - last_loop
             if (poll_period) > 0.1:
-                logging.warn(
-                    f"Game {self._room_id} slow poll period of {poll_period}s")
+                logging.warn(f"Game {self._room_id} slow poll period of {poll_period}s")
             last_loop = time.time()
             await asyncio.sleep(0)
         self._state_machine.on_game_over()
-    
+
     def step(self):
         self._process_incoming_messages()
         self._state_machine.update()
         self._serialize_outgoing_messages()
-    
+
     def done(self):
         return self._state_machine.done()
-    
+
     def end_game(self):
         self._state_machine.end_game()
 
     def _process_incoming_messages(self):
         # Process all available messages.
-        messages = {} # player_id -> message
+        messages = {}  # player_id -> message
         while True:
             try:
                 player_id, message = self._messages_in.get_nowait()

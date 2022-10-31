@@ -5,22 +5,18 @@ new game.
 
 """
 
-from server.hex import HecsCoord
-from server.messages.map_update import MapUpdate
-
+from dataclasses import dataclass
 from enum import Enum
-from dataclasses import dataclass, field
-from dataclasses_json import dataclass_json, config, LetterCase
-from datetime import datetime
-from marshmallow import fields
-from mashumaro.mixins.json import DataClassJSONMixin
-from typing import List, Optional
+from typing import Optional
 
-import dateutil.parser
+from mashumaro.mixins.json import DataClassJSONMixin
+
+from server.messages.map_update import MapUpdate
 
 
 class Role(Enum):
-    """ The role of a player in a game."""
+    """The role of a player in a game."""
+
     NONE = 0
     FOLLOWER = 1
     LEADER = 2
@@ -36,14 +32,17 @@ class JoinResponse(DataClassJSONMixin):
     booted_from_queue: bool = False
     boot_reason: Optional[str] = ""
 
+
 @dataclass(frozen=True)
 class LeaveRoomNotice(DataClassJSONMixin):
-    """ Used to notify a user that they have left the room. 
+    """Used to notify a user that they have left the room.
 
-        This is to allow the server to boot a player. Optionally,
-        a reason can be left for the player explaining why.
+    This is to allow the server to boot a player. Optionally,
+    a reason can be left for the player explaining why.
     """
+
     reason: str
+
 
 @dataclass(frozen=True)
 class StatsResponse(DataClassJSONMixin):
@@ -51,8 +50,10 @@ class StatsResponse(DataClassJSONMixin):
     players_in_game: int
     players_waiting: int
 
+
 class RoomRequestType(Enum):
-    """ Enumeration of the different types of management requests.  """
+    """Enumeration of the different types of management requests."""
+
     NONE = 0
     STATS = 1
     JOIN = 2
@@ -61,6 +62,7 @@ class RoomRequestType(Enum):
     MAP_SAMPLE = 5
     JOIN_FOLLOWER_ONLY = 6
     JOIN_LEADER_ONLY = 7
+
 
 @dataclass(frozen=True)
 class RoomManagementRequest(DataClassJSONMixin):
@@ -76,8 +78,10 @@ class RoomManagementRequest(DataClassJSONMixin):
     # provided it. In the future, add stricter matching.
     join_game_with_instruction_uuid: Optional[str] = None
 
+
 class RoomResponseType(Enum):
-    """ Enumeration of the different types of management responses.  """
+    """Enumeration of the different types of management responses."""
+
     NONE = 0
     STATS = 1
     JOIN_RESPONSE = 2

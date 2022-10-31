@@ -1,32 +1,29 @@
-from ast import Global
-from datetime import datetime
-from enum import Enum
-from server.map_tools import visualize
-from server.messages import message_from_server
-from server.messages import message_to_server
-from server.messages.rooms import Role
-from server.messages import objective
-from server.remote_table import GetRemote
-from server.messages.logs import LogEntryFromIncomingMessage, LogEntryFromOutgoingMessage
-from server.messages.tutorials import RoleFromTutorialName
-from server.state_machine_driver import StateMachineDriver
-from server.state import State
-from server.tutorial_state import TutorialGameState
-from server.config.config import GlobalConfig
-
 import asyncio
 import logging
-import orjson
 import os
 import pathlib
-import peewee
 from datetime import datetime
+from enum import Enum
 
-import server.schemas.game as game_db
+import orjson
+import peewee
+
 import server.schemas.clients as clients_db
 import server.schemas.mturk as mturk_db
+from server.config.config import GlobalConfig
+from server.messages.logs import (
+    LogEntryFromIncomingMessage,
+    LogEntryFromOutgoingMessage,
+)
+from server.messages.rooms import Role
+from server.messages.tutorials import RoleFromTutorialName
+from server.remote_table import GetRemote
+from server.state import State
+from server.state_machine_driver import StateMachineDriver
+from server.tutorial_state import TutorialGameState
 
 logger = logging.getLogger()
+
 
 class RoomType(Enum):
     NONE = 0
@@ -34,12 +31,22 @@ class RoomType(Enum):
     GAME = 2
     PRESET_GAME = 3
 
+
 class Room(object):
-    """ Represents a game room. """
-    def __init__(self, name: str, max_players: int, game_id: int, game_record,
-                 type: RoomType = RoomType.GAME, tutorial_name: str = "",
-                 from_instruction: str = "", lobby = None):
-        """ from_instruction is the UUID of an instruction to start the game from. """
+    """Represents a game room."""
+
+    def __init__(
+        self,
+        name: str,
+        max_players: int,
+        game_id: int,
+        game_record,
+        type: RoomType = RoomType.GAME,
+        tutorial_name: str = "",
+        from_instruction: str = "",
+        lobby=None,
+    ):
+        """from_instruction is the UUID of an instruction to start the game from."""
         self._name = name
         self._max_players = max_players
         self._players = []
@@ -47,21 +54,25 @@ class Room(object):
         self._id = game_id
         self._room_type = type
         self._game_record = game_record
-        self._initialized = False # Set to True at the bottom of this method.
-        game_type_prefix = f"{lobby.lobby_name()}|{lobby.lobby_type()}|" if lobby is not None else ""
+        self._initialized = False  # Set to True at the bottom of this method.
+        game_type_prefix = (
+            f"{lobby.lobby_name()}|{lobby.lobby_type()}|" if lobby is not None else ""
+        )
         if self._room_type == RoomType.GAME:
-            self._game_record.type = game_type_prefix + 'game'
+            self._game_record.type = game_type_prefix + "game"
             game_state = State(self._id, self._game_record, realtime_actions=True)
         elif self._room_type == RoomType.TUTORIAL:
             if RoleFromTutorialName(tutorial_name) == Role.LEADER:
-                self._game_record.type = game_type_prefix + 'lead_tutorial'
+                self._game_record.type = game_type_prefix + "lead_tutorial"
             else:
-                self._game_record.type = game_type_prefix + 'follow_tutorial'
+                self._game_record.type = game_type_prefix + "follow_tutorial"
             game_state = TutorialGameState(self._id, tutorial_name, self._game_record)
         elif self._room_type == RoomType.PRESET_GAME:
             if not from_instruction:
                 raise ValueError("Preset game must be initialized from an instruction.")
-            game_state, reason = State.InitializeFromExistingState(self._id, from_instruction, True)
+            game_state, reason = State.InitializeFromExistingState(
+                self._id, from_instruction, True
+            )
             if game_state is None:
                 logger.info(f"Failed to initialize game from instruction: {reason}")
                 return
@@ -77,37 +88,43 @@ class Room(object):
             # Create a dummy log directory for the game that ignores all writes.
             self._log_directory = pathlib.Path("/dev/null")
             # Create a dummy file object that ignores all bytes.
-            self._messages_from_server_log = open(os.devnull, 'w')
-            self._messages_to_server_log = open(os.devnull, 'w')
+            self._messages_from_server_log = open(os.devnull, "w")
+            self._messages_to_server_log = open(os.devnull, "w")
         else:
             log_directory = pathlib.Path(game_record.log_directory)
             if not os.path.exists(log_directory):
-                logger.warning('Provided log directory does not exist. Game will not be recorded.')
+                logger.warning(
+                    "Provided log directory does not exist. Game will not be recorded."
+                )
                 return
             self._log_directory = log_directory
-            messages_from_server_path = pathlib.Path(self._log_directory, 'messages_from_server.jsonl.log')
-            self._messages_from_server_log = messages_from_server_path.open('w')
-            messages_to_server_path = pathlib.Path(self._log_directory, 'messages_to_server.jsonl.log')
-            self._messages_to_server_log = messages_to_server_path.open('w')
+            messages_from_server_path = pathlib.Path(
+                self._log_directory, "messages_from_server.jsonl.log"
+            )
+            self._messages_from_server_log = messages_from_server_path.open("w")
+            messages_to_server_path = pathlib.Path(
+                self._log_directory, "messages_to_server.jsonl.log"
+            )
+            self._messages_to_server_log = messages_to_server_path.open("w")
 
         # Write the current server config to the log_directory as config.json.
         if self._room_type != RoomType.PRESET_GAME:
-            with open(pathlib.Path(self._log_directory, 'config.json'), 'w') as f:
+            with open(pathlib.Path(self._log_directory, "config.json"), "w") as f:
                 server_config = GlobalConfig()
                 if server_config is not None:
-                    f.write(orjson.dumps(server_config).decode('utf-8'))
+                    f.write(orjson.dumps(server_config).decode("utf-8"))
 
         self._map_update_count = 0
         self._initialized = True
-    
+
     def initialized(self):
         return self._initialized
-    
+
     def game_record(self):
         return self._game_record
 
     def add_player(self, ws, role):
-        """ Adds a player to the room. """
+        """Adds a player to the room."""
         if self.is_full():
             raise ValueError("Room is full.")
         state_machine = self._state_machine_driver.state_machine()
@@ -115,11 +132,19 @@ class Room(object):
         remote = GetRemote(ws)
 
         if remote != None and self._room_type != RoomType.PRESET_GAME:
-            remote_record = clients_db.Remote.select().join(mturk_db.Worker, join_type=peewee.JOIN.LEFT_OUTER).where(
-                clients_db.Remote.hashed_ip==remote.hashed_ip, 
-                clients_db.Remote.remote_port==remote.client_port).get()
+            remote_record = (
+                clients_db.Remote.select()
+                .join(mturk_db.Worker, join_type=peewee.JOIN.LEFT_OUTER)
+                .where(
+                    clients_db.Remote.hashed_ip == remote.hashed_ip,
+                    clients_db.Remote.remote_port == remote.client_port,
+                )
+                .get()
+            )
             if remote_record is None:
-                logger.error(f"Added player with unrecognized remote IP(md5 hash)/Port: {remote.hashed_ip}/{remote.client_port}")
+                logger.error(
+                    f"Added player with unrecognized remote IP(md5 hash)/Port: {remote.hashed_ip}/{remote.client_port}"
+                )
             # If at least one of the players in this game is an mturk worker, mark the game type as "-mturk" (ex "game-mturk", or "follower-tutorial-mturk")
             if remote_record.worker is not None:
                 if remote_record.worker.hashed_id != "":
@@ -127,7 +152,9 @@ class Room(object):
                         self._game_record.type += "-mturk"
             if role == Role.LEADER:
                 self._game_record.lead_remote = remote_record
-                if (remote_record is not None) and (remote_record.assignment is not None):
+                if (remote_record is not None) and (
+                    remote_record.assignment is not None
+                ):
                     self._game_record.lead_assignment = remote_record.assignment
                     self._game_record.leader = remote_record.worker
             else:
@@ -143,7 +170,7 @@ class Room(object):
         return id
 
     def remove_player(self, id, ws):
-        """ Removes a player from the room. """
+        """Removes a player from the room."""
         self._players.remove(id)
         self._player_endpoints.remove(ws)
         self._state_machine_driver.state_machine().free_actor(id)
@@ -158,7 +185,11 @@ class Room(object):
         self._state_machine_driver.drain_messages(id, messages)
         # Log messages
         for message in messages:
-            log_message = orjson.dumps(LogEntryFromIncomingMessage(id, message), option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat).decode('utf-8')
+            log_message = orjson.dumps(
+                LogEntryFromIncomingMessage(id, message),
+                option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME,
+                default=datetime.isoformat,
+            ).decode("utf-8")
             self._messages_to_server_log.write(log_message + "\n")
             logger.info(f"Received message type {message.type} for player {id}.")
 
@@ -178,12 +209,12 @@ class Room(object):
             return
         self._messages_from_server_log.close()
         self._messages_to_server_log.close()
-    
+
     def done(self):
         if not self._initialized:
             return
         return self._state_machine_driver.done()
-    
+
     def has_pending_messages(self):
         return self._state_machine_driver.state_machine().has_pending_messages()
 
@@ -194,35 +225,39 @@ class Room(object):
         self._state_machine_driver.state_machine().desync_all()
 
     def is_full(self):
-        """ Returns True if the room is full. """
+        """Returns True if the room is full."""
         return len(self._players) == self._max_players
 
     def is_empty(self):
-        """ Returns True if the room is empty. """
+        """Returns True if the room is empty."""
         return len(self._players) == 0
 
     def state(self, actor_id=-1):
         return self._state_machine_driver.state_machine().state(actor_id)
-    
+
     def selected_cards(self):
         return self._state_machine_driver.state_machine().selected_cards()
-    
+
     def debug_status(self):
         is_done = self.done()
         turn_state = self._state_machine_driver.state_machine().turn_state()
 
         # Serialize state to json.
-        turn_state_json = orjson.dumps(turn_state, option=orjson.OPT_PASSTHROUGH_DATETIME | orjson.OPT_INDENT_2, default=datetime.isoformat).decode('utf-8')
+        turn_state_json = orjson.dumps(
+            turn_state,
+            option=orjson.OPT_PASSTHROUGH_DATETIME | orjson.OPT_INDENT_2,
+            default=datetime.isoformat,
+        ).decode("utf-8")
 
         return {
-            'is_done': str(is_done),
-            'turn_state': turn_state_json,
+            "is_done": str(is_done),
+            "turn_state": turn_state_json,
         }
 
     def fill_messages(self, player_id, out_messages):
-        """ Returns a MessageFromServer object to send to the indicated player.
+        """Returns a MessageFromServer object to send to the indicated player.
 
-            If no message is available, returns None.
+        If no message is available, returns None.
         """
         messages = []
         if not self._state_machine_driver.fill_messages(player_id, messages):
@@ -231,21 +266,26 @@ class Room(object):
 
         for message in messages:
             try:
-                log_bytes = orjson.dumps(LogEntryFromOutgoingMessage(player_id, message), option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME, default=datetime.isoformat).decode('utf-8')
+                log_bytes = orjson.dumps(
+                    LogEntryFromOutgoingMessage(player_id, message),
+                    option=orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME,
+                    default=datetime.isoformat,
+                ).decode("utf-8")
                 self._messages_from_server_log.write(log_bytes + "\n")
             except TypeError:
                 logger.info(f"Error with message {message}")
                 while True:
                     import sys
+
                     sys.exit(1)
         return True
 
     def id(self):
-        """ Returns the room id. """
+        """Returns the room id."""
         return self._id
 
     def name(self):
-        """ Returns the room name. """
+        """Returns the room name."""
         return self._name
 
     def is_synced(self):

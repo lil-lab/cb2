@@ -1,84 +1,55 @@
 """ A Lobby that's open to all players. """
-from typing import Tuple
-from aiohttp import web
-from collections import deque
-from dataclasses import dataclass, field
-from itertools import count
-from dataclasses_json import dataclass_json, config, LetterCase
-from datetime import datetime, timedelta
-from queue import Queue
-
-from server.experience import GetWorkerExperienceEntry
-from server.lobby import LobbyType 
-from server.map_provider import CachedMapRetrieval
-from server.messages import message_from_server
-from server.messages import message_to_server
-from server.messages.logs import GameInfo
-from server.messages.rooms import Role
-from server.messages.rooms import JoinResponse
-from server.messages.rooms import LeaveRoomNotice
-from server.messages.rooms import StatsResponse
-from server.messages.rooms import RoomManagementRequest
-from server.messages.rooms import RoomRequestType
-from server.messages.rooms import RoomManagementResponse
-from server.messages.rooms import RoomResponseType
-from server.messages.tutorials import RoleFromTutorialName, TutorialRequestType, TutorialResponse, TutorialResponseType
-
-from server.remote_table import GetWorkerFromRemote
-from server.room import Room, RoomType
-from server.schemas.mturk import Worker, WorkerQualLevel
-from server.util import IdAssigner, GetCommitHash
-
-import server.messages.rooms as rooms
-import server.lobby as lobby
-
-import aiohttp
-import asyncio
 import logging
-import orjson
-import pathlib
-import queue
-import random
-import server.schemas.game as game_db
+from datetime import datetime, timedelta
+from typing import Tuple
+
+from aiohttp import web
+
+import server.lobby as lobby
+from server.lobby import LobbyType
 
 logger = logging.getLogger(__name__)
 
+
 class OpenLobby(lobby.Lobby):
-    """ Used to manage game rooms. """
+    """Used to manage game rooms."""
+
     def __init__(self, lobby_name):
         # Call the superconstructor.
         super().__init__(lobby_name=lobby_name)
-    
+
     # OVERRIDES Lobby.accept_player()
     def accept_player(self, ws: web.WebSocketResponse) -> bool:
         return True
-    
+
     # OVERRIDES Lobby.lobby_type()
     def lobby_type(self) -> LobbyType:
         return LobbyType.OPEN
-    
+
     # OVERRIDES Lobby.get_leader_follower_match().
-    def get_leader_follower_match(self) -> Tuple[web.WebSocketResponse, web.WebSocketResponse, str]:
-        """ Returns a tuple of (leader, follower, instruction_uuid) if there is a match, otherwise returns None.
+    def get_leader_follower_match(
+        self,
+    ) -> Tuple[web.WebSocketResponse, web.WebSocketResponse, str]:
+        """Returns a tuple of (leader, follower, instruction_uuid) if there is a match, otherwise returns None.
 
-            If neither client requested to play a game from a specific UUID,
-            then UUID will be empty string.
-            
-            There are three queues of players: General players, follower-only,
-            and leader-only players.
-            General players must wait for either a follower or for 10 seconds to
-            pass. Once 10 seconds have passed, they can match with other general
-            players. 
-            Follower-only players must wait for a general player to become
-            available. If a follower has waited for > 5m, they're expired from
-            the queue.
-            There's also a leader-only queue, which is similar to follower-only.
+        If neither client requested to play a game from a specific UUID,
+        then UUID will be empty string.
 
-            If multiple matches are available, selects the most-experienced
-            leader and least-experienced follower.
-            
-            Leaders and followers are removed from their respective queues. If
-            either queue is empty, leaves the other untouched.
+        There are three queues of players: General players, follower-only,
+        and leader-only players.
+        General players must wait for either a follower or for 10 seconds to
+        pass. Once 10 seconds have passed, they can match with other general
+        players.
+        Follower-only players must wait for a general player to become
+        available. If a follower has waited for > 5m, they're expired from
+        the queue.
+        There's also a leader-only queue, which is similar to follower-only.
+
+        If multiple matches are available, selects the most-experienced
+        leader and least-experienced follower.
+
+        Leaders and followers are removed from their respective queues. If
+        either queue is empty, leaves the other untouched.
         """
 
         # If there's a leader in the leader queue and a follower in the follower queue, match them.
@@ -92,11 +63,11 @@ class OpenLobby(lobby.Lobby):
             else:
                 i_uuid = ""
             return leader, follower, i_uuid
-        
+
         # If there's no general players, a match can't be made.
         if len(self._player_queue) < 1:
             return None, None, ""
-        
+
         # If there's a leader and a general player, match them.
         if len(self._leader_queue) > 0 and len(self._player_queue) > 0:
             (_, leader, l_i_uuid) = self._leader_queue.popleft()
@@ -126,7 +97,7 @@ class OpenLobby(lobby.Lobby):
             return (None, None, "")
 
         # If a general player has been waiting for >= 10 seconds with no follower, match them with another general player.
-        (ts, _, _) = self._player_queue[0] 
+        (ts, _, _) = self._player_queue[0]
         logger.warn(f"================ CHANGE THIS BACK TO 10s")
         if datetime.now() - ts > timedelta(seconds=1):
             (_, player1, i_uuid_1) = self._player_queue.popleft()
@@ -142,7 +113,9 @@ class OpenLobby(lobby.Lobby):
             else:
                 i_uuid = ""
             if leader is None or follower is None:
-                logger.warning("Could not assign leader and follower based on experience. Using random assignment.")
+                logger.warning(
+                    "Could not assign leader and follower based on experience. Using random assignment."
+                )
                 return (player1, player2, i_uuid)
             return leader, follower, i_uuid
         return None, None
