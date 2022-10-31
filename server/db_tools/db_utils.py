@@ -164,7 +164,7 @@ class GameDiagnosis(Enum):
     DB_INVALID = 1
     NOT_MTURK = 2
     MTURK_SANDBOX = 3
-    GAME_INCOMPLETE = 4  # No longer used. Incomplete games are still considered research data.
+    GAME_INCOMPLETE = 4  # Deprecated. Incomplete games are now GOOD.
     SHORT_GAME = 5
     HIGH_PERCENT_INSTRUCTIONS_INCOMPLETE = 6
     HIGH_PERCENT_INSTRUCTIONS_CANCELLED = 7
