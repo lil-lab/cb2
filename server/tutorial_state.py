@@ -93,13 +93,10 @@ class TutorialGameState(object):
         self._map_update = self._map_provider.map()
         self._map_stale = {}  # Maps from player_id -> bool if their map is stale.
         self._map_update_count = 0
-
-        self._prop_update = (
-            self._map_provider.prop_update()
-        )  # Maps from player_id -> list of props to update.
-        self._prop_stale = (
-            {}
-        )  # Maps from player_id -> bool if their prop list is stale.
+        # Maps from player_id -> list of props to update.
+        self._prop_update = self._map_provider.prop_update()
+        # Maps from player_id -> bool if their prop list is stale.
+        self._prop_stale = {}
 
         self._synced = {}
         self._action_history = {}
@@ -133,12 +130,9 @@ class TutorialGameState(object):
         elif self._player_role == Role.FOLLOWER:
             dummy_character_id = self.create_actor(Role.LEADER, True)
             self._dummy_character = self._actors[dummy_character_id]
-        if self._player_role == Role.LEADER:
-            self._prop_update = map_utils.CensorCards(
-                self._prop_update, self._dummy_character
-            )
-        else:
-            self._prop_update = map_utils.CensorMapForFollower(self._prop_update, None)
+        self._prop_update = map_utils.CensorCards(
+            self._prop_update, self._dummy_character
+        )
 
     def player_ids(self):
         return self._actors.keys()

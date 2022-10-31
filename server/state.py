@@ -389,13 +389,12 @@ class State(object):
         )  # Map and state props share the same ID space.
 
         self._map_update = self._map_provider.map()
-        self._prop_update = (
-            self._map_provider.prop_update()
-        )  # Maps from player_id -> list of props to update.
+        # Maps from player_id -> list of props to update.
+        self._prop_update = self._map_provider.prop_update()
 
-        self._live_feedback = (
-            {}
-        )  # Maps from player_id -> live_feedback.FeedbackType if live feedback is pending. Otherwise live_feedback.FeedbackType.None.
+        # Maps from player_id -> live_feedback.FeedbackType if live feedback is
+        # pending. Otherwise live_feedback.FeedbackType.None.
+        self._live_feedback = {}
 
         self._spawn_points = self._map_provider.spawn_points()
         random.shuffle(self._spawn_points)
@@ -441,7 +440,7 @@ class State(object):
             return None
 
     def end_game(self):
-        logger.debug(f"Game ending.")
+        logger.debug("Game ending.")
         self._done = True
 
     def record_action(self, action):
