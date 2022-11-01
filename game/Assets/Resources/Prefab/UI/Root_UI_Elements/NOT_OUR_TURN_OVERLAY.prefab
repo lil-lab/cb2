@@ -360,7 +360,7 @@ GameObject:
   - component: {fileID: 8194540249266415970}
   m_Layer: 5
   m_Name: Up Button
-  m_TagString: Untagged
+  m_TagString: POSITIVE_FEEDBACK
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1133,7 +1133,7 @@ GameObject:
   - component: {fileID: 8194540250252974607}
   m_Layer: 5
   m_Name: Down Button
-  m_TagString: Untagged
+  m_TagString: NEGATIVE_FEEDBACK
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

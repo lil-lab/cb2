@@ -1,3 +1,5 @@
+# Ignore unity project.
+exclude: '^game\/.*'
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v2.3.0
