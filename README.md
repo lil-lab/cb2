@@ -1,5 +1,5 @@
 Cereal Bar V2
-============
+=============
 
 - [Cereal Bar V2](#cereal-bar-v2)
   - [Intro](#intro)
