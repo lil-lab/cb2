@@ -14,6 +14,8 @@ import time
 import zipfile
 from datetime import datetime, timedelta, timezone
 
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = ""  # Hide pygame welcome message
+
 import aiohttp
 import fire
 import orjson

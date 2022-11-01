@@ -74,7 +74,7 @@ class Room(object):
                 self._id, from_instruction, True
             )
             if game_state is None:
-                logger.info(f"Failed to initialize game from instruction: {reason}")
+                logger.warning(f"Failed to initialize game from instruction: {reason}")
                 return
         else:
             game_state = None

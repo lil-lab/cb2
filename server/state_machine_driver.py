@@ -22,9 +22,6 @@ class StateMachineDriver(object):
         self._recvd_log = logging.getLogger(f"room_{room_id}.recv")
         self._record_log = logging.getLogger(f"room_{room_id}.log")
         self._sent_log = logging.getLogger(f"room_{room_id}.sent")
-        self._recvd_log.info("State created.")
-        self._record_log.info("State created.")
-        self._sent_log.info("State created.")
         self._room_id = room_id
 
         # Message output. Each iteration loop, messages are serialized into per-player queues for sending.

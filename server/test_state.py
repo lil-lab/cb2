@@ -1,6 +1,9 @@
 """Unit tests for state machine code."""
 import logging
+import os
 import unittest
+
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = ""  # Hide pygame welcome message
 
 from py_client.endpoint_pair import EndpointPair
 from py_client.game_endpoint import Action

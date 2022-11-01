@@ -5,7 +5,6 @@
 
 """
 
-import asyncio
 import logging
 import sys
 import uuid
@@ -124,7 +123,6 @@ class LocalGameCoordinator:
         state_machine = State(
             room_id, game_record, log_to_db=log_to_db, realtime_actions=False
         )
-        asyncio.get_event_loop()
         self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)
         return game_name
 
@@ -150,7 +148,6 @@ class LocalGameCoordinator:
         ), f"Failed to init from instr {instruction_uuid}: {reason}"
         state_machine.state(-1)
 
-        asyncio.get_event_loop()
         self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)
         return game_name
 
