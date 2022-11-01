@@ -20,6 +20,7 @@ class ActionType(Enum):
     TRANSLATE = 3
     OUTLINE = 4
     DEATH = 5
+    NONE = 6
 
 
 class AnimationType(Enum):
@@ -59,16 +60,22 @@ def CensorActionForFollower(action, follower):
 
 @dataclass(frozen=True)
 class Action(DataClassJSONMixin):
-    id: int
-    action_type: ActionType
-    animation_type: AnimationType
-    displacement: HecsCoord  # For TRANSLATE, INIT, and INSTANT actions.
-    rotation: float  # For rotations. In Degrees.
-    border_radius: float
-    border_color: Color
-    duration_s: float
+    id: int = "-1"
+    action_type: ActionType = ActionType.NONE
+    animation_type: AnimationType = AnimationType.NONE
+    # Displacement is used in TRANSLATE, INIT, and INSTANT actions.
+    displacement: HecsCoord = HecsCoord.origin()
+    # For rotations. In Degrees.
+    rotation: float = 0.0
+    border_radius: float = 0.0
+    border_color: Color = Color(0, 0, 0, 0)
+    duration_s: float = 0.0
     expiration: datetime = field(
-        metadata={"deserialize": "pendulum", "serialize": pass_through}
+        metadata={"deserialize": "pendulum", "serialize": pass_through},
+        # Default to min time.
+        default_factory=lambda: datetime.isoformat(
+            datetime.min.replace(tzinfo=tz.tzutc())
+        ),
     )
     border_color_follower_pov: Optional[Color] = None  # From follover's point of view.
 

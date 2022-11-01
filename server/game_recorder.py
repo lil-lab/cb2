@@ -147,7 +147,7 @@ class GameRecorder(object):
         activated_instruction_entry.turn_activated = self._last_turn_state.turn_number
         activated_instruction_entry.save()
 
-    def record_instruction_complete(self, objective_complete):
+    def record_instruction_complete(self, objective_complete, actor):
         if self._disabled:
             return
         instruction = (
@@ -157,15 +157,22 @@ class GameRecorder(object):
         )
         instruction.turn_completed = self._last_turn_state.turn_number
         instruction.save()
+        # Log an entry in the move table for this instruction.
+        self.record_move(actor=actor, proposed_action=None, instruction_done=True)
         try:
             next_active_instruction = self._instruction_queue.get_nowait()
             self._set_activated_instruction(next_active_instruction)
         except queue.Empty:
             self._active_instruction = None
 
-    def record_move(self, actor, proposed_action: Action):
+    def record_move(
+        self, actor, proposed_action: Action = None, instruction_done=False
+    ):
         if self._disabled:
             return
+        assert (
+            instruction_done or proposed_action is not None
+        ), "Must provide an action or set instruction_done to True"
         move = schemas.game.Move()
         move.game = self._game_record
         if actor.role() == Role.FOLLOWER:
@@ -183,14 +190,23 @@ class GameRecorder(object):
             move.worker = self._game_record.leader
         if actor.role == Role.FOLLOWER:
             move.worker = self._game_record.follower
-        move.action = proposed_action
+        if proposed_action is not None:
+            move.action = proposed_action
         move.position_before = actor.location()
         move.orientation_before = actor.heading_degrees()
-        if self._last_turn_state != None:
+        if self._last_turn_state is not None:
             move.turn_number = self._last_turn_state.turn_number
         move.game_time = datetime.utcnow() - self._game_record.start_time
         move.server_time = datetime.utcnow()
         move_code = ""
+        if instruction_done:
+            # Use a default, invalid action object for json.
+            move.action = Action()
+            move.action_code = "DONE"
+            self._last_move = move
+            move.save()
+            return
+        # instruction_done == False. We have a proposed action. Calculate move code...
         forward_location = actor.location().neighbor_at_heading(actor.heading_degrees())
         backward_location = actor.location().neighbor_at_heading(
             actor.heading_degrees() + 180

@@ -130,9 +130,9 @@ class Move(BaseModel):
     position_before = HecsCoordField()
     game_time = TextField()
     server_time = DateTimeField()
-    action_code = (
-        TextField()
-    )  # One of MF (Move Forward), MB (Move Backward), TR (Turn Right), TL (Turn Left). Or invalid if the action was not valid.
+    # `action_code` is one of MF (Move Forward), MB (Move Backward), TR (Turn
+    # Right), TL (Turn Left), DONE. Or invalid if the action was not valid.
+    action_code = TextField()
     orientation_before = IntegerField()
 
     def dict(self):

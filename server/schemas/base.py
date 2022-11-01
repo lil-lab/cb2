@@ -32,6 +32,10 @@ def SetDatabase(config):
     database.init(config.database_path(), pragmas=config.sqlite_pragmas)
 
 
+def SetDatabaseForTesting():
+    database.init(":memory:")
+
+
 def ConnectDatabase():
     database.connect()
 

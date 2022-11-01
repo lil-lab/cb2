@@ -1298,4 +1298,6 @@ class State(object):
         self._instruction_history.append(active_instruction)
         for actor_id in self._actors:
             self._instructions_stale[actor_id] = True
-        self._game_recorder.record_instruction_complete(objective_complete)
+        self._game_recorder.record_instruction_complete(
+            objective_complete, actor=self._actors[id]
+        )
