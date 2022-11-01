@@ -215,12 +215,61 @@ LEADER_TUTORIAL_STEPS = [
         None,
     ),
     TutorialStep(
+      [],
+      Tooltip("", "It's the follower's turn...", TooltipType.FOLLOWER_TURN),
+      None,
+      [FollowerActions.TURN_LEFT, FollowerActions.FORWARDS],
+    ),
+    TutorialStep(
         [],
-        Tooltip("", "It's the follower's turn...", TooltipType.FOLLOWER_TURN),
+        Tooltip("",
+                "Oh no, the follower is going the wrong way again! This time let's try giving the follower live feedback (press \"shift\" to continue).",
+                TooltipType.UNTIL_DISMISSED
+                ),
+        None,
+    ),
+    TutorialStep(
+        [],
+        Tooltip("NEGATIVE_FEEDBACK",
+                "Unlike interrupts, live feedback doesn't cancel instrutions. Press the key \"B\" or the red thumb icon for negative feedback.",
+                TooltipType.UNTIL_NEGATIVE_FEEDBACK
+                ),
+        None,
+    ),
+    TutorialStep(
+        [],
+        Tooltip("",
+                "The follower understood your feedback and now is on a correct trajectory!",
+                TooltipType.FOLLOWER_TURN),
         None,
         [
             FollowerActions.TURN_RIGHT,
             FollowerActions.TURN_RIGHT,
+            FollowerActions.TURN_RIGHT
+        ],
+    ),    
+    TutorialStep(
+        [],
+        Tooltip("POSITIVE_FEEDBACK",
+                "Now let's tell the follower it's doing well . Press the key \"G\" or the green thumb icon to give positive feedback.",
+                TooltipType.UNTIL_POSITIVE_FEEDBACK
+                ),
+        None,
+    ),
+    TutorialStep(
+        [],
+        Tooltip("",
+                "Great! You can give the follower feedback as many times as you'd like during its turn. Frequently give feedback for each instruction to increase your coordination! (Press \"shift\" to continue)",
+                TooltipType.UNTIL_DISMISSED
+                ),
+        None,
+    ),    
+    TutorialStep(
+        [],
+        Tooltip("", "The follower will now successfully complete the instruction", TooltipType.FOLLOWER_TURN),
+        None,
+        [
+            FollowerActions.FORWARDS,
             FollowerActions.FORWARDS,
             FollowerActions.TURN_RIGHT,
             FollowerActions.FORWARDS,
@@ -230,7 +279,7 @@ LEADER_TUTORIAL_STEPS = [
     ),
     TutorialStep(
         [],
-        Tooltip("", "It's the follower's turn...", TooltipType.FOLLOWER_TURN),
+        Tooltip("", "The follower will now successfully complete the instruction", TooltipType.FOLLOWER_TURN),
         None,
         [FollowerActions.INSTRUCTION_DONE, FollowerActions.END_TURN],
     ),
