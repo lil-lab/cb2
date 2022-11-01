@@ -7,7 +7,7 @@ Python Client API
   - [Game Endpoint](#game-endpoint)
   - [Example Bot Implementations](#example-bot-implementations)
 
-Remote Client API 
+Remote Client API
 -----------------
 
 The client API lets you write bots which can interact with live users on a CB2 server via `py_client/remote_client.py`.  This API provides routines for entering a queue and waiting for a game. Once a game has been joined, the Remote Client API provides a `GameEndpoint` for interacting with games. See below for more on the game endpoint.
@@ -30,7 +30,7 @@ For more realistic examples, see `routing_leader_client.py` and `follower_client
 Local Self-play API
 -------------------
 
-Bots can also be written which play against each other locally, by sending messages directly to an in-process instance of the game state machine. This can be done by using `py_client/local_game_coordinator.py`. Since there are no network sockets used, local games are much higher performance, and testing on my macbook (M1 Pro) has shown that a full game can be played every ~400ms with database logging enabled, and in only 115ms with logging disabled (see parameter `log_to_db` in `coordinator.CreateGame` below). 
+Bots can also be written which play against each other locally, by sending messages directly to an in-process instance of the game state machine. This can be done by using `py_client/local_game_coordinator.py`. Since there are no network sockets used, local games are much higher performance, and testing on my macbook (M1 Pro) has shown that a full game can be played every ~400ms with database logging enabled, and in only 115ms with logging disabled (see parameter `log_to_db` in `coordinator.CreateGame` below).
 
 For local self-play, both bots are controlled through `EndpointPair`, a class which wraps two `GameEndpoint` interfaces. `EndpointPair` is mostly similar to `GameEndpoint`, but you need to call `initialize()` before starting, and for each call to `step()`, you should check `turn_state` to see which agent's turn it is.
 
@@ -62,7 +62,7 @@ The API is fully defined in `game_endpoint.py`, but here's a rough summary:
 
 ```
 # Returns initial world state. Can only be called once.
-initial_state = game_endpoint.initial_state() 
+initial_state = game_endpoint.initial_state()
 
 # Returns true if the game is done.
 game_over = game_endpoint.over()
