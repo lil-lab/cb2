@@ -1121,7 +1121,7 @@ def InitGameRecording(config):
             continue
         record_base_dir = pathlib.Path(config.record_directory()) / lobby.lobby_name()
         # Create the directory if it doesn't exist.
-        record_base_dir.mkdir(parents=False, exist_ok=True)
+        record_base_dir.mkdir(parents=True, exist_ok=True)
         # Register the logging directory with the room manager.
         lobby.register_game_logging_directory(record_base_dir)
 

@@ -102,6 +102,7 @@ class Instruction(BaseModel):
     time = DateTimeField(default=datetime.datetime.utcnow)
     instruction_number = IntegerField()
     turn_issued = IntegerField()
+    turn_activated = IntegerField(default=-1)
     turn_completed = IntegerField(default=-1)
     turn_cancelled = IntegerField(default=-1)
 

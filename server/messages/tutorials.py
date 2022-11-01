@@ -36,6 +36,8 @@ class TooltipType(Enum):
     UNTIL_SET_COLLECTED = 6
     UNTIL_TURN_ENDED = 7
     FOLLOWER_TURN = 8
+    UNTIL_POSITIVE_FEEDBACK = 9
+    UNTIL_NEGATIVE_FEEDBACK = 10
 
 
 @dataclass(frozen=True)

@@ -130,12 +130,22 @@ class GameRecorder(object):
         instruction.save()
 
         if self._active_instruction is None:
-            self._active_instruction = objective
+            self._set_activated_instruction(objective)
         else:
             try:
                 self._instruction_queue.put_nowait(objective)
             except queue.Full:
                 return
+
+    def _set_activated_instruction(self, next_active_instruction):
+        self._active_instruction = next_active_instruction
+        activated_instruction_entry = (
+            schemas.game.Instruction.select()
+            .where(schemas.game.Instruction.uuid == self._active_instruction.uuid)
+            .get()
+        )
+        activated_instruction_entry.turn_activated = self._last_turn_state.turn_number
+        activated_instruction_entry.save()
 
     def record_instruction_complete(self, objective_complete):
         if self._disabled:
@@ -149,7 +159,7 @@ class GameRecorder(object):
         instruction.save()
         try:
             next_active_instruction = self._instruction_queue.get_nowait()
-            self._active_instruction = next_active_instruction
+            self._set_activated_instruction(next_active_instruction)
         except queue.Empty:
             self._active_instruction = None
 
