@@ -254,6 +254,7 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public void SendPositiveFeedback()
     {
+        _logger.Info("HIIIIII");
         if (!Network.NetworkManager.TaggedInstance().ServerConfig().live_feedback_enabled)
         {
             _logger.Info("SendPositiveFeedback(): Live feedback is not enabled.");

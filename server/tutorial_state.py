@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from queue import Queue
 from typing import List
 
+import server.config.config as config
 import server.map_utils as map_utils
 import server.schemas.cards as cards_db
 import server.schemas.game as game_db
@@ -17,8 +18,14 @@ from server.assets import AssetId
 from server.card import CardSelectAction, SetCompletionActions
 from server.hex import HecsCoord
 from server.map_provider import MapProvider, MapType
-from server.messages import message_from_server, message_to_server, state_sync
+from server.messages import (
+    live_feedback,
+    message_from_server,
+    message_to_server,
+    state_sync,
+)
 from server.messages.action import ActionType, Color
+from server.messages.live_feedback import FeedbackType
 from server.messages.objective import ObjectiveCompleteMessage, ObjectiveMessage
 from server.messages.rooms import Role
 from server.messages.state_sync import StateMachineTick
@@ -53,6 +60,10 @@ class TutorialGameState(object):
 
         self._last_move = None
 
+        # Maps from player_id -> live_feedback.FeedbackType if live feedback is
+        # pending. Otherwise live_feedback.FeedbackType.None.
+        self._live_feedback = {}
+
         # Logging init.
         self._recvd_log = logging.getLogger(f"room_{room_id}.recv")
         self._record_log = logging.getLogger(f"room_{room_id}.log")
@@ -69,6 +80,8 @@ class TutorialGameState(object):
         self._turn_complete_queue = []
 
         self._step_indicators = set()
+
+        self._received_feedback = None
 
         # Maps from actor_id (prop id) to actor object (see definition below).
         self._actors = {}
@@ -159,6 +172,7 @@ class TutorialGameState(object):
         return turn
 
     def end_game(self):
+        """Terminates the current game."""
         logging.info(f"Game ending.")
         self.free_actor(self._dummy_character.actor_id())
         self._done = True
@@ -347,10 +361,10 @@ class TutorialGameState(object):
                 logger.info(f"Sending next tutorial step.")
                 self.send_next_tutorial_step()
 
-        # Check to see if the indicator has been reached.
+        # Check to see if we should send the next tutorial step.
         if self._tutorial_step_index > 0:
             current_step = self._tutorial_steps[self._tutorial_step_index - 1]
-            # Check to see if instructions have been followed.
+            # Check to see if the indicator has been reached.
             if (len(current_step.indicators) > 0) and len(self._step_indicators) == 0:
                 if current_step.tooltip.type == TooltipType.UNTIL_INDICATOR_REACHED:
                     logger.info("INDICATOR REACHED")
@@ -367,6 +381,17 @@ class TutorialGameState(object):
                     next_step_ready &= len(self._step_indicators) == 0
                 if next_step_ready:
                     self.send_next_tutorial_step()
+            # Check feedback...
+            if self._received_feedback is not None:
+                if current_step.tooltip.type == TooltipType.UNTIL_POSITIVE_FEEDBACK:
+                    if self._received_feedback.signal == FeedbackType.POSITIVE:
+                        self.send_next_tutorial_step()
+                        self._received_feedback = None
+                elif current_step.tooltip.type == TooltipType.UNTIL_NEGATIVE_FEEDBACK:
+                    if self._received_feedback.signal == FeedbackType.NEGATIVE:
+                        self.send_next_tutorial_step()
+                        self._received_feedback = None
+                self._received_feedback = None
 
         selected_cards = list(self._map_provider.selected_cards())
         cards_changed = False
@@ -570,8 +595,30 @@ class TutorialGameState(object):
                 f"Cancel pending objectives recvd. Room: {self._room_id}, Player: {id}"
             )
             self.handle_cancel_pending_objectives(id)
+        elif message.type == message_to_server.MessageType.LIVE_FEEDBACK:
+            logger.info(f"Live feedback recvd. Room: {self._room_id}, Player: {id}")
+            self.handle_live_feedback(id, message.live_feedback)
         else:
             logger.warn(f"Received unknown packet type: {message.type}")
+
+    def handle_live_feedback(self, id, feedback):
+        if config.GlobalConfig() and not config.GlobalConfig().live_feedback_enabled:
+            logger.debug(f"Live feedback disabled. Dropping message.")
+            return
+        if feedback.signal == live_feedback.FeedbackType.NONE:
+            logger.debug(f"Received live feedback from {id} with type NONE. Dropping.")
+            return
+        if self._actors[id].role() != Role.LEADER:
+            logger.warn(
+                f"Warning, live feedback received from non-leader ID: {str(id)}"
+            )
+            return
+        if self._turn_state.turn != Role.FOLLOWER:
+            logger.warn(f"Warning, live feedback received during the leader's turn.")
+            return
+        for actor_id in self._actors:
+            self._live_feedback[actor_id] = feedback.signal
+        self._received_feedback = feedback
 
     def handle_action(self, actor_id, action):
         if action.id != actor_id:
@@ -913,6 +960,13 @@ class TutorialGameState(object):
             )
             msg = message_from_server.TutorialResponseFromServer(tutorial_response)
             return msg
+        live_feedback = self._next_live_feedback(player_id)
+        if not live_feedback is None:
+            logger.debug(
+                f"Room {self._room_id} live feedback {live_feedback} for player_id {player_id}"
+            )
+            msg = message_from_server.LiveFeedbackFromServer(live_feedback)
+            return msg
 
         # Nothing to send.
         return None
@@ -992,6 +1046,15 @@ class TutorialGameState(object):
         if self._tutorial_responses.empty():
             return None
         return self._tutorial_responses.get()
+
+    def _next_live_feedback(self, actor_id):
+        if actor_id not in self._live_feedback:
+            return None
+        if self._live_feedback[actor_id] == live_feedback.FeedbackType.NONE:
+            return None
+        feedback = live_feedback.LiveFeedbackFromType(self._live_feedback[actor_id])
+        self._live_feedback[actor_id] = live_feedback.FeedbackType.NONE
+        return feedback
 
     # Returns the current state of the game.
     def state(self, actor_id=-1):

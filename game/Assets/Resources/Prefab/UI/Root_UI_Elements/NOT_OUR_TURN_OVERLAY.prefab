@@ -358,6 +358,7 @@ GameObject:
   - component: {fileID: 8194540249266415968}
   - component: {fileID: 8194540249266415969}
   - component: {fileID: 8194540249266415970}
+  - component: {fileID: 8194540248842960227}
   m_Layer: 5
   m_Name: Up Button
   m_TagString: POSITIVE_FEEDBACK
@@ -412,7 +413,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: e62ee3ea388814915bd5760c3c1133be, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 8ac3e49970dd34375ac7eff800d7c17f, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -465,19 +466,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 8194540249266415969}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: MenuTransitionHandler, Assembly-CSharp
-        m_MethodName: SendPositiveFeedback
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
+--- !u!114 &8194540248842960227
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8194540249266415972}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c72b10b0d0b40466591c53cda3f3f28c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &8194540249619754016
 GameObject:
   m_ObjectHideFlags: 0
@@ -943,9 +944,10 @@ GameObject:
   - component: {fileID: 8194540250145692549}
   - component: {fileID: 8194540250145692552}
   - component: {fileID: 8194540250145692547}
+  - component: {fileID: 8194540248842960225}
   m_Layer: 5
   m_Name: Leader Feedback
-  m_TagString: Untagged
+  m_TagString: LEADER_FEEDBACK_WINDOW
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1047,6 +1049,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 618fb298e78b64bcd9d1bde36e59af98, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &8194540248842960225
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8194540250145692554}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8769632a2d0c5448085dc11d282fefab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &8194540250215602992
 GameObject:
   m_ObjectHideFlags: 0
@@ -1131,6 +1145,7 @@ GameObject:
   - component: {fileID: 8194540250252974605}
   - component: {fileID: 8194540250252974606}
   - component: {fileID: 8194540250252974607}
+  - component: {fileID: 8194540248842960226}
   m_Layer: 5
   m_Name: Down Button
   m_TagString: NEGATIVE_FEEDBACK
@@ -1185,7 +1200,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: cc355ec3ab4624cb9829e24d32c21796, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 0a6a2a3aefe084d34b6b7cc9577a0215, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -1238,19 +1253,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 8194540250252974606}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: MenuTransitionHandler, Assembly-CSharp
-        m_MethodName: SendNegativeFeedback
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
+--- !u!114 &8194540248842960226
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8194540250252974609}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 012f75113c37c44318b2238b27b8e212, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &8194540250265413527
 GameObject:
   m_ObjectHideFlags: 0
