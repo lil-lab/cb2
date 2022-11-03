@@ -254,5 +254,6 @@ USERNAME_WORDLIST = (
     "yankee",
     "yellow",
     "zebra",
+    "zero",
     "zulu",
 )

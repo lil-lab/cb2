@@ -8,7 +8,7 @@
     "fps_limit": 30,
     "sqlite_pragmas": [
         ["journal_mode", "wal"],
-        ["cache_size", -1024 * 64],
+        ['cache_size', -1048576], # 1MB cache size. Negative implies kibibyte units.
         ["foreign_keys", "1"],
         ["synchronous", "off"]
     ]

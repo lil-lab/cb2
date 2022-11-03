@@ -2,16 +2,16 @@ import hashlib
 import pathlib
 import sys
 
-import config.config as config
 import fire
 import humanhash
-import leaderboard
-import schemas.defaults
-from db_tools import db_utils
-from schemas import base
-from schemas.leaderboard import Username
-from schemas.mturk import Worker, WorkerExperience, WorkerQualLevel
 from sparklines import sparklines
+
+import server.config.config as config
+import server.schemas.defaults as defaults_db
+from server.db_tools import db_utils
+from server.schemas import base
+from server.schemas.leaderboard import Username
+from server.schemas.mturk import Worker, WorkerExperience, WorkerQualLevel
 
 COMMANDS = [
     "list",
@@ -286,15 +286,19 @@ def main(
     role="noop",
     nosparklines=False,
     threshold=3,
-    config_filepath="config/server-config.json",
+    config_filepath="server/config/server-config.yaml",
 ):
+    if command == "help":
+        PrintUsage()
+        return
+
     cfg = config.ReadConfigOrDie(config_filepath)
 
     print(f"Reading database from {cfg.database_path()}")
     # Setup the sqlite database used to record game actions.
     base.SetDatabase(cfg)
     base.ConnectDatabase()
-    base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
+    base.CreateTablesIfNotExists(defaults_db.ListDefaultTables())
 
     if command == "list":
         board = leaderboard.GetLeaderboard()
