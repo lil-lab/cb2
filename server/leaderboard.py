@@ -5,6 +5,7 @@ import humanhash
 
 import server.schemas.leaderboard as leaderboard_db
 import server.schemas.mturk as mturk_db
+from server.username_word_list import USERNAME_WORDLIST
 
 
 def GetLeaderboard():
@@ -78,5 +79,6 @@ def SetUsername(worker, username):
 
 def SetDefaultUsername(worker):
     """Uses humanhash to generate a default 2 word username based on the worker's hashed_id. Adds it to the Username table."""
-    username = humanhash.humanize(worker.hashed_id, words=2)
+    hasher = humanhash.HumanHasher(wordlist=USERNAME_WORDLIST)
+    username = hasher.humanize(worker.hashed_id, words=2)
     SetUsername(worker, username)
