@@ -98,7 +98,6 @@ class OpenLobby(lobby.Lobby):
 
         # If a general player has been waiting for >= 10 seconds with no follower, match them with another general player.
         (ts, _, _) = self._player_queue[0]
-        logger.warn(f"================ CHANGE THIS BACK TO 10s")
         if datetime.now() - ts > timedelta(seconds=1):
             (_, player1, i_uuid_1) = self._player_queue.popleft()
             (_, player2, i_uuid_2) = self._player_queue.popleft()

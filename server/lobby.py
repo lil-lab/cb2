@@ -119,6 +119,10 @@ class Lobby(ABC):
     ) -> Tuple[web.WebSocketResponse, web.WebSocketResponse, str]:
         """Returns a leader-follower match, or None if no match is available.
 
+        Returns a tuple of (leader, follower, instruction_uuid="").
+
+        This function is also responsible for removing these entries from the queues.
+
         Third return value is the instruction uuid to start the game from, if
         applicable. This is determined from UUIDs the clients may have
         requested.
