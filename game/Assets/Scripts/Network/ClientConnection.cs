@@ -100,7 +100,8 @@ namespace Network
 
         private async void Reconnect()
         {
-            _webSocket = new WebSocket(_url);
+            // Note: NativeWebSocket ignores headers in WEBGL builds.
+            _webSocket = new WebSocket(_url, /*headers=*/null);
             _webSocket.OnOpen += OnOpen;
             _webSocket.OnError += OnError;
             _webSocket.OnClose += OnClose;
@@ -120,7 +121,10 @@ namespace Network
 
         public void Update()
         {
-            if (_autoReconnect && IsClosed() && ((DateTime.Now - _lastReconnect).Seconds > 3))
+
+            if (_autoReconnect
+                && IsClosed() 
+                && ((DateTime.Now - _lastReconnect).Seconds > 3))
             {
                 _logger.Info("Reconnecting...");
                 Reconnect();

@@ -278,6 +278,11 @@ namespace Network
             {
                 MenuTransitionHandler.TaggedInstance().HandleLiveFeedback(message.live_feedback);
             }
+            if (message.type == MessageFromServer.MessageType.GOOGLE_AUTH_CONFIRMATION)
+            {
+                // Static menu transition handler.
+                MenuTransitionHandler.HandleLoginStatus(message.google_auth_confirmation);
+            }
         }
 
         public void HandleMessage(MessageFromServer message)

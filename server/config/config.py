@@ -7,6 +7,8 @@ from typing import List
 import yaml
 from mashumaro.mixins.json import DataClassJSONMixin
 
+from server.lobby_consts import LobbyInfo, LobbyType
+
 logger = logging.getLogger(__name__)
 
 g_config = None
@@ -129,6 +131,18 @@ class Config(DataClassJSONMixin):
             ("synchronous", "off"),
         ]
     )
+
+    # Names of lobbies and lobby types.
+    lobbies: List[LobbyInfo] = field(
+        default_factory=lambda: [
+            LobbyInfo("default", LobbyType.GOOGLE),
+            LobbyInfo("open", LobbyType.OPEN),
+            LobbyInfo("bot-sandbox", LobbyType.OPEN),
+            LobbyInfo("mturk-lobby", LobbyType.MTURK),
+        ]
+    )
+
+    google_oauth_client_id: str = ""
 
     # Data path accessors that add the requisite data_prefix.
     def data_directory(self):

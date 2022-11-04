@@ -35,6 +35,10 @@ def GetRemote(web_socket_response):
     return remote_table.get(web_socket_response, None)
 
 
+def SetRemote(web_socket_response, remote):
+    remote_table[web_socket_response] = remote
+
+
 def GetRemoteTable():
     return remote_table
 
@@ -62,6 +66,9 @@ class Remote:
     last_message_up: float
     request: aiohttp.web.BaseRequest
     response: aiohttp.web.WebSocketResponse
+    # A JWT encoded Google sso token https://www.rfc-editor.org/rfc/rfc7519
+    google_auth_token: str = None
+    google_id: str = None
     last_ping: datetime = field(
         metadata=config(
             encoder=datetime.isoformat,

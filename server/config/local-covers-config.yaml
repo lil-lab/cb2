@@ -15,5 +15,6 @@
         ['temp_store', 'memory'],  # Use memory for temp storage.
         ['mmap_size', '30000000000'], # 30GB mmap size.
         ['foreign_keys', 1],
-    ]
+    ],
+    "google_oauth_client_id": "787231947800-ee2g4lptmfa0av2qb26n1qu60hf5j2fd.apps.googleusercontent.com"
 }

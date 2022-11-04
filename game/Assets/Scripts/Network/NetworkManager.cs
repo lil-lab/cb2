@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Threading.Tasks;
 using System.Web;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -34,6 +35,13 @@ namespace Network
         private Role _role = Network.Role.NONE;
         private Role _replayRole = Network.Role.NONE;
         private Role _currentTurn = Network.Role.NONE;
+
+        // A JWT encoded Google OneTap token. See GoogleOneTapLogin.cs
+        // https://www.rfc-editor.org/rfc/rfc7519
+        // Don't try to decode this in the client. Instead pass it to the server and
+        // have the server decode it, using Google's verifier library.
+        private string _google_id_token = null;
+
 
         private Logger _logger;
 
@@ -120,6 +128,11 @@ namespace Network
                 _logger.Info("Retrieved server config before it was initialized.");
             }
             return _serverConfig;
+        }
+
+        public void SetGoogleOauthToken(string token)
+        {
+            _google_id_token = token;
         }
 
         public bool IsReplay()
@@ -421,6 +434,8 @@ namespace Network
             _client = new ClientConnection(url, /*autoReconnect=*/ true);
             _router = new NetworkRouter(_client, _networkMapSource, this, null, null);
 
+            _client.Start();
+
             Util.Status result = InitializeTaggedObjects();
             if (!result.Ok())
             {
@@ -430,9 +445,7 @@ namespace Network
             // Subscribe to new scene changes.
             SceneManager.sceneLoaded += OnSceneLoaded;
 
-
             _lastStatsPoll = DateTime.Now;
-            _client.Start();
 
             _lastServerConfigPoll = DateTime.Now;
             _serverConfigPollInProgress = true;
@@ -605,6 +618,19 @@ namespace Network
                 connectionStatus.text = "Closing...";
             }
 
+            // If we're connected to the server, we need google authentication, and we have a token, then we need to send it to the server.
+            if (NeedsGoogleAuth() && (_google_id_token != null))
+            {
+                _logger.Info("Sending google auth token to server.");
+                MessageToServer msg = new MessageToServer();
+                msg.transmit_time = DateTime.UtcNow.ToString("s");
+                msg.type = MessageToServer.MessageType.GOOGLE_AUTH;
+                msg.google_auth = new GoogleAuth();
+                msg.google_auth.token = _google_id_token;
+                _client.TransmitMessage(msg);
+                _google_id_token = null;
+            }
+
             _client.Update();
         }
         private IEnumerator FetchConfig()
@@ -636,6 +662,34 @@ namespace Network
             }
             _logger.Info("Done with fetch config coroutine");
             _serverConfigPollInProgress = false;
+        }
+
+        // Not mutually exclusive with NeedsGoogleAuth below, when _serverConfig == null.
+        private bool NoGoogleAuth()
+        {
+            if (_serverConfig == null)
+            {
+                return false;
+            }
+
+            return !NeedsGoogleAuth();
+        }
+
+        private bool NeedsGoogleAuth()
+        {
+            if (_serverConfig == null)
+            {
+                return false;
+            }
+
+            // Start the connection to the server. If the lobby is a Google lobby, wait until receiving an Oauth token.
+            Dictionary<string, string> urlParameters = UrlParameters();
+            LobbyType type = LobbyType.GOOGLE;
+            if (urlParameters.ContainsKey("lobby_name")) {
+                type = _serverConfig.LobbyTypeFromName(urlParameters["lobby_name"]);
+            }
+
+            return type == LobbyType.GOOGLE;
         }
     }
 }

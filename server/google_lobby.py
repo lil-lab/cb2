@@ -1,4 +1,4 @@
-""" A Lobby that's open to all players. """
+""" A Lobby that's open to players signed in with Google SSO. """
 import logging
 from datetime import datetime, timedelta
 from typing import Tuple
@@ -8,20 +8,29 @@ from aiohttp import web
 import server.lobby as lobby
 from server.lobby import LobbyType
 from server.messages.rooms import RoomManagementRequest
+from server.remote_table import GetRemote
 
 logger = logging.getLogger(__name__)
 
+TESTING_CLIENT_ID = (
+    "787231947800-ee2g4lptmfa0av2qb26n1qu60hf5j2fd.apps.googleusercontent.com"
+)
 
-class OpenLobby(lobby.Lobby):
-    """Used to manage game rooms."""
+
+class GoogleLobby(lobby.Lobby):
+    """Used to manage Google account authenticated rooms."""
 
     def __init__(self, lobby_name):
         # Call the superconstructor.
         super().__init__(lobby_name=lobby_name)
 
-    # OVERRIDES Lobby.lobby_type()
-    def lobby_type(self) -> LobbyType:
-        return LobbyType.OPEN
+    def accept_player(self, ws: web.WebSocketResponse) -> bool:
+        remote = GetRemote(ws)
+        if remote is None:
+            return False
+        if remote.google_id is None:
+            return False
+        return True
 
     # OVERRIDES Lobby.get_leader_follower_match().
     def get_leader_follower_match(
@@ -120,4 +129,14 @@ class OpenLobby(lobby.Lobby):
     def handle_join_request(
         self, request: RoomManagementRequest, ws: web.WebSocketResponse
     ) -> None:
+        if not self.accept_player(ws):
+            logger.info(f"Rejected player {ws} due to invalid Google auth token.")
+            self.boot_from_queue(ws)
+            return
+        # For now, toss all players in the player queue. Later we'll add Google
+        # exp tracking and do something fancier.
         self.join_player_queue(ws, request)
+
+    # OVERRIDES Lobby.lobby_type()
+    def lobby_type(self) -> LobbyType:
+        return LobbyType.GOOGLE

@@ -31,7 +31,8 @@ import server.schemas.defaults as defaults
 import server.schemas.game as game_db
 import server.schemas.mturk as mturk
 from server.config.config import Config, GlobalConfig, InitGlobalConfig
-from server.lobbies import GetLobbies, GetLobby, InitializeLobbies, LobbyType
+from server.google_authenticator import GoogleAuthenticator
+from server.lobby_utils import GetLobbies, GetLobby, InitializeLobbies
 from server.map_provider import MapGenerationTask, MapPoolSize
 from server.messages import message_from_server, message_to_server
 from server.messages.logs import GameInfo, GameLog, LogEntry
@@ -50,12 +51,15 @@ routes = web.RouteTableDef()
 # Lobby names.
 MTURK_LOBBY = "mturk-lobby"
 DEFAULT_LOBBY = "default"
+OPEN_LOBBY = "open"
 BOT_SANDBOX = "bot-sandbox"
 
 # Constants which determine server behavior.
 HEARTBEAT_TIMEOUT_S = 20.0
 
 logger = logging.getLogger()
+
+google_authenticator = GoogleAuthenticator()
 
 
 async def transmit(ws, message):
@@ -874,6 +878,17 @@ async def stream_game_state(request, ws, lobby):
         if message is not None:
             await transmit_bytes(ws, orjson.dumps(message, option=orjson.OPT_NAIVE_UTC))
 
+        # Handle any authentication confirmations.
+        confirmations = google_authenticator.fill_auth_confirmations(ws)
+        if len(confirmations) > 0:
+            for confirmation in confirmations:
+                message = message_from_server.GoogleAuthConfirmationFromServer(
+                    confirmation
+                )
+                await transmit_bytes(
+                    ws, orjson.dumps(message, option=orjson.OPT_NAIVE_UTC)
+                )
+
         if not lobby.socket_in_room(ws):
             if was_in_room:
                 logger.info(
@@ -936,6 +951,7 @@ async def stream_game_state(request, ws, lobby):
 
 async def receive_agent_updates(request, ws, lobby):
     logger.info(f"LOBBY: {lobby.lobby_name()}")
+    GlobalConfig()
     async for msg in ws:
         remote = GetRemote(ws)
         if ws.closed:
@@ -957,6 +973,9 @@ async def receive_agent_updates(request, ws, lobby):
 
         logger.debug("Raw message: " + msg.data)
         message = message_to_server.MessageToServer.from_json(msg.data)
+
+        if message.type == message_to_server.MessageType.GOOGLE_AUTH:
+            google_authenticator.handle_auth(ws, message.google_auth)
 
         if message.type == message_to_server.MessageType.ROOM_MANAGEMENT:
             lobby.handle_request(message, ws)
@@ -1018,7 +1037,6 @@ async def PlayerEndpoint(request):
         autoclose=True, heartbeat=HEARTBEAT_TIMEOUT_S, autoping=True
     )
     await ws.prepare(request)
-    logger = logging.getLogger()
     logger.info("player connected from : " + request.remote)
     hashed_ip = "UNKNOWN"
     peername = request.transport.get_extra_info("peername")
@@ -1028,6 +1046,7 @@ async def PlayerEndpoint(request):
         port = peername[1]
         hashed_ip = hashlib.md5(ip.encode("utf-8")).hexdigest()
     remote = Remote(hashed_ip, port, 0, 0, time.time(), time.time(), request, ws)
+
     AddRemote(ws, remote, assignment)
     LogConnectionEvent(remote, "Connected to Server.")
     try:
@@ -1165,20 +1184,14 @@ def main(config_filepath="server/config/server-config.yaml"):
 
     InitPythonLogging()
     InitGlobalConfig(config_filepath)
-    InitializeLobbies(
-        [
-            (MTURK_LOBBY, LobbyType.MTURK),
-            (DEFAULT_LOBBY, LobbyType.OPEN),
-            (BOT_SANDBOX, LobbyType.OPEN),
-        ]
-    )
 
-    logger.info(f"Config file parsed.")
+    logger.info("Config file parsed.")
     logger.info(f"data prefix: {GlobalConfig().data_prefix}")
     logger.info(f"Log directory: {GlobalConfig().record_directory()}")
     logger.info(f"Assets directory: {GlobalConfig().assets_directory()}")
     logger.info(f"Database path: {GlobalConfig().database_path()}")
 
+    InitializeLobbies(GlobalConfig().lobbies)
     CreateDataDirectory(GlobalConfig())
     InitGameRecording(GlobalConfig())
 

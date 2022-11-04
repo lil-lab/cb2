@@ -11,10 +11,12 @@ from server.lobby import LobbyType
 from server.messages.rooms import (
     JoinResponse,
     Role,
+    RoomManagementRequest,
     RoomManagementResponse,
     RoomResponseType,
 )
 from server.remote_table import GetWorkerFromRemote
+from server.schemas.mturk import WorkerQualLevel
 
 logger = logging.getLogger(__name__)
 
@@ -29,56 +31,8 @@ class MturkLobby(lobby.Lobby):
     def is_mturk_player(self, ws: web.WebSocketResponse) -> bool:
         return GetWorkerFromRemote(ws) is not None
 
-    # OVERRIDES Lobby.accept_player()
     def accept_player(self, ws: web.WebSocketResponse) -> bool:
         return self.is_mturk_player(ws)
-
-    # OVERRIDES Lobby.lobby_type()
-    def lobby_type(self) -> LobbyType:
-        return LobbyType.MTURK
-
-    def assign_leader_follower(
-        self, player1: web.WebSocketResponse, player2: web.WebSocketResponse
-    ):
-        """Given two websockets attached to mturk players, assigns roles to
-        each based on experience. Returns (leader, follower) or (None, None) if
-        missing data on either player.
-        """
-        worker1 = GetWorkerFromRemote(player1)
-        worker2 = GetWorkerFromRemote(player2)
-        if worker1 is None and worker2 is None:
-            return None, None
-        elif worker1 is None:
-            return player2, player1
-        elif worker2 is None:
-            return player1, player2
-        exp1 = GetWorkerExperienceEntry(worker1.hashed_id)
-        exp2 = GetWorkerExperienceEntry(worker2.hashed_id)
-        # For each exp entry, calculate the average score of the last 5 lead games from last_1k_lead_scores and use that to determine the leader.
-        if exp1 is None or exp2 is None:
-            return None, None
-        if exp1.last_1k_lead_scores is None or exp2.last_1k_lead_scores is None:
-            logger.info(f"No data to determine either player.")
-            return None, None
-        # We have enough data on both players!
-        exp1_lead_games = min(len(exp1.last_1k_lead_scores), 10)
-        leader1_score = (
-            sum(exp1.last_1k_lead_scores[-10:]) / exp1_lead_games
-            if exp1_lead_games > 0
-            else 0
-        )
-        exp2_lead_games = min(len(exp2.last_1k_lead_scores), 10)
-        leader2_score = (
-            sum(exp2.last_1k_lead_scores[-10:]) / exp2_lead_games
-            if exp2_lead_games > 0
-            else 0
-        )
-        if leader1_score > leader2_score:
-            return player1, player2
-        elif leader1_score < leader2_score:
-            return player2, player1
-        else:
-            return player1, player2
 
     # OVERRIDES Lobby.get_leader_follower_match().
     def get_leader_follower_match(
@@ -216,3 +170,84 @@ class MturkLobby(lobby.Lobby):
                 return (player1, player2, i_uuid)
             return leader, follower, i_uuid
         return None, None
+
+    # OVERRIDES Lobby.handle_join_request()
+    def handle_join_request(
+        self, request: RoomManagementRequest, ws: web.WebSocketResponse
+    ) -> None:
+        """Handles a join request from a player.
+
+        You should use the following functions to put the player in a queue:
+        self.join_player_queue(ws, request)
+        self.join_follower_queue(ws, request)
+        self.join_leader_queue(ws, request)
+
+        If the player isn't valid, reject them by calling:
+        self.boot_from_queue(ws)
+        """
+        logger.info(
+            f"Received join request from : {str(ws)}. Queue size: {len(self._player_queue)}"
+        )
+        if not self.accept_player(ws):
+            logger.warning(f"Could not get mturk worker from remote. Joining.")
+            self.boot_from_queue(ws)
+            return
+        worker = GetWorkerFromRemote(ws)
+        if worker is None:
+            self.boot_from_queue(ws)
+            return
+        if worker.qual_level in [WorkerQualLevel.EXPERT, WorkerQualLevel.LEADER]:
+            self.join_player_queue(ws, request)
+        elif worker.qual_level == WorkerQualLevel.FOLLOWER:
+            self.join_follower_queue(ws, request)
+        else:
+            logger.warning(f"Worker has invalid qual level: {worker.qual_level}.")
+            self.boot_from_queue(ws)
+            return
+
+    # OVERRIDES Lobby.lobby_type()
+    def lobby_type(self) -> LobbyType:
+        return LobbyType.MTURK
+
+    def assign_leader_follower(
+        self, player1: web.WebSocketResponse, player2: web.WebSocketResponse
+    ):
+        """Given two websockets attached to mturk players, assigns roles to
+        each based on experience. Returns (leader, follower) or (None, None) if
+        missing data on either player.
+        """
+        worker1 = GetWorkerFromRemote(player1)
+        worker2 = GetWorkerFromRemote(player2)
+        if worker1 is None and worker2 is None:
+            return None, None
+        elif worker1 is None:
+            return player2, player1
+        elif worker2 is None:
+            return player1, player2
+        exp1 = GetWorkerExperienceEntry(worker1.hashed_id)
+        exp2 = GetWorkerExperienceEntry(worker2.hashed_id)
+        # For each exp entry, calculate the average score of the last 5 lead games from last_1k_lead_scores and use that to determine the leader.
+        if exp1 is None or exp2 is None:
+            return None, None
+        if exp1.last_1k_lead_scores is None or exp2.last_1k_lead_scores is None:
+            logger.info(f"No data to determine either player.")
+            return None, None
+        # We have enough data on both players!
+        exp1_lead_games = min(len(exp1.last_1k_lead_scores), 10)
+        leader1_score = (
+            sum(exp1.last_1k_lead_scores[-10:]) / exp1_lead_games
+            if exp1_lead_games > 0
+            else 0
+        )
+        exp2_lead_games = min(len(exp2.last_1k_lead_scores), 10)
+        leader2_score = (
+            sum(exp2.last_1k_lead_scores[-10:]) / exp2_lead_games
+            if exp2_lead_games > 0
+            else 0
+        )
+        if leader1_score > leader2_score:
+            return player1, player2
+        elif leader1_score < leader2_score:
+            return player2, player1
+        else:
+            return player1, player2
