@@ -989,6 +989,13 @@ async def receive_agent_updates(request, ws, lobby):
 
 @routes.get("/player_endpoint")
 async def PlayerEndpoint(request):
+    # Get the authorization bearer token.
+    # Since not all lobbies require a token, this is validated later via the Lobby accept_player() method.
+    auth_token = request.headers.get("Authorization")
+    # Extract the token from "Bearer <token>".
+    if auth_token is not None:
+        auth_token = auth_token.split(" ")[1]
+
     if "lobby_name" in request.query:
         lobby = GetLobby(request.query["lobby_name"])
         if lobby == None:
@@ -1027,7 +1034,9 @@ async def PlayerEndpoint(request):
         ip = peername[0]
         port = peername[1]
         hashed_ip = hashlib.md5(ip.encode("utf-8")).hexdigest()
-    remote = Remote(hashed_ip, port, 0, 0, time.time(), time.time(), request, ws)
+    remote = Remote(
+        hashed_ip, port, 0, 0, time.time(), time.time(), request, ws, auth_token
+    )
     AddRemote(ws, remote, assignment)
     LogConnectionEvent(remote, "Connected to Server.")
     try:

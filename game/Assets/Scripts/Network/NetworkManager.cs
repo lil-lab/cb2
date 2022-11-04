@@ -122,6 +122,11 @@ namespace Network
             return _serverConfig;
         }
 
+        public void SetGoogleIdToken(string token)
+        {
+            _client.SetGoogleIdToken(token);
+        }
+
         public bool IsReplay()
         {
             return SceneManager.GetActiveScene().name == "replay_scene";
@@ -429,7 +434,6 @@ namespace Network
 
             // Subscribe to new scene changes.
             SceneManager.sceneLoaded += OnSceneLoaded;
-
 
             _lastStatsPoll = DateTime.Now;
             _client.Start();

@@ -18,6 +18,12 @@ namespace Network
         private DateTime _lastReconnect;
         private Logger _logger;
 
+        // A JWT encoded Google OneTap token. See GoogleOneTapLogin.cs
+        // https://www.rfc-editor.org/rfc/rfc7519
+        // Don't try to decode this in the client. Instead pass it to the server and
+        // have the server decode it, using Google's verifier library.
+        private string _google_id_token = null;
+
         string fix_json(string value)
         {
             value = "{\"Items\":" + value + "}";
@@ -31,6 +37,12 @@ namespace Network
             _messageQueue = new ConcurrentQueue<Network.MessageToServer>();
             _autoReconnect = autoReconnect;
             _lastReconnect = DateTime.Now;
+        }
+
+        public void SetGoogleIdToken(string token)
+        {
+            _logger.Info("Setting Google ID Token: " + token);
+            _google_id_token = token;
         }
 
         public void RegisterHandler(NetworkRouter router)
@@ -100,7 +112,13 @@ namespace Network
 
         private async void Reconnect()
         {
-            _webSocket = new WebSocket(_url);
+            // Include the Google JWT token in the request.
+            Dictionary<string, string> headers = new Dictionary<string, string>();
+            if (_google_id_token != null)
+            {
+                headers.Add("Authorization", "Bearer " + _google_id_token);
+            }
+            _webSocket = new WebSocket(_url, headers);
             _webSocket.OnOpen += OnOpen;
             _webSocket.OnError += OnError;
             _webSocket.OnClose += OnClose;

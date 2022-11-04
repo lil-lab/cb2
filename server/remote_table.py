@@ -62,6 +62,8 @@ class Remote:
     last_message_up: float
     request: aiohttp.web.BaseRequest
     response: aiohttp.web.WebSocketResponse
+    # A JWT encoded Google sso token https://www.rfc-editor.org/rfc/rfc7519
+    google_auth_token: str = None
     last_ping: datetime = field(
         metadata=config(
             encoder=datetime.isoformat,
