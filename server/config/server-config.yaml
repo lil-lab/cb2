@@ -4,5 +4,6 @@
     "data_prefix": "/home/ubuntu/cb2-game-data",
     "card_covers": true,
     "fog_start": 13,
-    "fog_end": 20
+    "fog_end": 20,
+    "google_oauth_client_id": ""
 }

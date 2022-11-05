@@ -50,6 +50,7 @@ routes = web.RouteTableDef()
 # Lobby names.
 MTURK_LOBBY = "mturk-lobby"
 DEFAULT_LOBBY = "default"
+OPEN_LOBBY = "open"
 BOT_SANDBOX = "bot-sandbox"
 
 # Constants which determine server behavior.
@@ -1177,7 +1178,8 @@ def main(config_filepath="server/config/server-config.yaml"):
     InitializeLobbies(
         [
             (MTURK_LOBBY, LobbyType.MTURK),
-            (DEFAULT_LOBBY, LobbyType.OPEN),
+            (DEFAULT_LOBBY, LobbyType.GOOGLE),
+            (OPEN_LOBBY, LobbyType.OPEN),
             (BOT_SANDBOX, LobbyType.OPEN),
         ]
     )

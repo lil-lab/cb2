@@ -11,5 +11,6 @@
         ['cache_size', -1048576], # 1MB cache size. Negative implies kibibyte units.
         ["foreign_keys", "1"],
         ["synchronous", "off"]
-    ]
+    ],
+    "google_oauth_client_id": "787231947800-ee2g4lptmfa0av2qb26n1qu60hf5j2fd.apps.googleusercontent.com"
 }

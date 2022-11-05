@@ -14,8 +14,8 @@ public class GoogleOneTapLogin : MonoBehaviour
     private static extern void CancelGoogleOneTap(string client_id);
 
     // The Google OAuth client ID.
-    private static readonly string TESTING_CLIENT_ID = "877008777966-uqif1dgqol37nvamuni4s1plhihde8ef.apps.googleusercontent.com";
-    private static readonly string REAL_CLIENT_ID = "UNKNOWN";
+    private static readonly string TESTING_CLIENT_ID = "787231947800-ee2g4lptmfa0av2qb26n1qu60hf5j2fd.apps.googleusercontent.com";
+    private static readonly string REAL_CLIENT_ID = "787231947800-ee2g4lptmfa0av2qb26n1qu60hf5j2fd.apps.googleusercontent.com";
 
     private Logger _logger;
 

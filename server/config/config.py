@@ -130,6 +130,8 @@ class Config(DataClassJSONMixin):
         ]
     )
 
+    google_oauth_client_id: str = ""
+
     # Data path accessors that add the requisite data_prefix.
     def data_directory(self):
         return pathlib.Path(self.data_prefix).expanduser()

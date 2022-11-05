@@ -47,6 +47,7 @@ class LobbyType(Enum):
     NONE = 0
     MTURK = 1
     OPEN = 2
+    GOOGLE = 3
 
 
 @dataclass_json()
@@ -616,6 +617,17 @@ class Lobby(ABC):
             )
         )
 
+    def boot_from_queue(self, ws):
+        self._pending_room_management_responses[ws].put(
+            RoomManagementResponse(
+                RoomResponseType.JOIN_RESPONSE,
+                None,
+                JoinResponse(False, -1, Role.NONE, True),
+                None,
+                None,
+            )
+        )
+
     def join_leader_queue(self, ws, request: RoomManagementRequest = None):
         if ws in self._leader_queue:
             logger.info(
@@ -634,6 +646,8 @@ class Lobby(ABC):
             return
         if not self.accept_player(ws):
             logger.info(f"Join lead request not accepted by lobby {self.lobby_name()}.")
+            # Boot the player from the queue.
+            self.boot_from_queue(ws)
             return
         self._leader_queue.append((datetime.now(), ws, request))
         self._pending_room_management_responses[ws].put(
@@ -661,15 +675,7 @@ class Lobby(ABC):
             self.join_follower_queue(ws, request)
         else:
             logger.warning(f"Worker has invalid qual level: {worker.qual_level}.")
-            self._pending_room_management_responses[ws].put(
-                RoomManagementResponse(
-                    RoomResponseType.JOIN_RESPONSE,
-                    None,
-                    JoinResponse(False, -1, Role.NONE, True),
-                    None,
-                    None,
-                )
-            )
+            self.boot_from_queue(ws)
             return
 
     def handle_follower_only_join_request(self, request, ws):

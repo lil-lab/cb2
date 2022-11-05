@@ -1,5 +1,6 @@
 from typing import List, Tuple
 
+from server.google_lobby import GoogleLobby
 from server.lobby import Lobby, LobbyType
 from server.mturk_lobby import MturkLobby
 from server.open_lobby import OpenLobby
@@ -30,5 +31,7 @@ def CreateLobby(lobby_name: str, lobby_type: LobbyType):
         lobbies[lobby_name] = MturkLobby(lobby_name)
     elif lobby_type == LobbyType.OPEN:
         lobbies[lobby_name] = OpenLobby(lobby_name)
+    elif lobby_type == LobbyType.GOOGLE:
+        lobbies[lobby_name] = GoogleLobby(lobby_name)
     else:
-        raise Exception(f"Unknown lobby type: {lobby_type}")
+        raise Exception(f"Lobby type not handled in CreateLobby(): {lobby_type}")
