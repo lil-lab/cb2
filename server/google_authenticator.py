@@ -46,7 +46,7 @@ class GoogleAuthenticator:
             self._queue_auth_success(ws)
         except ValueError:
             # Invalid token
-            logger.info(f"Player {remote.player_id} has an invalid Google auth token.")
+            logger.info(f"Player has an invalid Google auth token.")
             self._queue_auth_failure(ws)
 
     def _queue_auth_success(self, ws):
