@@ -11,7 +11,7 @@ public class GoogleOneTapLogin : MonoBehaviour
     private static extern void LoginGoogleOneTap(string client_id);
     // Only call after calling LoginGoogleOneTap()!
     [DllImport("__Internal")]
-    private static extern void CancelGoogleOneTap(string client_id);
+    private static extern void CancelGoogleOneTap();
 
     // The Google OAuth client ID.
     private static readonly string TESTING_CLIENT_ID = "787231947800-ee2g4lptmfa0av2qb26n1qu60hf5j2fd.apps.googleusercontent.com";
@@ -65,7 +65,11 @@ public class GoogleOneTapLogin : MonoBehaviour
     {
         _logger.Info("OnLogin() called with id_token: " + id_token);
         gameObject.SetActive(false);
-        Network.NetworkManager.TaggedInstance().SetGoogleIdToken(id_token);
+        Network.NetworkManager.TaggedInstance().SetGoogleOauthToken(id_token);
     }
 
+    public void CancelLoginUI()
+    {
+        CancelGoogleOneTap();
+    }
 }

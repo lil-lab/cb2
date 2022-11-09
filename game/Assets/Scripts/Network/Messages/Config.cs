@@ -3,6 +3,21 @@ using System.Collections.Generic;
 
 namespace Network
 {
+    public enum LobbyType
+    {
+        NONE = 0,
+        MTURK,
+        OPEN,
+        GOOGLE
+    }
+
+    [Serializable]
+    public class LobbyInfo
+    {
+        public string name;
+        public LobbyType type;
+    }
+
     // Server configuration, settings & options. Retrieve the latest config from NetworkManager.
     [Serializable]
     public class Config
@@ -37,5 +52,23 @@ namespace Network
         public int fps_limit = -1;
 
         public bool live_feedback_enabled = true;  // Leader feedback enabled.
+
+        public List<List<string>> sqlite_pragmas;  // Pragmas used to initialize SQL database.
+
+        public List<LobbyInfo> lobbies;
+
+        public string google_oauth_client_id = "";
+
+        public LobbyType LobbyTypeFromName(string lobby_name)
+        {
+            foreach (LobbyInfo lobby in lobbies)
+            {
+                if (lobby.name == lobby_name)
+                {
+                    return lobby.type;
+                }
+            }
+            return LobbyType.NONE;
+        }
     }
 }

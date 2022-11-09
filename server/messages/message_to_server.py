@@ -9,6 +9,7 @@ from mashumaro import pass_through
 from mashumaro.mixins.json import DataClassJSONMixin
 
 from server.messages.action import Action
+from server.messages.google_auth import GoogleAuth
 from server.messages.live_feedback import LiveFeedback
 from server.messages.objective import ObjectiveCompleteMessage, ObjectiveMessage
 from server.messages.pong import Pong
@@ -28,6 +29,7 @@ class MessageType(Enum):
     PONG = 7
     LIVE_FEEDBACK = 8
     CANCEL_PENDING_OBJECTIVES = 9
+    GOOGLE_AUTH = 10
 
 
 @dataclass(frozen=True)
@@ -44,3 +46,4 @@ class MessageToServer(DataClassJSONMixin):
     tutorial_request: Optional[TutorialRequest] = None
     pong: Optional[Pong] = None
     live_feedback: Optional[LiveFeedback] = None
+    google_auth: Optional[GoogleAuth] = None

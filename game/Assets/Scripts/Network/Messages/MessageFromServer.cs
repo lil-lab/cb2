@@ -20,6 +20,7 @@ namespace Network
             LIVE_FEEDBACK,
             PROP_UPDATE,
             STATE_MACHINE_TICK,
+            GOOGLE_AUTH_CONFIRMATION,
         }
 
         // These fields are always provided with any packet.
@@ -39,5 +40,6 @@ namespace Network
         public LiveFeedback live_feedback;
         public PropUpdate prop_update;
         public StateMachineInfo state_machine_tick;
+        public GoogleAuthConfirmation google_auth_confirmation;
     }
 }  // namespace Network

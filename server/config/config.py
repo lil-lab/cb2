@@ -7,6 +7,8 @@ from typing import List
 import yaml
 from mashumaro.mixins.json import DataClassJSONMixin
 
+from server.lobby_consts import LobbyInfo, LobbyType
+
 logger = logging.getLogger(__name__)
 
 g_config = None
@@ -127,6 +129,16 @@ class Config(DataClassJSONMixin):
             ("cache_size", -1024 * 64),
             ("foreign_keys", "1"),
             ("synchronous", "off"),
+        ]
+    )
+
+    # Names of lobbies and lobby types.
+    lobbies: List[LobbyInfo] = field(
+        default_factory=lambda: [
+            LobbyInfo("default", LobbyType.GOOGLE),
+            LobbyInfo("open", LobbyType.OPEN),
+            LobbyInfo("bot-sandbox", LobbyType.OPEN),
+            LobbyInfo("mturk-lobby", LobbyType.MTURK),
         ]
     )
 

@@ -7,6 +7,7 @@ from aiohttp import web
 
 import server.lobby as lobby
 from server.lobby import LobbyType
+from server.messages.rooms import RoomManagementRequest
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +18,6 @@ class OpenLobby(lobby.Lobby):
     def __init__(self, lobby_name):
         # Call the superconstructor.
         super().__init__(lobby_name=lobby_name)
-
-    # OVERRIDES Lobby.accept_player()
-    def accept_player(self, ws: web.WebSocketResponse) -> bool:
-        return True
 
     # OVERRIDES Lobby.lobby_type()
     def lobby_type(self) -> LobbyType:
@@ -118,3 +115,9 @@ class OpenLobby(lobby.Lobby):
                 return (player1, player2, i_uuid)
             return leader, follower, i_uuid
         return None, None
+
+    # OVERRIDES Lobby.handle_join_request().
+    def handle_join_request(
+        self, request: RoomManagementRequest, ws: web.WebSocketResponse
+    ) -> None:
+        self.join_player_queue(ws, request)

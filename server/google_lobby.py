@@ -4,12 +4,10 @@ from datetime import datetime, timedelta
 from typing import Tuple
 
 from aiohttp import web
-from google.auth.transport import requests
-from google.oauth2 import id_token
 
 import server.lobby as lobby
-from server.config.config import GlobalConfig
 from server.lobby import LobbyType
+from server.messages.rooms import RoomManagementRequest
 from server.remote_table import GetRemote
 
 logger = logging.getLogger(__name__)
@@ -26,33 +24,13 @@ class GoogleLobby(lobby.Lobby):
         # Call the superconstructor.
         super().__init__(lobby_name=lobby_name)
 
-    # OVERRIDES Lobby.accept_player()
     def accept_player(self, ws: web.WebSocketResponse) -> bool:
-        config = GlobalConfig()
         remote = GetRemote(ws)
-        if remote.google_auth_token is None:
+        if remote is None:
             return False
-        try:
-            idinfo = id_token.verify_oauth2_token(
-                remote.google_auth_token,
-                requests.Request(),
-                config.google_oauth_client_id,
-            )
-            if idinfo["iss"] not in [
-                "accounts.google.com",
-                "https://accounts.google.com",
-            ]:
-                raise ValueError("Wrong issuer.")
-            # ID token is valid. Get the user's Google Account ID from the decoded token.
-            remote.google_user_id = idinfo["sub"]
-            return True
-        except ValueError:
-            # Invalid token
+        if remote.google_id is None:
             return False
-
-    # OVERRIDES Lobby.lobby_type()
-    def lobby_type(self) -> LobbyType:
-        return LobbyType.GOOGLE
+        return True
 
     # OVERRIDES Lobby.get_leader_follower_match().
     def get_leader_follower_match(
@@ -146,3 +124,19 @@ class GoogleLobby(lobby.Lobby):
                 return (player1, player2, i_uuid)
             return leader, follower, i_uuid
         return None, None
+
+    # OVERRIDES Lobby.handle_join_request().
+    def handle_join_request(
+        self, request: RoomManagementRequest, ws: web.WebSocketResponse
+    ) -> None:
+        if not self.accept_player(ws):
+            logger.info(f"Rejected player {ws} due to invalid Google auth token.")
+            self.boot_from_queue(ws)
+            return
+        # For now, toss all players in the player queue. Later we'll add Google
+        # exp tracking and do something fancier.
+        self.join_player_queue(ws, request)
+
+    # OVERRIDES Lobby.lobby_type()
+    def lobby_type(self) -> LobbyType:
+        return LobbyType.GOOGLE

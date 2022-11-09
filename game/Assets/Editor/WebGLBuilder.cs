@@ -11,8 +11,10 @@ class WebGLBuilder
         // Place all your scenes here
         string[] scenes = {
         "Assets/Scenes/menu_scene.unity",
-
-        "Assets/Scenes/game_scene.unity"
+        "Assets/Scenes/game_scene.unity",
+        "Assets/Scenes/map_viewer.unity",
+        "Assets/Scenes/replay_scene.unity",
+        "Assets/Scenes/tutorial_scene.unity"
     };
 
         string pathToDeploy = "builds/WebGLVersion/";

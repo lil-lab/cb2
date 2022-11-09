@@ -7,6 +7,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class MenuTransitionHandler : MonoBehaviour
 {
@@ -49,6 +50,9 @@ public class MenuTransitionHandler : MonoBehaviour
     private static readonly string LEADER_TURN_TAG = "LEADER_TURN_INDICATOR";
 
     private static readonly string LEADER_FEEDBACK_WINDOW = "LEADER_FEEDBACK_WINDOW";
+
+    private static readonly string LOGIN_STATUS_PANEL = "LOGIN_STATUS_PANEL";
+    private static readonly string LOGIN_STATUS_TEXT = "LOGIN_STATUS_TEXT";
 
     private Logger _logger;
 
@@ -303,6 +307,39 @@ public class MenuTransitionHandler : MonoBehaviour
         }
     }
 
+    // Only valid if called while in menu scene. This is a bit unkosher as this
+    // game object doesn't even exist in the menu scene, so we make it a static
+    // helper function so it can be called whenever (and this method doesn't
+    // make use of any Unity GameObjects)
+    public static void HandleLoginStatus(GoogleAuthConfirmation auth)
+    {
+        Scene scene = SceneManager.GetActiveScene();
+        if (scene.name != "menu_scene") {
+            return;
+        }
+        Logger logger = Logger.CreateTrackedLogger(TAG);
+        logger.Info("Received login status: " + auth);
+        GameObject login_status_panel = GameObject.FindWithTag(LOGIN_STATUS_PANEL);
+        if (login_status_panel == null)
+        {
+            logger.Error("Could not find login status panel.");
+            return;
+        }
+        login_status_panel.SetActive(true);
+        if (auth.auth_success)
+        {
+            TMP_Text login_status = FindTmpTextWithTag(LOGIN_STATUS_TEXT);
+            login_status.text = "Login successful. Hit Play to start!";
+            logger.Info("Login successful.");
+        }
+        else
+        {
+            TMP_Text login_status = FindTmpTextWithTag(LOGIN_STATUS_TEXT);
+            login_status.text = "Login failed. Please refresh the page and try again. If the login UI does not appear, clear your browser cookies.";
+            logger.Info("Login failed.");
+        }
+    }
+
     private void DisplayTurnStateReplayMode(DateTime transmitTime, Network.TurnState state)
     {
         NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
@@ -423,7 +460,7 @@ public class MenuTransitionHandler : MonoBehaviour
         Canvas.ForceUpdateCanvases();
     }
 
-    Canvas FindCanvasWithTag(string tag)
+    public static Canvas FindCanvasWithTag(string tag)
     {
         GameObject obj = GameObject.FindGameObjectWithTag(tag);
         if (obj == null)
@@ -434,7 +471,7 @@ public class MenuTransitionHandler : MonoBehaviour
         return obj.GetComponent<Canvas>();
     }
 
-    Text FindTextWithTag(string tag)
+    public static Text FindTextWithTag(string tag)
     {
         GameObject obj = GameObject.FindGameObjectWithTag(tag);
         if (obj == null)
@@ -445,7 +482,7 @@ public class MenuTransitionHandler : MonoBehaviour
         return obj.GetComponent<Text>();
     }
 
-    TMPro.TMP_Text FindTmpTextWithTag(string tag)
+    public static TMPro.TMP_Text FindTmpTextWithTag(string tag)
     {
         GameObject obj = GameObject.FindGameObjectWithTag(tag);
         if (obj == null)

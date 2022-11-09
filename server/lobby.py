@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from enum import Enum
 from queue import Queue
 from typing import List, Tuple
 
@@ -17,6 +16,7 @@ from dataclasses_json import dataclass_json
 import server.messages.message_from_server as message_from_server
 import server.messages.message_to_server as message_to_server
 import server.schemas.game as game_db
+from server.lobby_consts import LobbyType
 from server.map_provider import CachedMapRetrieval
 from server.messages.logs import GameInfo
 from server.messages.rooms import (
@@ -35,19 +35,10 @@ from server.messages.tutorials import (
     TutorialResponse,
     TutorialResponseType,
 )
-from server.remote_table import GetWorkerFromRemote
 from server.room import Room, RoomType
-from server.schemas.mturk import WorkerQualLevel
 from server.util import GetCommitHash, IdAssigner
 
 logger = logging.getLogger(__name__)
-
-
-class LobbyType(Enum):
-    NONE = 0
-    MTURK = 1
-    OPEN = 2
-    GOOGLE = 3
 
 
 @dataclass_json()
@@ -131,18 +122,23 @@ class Lobby(ABC):
         ...
 
     @abstractmethod
-    def accept_player(self, ws: web.WebSocketResponse) -> bool:
-        """Returns True if the player is allowed to join the lobby.
+    def handle_join_request(
+        self, request: RoomManagementRequest, ws: web.WebSocketResponse
+    ) -> None:
+        """Handles a join request from a player.
 
-        Users of the lobby class should check with this function before adding a
-        player to the lobby. If this function returns False, then the
-        join_player_queue(), join_follower_queue(), and join_leader_queue() functions
-        will not add the player to a lobby queue.
+        You should use the following functions to put the player in a queue:
+        self.join_player_queue(ws, request)
+        self.join_follower_queue(ws, request)
+        self.join_leader_queue(ws, request)
+
+        If the player isn't valid, reject them by calling:
+        self.boot_from_queue(ws)
         """
         ...
 
     @abstractmethod
-    def lobby_type(self) -> LobbyType:
+    def lobby_type(self) -> "LobbyType":  # Lazy type annotations.
         """Returns the lobby type."""
         ...
 
@@ -571,9 +567,6 @@ class Lobby(ABC):
                 f"Join request is from socket which is already in the leader wait queue. Ignoring."
             )
             return
-        if not self.accept_player(ws):
-            logger.info(f"Join request not accepted by lobby {self.lobby_name()}.")
-            return
         self._player_queue.append((datetime.now(), ws, request))
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(
@@ -599,11 +592,6 @@ class Lobby(ABC):
         if ws in self._leader_queue:
             logger.info(
                 f"Join request is from socket which is already in the leader wait queue. Ignoring."
-            )
-            return
-        if not self.accept_player(ws):
-            logger.info(
-                f"Join follow request not accepted by lobby {self.lobby_name()}."
             )
             return
         self._follower_queue.append((datetime.now(), ws, request))
@@ -644,11 +632,6 @@ class Lobby(ABC):
                 f"Join request is from leader socket which is already in the follow wait queue. Ignoring."
             )
             return
-        if not self.accept_player(ws):
-            logger.info(f"Join lead request not accepted by lobby {self.lobby_name()}.")
-            # Boot the player from the queue.
-            self.boot_from_queue(ws)
-            return
         self._leader_queue.append((datetime.now(), ws, request))
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(
@@ -659,24 +642,6 @@ class Lobby(ABC):
                 None,
             )
         )
-
-    def handle_join_request(self, request, ws):
-        logger.info(
-            f"Received join request from : {str(ws)}. Queue size: {len(self._player_queue)}"
-        )
-        worker = GetWorkerFromRemote(ws)
-        if worker is None:
-            logger.warning(f"Could not get worker from remote. Joining.")
-            self.join_player_queue(ws, request)
-            return
-        if worker.qual_level in [WorkerQualLevel.EXPERT, WorkerQualLevel.LEADER]:
-            self.join_player_queue(ws, request)
-        elif worker.qual_level == WorkerQualLevel.FOLLOWER:
-            self.join_follower_queue(ws, request)
-        else:
-            logger.warning(f"Worker has invalid qual level: {worker.qual_level}.")
-            self.boot_from_queue(ws)
-            return
 
     def handle_follower_only_join_request(self, request, ws):
         logger.info(
@@ -768,13 +733,15 @@ class Lobby(ABC):
         print("Received queue cancel request from : " + str(ws))
         self.remove_socket_from_queue(ws)
 
-    def handle_request(self, request, ws):
+    def handle_request(self, request: message_to_server.MessageToServer, ws):
         if request.type == message_to_server.MessageType.ROOM_MANAGEMENT:
             self.handle_room_request(request.room_request, ws)
         if request.type == message_to_server.MessageType.TUTORIAL_REQUEST:
             self.handle_tutorial_request(request.tutorial_request, ws)
 
-    def handle_room_request(self, request, ws):
+    def handle_room_request(
+        self, request: RoomManagementRequest, ws: web.WebSocketResponse
+    ):
         if not ws in self._pending_room_management_responses:
             self._pending_room_management_responses[ws] = Queue()
 

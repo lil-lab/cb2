@@ -11,6 +11,7 @@ from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 
 from server.messages.action import Action
+from server.messages.google_auth import GoogleAuthConfirmation
 from server.messages.live_feedback import LiveFeedback
 from server.messages.map_update import MapUpdate
 from server.messages.objective import ObjectiveMessage
@@ -33,6 +34,7 @@ class MessageType(Enum):
     LIVE_FEEDBACK = 8
     PROP_UPDATE = 9
     STATE_MACHINE_TICK = 10
+    GOOGLE_AUTH_CONFIRMATION = 11
 
 
 def ActionsFromServer(actions):
@@ -187,6 +189,24 @@ def StateMachineTickFromServer(state_machine_tick):
     )
 
 
+def GoogleAuthConfirmationFromServer(google_auth_confirmation):
+    return MessageFromServer(
+        datetime.utcnow(),
+        MessageType.GOOGLE_AUTH_CONFIRMATION,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        google_auth_confirmation,
+    )
+
+
 @dataclass(frozen=True)
 class MessageFromServer(DataClassJSONMixin):
     transmit_time: datetime = field(
@@ -207,3 +227,6 @@ class MessageFromServer(DataClassJSONMixin):
     live_feedback: Optional[LiveFeedback] = LiveFeedback()
     prop_update: Optional[PropUpdate] = PropUpdate()
     state_machine_tick: Optional[StateMachineTick] = StateMachineTick()
+    google_auth_confirmation: Optional[
+        GoogleAuthConfirmation
+    ] = GoogleAuthConfirmation()

@@ -65,6 +65,8 @@ TagManager:
   - QUEUE_TIMEOUT_UI
   - CANCEL_QUEUE_BTN
   - LEADER_FEEDBACK_WINDOW
+  - LOGIN_STATUS_TEXT
+  - LOGIN_STATUS_PANEL
   layers:
   - Default
   - TransparentFX
