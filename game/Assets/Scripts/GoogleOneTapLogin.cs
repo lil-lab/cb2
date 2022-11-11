@@ -12,12 +12,18 @@ public class GoogleOneTapLogin : MonoBehaviour
     // Only call after calling LoginGoogleOneTap()!
     [DllImport("__Internal")]
     private static extern void CancelGoogleOneTap();
+    // If a user is signed in, this will end their session.
+    [DllImport("__Internal")]
+    private static extern void LogOutGoogleOneTap();
 
     // The Google OAuth client ID.
     private static readonly string TESTING_CLIENT_ID = "787231947800-ee2g4lptmfa0av2qb26n1qu60hf5j2fd.apps.googleusercontent.com";
     private static readonly string REAL_CLIENT_ID = "787231947800-ee2g4lptmfa0av2qb26n1qu60hf5j2fd.apps.googleusercontent.com";
 
+    private static readonly string LOGOUT_BUTTON_TAG = "GOOGLE_LOGOUT";
+
     private Logger _logger;
+    private bool _loggedIn = false;
 
     public static GoogleOneTapLogin TaggedInstance()
     {
@@ -31,9 +37,20 @@ public class GoogleOneTapLogin : MonoBehaviour
     void Start()
     {
         _logger = Logger.GetOrCreateTrackedLogger("GoogleOneTapLogin");
+        _loggedIn = false;
     }
 
     private bool _loginDisplayed = false;
+
+    public bool LoggedIn()
+    {
+        return _loggedIn;
+    }
+
+    public bool LoginDisplayed()
+    {
+        return _loginDisplayed;
+    }
 
     public void ShowLoginUI()
     {
@@ -81,6 +98,14 @@ public class GoogleOneTapLogin : MonoBehaviour
         _logger.Info("OnLogin() called with id_token: " + id_token);
         gameObject.SetActive(false);
         Network.NetworkManager.TaggedInstance().SetGoogleOauthToken(id_token);
+        _loggedIn = true;
+        // Show the logout button.
+        GameObject logoutButton = GameObject.FindGameObjectWithTag(LOGOUT_BUTTON_TAG);
+        if (logoutButton != null)
+        {
+            logoutButton.SetActive(true);
+        }
+        _loginDisplayed = false;
     }
 
     public void CancelLoginUI()
@@ -88,5 +113,20 @@ public class GoogleOneTapLogin : MonoBehaviour
         _logger.Info("CancelLoginUI() called.");
         CancelGoogleOneTap();
         _loginDisplayed = false;
+    }
+
+    public void LogOut()
+    {
+        _logger.Info("LogOut() called.");
+        LogOutGoogleOneTap();
+        _loggedIn = false;
+        // Hide the logout button.
+        GameObject logoutButton = GameObject.FindGameObjectWithTag(LOGOUT_BUTTON_TAG);
+        if (logoutButton != null)
+        {
+            logoutButton.SetActive(false);
+        }
+        // End the current websocket connection, since it's authenticated.
+        Network.NetworkManager.TaggedInstance().RestartConnection();
     }
 }

@@ -165,6 +165,29 @@ namespace Network
         {
             // Applies any system settings the config might control.
             Application.targetFrameRate = config.fps_limit;
+
+            if ((_serverConfig != null) && !NeedsGoogleAuth()) {
+                // Hide the log out button.
+                GameObject logOutButton = GameObject.FindGameObjectWithTag("GOOGLE_LOGOUT");
+                if (logOutButton != null)
+                {
+                    logOutButton.SetActive(false);
+                }
+                // Hide the login status window.
+                GameObject loginStatus = GameObject.FindGameObjectWithTag("LOGIN_STATUS_PANEL");
+                if (loginStatus != null)
+                {
+                    loginStatus.SetActive(false);
+                }
+            }
+
+            GoogleOneTapLogin login = GoogleOneTapLogin.TaggedInstance();
+            if ((_serverConfig != null) && NeedsGoogleAuth() && (_google_id_token == null) && (!login.LoggedIn()) && (!login.LoginDisplayed()))
+            {
+                _logger.Info("Fetching google auth config");
+                login.ShowLoginUI();
+            }
+
             _logger.Info("Setting target FPS to " + config.fps_limit);
         }
 
@@ -400,6 +423,11 @@ namespace Network
             return result;
         }
 
+        public void RestartConnection() {
+            _logger.Info("Restarting connection...");
+            _client.Start();
+        }
+
         // Start is called before the first frame update
         private void Start()
         {
@@ -615,12 +643,6 @@ namespace Network
             else if (_client.IsClosing())
             {
                 connectionStatus.text = "Closing...";
-            }
-
-            if ((_serverConfig != null) && NeedsGoogleAuth() && (_google_id_token == null))
-            {
-                _logger.Info("Fetching google auth config");
-                GoogleOneTapLogin.TaggedInstance().ShowLoginUI();
             }
 
             // If we're connected to the server, we need google authentication, and we have a token, then we need to send it to the server.

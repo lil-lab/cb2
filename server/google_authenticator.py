@@ -26,6 +26,7 @@ class GoogleAuthenticator:
     def handle_auth(self, ws: web.WebSocketResponse, auth: GoogleAuth) -> bool:
         """Verifies that the given Google auth token is valid."""
         config = GlobalConfig()
+        logger.info(f"Verifying Google auth token: {auth.token}")
         try:
             idinfo = id_token.verify_oauth2_token(
                 auth.token,
@@ -43,6 +44,7 @@ class GoogleAuthenticator:
                 remote, google_id=idinfo["sub"], google_auth_token=auth.token
             )
             SetRemote(ws, remote)
+            logger.info(f"Google auth success for {idinfo['sub']}")
             self._queue_auth_success(ws)
         except ValueError:
             # Invalid token

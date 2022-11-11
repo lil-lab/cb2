@@ -100,6 +100,13 @@ namespace Network
 
         private async void Reconnect()
         {
+            if (_webSocket != null)
+            {
+                _webSocket.OnOpen -= OnOpen;
+                _webSocket.OnError -= OnError;
+                _webSocket.OnClose -= OnClose;
+                _webSocket.OnMessage -= OnMessage;
+            }
             // Note: NativeWebSocket ignores headers in WEBGL builds.
             _webSocket = new WebSocket(_url, /*headers=*/null);
             _webSocket.OnOpen += OnOpen;
@@ -132,7 +139,10 @@ namespace Network
 
             SendPendingActions();
 #if !UNITY_WEBGL || UNITY_EDITOR
-            _webSocket.DispatchMessageQueue();
+            if (_webSocket != null)
+            {
+                _webSocket.DispatchMessageQueue();
+            }
 #endif
         }
 

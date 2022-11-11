@@ -281,7 +281,9 @@ namespace Network
             if (message.type == MessageFromServer.MessageType.GOOGLE_AUTH_CONFIRMATION)
             {
                 // Static menu transition handler.
+                _logger.Info("Received Google Auth Confirmation.");
                 MenuTransitionHandler.HandleLoginStatus(message.google_auth_confirmation);
+                _logger.Info("HI");
             }
         }
 

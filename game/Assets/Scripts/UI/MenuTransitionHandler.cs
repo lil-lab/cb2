@@ -313,12 +313,13 @@ public class MenuTransitionHandler : MonoBehaviour
     // make use of any Unity GameObjects)
     public static void HandleLoginStatus(GoogleAuthConfirmation auth)
     {
+        Logger logger = Logger.GetOrCreateTrackedLogger(TAG);
+        logger.Info("Received login status: " + auth);
         Scene scene = SceneManager.GetActiveScene();
         if (scene.name != "menu_scene") {
+            logger.Info("HandleLoginStatus(): Not in menu scene, ignoring.");
             return;
         }
-        Logger logger = Logger.CreateTrackedLogger(TAG);
-        logger.Info("Received login status: " + auth);
         GameObject login_status_panel = GameObject.FindWithTag(LOGIN_STATUS_PANEL);
         if (login_status_panel == null)
         {

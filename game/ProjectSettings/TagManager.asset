@@ -68,6 +68,7 @@ TagManager:
   - LOGIN_STATUS_TEXT
   - LOGIN_STATUS_PANEL
   - GoogleOneTapLogin
+  - GOOGLE_LOGOUT
   layers:
   - Default
   - TransparentFX
