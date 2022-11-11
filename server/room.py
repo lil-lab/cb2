@@ -22,7 +22,7 @@ from server.state import State
 from server.state_machine_driver import StateMachineDriver
 from server.tutorial_state import TutorialGameState
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class RoomType(Enum):
@@ -41,7 +41,7 @@ class Room(object):
         max_players: int,
         game_id: int,
         game_record,
-        type: RoomType = RoomType.GAME,
+        room_type: RoomType = RoomType.GAME,
         tutorial_name: str = "",
         from_instruction: str = "",
         lobby=None,
@@ -52,9 +52,12 @@ class Room(object):
         self._players = []
         self._player_endpoints = []
         self._id = game_id
-        self._room_type = type
+        self._room_type = room_type
         self._game_record = game_record
         self._initialized = False  # Set to True at the bottom of this method.
+        logger.info(
+            f"Lobby object: {lobby} | name: {lobby.lobby_name()} | lobby type: {lobby.lobby_type()} | typeinfo: {type(lobby)}"
+        )
         game_type_prefix = (
             f"{lobby.lobby_name()}|{lobby.lobby_type()}|" if lobby is not None else ""
         )

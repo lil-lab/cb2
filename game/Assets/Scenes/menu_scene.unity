@@ -6226,8 +6226,8 @@ GameObject:
   - component: {fileID: 1484782797}
   - component: {fileID: 1484782796}
   m_Layer: 0
-  m_Name: GoogleOneTap
-  m_TagString: Untagged
+  m_Name: GoogleOneTapLogin
+  m_TagString: GoogleOneTapLogin
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

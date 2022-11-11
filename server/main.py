@@ -950,7 +950,7 @@ async def stream_game_state(request, ws, lobby):
 
 
 async def receive_agent_updates(request, ws, lobby):
-    logger.info(f"LOBBY: {lobby.lobby_name()}")
+    logger.info(f"receive_agent_updates({request}, {ws}, {lobby})")
     GlobalConfig()
     async for msg in ws:
         remote = GetRemote(ws)
@@ -1014,6 +1014,9 @@ async def PlayerEndpoint(request):
             return web.Response(status=404, text="Lobby not found.")
     else:
         lobby = GetLobby(DEFAULT_LOBBY)
+    logger.info(
+        f"Player connecting to lobby: {lobby.lobby_name()} | type: {lobby.lobby_type()}"
+    )
     assignment = None
     if "assignmentId" in request.query:
         # If this is an mturk task, log assignment into to the remote table.

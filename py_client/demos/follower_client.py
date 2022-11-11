@@ -4,7 +4,7 @@ from datetime import timedelta
 import fire
 
 from py_client.game_endpoint import Action, Role
-from py_client.remote_client import RemoteClient, Role
+from py_client.remote_client import RemoteClient
 
 logger = logging.getLogger(__name__)
 

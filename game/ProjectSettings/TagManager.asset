@@ -67,6 +67,7 @@ TagManager:
   - LEADER_FEEDBACK_WINDOW
   - LOGIN_STATUS_TEXT
   - LOGIN_STATUS_PANEL
+  - GoogleOneTapLogin
   layers:
   - Default
   - TransparentFX

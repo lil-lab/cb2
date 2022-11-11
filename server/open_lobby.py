@@ -120,4 +120,6 @@ class OpenLobby(lobby.Lobby):
     def handle_join_request(
         self, request: RoomManagementRequest, ws: web.WebSocketResponse
     ) -> None:
+        """Handles a join request from a client."""
+        logger.info(f"Received join request from {ws}.")
         self.join_player_queue(ws, request)

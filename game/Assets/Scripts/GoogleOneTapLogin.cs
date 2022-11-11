@@ -31,6 +31,19 @@ public class GoogleOneTapLogin : MonoBehaviour
     void Start()
     {
         _logger = Logger.GetOrCreateTrackedLogger("GoogleOneTapLogin");
+    }
+
+    private bool _loginDisplayed = false;
+
+    public void ShowLoginUI()
+    {
+        if (_loginDisplayed) {
+            _logger.Info("ShowLoginUI: Login already displayed.");
+            return;
+        } else {
+            _logger.Info("Displaying UI.");
+        }
+
         // Check URL Params. If there's no mturk ID, then show Google OneTap Login UI. 
         Dictionary<string, string> urlParameters = Network.NetworkManager.UrlParameters();
         if (urlParameters.ContainsKey("assignmentId"))
@@ -57,7 +70,9 @@ public class GoogleOneTapLogin : MonoBehaviour
         }
 
         // Show Google OneTap Login UI.
+        _logger.Info("Showing Google OneTap Login UI with client ID: {client_id}");
         LoginGoogleOneTap(client_id);
+        _loginDisplayed = true;
     }
 
     // On login callback from javascript plugin.
@@ -70,6 +85,8 @@ public class GoogleOneTapLogin : MonoBehaviour
 
     public void CancelLoginUI()
     {
+        _logger.Info("CancelLoginUI() called.");
         CancelGoogleOneTap();
+        _loginDisplayed = false;
     }
 }

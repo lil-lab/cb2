@@ -577,9 +577,8 @@ namespace Network
             }
             // If it's been more than 60 seconds since the last poll and _serverConfig is null, poll the server for the config.
             // Alternatively, if _serverConfig is out of date and it's been > 10 seconds since the last poll, also poll the server.
-            if (((_serverConfig == null) || (DateTime.UtcNow.Subtract(_serverConfig.timestamp).TotalMinutes > 1)) && 
-                (DateTime.UtcNow.Subtract(_lastServerConfigPoll).TotalSeconds > 1) &&
-                !_serverConfigPollInProgress)
+            if (((_serverConfig != null) && (DateTime.UtcNow.Subtract(_serverConfig.timestamp).TotalMinutes > 1)) || 
+                ((_serverConfig == null) && (DateTime.UtcNow.Subtract(_lastServerConfigPoll).TotalSeconds > 1) && !_serverConfigPollInProgress))
             {
                 _logger.Info("Starting fetch config coroutine. poll in progress: " + _serverConfigPollInProgress);
                 _lastServerConfigPoll = DateTime.UtcNow;
@@ -618,8 +617,14 @@ namespace Network
                 connectionStatus.text = "Closing...";
             }
 
+            if ((_serverConfig != null) && NeedsGoogleAuth() && (_google_id_token == null))
+            {
+                _logger.Info("Fetching google auth config");
+                GoogleOneTapLogin.TaggedInstance().ShowLoginUI();
+            }
+
             // If we're connected to the server, we need google authentication, and we have a token, then we need to send it to the server.
-            if (NeedsGoogleAuth() && (_google_id_token != null))
+            if ((_serverConfig != null) && NeedsGoogleAuth() && (_google_id_token != null))
             {
                 _logger.Info("Sending google auth token to server.");
                 MessageToServer msg = new MessageToServer();
@@ -660,28 +665,13 @@ namespace Network
                         break;
                 }
             }
+
             _logger.Info("Done with fetch config coroutine");
             _serverConfigPollInProgress = false;
         }
 
-        // Not mutually exclusive with NeedsGoogleAuth below, when _serverConfig == null.
-        private bool NoGoogleAuth()
-        {
-            if (_serverConfig == null)
-            {
-                return false;
-            }
-
-            return !NeedsGoogleAuth();
-        }
-
         private bool NeedsGoogleAuth()
         {
-            if (_serverConfig == null)
-            {
-                return false;
-            }
-
             // Start the connection to the server. If the lobby is a Google lobby, wait until receiving an Oauth token.
             Dictionary<string, string> urlParameters = UrlParameters();
             LobbyType type = LobbyType.GOOGLE;

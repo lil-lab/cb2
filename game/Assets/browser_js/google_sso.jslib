@@ -6,6 +6,7 @@ mergeInto(LibraryManager.library, {
         var script = document.createElement("script");
         script.src = "https://accounts.google.com/gsi/client";
         document.head.appendChild(script);
+        console.log("Loading Google One Tap API from jslib.");
 
         function handleCredentialResponse(response) {
             // Pass the JWT back to Unity.
