@@ -24,39 +24,62 @@ mergeInto(LibraryManager.library, {
             // Create an inner div.
             var innerDiv = document.createElement("div");
             innerDiv.style.backgroundColor = "white";
-            innerDiv.style.padding = "10px";
-            innerDiv.style.borderRadius = "10px";
+            innerDiv.style.padding = "20px";
+            innerDiv.style.borderRadius = "5px";
             innerDiv.style.boxShadow = "0 0 10px rgba(0, 0, 0, 0.5)";
             innerDiv.style.textAlign = "center";
+            innerDiv.style.border = "1px solid #ccc";
             modal.appendChild(innerDiv);
             innerDiv.appendChild(contents);
             document.body.appendChild(modal);
         }
 
         function createGoogleSigninModal(button_id) {
+            // Import the roboto font.
+            var roboto = document.createElement("link");
+            roboto.setAttribute("rel", "stylesheet");
+            roboto.setAttribute("href", "https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap");
+            document.head.appendChild(roboto);
+            var messages = []
             var message = document.createElement("p");
             message.innerHTML = "Please sign in with Google to continue. We only use your account to uniquely identify you and track your performance. No personal information is stored.";
-            // Set the font to a nice sans-serif font.
-            message.style.fontFamily = "sans-serif";
-            // Limit the width of the message.
-            message.style.maxWidth = "500px";
-            // Add a light grey background to the message.
-            message.style.backgroundColor = "#eee";
-            // Add padding.
-            message.style.padding = "10px";
-            // Round corners.
-            message.style.borderRadius = "10px";
+            messages.push(message);
+            var cornellTechDisclaimer = document.createElement("p");
+            var cornellTechLink = document.createElement("a");
+            cornellTechLink.setAttribute("href", "https://www.tech.cornell.edu/");
+            cornellTechLink.setAttribute("target", "_blank");
+            cornellTechLink.innerHTML = "Cornell Tech";
+            cornellTechLink.style = "color: #0000EE; text-decoration: none; cursor: pointer;";
+            cornellTechDisclaimer.appendChild(cornellTechLink);
+            cornellTechDisclaimer.innerHTML += " is an academic institution, we collect data about your performance to improve the game and to further research in natural language processing.</p>";
+            messages.push(cornellTechDisclaimer);
             var button = document.createElement("div");
             button.id = button_id;
-            // Center the button with some injected CSS. Create a style tag.
-            // Make all children of the button margin: auto;
-            // Use # button_id > * { margin: auto; }
-            var style = document.createElement("style");
-            style.innerHTML = "#" + button_id + " > * { margin: auto; }";
-            document.head.appendChild(style);
+            // Center the sign in with Google button by placing it within a div which is centered and of the same width.
+            var buttonDiv = document.createElement("div");
+            buttonDiv.style.display = "flex";
+            buttonDiv.style.justifyContent = "center";
+            buttonDiv.style.width = "100%";
+            buttonDiv.appendChild(button);
             var modalContents = document.createElement("div");
-            modalContents.appendChild(message);
-            modalContents.appendChild(button);
+            for (var i = 0; i < messages.length; i++) {
+                // Set the font to roboto, fallback to sans-serif.
+                messages[i].style.fontFamily = "Roboto, sans-serif";
+                // Limit the width of the message.
+                messages[i].style.maxWidth = "500px";
+                // Add padding.
+                messages[i].style.padding = "0px 10px 0 10px";
+                // First message has zero margin. Subsequent messages have 10px margin on top.
+                messages[i].style.margin = i == 0 ? "0" : "10px 0 0 0";
+                modalContents.appendChild(messages[i]);
+            }
+            // Create a light grey separator between the message and the button. Span 90% of the width.
+            var separator = document.createElement("hr");
+            separator.style.width = "90%";
+            separator.style.border = "0.5px solid #ccc";
+            separator.style.margin = "15px auto 15px auto";
+            modalContents.appendChild(separator);
+            modalContents.appendChild(buttonDiv);
             createModal("google-signin-modal", modalContents);
         }
 
