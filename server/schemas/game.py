@@ -7,6 +7,7 @@ from peewee import *
 from server.hex import HecsCoord
 from server.messages.action import Action
 from server.schemas.clients import *
+from server.schemas.google_user import GoogleUser
 from server.schemas.mturk import *
 
 
@@ -18,6 +19,8 @@ class Game(BaseModel):
     world_seed = TextField(null=True)
     leader = ForeignKeyField(Worker, backref="lead_games", null=True)
     follower = ForeignKeyField(Worker, backref="follow_games", null=True)
+    google_leader = ForeignKeyField(GoogleUser, backref="lead_games", null=True)
+    google_follower = ForeignKeyField(GoogleUser, backref="follow_games", null=True)
     number_cards = IntegerField(default=0)
     score = IntegerField(default=0)
     number_turns = IntegerField(default=0)

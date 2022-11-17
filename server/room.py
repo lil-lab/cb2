@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import logging
 import os
 import pathlib
@@ -19,6 +20,7 @@ from server.messages.logs import (
 from server.messages.rooms import Role
 from server.messages.tutorials import RoleFromTutorialName
 from server.remote_table import GetRemote
+from server.schemas.google_user import GetOrCreateGoogleUser
 from server.state import State
 from server.state_machine_driver import StateMachineDriver
 from server.tutorial_state import TutorialGameState
@@ -55,6 +57,7 @@ class Room(object):
         self._id = game_id
         self._room_type = room_type
         self._game_record = game_record
+        self._lobby = lobby
         self._initialized = False  # Set to True at the bottom of this method.
         logger.info(
             f"Lobby object: {lobby} | name: {lobby.lobby_name()} | lobby type: {lobby.lobby_type()} | typeinfo: {type(lobby)}"
@@ -139,35 +142,53 @@ class Room(object):
         id = state_machine.create_actor(role)
         remote = GetRemote(ws)
 
+        # Fetch the leader and follower user information.
         if remote != None and self._room_type != RoomType.PRESET_GAME:
-            remote_record = (
-                clients_db.Remote.select()
-                .join(mturk_db.Worker, join_type=peewee.JOIN.LEFT_OUTER)
-                .where(
-                    clients_db.Remote.hashed_ip == remote.hashed_ip,
-                    clients_db.Remote.remote_port == remote.client_port,
+            # If mturk..
+            is_mturk = self._lobby.lobby_type() == LobbyType.MTURK
+            if is_mturk:
+                remote_record = (
+                    clients_db.Remote.select()
+                    .join(mturk_db.Worker, join_type=peewee.JOIN.LEFT_OUTER)
+                    .where(
+                        clients_db.Remote.hashed_ip == remote.hashed_ip,
+                        clients_db.Remote.remote_port == remote.client_port,
+                    )
+                    .get()
                 )
-                .get()
-            )
-            if remote_record is None:
-                logger.error(
-                    f"Added player with unrecognized remote IP(md5 hash)/Port: {remote.hashed_ip}/{remote.client_port}"
-                )
-            if role == Role.LEADER:
-                self._game_record.lead_remote = remote_record
-                if (remote_record is not None) and (
-                    remote_record.assignment is not None
-                ):
-                    self._game_record.lead_assignment = remote_record.assignment
-                    self._game_record.leader = remote_record.worker
-            else:
-                self._game_record.follow_remote = remote_record
-                if (remote_record is not None) and remote_record.assignment is not None:
-                    self._game_record.follow_assignment = remote_record.assignment
-                    self._game_record.follower = remote_record.worker
+                if remote_record is None:
+                    logger.error(
+                        f"Added player with unrecognized remote IP(md5 hash)/Port: {remote.hashed_ip}/{remote.client_port}"
+                    )
+                if role == Role.LEADER:
+                    self._game_record.lead_remote = remote_record
+                    if (remote_record is not None) and (
+                        remote_record.assignment is not None
+                    ):
+                        self._game_record.lead_assignment = remote_record.assignment
+                        self._game_record.leader = remote_record.worker
+                else:
+                    self._game_record.follow_remote = remote_record
+                    if (
+                        remote_record is not None
+                    ) and remote_record.assignment is not None:
+                        self._game_record.follow_assignment = remote_record.assignment
+                        self._game_record.follower = remote_record.worker
+            elif self._lobby.lobby_type() == LobbyType.GOOGLE:
+                google_id = remote.google_id
+                # SHA256 hash of the google id.
+                hashed_google_id = hashlib.sha256(google_id.encode("utf-8")).hexdigest()
+                if role == Role.LEADER:
+                    self._game_record.google_leader = GetOrCreateGoogleUser(
+                        hashed_google_id
+                    )
+                else:
+                    self._game_record.google_follower = GetOrCreateGoogleUser(
+                        hashed_google_id
+                    )
             self._game_record.save()
         else:
-            logger.warn(f"Starting room without remote IP/Port information.")
+            logger.warn(f"Starting room without remote IP/Port/Google information.")
         self._players.append(id)
         self._player_endpoints.append(ws)
         return id

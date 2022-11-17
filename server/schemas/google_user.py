@@ -28,3 +28,32 @@ class GoogleUser(BaseModel):
     qual_level = IntegerField(default=0)
     experience = ForeignKeyField(WorkerExperience, backref="google_user", null=True)
     kv_store = TextField(default="{}")
+
+
+def GetOrCreateGoogleUser(hashed_user_id):
+    user_query = (
+        GoogleUser.select()
+        .join(WorkerExperience, join_type=JOIN.LEFT_OUTER)
+        .where(GoogleUser.hashed_google_id == hashed_user_id)
+    )
+    if user_query.count() == 0:
+        user = GoogleUser.create(hashed_google_id=hashed_user_id)
+        user.save()
+    else:
+        user = user_query.get()
+    return user
+
+
+def GetGoogleUser(hashed_user_id):
+    user_query = (
+        GoogleUser.select()
+        .join(WorkerExperience, join_type=JOIN.LEFT_OUTER)
+        .where(GoogleUser.hashed_google_id == hashed_user_id)
+    )
+    if user_query.count() == 0:
+        logger.warning(
+            f"User {hashed_user_id} does not exist in the database. Skipping."
+        )
+        return None
+    user = user_query.get()
+    return user
