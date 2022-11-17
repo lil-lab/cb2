@@ -1,52 +1,9 @@
-""" Code for updating the worker experience table. """
+""" Code for updating experience entries. """
 import logging
-
-import peewee
 
 import server.schemas.mturk as mturk_db
 
 logger = logging.getLogger()
-
-
-def GetWorkerExperienceEntries():
-    """Returns a list of all worker experience entries sorted by # of games."""
-    return mturk_db.WorkerExperience.select().order_by(
-        mturk_db.WorkerExperience.total_games_played.desc()
-    )
-
-
-def GetOrCreateWorkerExperienceEntry(worker_hashed_id):
-    worker_query = (
-        mturk_db.Worker.select()
-        .join(mturk_db.WorkerExperience, join_type=peewee.JOIN.LEFT_OUTER)
-        .where(mturk_db.Worker.hashed_id == worker_hashed_id)
-    )
-    if worker_query.count() == 0:
-        logger.warning(
-            f"Worker {worker_hashed_id} does not exist in the database. Skipping."
-        )
-        return None
-    worker = worker_query.get()
-    if worker.experience is None:
-        worker.experience = mturk_db.WorkerExperience.create()
-        worker.experience.save()
-        worker.save()
-    return worker.experience
-
-
-def GetWorkerExperienceEntry(worker_hashed_id):
-    worker_query = (
-        mturk_db.Worker.select()
-        .join(mturk_db.WorkerExperience, join_type=peewee.JOIN.LEFT_OUTER)
-        .where(mturk_db.Worker.hashed_id == worker_hashed_id)
-    )
-    if worker_query.count() == 0:
-        logger.warning(
-            f"Worker {worker_hashed_id} does not exist in the database. Skipping."
-        )
-        return None
-    worker = worker_query.get()
-    return worker.experience
 
 
 def update_game_stats(sum, count, avg, recent_scores, game_score):
@@ -65,43 +22,7 @@ def update_game_stats(sum, count, avg, recent_scores, game_score):
     return (sum, count, avg, recent_scores)
 
 
-def InitWorkerExperience(worker):
-    """Initializes a worker's experience table."""
-    worker.experience = mturk_db.WorkerExperience.create()
-
-    worker.experience.lead_games_played = 0
-    worker.experience.lead_score_sum = 0
-    worker.experience.lead_score_avg = 0
-
-    worker.experience.follow_games_played = 0
-    worker.experience.follow_score_sum = 0
-    worker.experience.follow_score_avg = 0
-
-    worker.experience.total_games_played = 0
-    worker.experience.total_score_sum = 0
-    worker.experience.total_score_avg = 0
-
-    worker.experience.last_1k_lead_scores = []
-    worker.experience.last_1k_follow_scores = []
-    worker.experience.last_1k_scores = []
-
-    worker.experience.last_lead = None
-    worker.experience.last_follow = None
-    worker.experience.last_game = None
-
-    worker.experience.save()
-    worker.save()
-
-
-def UpdateLeaderExperience(game_record):
-    # Update leader lead & total scores.
-    if game_record.leader is None:
-        return
-    leader_experience = GetOrCreateWorkerExperienceEntry(game_record.leader.hashed_id)
-    if leader_experience is None:
-        return
-    print(f"Leader EXP ID: {leader_experience.id}")
-
+def update_leader_stats(leader_experience, game_record):
     if len(leader_experience.last_1k_lead_scores) > 1000:
         logger.warning(
             f"Leader experience entry {game_record.leader.hashed_id} has more than 1000 lead scores. Truncating."
@@ -150,17 +71,7 @@ def UpdateLeaderExperience(game_record):
     leader_experience.save()
 
 
-def UpdateFollowerExperience(game_record):
-    # Update follower follow & total scores.
-    if game_record.follower is None:
-        return
-    follower_experience = GetOrCreateWorkerExperienceEntry(
-        game_record.follower.hashed_id
-    )
-    if follower_experience is None:
-        return
-    print(f"Follower EXP ID: {follower_experience.id}")
-
+def update_follower_stats(follower_experience, game_record):
     if len(follower_experience.last_1k_follow_scores) > 1000:
         logger.warning(
             f"Follower experience entry {game_record.follower.hashed_id} has more than 1000 follow scores. Truncating."
@@ -209,10 +120,29 @@ def UpdateFollowerExperience(game_record):
     follower_experience.save()
 
 
-def UpdateWorkerExperienceTable(game_record):
-    """Given a game record (joined with leader & followers) updates leader & follower experience table."""
-    if game_record.type != "game-mturk":
-        # Only update the leader & follower experience table for mturk games.
-        return
-    UpdateLeaderExperience(game_record)
-    UpdateFollowerExperience(game_record)
+def InitExperience(experience):
+    """Initializes a worker's experience table."""
+    experience = mturk_db.WorkerExperience.create()
+
+    experience.lead_games_played = 0
+    experience.lead_score_sum = 0
+    experience.lead_score_avg = 0
+
+    experience.follow_games_played = 0
+    experience.follow_score_sum = 0
+    experience.follow_score_avg = 0
+
+    experience.total_games_played = 0
+    experience.total_score_sum = 0
+    experience.total_score_avg = 0
+
+    experience.last_1k_lead_scores = []
+    experience.last_1k_follow_scores = []
+    experience.last_1k_scores = []
+
+    experience.last_lead = None
+    experience.last_follow = None
+    experience.last_game = None
+
+    experience.save()
+    return experience

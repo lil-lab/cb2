@@ -272,7 +272,6 @@ async def GetUsername(request):
     user_id = request.match_info.get("user_id")
     if not user_id:
         return web.HTTPNotFound()
-
     hashed_id = (
         hashlib.md5(user_id.encode("utf-8")).hexdigest(),
     )  # Worker ID is PII, so only save the hash.

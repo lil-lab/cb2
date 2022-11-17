@@ -1,10 +1,12 @@
 import dataclasses
+import hashlib
 import logging
 
 from aiohttp import web
 from google.auth.transport import requests
 from google.oauth2 import id_token
 
+import server.schemas.google_user
 from server.config.config import GlobalConfig
 from server.messages.google_auth import GoogleAuth, GoogleAuthConfirmation
 from server.remote_table import GetRemote, SetRemote
@@ -46,6 +48,14 @@ class GoogleAuthenticator:
             SetRemote(ws, remote)
             logger.info(f"Google auth success for {idinfo['sub']}")
             self._queue_auth_success(ws)
+            # Register the user in the database if they don't exist.
+            hashed_user_id = hashlib.sha256(idinfo["sub"].encode("utf-8")).hexdigest()
+            google_user = server.schemas.google_user.GoogleUser.get_or_create(
+                hashed_google_id=hashed_user_id,
+                qual_level=0,  # Unused for now.
+                experience=None,
+                kv_store="{}",
+            )
         except ValueError:
             # Invalid token
             logger.info(f"Player has an invalid Google auth token.")

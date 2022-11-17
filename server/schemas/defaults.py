@@ -2,6 +2,7 @@ from server.schemas.base import *
 from server.schemas.cards import *
 from server.schemas.clients import *
 from server.schemas.game import *
+from server.schemas.google_user import *
 from server.schemas.leaderboard import *
 from server.schemas.map import *
 from server.schemas.mturk import *
@@ -26,6 +27,7 @@ TABLES = [
     WorkerExperience,
     Leaderboard,
     Username,
+    GoogleUser,
 ]
 
 

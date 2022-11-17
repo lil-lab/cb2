@@ -6,7 +6,6 @@ from typing import Tuple
 from aiohttp import web
 
 import server.lobby as lobby
-from server.experience import GetWorkerExperienceEntry
 from server.lobby import LobbyType
 from server.messages.rooms import (
     JoinResponse,
@@ -15,6 +14,7 @@ from server.messages.rooms import (
     RoomManagementResponse,
     RoomResponseType,
 )
+from server.mturk_experience import GetWorkerExperienceEntry
 from server.remote_table import GetWorkerFromRemote
 from server.schemas.mturk import WorkerQualLevel
 

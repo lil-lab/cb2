@@ -11,6 +11,7 @@ import peewee
 import server.schemas.clients as clients_db
 import server.schemas.mturk as mturk_db
 from server.config.config import GlobalConfig
+from server.lobby_consts import LobbyType
 from server.messages.logs import (
     LogEntryFromIncomingMessage,
     LogEntryFromOutgoingMessage,
@@ -29,7 +30,7 @@ class RoomType(Enum):
     NONE = 0
     TUTORIAL = 1
     GAME = 2
-    PRESET_GAME = 3
+    PRESET_GAME = 3  # Resuming from historical record.
 
 
 class Room(object):
@@ -41,10 +42,10 @@ class Room(object):
         max_players: int,
         game_id: int,
         game_record,
+        lobby,
         room_type: RoomType = RoomType.GAME,
         tutorial_name: str = "",
         from_instruction: str = "",
-        lobby=None,
     ):
         """from_instruction is the UUID of an instruction to start the game from."""
         self._name = name
@@ -58,11 +59,15 @@ class Room(object):
         logger.info(
             f"Lobby object: {lobby} | name: {lobby.lobby_name()} | lobby type: {lobby.lobby_type()} | typeinfo: {type(lobby)}"
         )
-        game_type_prefix = (
-            f"{lobby.lobby_name()}|{lobby.lobby_type()}|" if lobby is not None else ""
-        )
+
+        is_mturk = lobby.lobby_type() == LobbyType.MTURK
+        game_type_prefix = f"{lobby.lobby_name()}|{lobby.lobby_type()}|"
+
         if self._room_type == RoomType.GAME:
-            self._game_record.type = game_type_prefix + "game"
+            if is_mturk:
+                self._game_record.type = f"{game_type_prefix}game-mturk"
+            else:
+                self._game_record.type = f"{game_type_prefix}game"
             game_state = State(self._id, self._game_record, realtime_actions=True)
         elif self._room_type == RoomType.TUTORIAL:
             if RoleFromTutorialName(tutorial_name) == Role.LEADER:
@@ -148,11 +153,6 @@ class Room(object):
                 logger.error(
                     f"Added player with unrecognized remote IP(md5 hash)/Port: {remote.hashed_ip}/{remote.client_port}"
                 )
-            # If at least one of the players in this game is an mturk worker, mark the game type as "-mturk" (ex "game-mturk", or "follower-tutorial-mturk")
-            if remote_record.worker is not None:
-                if remote_record.worker.hashed_id != "":
-                    if "-mturk" not in self._game_record.type:
-                        self._game_record.type += "-mturk"
             if role == Role.LEADER:
                 self._game_record.lead_remote = remote_record
                 if (remote_record is not None) and (

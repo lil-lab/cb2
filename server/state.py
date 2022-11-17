@@ -10,9 +10,10 @@ from queue import Queue
 from typing import List
 
 import server.config.config as config
-import server.experience as experience
+import server.google_experience as google_experience
 import server.leaderboard as leaderboard
 import server.map_utils as map_utils
+import server.mturk_experience as mturk_experience
 import server.schemas.cards as cards_db
 import server.schemas.game as game_db
 import server.schemas.map as map_db
@@ -726,7 +727,10 @@ class State(object):
         self._game_recorder.record_game_over()
         if self._game_recorder.record() is not None:
             leaderboard.UpdateLeaderboard(self._game_recorder.record())
-            experience.UpdateWorkerExperienceTable(self._game_recorder.record())
+            mturk_experience.UpdateWorkerExperienceTable(self._game_recorder.record())
+            google_experience.UpdateGoogleUserExperienceTable(
+                self._game_recorder.record()
+            )
 
     def has_instructions_todo(self):
         for instruction in self._instructions:

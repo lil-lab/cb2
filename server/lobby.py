@@ -459,10 +459,10 @@ class Lobby(ABC):
             # Room ID.
             id,
             game_record,
+            self,
             type,
             tutorial_name,
             from_instruction,
-            self,
         )
         if not room.initialized():
             return None
