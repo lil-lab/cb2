@@ -438,6 +438,7 @@ namespace Network
         public void RestartConnection() {
             _logger.Info("Restarting connection...");
             _client.Start();
+            _authenticated = false;
         }
 
         // Start is called before the first frame update
@@ -475,6 +476,7 @@ namespace Network
             _router = new NetworkRouter(_client, _networkMapSource, this, null, null);
 
             _client.Start();
+            _authenticated = false;
 
             Util.Status result = InitializeTaggedObjects();
             if (!result.Ok())
@@ -501,6 +503,8 @@ namespace Network
                 // Refetch config on menu scene. Then return.
                 _lastServerConfigPoll = DateTime.Now;
                 _serverConfigPollInProgress = true;
+                // When reloading the menu scene, we need to re-authenticate.
+                _authenticated = false;
                 StartCoroutine(FetchConfig());
                 return;    
             }

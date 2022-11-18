@@ -9,6 +9,7 @@ from google.oauth2 import id_token
 
 import server.schemas.google_user
 from server.config.config import GlobalConfig
+from server.leaderboard import SetDefaultGoogleUsername, UsernameFromHashedGoogleUserId
 from server.messages.google_auth import GoogleAuth, GoogleAuthConfirmation
 from server.remote_table import GetRemote, SetRemote
 
@@ -59,6 +60,8 @@ class GoogleAuthenticator:
                 experience=None,
                 kv_store="{}",
             )
+            if UsernameFromHashedGoogleUserId(hashed_user_id) is None:
+                SetDefaultGoogleUsername(hashed_user_id)
         except ValueError:
             # Invalid token
             logger.info(f"Player has an invalid Google auth token.")

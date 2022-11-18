@@ -6,6 +6,7 @@ from peewee import *
 
 from server.hex import HecsCoord
 from server.messages.action import Action
+from server.schemas.base import *
 from server.schemas.clients import *
 from server.schemas.google_user import GoogleUser
 from server.schemas.mturk import *

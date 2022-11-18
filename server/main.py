@@ -32,6 +32,7 @@ import server.schemas.game as game_db
 import server.schemas.mturk as mturk
 from server.config.config import Config, GlobalConfig, InitGlobalConfig
 from server.google_authenticator import GoogleAuthenticator
+from server.lobby_consts import LobbyType
 from server.lobby_utils import GetLobbies, GetLobby, InitializeLobbies
 from server.map_provider import MapGenerationTask, MapPoolSize
 from server.messages import message_from_server, message_to_server
@@ -299,7 +300,14 @@ async def GetUsername(request):
 
 @routes.get("/data/leaderboard")
 async def MessagesFromServer(request):
-    board = leaderboard.GetLeaderboard()
+    lobby_name = ""
+    LobbyType.NONE
+    if "lobby_name" in request.query:
+        lobby_name = request.query["lobby_name"]
+    if "lobby_type" in request.query:
+        lobby_type_string = request.query["lobby_type"]
+        LobbyType(int(lobby_type_string))
+    board = leaderboard.GetLeaderboard(lobby_name)
     leaderboard_entries = []
     for i, entry in enumerate(board):
         leader_name = leaderboard.LookupUsername(entry.leader)

@@ -53,9 +53,11 @@ def InitUserExperience(user):
 
 def UpdateLeaderExperience(game_record):
     # Update leader lead & total scores.
-    if game_record.leader is None:
+    if game_record.google_leader is None:
         return
-    leader_experience = GetOrCreateUserExperienceEntry(game_record.leader.hashed_id)
+    leader_experience = GetOrCreateUserExperienceEntry(
+        game_record.google_leader.hashed_google_id
+    )
     if leader_experience is None:
         return
     print(f"Leader EXP ID: {leader_experience.id}")
@@ -64,9 +66,11 @@ def UpdateLeaderExperience(game_record):
 
 def UpdateFollowerExperience(game_record):
     # Update follower follow & total scores.
-    if game_record.follower is None:
+    if game_record.google_follower is None:
         return
-    follower_experience = GetOrCreateUserExperienceEntry(game_record.follower.hashed_id)
+    follower_experience = GetOrCreateUserExperienceEntry(
+        game_record.google_follower.hashed_google_id
+    )
     if follower_experience is None:
         return
     print(f"Follower EXP ID: {follower_experience.id}")
@@ -77,10 +81,13 @@ def UpdateGoogleUserExperienceTable(game_record):
     """Given a game record (joined with leader & followers) updates leader & follower experience table."""
     game_type_components = game_record.type.split("|")
     if len(game_type_components) < 3:
+        logger.info(f"Game type {game_record.type} is not a lobby game type.")
         return
-    (lobby_name, lobby_type, game_type) = game_type_components
-    if lobby_type != str(LobbyType.GOOGLE):
+    (lobby_name, lobby_type_string, game_type) = game_type_components
+    lobby_type = LobbyType(int(lobby_type_string))
+    if lobby_type != LobbyType.GOOGLE:
         # Only update the leader & follower experience table for google lobbies.
+        logger.info(f"Game type {game_record.type} is not a google lobby game type.")
         return
     UpdateLeaderExperience(game_record)
     UpdateFollowerExperience(game_record)

@@ -25,7 +25,7 @@ def update_game_stats(sum, count, avg, recent_scores, game_score):
 def update_leader_stats(leader_experience, game_record):
     if len(leader_experience.last_1k_lead_scores) > 1000:
         logger.warning(
-            f"Leader experience entry {game_record.leader.hashed_id} has more than 1000 lead scores. Truncating."
+            f"Leader experience entry {leader_experience.id} has more than 1000 lead scores. Truncating."
         )
         leader_experience.last_1k_lead_scores = leader_experience.last_1k_lead_scores[
             -1000:
@@ -44,7 +44,7 @@ def update_leader_stats(leader_experience, game_record):
     )
     if len(leader_experience.last_1k_scores) > 1000:
         logger.warning(
-            f"Leader experience entry {game_record.leader.hashed_id} has more than 1000 scores. Truncating."
+            f"Leader experience entry {leader_experience.id} has more than 1000 scores. Truncating."
         )
         leader_experience.last_1k_scores = leader_experience.last_1k_scores[-1000:]
     (
@@ -74,7 +74,7 @@ def update_leader_stats(leader_experience, game_record):
 def update_follower_stats(follower_experience, game_record):
     if len(follower_experience.last_1k_follow_scores) > 1000:
         logger.warning(
-            f"Follower experience entry {game_record.follower.hashed_id} has more than 1000 follow scores. Truncating."
+            f"Follower experience entry {follower_experience.id} has more than 1000 follow scores. Truncating."
         )
         follower_experience.last_1k_follow_scores = (
             follower_experience.last_1k_follow_scores[-1000:]
@@ -93,7 +93,7 @@ def update_follower_stats(follower_experience, game_record):
     )
     if len(follower_experience.last_1k_scores) > 1000:
         logger.warning(
-            f"Leader experience entry {game_record.follower.hashed_id} has more than 1000 scores. Truncating."
+            f"Leader experience entry {follower_experience.id} has more than 1000 scores. Truncating."
         )
         follower_experience.last_1k_scores = follower_experience.last_1k_scores[-1000:]
     (
