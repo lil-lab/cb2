@@ -1,3 +1,4 @@
+import asyncio
 import dataclasses
 import functools
 import hashlib
@@ -27,17 +28,20 @@ class GoogleAuthenticator:
             return responses
         return []
 
-    def handle_auth(self, ws: web.WebSocketResponse, auth: GoogleAuth) -> bool:
+    async def handle_auth(self, ws: web.WebSocketResponse, auth: GoogleAuth) -> bool:
         """Verifies that the given Google auth token is valid."""
         config = GlobalConfig()
         logger.info(f"Verifying Google auth token: {auth.token}")
         try:
             request = requests.Request()
             request_with_timeout = functools.partial(request, timeout=2)
-            idinfo = id_token.verify_oauth2_token(
-                auth.token,
-                request_with_timeout,
-                config.google_oauth_client_id,
+            # Run the following in a separate executor.
+            idinfo = await asyncio.to_thread(
+                lambda: id_token.verify_oauth2_token(
+                    auth.token,
+                    request_with_timeout,
+                    config.google_oauth_client_id,
+                )
             )
             if idinfo["iss"] not in [
                 "accounts.google.com",

@@ -982,7 +982,7 @@ async def receive_agent_updates(request, ws, lobby):
         message = message_to_server.MessageToServer.from_json(msg.data)
 
         if message.type == message_to_server.MessageType.GOOGLE_AUTH:
-            google_authenticator.handle_auth(ws, message.google_auth)
+            await google_authenticator.handle_auth(ws, message.google_auth)
 
         if message.type == message_to_server.MessageType.ROOM_MANAGEMENT:
             lobby.handle_request(message, ws)
