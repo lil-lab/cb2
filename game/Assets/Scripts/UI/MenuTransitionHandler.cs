@@ -54,6 +54,8 @@ public class MenuTransitionHandler : MonoBehaviour
     private static readonly string LOGIN_STATUS_PANEL = "LOGIN_STATUS_PANEL";
     private static readonly string LOGIN_STATUS_TEXT = "LOGIN_STATUS_TEXT";
 
+
+    public static MenuTransitionHandler Instance;
     private Logger _logger;
 
     // We re-use ActionQueue here to animate UI transparency. It's a bit
@@ -82,6 +84,9 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public static MenuTransitionHandler TaggedInstance()
     {
+        if (Instance != null) {
+            return Instance;
+        }
         GameObject obj = GameObject.FindGameObjectWithTag(MenuTransitionHandler.TAG);
         if (obj == null)
             return null;
@@ -258,7 +263,6 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public void SendPositiveFeedback()
     {
-        _logger.Info("HIIIIII");
         if (!Network.NetworkManager.TaggedInstance().ServerConfig().live_feedback_enabled)
         {
             _logger.Info("SendPositiveFeedback(): Live feedback is not enabled.");
@@ -307,6 +311,30 @@ public class MenuTransitionHandler : MonoBehaviour
         }
     }
 
+    public static void LoginStarted()
+    {
+        Logger logger = Logger.GetOrCreateTrackedLogger(TAG);
+        Scene scene = SceneManager.GetActiveScene();
+        if (scene.name != "menu_scene") {
+            logger.Info("LoginStarted(): Not in menu scene, ignoring.");
+            return;
+        }
+        GameObject login_status_panel = GameObject.FindWithTag(LOGIN_STATUS_PANEL);
+        if (login_status_panel == null)
+        {
+            logger.Error("Could not find login status panel.");
+            return;
+        }
+        login_status_panel.SetActive(true);
+        TMP_Text login_status = FindTmpTextWithTag(LOGIN_STATUS_TEXT);
+        if (login_status == null)
+        {
+            logger.Error("Could not find login status text.");
+            return;
+        }
+        login_status.text = "Please wait... Logging In.";
+    }
+
     // Only valid if called while in menu scene. This is a bit unkosher as this
     // game object doesn't even exist in the menu scene, so we make it a static
     // helper function so it can be called whenever (and this method doesn't
@@ -327,7 +355,7 @@ public class MenuTransitionHandler : MonoBehaviour
             return;
         }
         login_status_panel.SetActive(true);
-        if (auth.auth_success)
+        if (auth.success)
         {
             TMP_Text login_status = FindTmpTextWithTag(LOGIN_STATUS_TEXT);
             login_status.text = "Login successful. Hit Play to start!";
@@ -336,7 +364,7 @@ public class MenuTransitionHandler : MonoBehaviour
         else
         {
             TMP_Text login_status = FindTmpTextWithTag(LOGIN_STATUS_TEXT);
-            login_status.text = "Login failed. Please refresh the page and try again. If the login UI does not appear, clear your browser cookies.";
+            login_status.text = "Login failed. Please try again another time.";
             logger.Info("Login failed.");
         }
     }
@@ -546,12 +574,29 @@ public class MenuTransitionHandler : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(this);  // Persist network connection between scene changes.
+        } else if (Instance != this) {
+            _logger.Warn("Tried to create duplicate network manager. Self-destructed game object.");
+            DestroyImmediate(gameObject);
+            return;
+        }
+        // Subscribe to new scene changes.
+        SceneManager.sceneLoaded += OnSceneLoaded;
         _currentMenuState = MenuState.NONE;
         notOurTurnIndicatorFade = new ActionQueue("NotOurTurnQueue");
         ourTurnIndicatorFade = new ActionQueue("OurTurnQueue");
-        _positiveFeedbackSignal = GameObject.FindWithTag(POSITIVE_FEEDBACK_TAG);
-        _negativeFeedbackSignal = GameObject.FindWithTag(NEGATIVE_FEEDBACK_TAG);
         _lastTurnRefreshTime = DateTime.MinValue;
+    }
+
+    public void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name != "menu_scene") {
+            _positiveFeedbackSignal = GameObject.FindWithTag(POSITIVE_FEEDBACK_TAG);
+            _negativeFeedbackSignal = GameObject.FindWithTag(NEGATIVE_FEEDBACK_TAG);
+        }
     }
 
     public void TurnComplete()
@@ -562,6 +607,11 @@ public class MenuTransitionHandler : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        Scene scene = SceneManager.GetActiveScene();
+        if (scene.name == "menu_scene") {
+            // Do nothing in menu scene.
+            return;
+        }
         NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
         if (networkManager.IsReplay())
         {

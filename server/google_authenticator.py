@@ -1,4 +1,5 @@
 import dataclasses
+import functools
 import hashlib
 import logging
 
@@ -30,9 +31,11 @@ class GoogleAuthenticator:
         config = GlobalConfig()
         logger.info(f"Verifying Google auth token: {auth.token}")
         try:
+            request = requests.Request()
+            request_with_timeout = functools.partial(request, timeout=2)
             idinfo = id_token.verify_oauth2_token(
                 auth.token,
-                requests.Request(),
+                request_with_timeout,
                 config.google_oauth_client_id,
             )
             if idinfo["iss"] not in [

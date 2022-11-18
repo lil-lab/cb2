@@ -278,13 +278,23 @@ namespace Network
             {
                 MenuTransitionHandler.TaggedInstance().HandleLiveFeedback(message.live_feedback);
             }
+        }
+
+        // For messages which don't require in-game UI to be rendered.
+        public bool ProcessEarly(MessageFromServer message) {
+            // Handle AUTH messages immediately.
             if (message.type == MessageFromServer.MessageType.GOOGLE_AUTH_CONFIRMATION)
             {
                 // Static menu transition handler.
                 _logger.Info("Received Google Auth Confirmation.");
                 MenuTransitionHandler.HandleLoginStatus(message.google_auth_confirmation);
-                _logger.Info("HI");
+                if (message.google_auth_confirmation.success)
+                {
+                    _networkManager.OnAuthenticated();
+                }
+                return true;
             }
+            return false;
         }
 
         public void HandleMessage(MessageFromServer message)
@@ -300,6 +310,10 @@ namespace Network
                 if (_mode == Mode.NETWORK) _networkManager.HandleTutorialResponse(message.tutorial_response);
                 return;
             }
+
+            // Some messages can short-circuit here.
+            if (ProcessEarly(message)) return;
+
             if (Initialized()) {
                 ProcessMessage(message);
             } else {

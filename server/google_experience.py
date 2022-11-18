@@ -79,11 +79,8 @@ def UpdateGoogleUserExperienceTable(game_record):
     if len(game_type_components) < 3:
         return
     (lobby_name, lobby_type, game_type) = game_type_components
-    if game_type == "game":
-        # Only update the leader & follower experience table for games.
-        return
     if lobby_type != str(LobbyType.GOOGLE):
-        # Only update the leader & follower experience table for google games.
+        # Only update the leader & follower experience table for google lobbies.
         return
     UpdateLeaderExperience(game_record)
     UpdateFollowerExperience(game_record)

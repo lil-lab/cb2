@@ -41,6 +41,7 @@ namespace Network
         // Don't try to decode this in the client. Instead pass it to the server and
         // have the server decode it, using Google's verifier library.
         private string _google_id_token = null;
+        private bool _authenticated = false;
 
 
         private Logger _logger;
@@ -133,6 +134,7 @@ namespace Network
         public void SetGoogleOauthToken(string token)
         {
             _google_id_token = token;
+            MenuTransitionHandler.LoginStarted();
         }
 
         public bool IsReplay()
@@ -272,6 +274,11 @@ namespace Network
         // Called when a user clicks the "Join Game" menu button. Enters the game queue.
         public void JoinGame()
         {
+            if ((_serverConfig != null) && NeedsGoogleAuth() && (!_authenticated))
+            {
+                _logger.Warn("Attempted to join game without authenticating.");
+                return;
+            }
             MessageToServer msg = new MessageToServer();
             msg.transmit_time = DateTime.UtcNow.ToString("s");
             msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
@@ -300,6 +307,11 @@ namespace Network
         public void StartFollowerTutorial()
         {
             StartTutorial(TutorialRequest.FOLLOWER_TUTORIAL);
+        }
+
+        public void OnAuthenticated()
+        {
+            _authenticated = true;
         }
 
         public void StartTutorial(string tutorialName)
@@ -485,8 +497,13 @@ namespace Network
             // Set log level.
             Logger.SetGlobalLogLevel(Logger.LogLevel.INFO);
             _logger.Info("Scene loaded: " + scene.name);
-            if (scene.name == "menu_scene")
+            if (scene.name == "menu_scene") {
+                // Refetch config on menu scene. Then return.
+                _lastServerConfigPoll = DateTime.Now;
+                _serverConfigPollInProgress = true;
+                StartCoroutine(FetchConfig());
                 return;    
+            }
             Util.Status result = InitializeTaggedObjects();
             if (!result.Ok())
             {
@@ -603,9 +620,9 @@ namespace Network
             {
                 _router.Update();
             }
-            // If it's been more than 60 seconds since the last poll and _serverConfig is null, poll the server for the config.
+            // If it's been more than 5 mins since the last poll and _serverConfig is null, poll the server for the config.
             // Alternatively, if _serverConfig is out of date and it's been > 10 seconds since the last poll, also poll the server.
-            if (((_serverConfig != null) && (DateTime.UtcNow.Subtract(_serverConfig.timestamp).TotalMinutes > 1)) || 
+            if (((_serverConfig != null) && (DateTime.UtcNow.Subtract(_serverConfig.timestamp).TotalMinutes > 5)) || 
                 ((_serverConfig == null) && (DateTime.UtcNow.Subtract(_lastServerConfigPoll).TotalSeconds > 1) && !_serverConfigPollInProgress))
             {
                 _logger.Info("Starting fetch config coroutine. poll in progress: " + _serverConfigPollInProgress);
@@ -646,7 +663,7 @@ namespace Network
             }
 
             // If we're connected to the server, we need google authentication, and we have a token, then we need to send it to the server.
-            if ((_serverConfig != null) && NeedsGoogleAuth() && (_google_id_token != null))
+            if ((_serverConfig != null) && NeedsGoogleAuth() && (_google_id_token != null) && (!_authenticated))
             {
                 _logger.Info("Sending google auth token to server.");
                 MessageToServer msg = new MessageToServer();
