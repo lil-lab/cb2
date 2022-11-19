@@ -12,6 +12,7 @@ import server.schemas.google_user
 from server.config.config import GlobalConfig
 from server.leaderboard import SetDefaultGoogleUsername, UsernameFromHashedGoogleUserId
 from server.messages.google_auth import GoogleAuth, GoogleAuthConfirmation
+from server.messages.user_info import UserType
 from server.remote_table import GetRemote, SetRemote
 
 logger = logging.getLogger(__name__)
@@ -51,7 +52,10 @@ class GoogleAuthenticator:
             # ID token is valid. Get the user's Google Account ID from the decoded token.
             remote = GetRemote(ws)
             remote = dataclasses.replace(
-                remote, google_id=idinfo["sub"], google_auth_token=auth.token
+                remote,
+                google_id=idinfo["sub"],
+                google_auth_token=auth.token,
+                user_type=UserType.GOOGLE,
             )
             SetRemote(ws, remote)
             logger.info(f"Google auth success for {idinfo['sub']}")

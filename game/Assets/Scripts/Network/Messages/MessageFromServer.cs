@@ -21,6 +21,7 @@ namespace Network
             PROP_UPDATE,
             STATE_MACHINE_TICK,
             GOOGLE_AUTH_CONFIRMATION,
+            USER_INFO,
         }
 
         // These fields are always provided with any packet.
@@ -41,5 +42,6 @@ namespace Network
         public PropUpdate prop_update;
         public StateMachineInfo state_machine_tick;
         public GoogleAuthConfirmation google_auth_confirmation;
+        public UserInfo user_info;
     }
 }  // namespace Network

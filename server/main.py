@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import hashlib
 import json
 import logging
@@ -37,6 +38,7 @@ from server.lobby_utils import GetLobbies, GetLobby, InitializeLobbies
 from server.map_provider import MapGenerationTask, MapPoolSize
 from server.messages import message_from_server, message_to_server
 from server.messages.logs import GameInfo, GameLog, LogEntry
+from server.messages.user_info import UserType
 from server.remote_table import (
     AddRemote,
     DeleteRemote,
@@ -46,6 +48,7 @@ from server.remote_table import (
     Remote,
 )
 from server.schemas import base
+from server.user_info_fetcher import UserInfoFetcher
 
 routes = web.RouteTableDef()
 
@@ -61,6 +64,7 @@ HEARTBEAT_TIMEOUT_S = 20.0
 logger = logging.getLogger()
 
 google_authenticator = GoogleAuthenticator()
+user_info_fetcher = UserInfoFetcher()
 
 
 async def transmit(ws, message):
@@ -301,17 +305,17 @@ async def GetUsername(request):
 @routes.get("/data/leaderboard")
 async def MessagesFromServer(request):
     lobby_name = ""
-    LobbyType.NONE
+    lobby_type = LobbyType.NONE
     if "lobby_name" in request.query:
         lobby_name = request.query["lobby_name"]
     if "lobby_type" in request.query:
         lobby_type_string = request.query["lobby_type"]
-        LobbyType(int(lobby_type_string))
-    board = leaderboard.GetLeaderboard(lobby_name)
+        lobby_type = LobbyType(int(lobby_type_string))
+    board = leaderboard.GetLeaderboard(lobby_name, lobby_type)
     leaderboard_entries = []
     for i, entry in enumerate(board):
-        leader_name = leaderboard.LookupUsername(entry.leader)
-        follower_name = leaderboard.LookupUsername(entry.follower)
+        leader_name = entry.leader_name
+        follower_name = entry.follower_name
         if leader_name == None:
             leader_name = ""
         if follower_name == None:
@@ -324,6 +328,8 @@ async def MessagesFromServer(request):
             "score": entry.score,
             "leader": leader_name,
             "follower": follower_name,
+            "lobby_name": entry.lobby_name,
+            "lobby_type": entry.lobby_type,
         }
         leaderboard_entries.append(entry)
     return web.json_response(leaderboard_entries)
@@ -896,6 +902,15 @@ async def stream_game_state(request, ws, lobby):
                     ws, orjson.dumps(message, option=orjson.OPT_NAIVE_UTC)
                 )
 
+        # Fill userinfo responses.
+        userinfo_responses = user_info_fetcher.fill_user_infos(ws)
+        if len(userinfo_responses) > 0:
+            for userinfo_response in userinfo_responses:
+                message = message_from_server.UserInfoFromServer(userinfo_response)
+                await transmit_bytes(
+                    ws, orjson.dumps(message, option=orjson.OPT_NAIVE_UTC)
+                )
+
         if not lobby.socket_in_room(ws):
             if was_in_room:
                 logger.info(
@@ -983,6 +998,11 @@ async def receive_agent_updates(request, ws, lobby):
 
         if message.type == message_to_server.MessageType.GOOGLE_AUTH:
             await google_authenticator.handle_auth(ws, message.google_auth)
+            continue
+
+        if message.type == message_to_server.MessageType.USER_INFO:
+            user_info_fetcher.handle_userinfo_request(ws, remote)
+            continue
 
         if message.type == message_to_server.MessageType.ROOM_MANAGEMENT:
             lobby.handle_request(message, ws)
@@ -1025,8 +1045,10 @@ async def PlayerEndpoint(request):
         f"Player connecting to lobby: {lobby.lobby_name()} | type: {lobby.lobby_type()}"
     )
     assignment = None
+    is_mturk = False
     if "assignmentId" in request.query:
         # If this is an mturk task, log assignment into to the remote table.
+        is_mturk = True
         assignment_id = request.query.getone("assignmentId", "")
         hit_id = request.query.getone("hitId", "")
         submit_to_url = request.query.getone("turkSubmitTo", "")
@@ -1056,6 +1078,12 @@ async def PlayerEndpoint(request):
         port = peername[1]
         hashed_ip = hashlib.md5(ip.encode("utf-8")).hexdigest()
     remote = Remote(hashed_ip, port, 0, 0, time.time(), time.time(), request, ws)
+    remote = dataclasses.replace(remote, user_type=UserType.OPEN)
+
+    if is_mturk:
+        remote = dataclasses.replace(
+            remote, mturk_id=worker_id, user_type=UserType.MTURK
+        )
 
     AddRemote(ws, remote, assignment)
     LogConnectionEvent(remote, "Connected to Server.")

@@ -26,6 +26,7 @@ namespace Network
             LIVE_FEEDBACK,
             CANCEL_PENDING_OBJECTIVES,
             GOOGLE_AUTH,
+            USER_INFO,
         }
 
         // These fields are populated for every packet.

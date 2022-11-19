@@ -43,6 +43,8 @@ namespace Network
         private string _google_id_token = null;
         private bool _authenticated = false;
 
+        private UserInfo _user_info = null;
+        private bool _user_info_requested = false;
 
         private Logger _logger;
 
@@ -129,6 +131,16 @@ namespace Network
                 _logger.Info("Retrieved server config before it was initialized.");
             }
             return _serverConfig;
+        }
+
+        public UserInfo GetUserInfo()
+        {
+            return _user_info;
+        }
+
+        public void SetUserInfo(UserInfo user_info)
+        {
+            _user_info = user_info;
         }
 
         public void SetGoogleOauthToken(string token)
@@ -503,6 +515,7 @@ namespace Network
                 // Refetch config on menu scene. Then return.
                 _lastServerConfigPoll = DateTime.Now;
                 _serverConfigPollInProgress = true;
+                _user_info_requested = false;
                 // When reloading the menu scene, we need to re-authenticate.
                 _authenticated = false;
                 StartCoroutine(FetchConfig());
@@ -677,6 +690,16 @@ namespace Network
                 msg.google_auth.token = _google_id_token;
                 _client.TransmitMessage(msg);
                 _google_id_token = null;
+            }
+
+            if (_client.IsConnected() && (_user_info == null) && (!_user_info_requested))
+            {
+                _logger.Info("Requesting user info.");
+                MessageToServer msg = new MessageToServer();
+                msg.transmit_time = DateTime.UtcNow.ToString("s");
+                msg.type = MessageToServer.MessageType.USER_INFO;
+                _client.TransmitMessage(msg);
+                _user_info_requested = true;
             }
 
             _client.Update();

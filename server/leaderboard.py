@@ -31,12 +31,28 @@ def UpdateLeaderboard(game_record):
         components[2]
     else:
         game_record.type
+    if lobby_type == LobbyType.GOOGLE:
+        leader_name = UsernameFromHashedGoogleUserId(
+            game_record.google_leader.hashed_google_id
+        )
+        follower_name = UsernameFromHashedGoogleUserId(
+            game_record.google_follower.hashed_google_id
+        )
+    elif lobby_type == LobbyType.MTURK:
+        leader_name = LookupUsernameFromMd5sum(game_record.leader.hashed_id)
+        follower_name = LookupUsernameFromMd5sum(game_record.follower.hashed_id)
+    else:
+        leader_name = ""
+        follower_name = ""
+
     if game_record.score > 0 and lobby_name != "" and lobby_type != LobbyType.NONE:
         leaderboard_entry = leaderboard_db.Leaderboard.create(
             time=game_record.end_time,
             score=game_record.score,
             lobby_name=lobby_name,
             lobby_type=lobby_type,
+            leader_name=leader_name,
+            follower_name=follower_name,
         )
         if lobby_type in [LobbyType.MTURK]:
             leaderboard_entry.mturk_leader = game_record.leader

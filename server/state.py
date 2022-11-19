@@ -724,6 +724,7 @@ class State(object):
         return self._iter
 
     def on_game_over(self):
+        logger.info(f"Game {self._room_id} is over.")
         self._game_recorder.record_game_over()
         if self._game_recorder.record() is not None:
             leaderboard.UpdateLeaderboard(self._game_recorder.record())

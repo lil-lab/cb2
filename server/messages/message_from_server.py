@@ -20,6 +20,7 @@ from server.messages.rooms import RoomManagementResponse
 from server.messages.state_sync import StateMachineTick, StateSync
 from server.messages.turn_state import TurnState
 from server.messages.tutorials import TutorialResponse
+from server.messages.user_info import UserInfo
 
 
 class MessageType(Enum):
@@ -35,6 +36,7 @@ class MessageType(Enum):
     PROP_UPDATE = 9
     STATE_MACHINE_TICK = 10
     GOOGLE_AUTH_CONFIRMATION = 11
+    USER_INFO = 12
 
 
 def ActionsFromServer(actions):
@@ -207,6 +209,25 @@ def GoogleAuthConfirmationFromServer(google_auth_confirmation):
     )
 
 
+def UserInfoFromServer(user_info):
+    return MessageFromServer(
+        datetime.utcnow(),
+        MessageType.USER_INFO,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        user_info,
+    )
+
+
 @dataclass(frozen=True)
 class MessageFromServer(DataClassJSONMixin):
     transmit_time: datetime = field(
@@ -230,3 +251,4 @@ class MessageFromServer(DataClassJSONMixin):
     google_auth_confirmation: Optional[
         GoogleAuthConfirmation
     ] = GoogleAuthConfirmation()
+    user_info: Optional[UserInfo] = UserInfo()

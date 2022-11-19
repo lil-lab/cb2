@@ -7,6 +7,7 @@ from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
 import server.schemas.clients as clients_db
+from server.messages.user_info import UserType
 
 # A table of active websocket connections. Maps from aiohttp.WebSocketResponse
 # to Remote (defined below).
@@ -69,6 +70,8 @@ class Remote:
     # A JWT encoded Google sso token https://www.rfc-editor.org/rfc/rfc7519
     google_auth_token: str = None
     google_id: str = None
+    mturk_id: str = None
+    user_type: UserType = UserType.NONE
     last_ping: datetime = field(
         metadata=config(
             encoder=datetime.isoformat,

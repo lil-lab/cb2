@@ -3,7 +3,7 @@ import logging
 
 import server.schemas.mturk as mturk_db
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 def update_game_stats(sum, count, avg, recent_scores, game_score):
@@ -23,6 +23,7 @@ def update_game_stats(sum, count, avg, recent_scores, game_score):
 
 
 def update_leader_stats(leader_experience, game_record):
+    logger.info(f"update_leader_stats(score={game_record.score})")
     if len(leader_experience.last_1k_lead_scores) > 1000:
         logger.warning(
             f"Leader experience entry {leader_experience.id} has more than 1000 lead scores. Truncating."
@@ -72,6 +73,7 @@ def update_leader_stats(leader_experience, game_record):
 
 
 def update_follower_stats(follower_experience, game_record):
+    logger.info(f"update_follower_stats(score={game_record.score})")
     if len(follower_experience.last_1k_follow_scores) > 1000:
         logger.warning(
             f"Follower experience entry {follower_experience.id} has more than 1000 follow scores. Truncating."

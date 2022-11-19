@@ -53,9 +53,9 @@
                         // If the request fails, update the username element with an error message.
                         $("#" + username_element_id).text("Error: Could not lookup username.");
                     }
-                }); 
+                });
             }
-        
+
             function onFormSubmit(event) {
                 event.preventDefault();
                 var params = new URLSearchParams(window.location.search);
@@ -112,7 +112,7 @@
             function RewriteLinkWithForwardParams(link_id, url) {
                 var mturkParameters = new URLSearchParams(window.location.search);
                 var link = document.getElementById(link_id);
-                link.href = url + "&" + mturkParameters.toString(); 
+                link.href = url + "&" + mturkParameters.toString();
             }
 
             function RewritePlayGameLink(url)
@@ -153,7 +153,7 @@
             </div>
             <br>
             <p style="background-color: rgb(255, 255, 170); font-size: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center; width: 60%;">
-                You are <b>strongly</b> encouraged to 
+                You are <b>strongly</b> encouraged to
                 <a href="https://discord.gg/YtFcCpKqfa">join the discord</a> for
                 support, updates and <b>notifications of new assignments</b>.
             </p>
@@ -188,7 +188,7 @@
                 { field: 'leader', text: 'Leader', size: '40%' },
                 { field: 'follower', text: 'Follower', size: '40%' },
                 ],
-                url: "/data/leaderboard",
+                url: "/data/leaderboard?lobby_type=1",
             });
 });
     </script>

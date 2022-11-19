@@ -30,6 +30,7 @@ class MessageType(Enum):
     LIVE_FEEDBACK = 8
     CANCEL_PENDING_OBJECTIVES = 9
     GOOGLE_AUTH = 10
+    USER_INFO = 11
 
 
 @dataclass(frozen=True)

@@ -294,6 +294,10 @@ namespace Network
                 }
                 return true;
             }
+            if (message.type == MessageFromServer.MessageType.USER_INFO)
+            {
+                _networkManager.SetUserInfo(message.user_info);
+            }
             return false;
         }
 

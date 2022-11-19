@@ -54,11 +54,13 @@ def InitUserExperience(user):
 def UpdateLeaderExperience(game_record):
     # Update leader lead & total scores.
     if game_record.google_leader is None:
+        logger.info(f"No google leader found.")
         return
     leader_experience = GetOrCreateUserExperienceEntry(
         game_record.google_leader.hashed_google_id
     )
     if leader_experience is None:
+        logger.info(f"No lexp entry found.")
         return
     print(f"Leader EXP ID: {leader_experience.id}")
     update_leader_stats(leader_experience, game_record)
@@ -67,11 +69,13 @@ def UpdateLeaderExperience(game_record):
 def UpdateFollowerExperience(game_record):
     # Update follower follow & total scores.
     if game_record.google_follower is None:
+        logger.info(f"No google follower found.")
         return
     follower_experience = GetOrCreateUserExperienceEntry(
         game_record.google_follower.hashed_google_id
     )
     if follower_experience is None:
+        logger.info(f"No fexp entry found.")
         return
     print(f"Follower EXP ID: {follower_experience.id}")
     update_follower_stats(follower_experience, game_record)
@@ -79,6 +83,7 @@ def UpdateFollowerExperience(game_record):
 
 def UpdateGoogleUserExperienceTable(game_record):
     """Given a game record (joined with leader & followers) updates leader & follower experience table."""
+    logger.info(f"Updating google experience...")
     game_type_components = game_record.type.split("|")
     if len(game_type_components) < 3:
         logger.info(f"Game type {game_record.type} is not a lobby game type.")
@@ -89,5 +94,7 @@ def UpdateGoogleUserExperienceTable(game_record):
         # Only update the leader & follower experience table for google lobbies.
         logger.info(f"Game type {game_record.type} is not a google lobby game type.")
         return
+    logger.info(f"Updating leader experience...")
     UpdateLeaderExperience(game_record)
+    logger.info(f"Updating follower experience...")
     UpdateFollowerExperience(game_record)
