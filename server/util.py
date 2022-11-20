@@ -1,8 +1,11 @@
 """ A set of general utilities that are used across the server. """
 
+import contextvars
+import functools
 import pathlib
 import subprocess
 import time
+from asyncio import events
 
 MAX_ID = 1000000
 
@@ -76,3 +79,19 @@ class CountDownTimer(object):
         if self._end_time is None:
             return False
         return time.time() > self._end_time
+
+
+# Asyncio.to_thread is a feature of python 3.9, however, we are using python 3.8
+# This is a backport of the function from python 3.9.
+async def to_thread(func, /, *args, **kwargs):
+    """Asynchronously run function *func* in a separate thread.
+    Any *args and **kwargs supplied for this function are directly passed
+    to *func*. Also, the current :class:`contextvars.Context` is propagated,
+    allowing context variables from the main thread to be accessed in the
+    separate thread.
+    Return a coroutine that can be awaited to get the eventual result of *func*.
+    """
+    loop = events.get_running_loop()
+    ctx = contextvars.copy_context()
+    func_call = functools.partial(ctx.run, func, *args, **kwargs)
+    return await loop.run_in_executor(None, func_call)

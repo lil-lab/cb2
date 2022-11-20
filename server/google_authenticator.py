@@ -1,4 +1,3 @@
-import asyncio
 import dataclasses
 import functools
 import hashlib
@@ -14,6 +13,7 @@ from server.leaderboard import SetDefaultGoogleUsername, UsernameFromHashedGoogl
 from server.messages.google_auth import GoogleAuth, GoogleAuthConfirmation
 from server.messages.user_info import UserType
 from server.remote_table import GetRemote, SetRemote
+from server.util import to_thread
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class GoogleAuthenticator:
             request = requests.Request()
             request_with_timeout = functools.partial(request, timeout=2)
             # Run the following in a separate executor.
-            idinfo = await asyncio.to_thread(
+            idinfo = await to_thread(
                 lambda: id_token.verify_oauth2_token(
                     auth.token,
                     request_with_timeout,
