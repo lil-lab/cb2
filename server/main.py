@@ -907,6 +907,7 @@ async def stream_game_state(request, ws, lobby):
         if len(userinfo_responses) > 0:
             for userinfo_response in userinfo_responses:
                 message = message_from_server.UserInfoFromServer(userinfo_response)
+                logger.info(f"message: {message}")
                 await transmit_bytes(
                     ws, orjson.dumps(message, option=orjson.OPT_NAIVE_UTC)
                 )
@@ -1001,7 +1002,7 @@ async def receive_agent_updates(request, ws, lobby):
             continue
 
         if message.type == message_to_server.MessageType.USER_INFO:
-            user_info_fetcher.handle_userinfo_request(ws, remote)
+            await user_info_fetcher.handle_userinfo_request(ws, remote)
             continue
 
         if message.type == message_to_server.MessageType.ROOM_MANAGEMENT:

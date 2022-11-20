@@ -692,7 +692,7 @@ namespace Network
                 _google_id_token = null;
             }
 
-            if (_client.IsConnected() && (_user_info == null) && (!_user_info_requested))
+            if (_client.IsConnected() && (_serverConfig != null) && (!NeedsGoogleAuth() || _authenticated) && (_user_info == null) && (!_user_info_requested))
             {
                 _logger.Info("Requesting user info.");
                 MessageToServer msg = new MessageToServer();

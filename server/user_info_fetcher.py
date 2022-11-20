@@ -35,6 +35,7 @@ class UserInfoFetcher:
         else:
             user_name = ""
             logger.warn(f"Unknown user type {user_type}")
+        logger.info(f"User info request for {user_name}")
         self._queue_userinfo(ws, UserInfo(user_name=user_name, user_type=user_type))
 
     def _queue_userinfo(self, ws, userinfo):
