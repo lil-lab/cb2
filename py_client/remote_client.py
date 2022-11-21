@@ -121,9 +121,9 @@ class RemoteClient(object):
                 f"Could not get config from {config_url}: {config_response.status_code}",
             )
         self.config = Config.from_json(config_response.text)
-        url = f"{self.url}/player_endpoint"
+        url = f"{self.url}/player_endpoint?is_bot=true"
         if self.lobby_name != "":
-            url += f"?lobby_name={self.lobby_name}"
+            url += f"&lobby_name={self.lobby_name}"
         logger.info(f"Connecting to {url}...")
         session = aiohttp.ClientSession()
         ws = self.event_loop.run_until_complete(session.ws_connect(url))

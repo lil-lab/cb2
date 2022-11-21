@@ -1047,6 +1047,9 @@ async def PlayerEndpoint(request):
     )
     assignment = None
     is_mturk = False
+    is_bot = False
+    if "is_bot" in request.query:
+        is_bot = request.query["is_bot"] == "true"
     if "assignmentId" in request.query:
         # If this is an mturk task, log assignment into to the remote table.
         is_mturk = True
@@ -1081,12 +1084,16 @@ async def PlayerEndpoint(request):
     remote = Remote(hashed_ip, port, 0, 0, time.time(), time.time(), request, ws)
     remote = dataclasses.replace(remote, user_type=UserType.OPEN)
 
+    if is_bot:
+        remote = dataclasses.replace(remote, user_type=UserType.BOT)
+
     if is_mturk:
         remote = dataclasses.replace(
             remote, mturk_id=worker_id, user_type=UserType.MTURK
         )
 
     AddRemote(ws, remote, assignment)
+    logger.info(f"Player connected. Type: {repr(remote.user_type)}")
     LogConnectionEvent(remote, "Connected to Server.")
     try:
         await asyncio.gather(
