@@ -9,6 +9,7 @@ class LobbyType(IntEnum):
     MTURK = 1
     OPEN = 2
     GOOGLE = 3
+    FOLLOWER_PILOT = 4
 
 
 def LobbyTypeFromString(data):
@@ -18,6 +19,8 @@ def LobbyTypeFromString(data):
         return LobbyType.OPEN
     if data == "LobbyType.GOOGLE":
         return LobbyType.GOOGLE
+    if data == "LobbyType.FOLLOWER_PILOT":
+        return LobbyType.FOLLOWER_PILOT
     return LobbyType.NONE
 
 

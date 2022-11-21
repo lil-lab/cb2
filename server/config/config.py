@@ -139,6 +139,7 @@ class Config(DataClassJSONMixin):
             LobbyInfo("open", LobbyType.OPEN),
             LobbyInfo("bot-sandbox", LobbyType.OPEN),
             LobbyInfo("mturk-lobby", LobbyType.MTURK),
+            LobbyInfo("follower-pilot-lobby", LobbyType.FOLLOWER_PILOT),
         ]
     )
 
