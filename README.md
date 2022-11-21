@@ -60,6 +60,18 @@ Dependencies can be installed with:
 
 ### Pre-commit hooks.
 
+Our precommit hooks require `python3.10` and `rustc` in order to run. Rust is
+only used the first time to build a local binary of the typos tool, which
+safeguards our repository from common typos developers make. You can download
+python3.10 from python.org. You don't need it to be the python version used in
+your venv or conda environment, it simply needs to be installed somewhere on
+your system, and downloading the binary from python.org shouldn't interfere with
+any existing installations. It will just make `python3.10` available as a binary
+on the path. You can install rust from `https://www.rust-lang.org/tools/install`
+
+Pre-commits take a long time (1-2m) to run the first time you commit, but they
+should be fast (3-4 seconds) after that.
+
 Install pre-commit hooks with
 
 ```pre-commit install```
