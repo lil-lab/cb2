@@ -42,17 +42,14 @@ mergeInto(LibraryManager.library, {
             document.head.appendChild(roboto);
             var messages = []
             var message = document.createElement("p");
-            message.innerHTML = "Please sign in with Google to continue. We only use your account to uniquely identify you and track your performance. No personal information is stored.";
-            messages.push(message);
-            var cornellTechDisclaimer = document.createElement("p");
+            message.innerHTML = "Please sign with Google to continue. We only use your account to connect to your game profile. No personal information is stored. The game data is used to improve the game and for natural language processing research at ";
             var cornellTechLink = document.createElement("a");
             cornellTechLink.setAttribute("href", "https://www.tech.cornell.edu/");
             cornellTechLink.setAttribute("target", "_blank");
-            cornellTechLink.innerHTML = "Cornell Tech";
+            cornellTechLink.innerHTML = "Cornell University";
             cornellTechLink.style = "color: #0000EE; text-decoration: none; cursor: pointer;";
-            cornellTechDisclaimer.appendChild(cornellTechLink);
-            cornellTechDisclaimer.innerHTML += " is an academic institution, we collect data about your performance to improve the game and to further research in natural language processing.</p>";
-            messages.push(cornellTechDisclaimer);
+            message.appendChild(cornellTechLink);
+            messages.push(message);
             var button = document.createElement("div");
             button.id = button_id;
             // Center the sign in with Google button by placing it within a div which is centered and of the same width.
