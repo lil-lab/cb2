@@ -3,9 +3,9 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-import gym
+import gymnasium as gym
 import numpy as np
-from gym import register, spaces
+from gymnasium import register, spaces
 
 import server.assets as assets
 import server.card as card

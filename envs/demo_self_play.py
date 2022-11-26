@@ -5,7 +5,7 @@ import time
 from collections import deque
 
 import fire
-import gym
+import gymnasium as gym
 import matplotlib.pyplot as plt
 import nest_asyncio
 import numpy as np
