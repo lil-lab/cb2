@@ -49,6 +49,11 @@ class EndpointPair:
         """
         return self._follower.action_mask()
 
+    def action_mask(self):
+        if self.turn == Role.LEADER:
+            return self.leader_mask()
+        return self.follower_mask()
+
     # Deprecated -- Gives low-level access to underlying endpoint objects.
     def leader(self):
         """Returns the leader endpoint. Discouraged, use step() instead."""
