@@ -21,6 +21,29 @@ from server.messages.prop import CardConfig, GenericPropInfo, Prop, PropType
 logger = logging.getLogger(__name__)
 
 
+def actions_from_instruction(instruction):
+    actions = []
+    instruction_action_codes = instruction.split(",")
+    for action_code in instruction_action_codes:
+        action_code = action_code.strip().lower()
+        if len(action_code) == 0:
+            continue
+        if "forward".startswith(action_code):
+            actions.append(Action.Forwards())
+        elif "backward".startswith(action_code):
+            actions.append(Action.Backwards())
+        elif "left".startswith(action_code):
+            actions.append(Action.Left())
+        elif "right".startswith(action_code):
+            actions.append(Action.Right())
+        elif "random".startswith(action_code):
+            actions.append(Action.RandomMovementAction())
+    if len(actions) == 0:
+        # Choose a random action.
+        Action.RandomMovementAction()
+    return actions
+
+
 def card_collides(cards, new_card):
     card_colors = [card.card_init.color for card in cards]
     card_shapes = [card.card_init.shape for card in cards]

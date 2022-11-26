@@ -355,12 +355,19 @@ class CerealBar2Env(gym.Env):
         """Converts to OpenAI gym (observation, reward, done, info) from CB2 pyclient state."""
         map_update, props, turn_state, instructions, actors, feedback = state
         print(f"Instructions from client: {instructions}")
-        (leader, follower) = actors
-        actors = {
-            "leader": {
+        if len(actors) == 2:
+            (leader, follower) = actors
+        else:
+            leader = None
+            follower = actors[0]
+        leader_state = None
+        if leader != None:
+            leader_state = {
                 "location": leader.location().to_offset_coordinates(),
                 "rotation": leader.heading_degrees(),
-            },
+            }
+        actors = {
+            "leader": leader_state,
             "follower": {
                 "location": follower.location().to_offset_coordinates(),
                 "rotation": follower.heading_degrees(),
