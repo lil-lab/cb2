@@ -69,10 +69,12 @@ class PropUpdate(DataClassJSONMixin):
         card_id = 0
         for i in range(rows):
             for j in range(cols):
+                count = cards["counts"][i][j]
+                if count == 0:
+                    continue
                 location = HecsCoord.from_offset(i, j)
                 rotation = 0
                 border_color = card_enums.Color.BLUE
-                count = cards["counts"][i][j]
                 color = cards["colors"][i][j]
                 border_color = cards["border_colors"][i][j]
                 shape = cards["shapes"][i][j]
