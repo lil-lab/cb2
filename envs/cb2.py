@@ -251,6 +251,18 @@ class CerealBar2Env(gym.Env):
                             shape=(MAP_HEIGHT, MAP_WIDTH),
                             dtype=np.int16,
                         ),
+                        "heights": spaces.Box(
+                            low=0,
+                            high=16356,
+                            shape=(MAP_HEIGHT, MAP_WIDTH),
+                            dtype=np.float32,
+                        ),
+                        "layers": spaces.Box(
+                            low=0,
+                            high=255,
+                            shape=(MAP_HEIGHT, MAP_WIDTH),
+                            dtype=np.int8,
+                        ),
                     }
                 ),
                 "cards": spaces.Dict(
@@ -354,7 +366,6 @@ class CerealBar2Env(gym.Env):
     def gym_state_from_client_state(self, state):
         """Converts to OpenAI gym (observation, reward, done, info) from CB2 pyclient state."""
         map_update, props, turn_state, instructions, actors, feedback = state
-        print(f"Instructions from client: {instructions}")
         if len(actors) == 2:
             (leader, follower) = actors
         else:
@@ -383,15 +394,21 @@ class CerealBar2Env(gym.Env):
         orientations = [
             [0 for _ in range(map_update.cols)] for _ in range(map_update.rows)
         ]
+        heights = [[0 for _ in range(map_update.cols)] for _ in range(map_update.rows)]
+        layers = [[0 for _ in range(map_update.cols)] for _ in range(map_update.rows)]
         for tile in map_update.tiles:
             row, col = tile.cell.coord.to_offset_coordinates()
             asset_ids[row][col] = tile.asset_id
             boundaries[row][col] = tile.cell.boundary.edges
             orientations[row][col] = tile.rotation_degrees
+            heights[row][col] = tile.cell.height
+            layers[row][col] = tile.cell.layer
         map = {
             "asset_ids": asset_ids,
             "boundaries": boundaries,
             "orientations": orientations,
+            "heights": heights,
+            "layers": layers,
         }
         card_counts = [
             [0 for _ in range(map_update.cols)] for _ in range(map_update.rows)

@@ -1,6 +1,7 @@
 # Re-creation of py_client/demos/local_self_play.py using the OpenAI gym.
 import logging
 import threading
+import time
 from collections import deque
 
 import fire
@@ -9,14 +10,14 @@ import matplotlib.pyplot as plt
 import nest_asyncio
 import numpy as np
 
-import server.card_enums as card_enums
 import server.db_tools.db_utils as db_utils
 from envs.cb2 import EnvMode
 from py_client.game_endpoint import Action, Role
 from py_client.local_game_coordinator import LocalGameCoordinator
 from server.config.config import ReadConfigOrDie
 from server.hex import HecsCoord
-from server.messages.prop import CardConfig, GenericPropInfo, Prop, PropType
+from server.messages.map_update import MapUpdate
+from server.messages.prop import PropUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -69,52 +70,14 @@ def has_instruction_available(instructions):
     return False
 
 
-def props_from_observation(observation):
-    props = []
-    cards = observation["cards"]
-    rows = len(cards["counts"])
-    cols = len(cards["counts"][0])
-    # Only requirement for the card ID is that each ID is unique.
-    card_id = 0
-    for i in range(rows):
-        for j in range(cols):
-            location = HecsCoord.from_offset(i, j)
-            rotation = 0
-            border_color = card_enums.Color.BLUE
-            count = cards["counts"][i][j]
-            color = cards["colors"][i][j]
-            border_color = cards["border_colors"][i][j]
-            shape = cards["shapes"][i][j]
-            selected = cards["selected"][i][j]
-            prop_info = GenericPropInfo(
-                location=location,
-                rotation_degrees=rotation,
-                collide=False,
-                border_radius=0,
-                border_color=border_color,
-            )
-            card_init = CardConfig(
-                color=color, shape=shape, count=count, selected=selected
-            )
-            prop = Prop(
-                id=card_id,
-                prop_type=PropType.CARD,
-                prop_info=prop_info,
-                card_init=card_init,
-                simple_init=None,
-            )
-            props.append(prop)
-            card_id += 1
-    return props
-
-
 def get_next_card(observation):
     (_, follower) = observation["actors"]["leader"], observation["actors"]["follower"]
     distance_to_follower = lambda c: c.prop_info.location.distance_to(
         HecsCoord.from_offset(follower["location"][0], follower["location"][1])
     )
     selected_cards = []
-    cards = props_from_observation(observation)
+    prop_update = PropUpdate.from_gym_state(observation)
+    cards = prop_update.props
     for card in cards:
         if card.card_init.selected:
             selected_cards.append(card)
@@ -162,13 +125,15 @@ def find_path_to_card(card, follower, map, cards):
 
 
 def get_instruction_for_card(card, observation, game_endpoint=None):
-    cards = props_from_observation(observation)
+    prop_update = PropUpdate.from_gym_state(observation)
+    cards = prop_update.props
     (_, follower) = observation["actors"]["leader"], observation["actors"]["follower"]
 
     distance_to_follower = lambda c: c.prop_info.location.distance_to(
         follower.location()
     )
-    path = find_path_to_card(card, follower, map, cards)
+    map_update = MapUpdate.from_gym_state(observation)
+    path = find_path_to_card(card, follower, map_update, cards)
     if not path:
         return "random, random, random, random, random"
     game_vis = game_endpoint.visualization() if game_endpoint else None
@@ -252,7 +217,6 @@ class NaiveFollower(threading.Thread):
     def get_action(self, observation):
         instructions = observation["instructions"]
         if len(self.actions) == 0:
-            print(f"============= instructions: {repr(instructions)}")
             active_instruction = get_active_instruction(instructions)
             actions = []
             if active_instruction is not None:
@@ -287,6 +251,7 @@ def PlayGame(coordinator, log_to_db: bool = True):
     )
     leader_agent = PathfindingLeader()
     follower_agent = NaiveFollower()
+    start = time.time()
     (observation, reward, done, truncated, info) = environment.reset()
     while True:
         turn_state = observation["turn_state"]
@@ -305,10 +270,11 @@ def PlayGame(coordinator, log_to_db: bool = True):
             (observation, reward, done, truncated, info) = environment.step(
                 follower_action
             )
+    duration = time.time() - start
     # The game is over, so we can clean up the state machine.
     logger.info(f"Game over. Score: {turn_state['score']}")
     coordinator.Cleanup()
-    return turn_state["score"]
+    return turn_state["score"], duration
 
 
 def main(config_filepath="server/config/local-covers-config.yaml", instruction_uuid=""):
@@ -324,9 +290,10 @@ def main(config_filepath="server/config/local-covers-config.yaml", instruction_u
         logger.info(
             f"========================== STARTING GAME {i} =========================="
         )
-        score = PlayGame(coordinator, instruction_uuid)
+        score, duration = PlayGame(coordinator, instruction_uuid)
         logger.info(f"Game over. Score: {score}")
         scores.append(score)
+        durations.append(duration)
     # Print out the scores.
     logger.warn(f"Mean score: {np.mean(scores)}")
     logger.warn(f"Mean duration: {np.mean(durations)}")

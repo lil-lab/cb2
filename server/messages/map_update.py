@@ -5,8 +5,8 @@ from typing import List
 
 from mashumaro.mixins.json import DataClassJSONMixin
 
-from server.hex import HecsCoord, HexCell
-from server.messages.prop import Prop
+from server.hex import HecsCoord, HexBoundary, HexCell
+from server.messages.prop import Prop, PropUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +85,29 @@ class MapUpdate(DataClassJSONMixin):
     tiles: List[Tile]
     metadata: MapMetadata = field(default_factory=MapMetadata)
     props: List[Prop] = None
+
+    @staticmethod
+    def from_gym_state(observation):
+        """Converts a gym space to a MapUpdate."""
+        map_space = observation["map"]
+        rows, cols = len(map_space["asset_ids"]), len(map_space["asset_ids"][0])
+        tiles = []
+        for r in range(rows):
+            for c in range(cols):
+                coord = HecsCoord.from_offset(r, c)
+                boundary = HexBoundary(map_space["boundaries"][r][c])
+                height = map_space["heights"][r][c]
+                layer = map_space["layers"][r][c]
+                cell = HexCell(coord, boundary, height, layer)
+                tiles.append(
+                    Tile(
+                        map_space["asset_ids"][r][c],
+                        cell,
+                        map_space["orientations"][r][c],
+                    )
+                )
+        prop_update = PropUpdate.from_gym_state(observation)
+        return MapUpdate(rows, cols, tiles, None, prop_update.props)
 
     def get_edge_between(self, hecs_a: HecsCoord, hecs_b: HecsCoord):
         """Returns the edge between the two given HECS coordinates.
