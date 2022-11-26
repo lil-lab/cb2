@@ -9,7 +9,9 @@ from gym import register, spaces
 
 import server.assets as assets
 import server.card as card
+import server.card_enums as card_enums
 import server.hex as hex
+import server.messages.action as action
 import server.messages.live_feedback as live_feedback
 import server.messages.prop as prop
 import server.state as state
@@ -42,6 +44,26 @@ class FollowActions(Enum):
     TURN_RIGHT = 4
     INSTRUCTION_DONE = 5
     MAX = 6
+
+
+def ColorEnumFromColor(color: action.Color):
+    # Black, blue, green, orange, pink, red yellow.
+    if color == action.Color(0, 0, 0, 1):
+        return card_enums.Color.BLACK
+    elif color == action.Color(0, 0, 1, 1):
+        return card_enums.Color.BLUE
+    elif color == action.Color(0, 1, 0, 1):
+        return card_enums.Color.GREEN
+    elif color == action.Color(1, 0.5, 0, 1):
+        return card_enums.Color.ORANGE
+    elif color == action.Color(1, 0, 1, 1):
+        return card_enums.Color.PINK
+    elif color == action.Color(1, 0, 0, 1):
+        return card_enums.Color.RED
+    elif color == action.Color(1, 1, 0, 1):
+        return card_enums.Color.YELLOW
+    else:
+        raise ValueError("Unknown color")
 
 
 class EnvMode(Enum):
@@ -179,15 +201,33 @@ class CerealBar2Env(gym.Env):
             {
                 "actors": spaces.Dict(
                     {
-                        "leader": spaces.Box(
-                            low=np.array([0, 0]),
-                            high=np.array([MAP_HEIGHT, MAP_WIDTH]),
-                            dtype=np.int16,
+                        "leader": spaces.Dict(
+                            {
+                                "location": spaces.Box(
+                                    low=np.array([0, 0]),
+                                    high=np.array([MAP_HEIGHT, MAP_WIDTH]),
+                                    dtype=np.int16,
+                                ),
+                                "rotation": spaces.Box(
+                                    low=np.array([0]),
+                                    high=np.array([360]),
+                                    dtype=np.int16,
+                                ),
+                            }
                         ),
-                        "follower": spaces.Box(
-                            low=np.array([0, 0]),
-                            high=np.array([MAP_HEIGHT, MAP_WIDTH]),
-                            dtype=np.int16,
+                        "follower": spaces.Dict(
+                            {
+                                "location": spaces.Box(
+                                    low=np.array([0, 0]),
+                                    high=np.array([MAP_HEIGHT, MAP_WIDTH]),
+                                    dtype=np.int16,
+                                ),
+                                "rotation": spaces.Box(
+                                    low=np.array([0]),
+                                    high=np.array([360]),
+                                    dtype=np.int16,
+                                ),
+                            }
                         ),
                     }
                 ),
@@ -224,6 +264,12 @@ class CerealBar2Env(gym.Env):
                             shape=(MAP_HEIGHT, MAP_WIDTH),
                             dtype=np.int8,
                         ),
+                        "border_colors": spaces.Box(
+                            low=0,
+                            high=int(card.Color.MAX.value),
+                            shape=(MAP_HEIGHT, MAP_WIDTH),
+                            dtype=np.int8,
+                        ),
                         "shapes": spaces.Box(
                             low=0,
                             high=int(card.Shape.MAX.value),
@@ -232,7 +278,7 @@ class CerealBar2Env(gym.Env):
                         ),
                         "selected": spaces.Box(
                             low=0,
-                            high=card.SelectedState.MAX.value,
+                            high=1,
                             shape=(MAP_HEIGHT, MAP_WIDTH),
                             dtype=np.int8,
                         ),
@@ -308,10 +354,17 @@ class CerealBar2Env(gym.Env):
     def gym_state_from_client_state(self, state):
         """Converts to OpenAI gym (observation, reward, done, info) from CB2 pyclient state."""
         map_update, props, turn_state, instructions, actors, feedback = state
+        print(f"Instructions from client: {instructions}")
         (leader, follower) = actors
         actors = {
-            "leader": leader.location().to_offset_coordinates(),
-            "follower": follower.location().to_offset_coordinates(),
+            "leader": {
+                "location": leader.location().to_offset_coordinates(),
+                "rotation": leader.heading_degrees(),
+            },
+            "follower": {
+                "location": follower.location().to_offset_coordinates(),
+                "rotation": follower.heading_degrees(),
+            },
         }
         asset_ids = [
             [assets.AssetId.NONE for _ in range(map_update.cols)]
@@ -340,6 +393,10 @@ class CerealBar2Env(gym.Env):
             [card.Color.NONE for _ in range(map_update.cols)]
             for _ in range(map_update.rows)
         ]
+        border_colors = [
+            [card.Color.NONE for _ in range(map_update.cols)]
+            for _ in range(map_update.rows)
+        ]
         card_shapes = [
             [card.Shape.NONE for _ in range(map_update.cols)]
             for _ in range(map_update.rows)
@@ -352,11 +409,13 @@ class CerealBar2Env(gym.Env):
                 (row, col) = p.prop_info.location.to_offset_coordinates()
                 card_counts[row][col] = p.card_init.count
                 card_colors[row][col] = p.card_init.color
+                border_colors[row][col] = ColorEnumFromColor(p.prop_info.border_color)
                 card_shapes[row][col] = p.card_init.shape
                 card_selected[row][col] = p.card_init.selected
         cards = {
             "counts": card_counts,
             "colors": card_colors,
+            "border_colors": border_colors,
             "shapes": card_shapes,
             "selected": card_selected,
         }
@@ -374,6 +433,10 @@ class CerealBar2Env(gym.Env):
             self.game_info.game_name,
             action_mask,
         )
+        # Convert aux_info to a dict.
+        aux_info_dict = {
+            "aux_info": aux_info,
+        }
         return (
             {
                 "actors": actors,
@@ -385,7 +448,8 @@ class CerealBar2Env(gym.Env):
             },
             turn_state.score,
             turn_state.game_over,
-            aux_info,
+            turn_state.game_over,
+            aux_info_dict,
         )
 
 
