@@ -14,6 +14,7 @@ from server.messages.rooms import (
     RoomManagementResponse,
     RoomResponseType,
 )
+from server.messages.user_info import UserType
 from server.remote_table import GetRemote, GetWorkerFromRemote
 from server.schemas.mturk import WorkerQualLevel
 
@@ -30,7 +31,7 @@ class FollowerPilotLobby(lobby.Lobby):
     def is_mturk_player(self, ws: web.WebSocketResponse) -> bool:
         return GetWorkerFromRemote(ws) is not None
 
-    def is_follower_bot(ws):
+    def is_follower_bot(self, ws: web.WebSocketResponse) -> bool:
         return GetRemote(ws).user_type == UserType.BOT
 
     def accept_player(self, ws: web.WebSocketResponse) -> bool:
