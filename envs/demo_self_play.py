@@ -270,6 +270,7 @@ def PlayGame(coordinator, log_to_db: bool = True):
             (observation, reward, done, truncated, info) = environment.step(
                 follower_action
             )
+        print(f"Observation flattened: {observation.flatten()}")
     duration = time.time() - start
     # The game is over, so we can clean up the state machine.
     logger.info(f"Game over. Score: {turn_state['score']}")

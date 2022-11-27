@@ -377,13 +377,19 @@ class CerealBar2Env(gym.Env):
                 "location": leader.location().to_offset_coordinates(),
                 "rotation": leader.heading_degrees(),
             }
-        actors = {
-            "leader": leader_state,
-            "follower": {
-                "location": follower.location().to_offset_coordinates(),
-                "rotation": follower.heading_degrees(),
-            },
-        }
+        actors = spaces.Dict(
+            {
+                "leader": leader_state,
+                "follower": spaces.Dict(
+                    {
+                        "location": np.array(
+                            follower.location().to_offset_coordinates()
+                        ),
+                        "rotation": follower.heading_degrees(),
+                    }
+                ),
+            }
+        )
         asset_ids = [
             [assets.AssetId.NONE for _ in range(map_update.cols)]
             for _ in range(map_update.rows)
@@ -403,13 +409,15 @@ class CerealBar2Env(gym.Env):
             orientations[row][col] = tile.rotation_degrees
             heights[row][col] = tile.cell.height
             layers[row][col] = tile.cell.layer
-        map = {
-            "asset_ids": asset_ids,
-            "boundaries": boundaries,
-            "orientations": orientations,
-            "heights": heights,
-            "layers": layers,
-        }
+        map = spaces.Dict(
+            {
+                "asset_ids": asset_ids,
+                "boundaries": boundaries,
+                "orientations": orientations,
+                "heights": heights,
+                "layers": layers,
+            }
+        )
         card_counts = [
             [0 for _ in range(map_update.cols)] for _ in range(map_update.rows)
         ]
@@ -436,19 +444,23 @@ class CerealBar2Env(gym.Env):
                 border_colors[row][col] = ColorEnumFromColor(p.prop_info.border_color)
                 card_shapes[row][col] = p.card_init.shape
                 card_selected[row][col] = p.card_init.selected
-        cards = {
-            "counts": card_counts,
-            "colors": card_colors,
-            "border_colors": border_colors,
-            "shapes": card_shapes,
-            "selected": card_selected,
-        }
-        openai_turn_state = {
-            "role": turn_state.turn,
-            "moves_remaining": [turn_state.moves_remaining],
-            "turns_remaining": [turn_state.turns_left],
-            "score": [turn_state.score],
-        }
+        cards = spaces.Dict(
+            {
+                "counts": card_counts,
+                "colors": card_colors,
+                "border_colors": border_colors,
+                "shapes": card_shapes,
+                "selected": card_selected,
+            }
+        )
+        openai_turn_state = spaces.Dict(
+            {
+                "role": turn_state.turn,
+                "moves_remaining": [turn_state.moves_remaining],
+                "turns_remaining": [turn_state.turns_left],
+                "score": [turn_state.score],
+            }
+        )
         action_mask = self.game.action_mask()
         aux_info = AuxiliaryInfo(
             self.game_info.agent_role,
@@ -462,14 +474,16 @@ class CerealBar2Env(gym.Env):
             "aux_info": aux_info,
         }
         return (
-            {
-                "actors": actors,
-                "map": map,
-                "cards": cards,
-                "instructions": instructions,
-                "turn_state": openai_turn_state,
-                "feedback": feedback,
-            },
+            spaces.Dict(
+                {
+                    "actors": actors,
+                    "map": map,
+                    "cards": cards,
+                    "instructions": instructions,
+                    "turn_state": openai_turn_state,
+                    "feedback": feedback,
+                }
+            ),
             turn_state.score,
             turn_state.game_over,
             turn_state.game_over,
