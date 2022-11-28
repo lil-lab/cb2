@@ -242,7 +242,7 @@ LEADER_TUTORIAL_STEPS = [
         [],
         Tooltip(
             "",
-            "The follower understood your feedback and now is on a correct trajectory!",
+            'The follower understood your feedback and now is on a correct trajectory! (press "shift" to continue)',
             TooltipType.FOLLOWER_TURN,
         ),
         None,
@@ -252,6 +252,15 @@ LEADER_TUTORIAL_STEPS = [
             FollowerActions.TURN_RIGHT,
         ],
     ),
+    TutorialStep(
+        [],
+        Tooltip(
+            "",
+            'The follower understood your feedback and now is on a correct trajectory! (press "shift" to continue)',
+            TooltipType.UNTIL_DISMISSED,
+        ),
+        None,
+    ),    
     TutorialStep(
         [],
         Tooltip(
