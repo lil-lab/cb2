@@ -166,11 +166,11 @@
             function RewriteLinkWithForwardParams(link_id, url) {
                 var mturkParameters = new URLSearchParams(window.location.search);
                 var link = document.getElementById(link_id);
-                link.href = url + "&" + mturkParameters.toString();
+                link.href = url + "&" + mturkParameters.toString(); 
             }
 
             function RewriteFollowerTutorialLink() {
-                RewriteLinkWithForwardParams("follower-link", "https://cerealbar2.com/?skipToTask=followerTutorial&lobby_name=mturk-lobby");
+                RewriteLinkWithForwardParams("follower-link", "https://cb2.ai/?skipToTask=followerTutorial&lobby_name=mturk-lobby");
             }
         </script>
         <div>
@@ -189,6 +189,11 @@
                 <a href="https://discord.gg/YtFcCpKqfa" target="_blank">join the discord</a> for
                 support, updates and <b>notifications of new assignments</b>.
             </p>
+	    <h2>Consent form</h2>
+	    <p style="margin-left: 15px">
+	      This HIT is part of a larger research study. Please read our consent form before starting the task.
+	      By accepting the task, you acknowledge that you understand our consent form, and agree to take part in this research.
+	    </p>
             <h2>
                 Qualification Test
             </h2>
@@ -197,3 +202,4 @@
             <form id="qual-form" method="post"></form>
     </body>
 </html>
+

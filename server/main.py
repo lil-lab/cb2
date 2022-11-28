@@ -100,19 +100,14 @@ async def Index(request):
     return web.FileResponse("server/www/WebGL/index.html")
 
 
-@routes.get("/qualification")
-async def QualificationPage(request):
-    return web.FileResponse("server/www/qualification.html")
-
-
-@routes.get("/migration-qualification")
-async def QualificationPage(request):
-    return web.FileResponse("server/www/migration_qualification.html")
-
-
 @routes.get("/rules")
 async def Rules(request):
     return web.FileResponse("server/www/rules.html")
+
+
+@routes.get("/payout")
+async def Rules(request):
+    return web.FileResponse("server/www/payout.html")
 
 
 @routes.get("/example_sets")
@@ -125,14 +120,19 @@ async def OneoffComp(request):
     return web.FileResponse("server/www/oneoff.html")
 
 
-@routes.get("/mturk-task")
-async def TaskPage(request):
-    return web.FileResponse("server/www/mturk-task.html")
-
-
-@routes.get("/follower-task")
+@routes.get("/follower-model-study")
 async def TaskPage(request):
     return web.FileResponse("server/www/follower-task.html")
+
+
+@routes.get("/leader-model-study")
+async def TaskPage(request):
+    return web.FileResponse("server/www/follower-task.html")
+
+
+@routes.get("/main-study")
+async def TaskPage(request):
+    return web.FileResponse("server/www/main-study.html")
 
 
 @routes.get("/follower-qual")

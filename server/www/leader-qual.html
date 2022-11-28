@@ -329,6 +329,21 @@
                                 "label": "The game is over when we run out of turns.",
                                 "value": "theGameIsOverWhenWeRunOutOfTurns",
                                 "tooltip": ""
+                            },
+                            {
+                                "label": "Interrupting an instruction will cancel all queued instructions as well.",
+                                "value": "interruptingAnInstructionCancelsRest",
+                                "tooltip": ""
+                            },
+                            {
+                                "label": "I should be giving the follower feedback each instruction.",
+                                "value": "theGameIsOverWhenWeRunOutOfTurns",
+                                "tooltip": "Yes! You are strongly encouraged to give the follower feedback."
+                            },
+                            {
+                                "label": "During the follower turn, I can give positive and negative feedback as many times as I want.",
+                                "value": "canGiveFeedbackAsManyTimesAsIWant",
+                                "tooltip": ""
                             }
                         ],
                         "values": [
@@ -452,7 +467,7 @@
             }
 
             function RewriteLeaderTutorialLink() {
-                RewriteLinkWithForwardParams("leader-link", "https://cerealbar2.com/?skipToTask=leaderTutorial");
+                RewriteLinkWithForwardParams("leader-link", "https://cb2.ai/?skipToTask=leaderTutorial&lobby_name=mturk-lobby");
             }
         </script>
         <div>
@@ -468,10 +483,15 @@
                 <li>Take the qualification test (below)</li>
             </ol>
             <p style="background-color: rgb(255, 255, 170); font-size: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center; width: 60%;">
-                You are <b>strongly</b> encouraged to 
+                You are <b>strongly</b> encouraged to
                 <a href="https://discord.gg/YtFcCpKqfa" target="_blank">join the discord</a> for
                 support, updates and <b>notifications of new assignments</b>.
             </p>
+	    <h2>Consent form</h2>
+	    <p style="margin-left: 15px">
+	      This HIT is part of a larger research study. Please read our consent form before starting the task.
+	      By accepting the task, you acknowledge that you understand our consent form, and agree to take part in this research.
+	    </p>
             <h2>
                 Qualification Test
             </h2>
