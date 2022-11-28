@@ -122,12 +122,12 @@ async def OneoffComp(request):
 
 @routes.get("/follower-model-study")
 async def TaskPage(request):
-    return web.FileResponse("server/www/follower-task.html")
+    return web.FileResponse("server/www/follower-model-study.html")
 
 
 @routes.get("/leader-model-study")
 async def TaskPage(request):
-    return web.FileResponse("server/www/follower-task.html")
+    return web.FileResponse("server/www/leader-model-study.html")
 
 
 @routes.get("/main-study")
