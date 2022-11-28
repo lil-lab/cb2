@@ -7460,17 +7460,17 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'It''s been 5 minutes and no match has been found. Looks like no one''s
-    available to play right now.
+  m_text: 'You have been booted from the queue. If it has been a while, no one is
+    available to play right now. Try again later.
 
 
-    If you get this message immediately after
-    queueing, it means the server doesn''t recognize your mturk ID and can''t assign
-    you a role. Email lic.cs.cornell@gmail.com with your mturk ID to fix.
+    If this happens immediately,
+    it means your account wasn''t recognized or had an authentication error.
 
 
-    Mturk
-    Workers: Feel free to submit the assignment as done.'
+    Mturkers,
+    if you encounter this error, please email lillabcornell@gmail.com with your mturk
+    ID to fix this. Feel free to submit this assignment as done.'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 18fba4d35f94e4df883441a4b875eae7, type: 2}
   m_sharedMaterial: {fileID: 4114669361348728566, guid: 18fba4d35f94e4df883441a4b875eae7, type: 2}
