@@ -12,7 +12,7 @@ import peewee
 import server.schemas.clients as clients_db
 import server.schemas.mturk as mturk_db
 from server.config.config import GlobalConfig
-from server.lobby_consts import LobbyType
+from server.lobby_consts import IsMturkLobby, LobbyType
 from server.messages.logs import (
     LogEntryFromIncomingMessage,
     LogEntryFromOutgoingMessage,
@@ -63,7 +63,7 @@ class Room(object):
             f"Lobby object: {lobby} | name: {lobby.lobby_name()} | lobby type: {lobby.lobby_type()} | typeinfo: {type(lobby)}"
         )
 
-        is_mturk = lobby.lobby_type() == LobbyType.MTURK
+        is_mturk = IsMturkLobby(lobby.lobby_type())
         game_type_prefix = f"{lobby.lobby_name()}|{lobby.lobby_type()}|"
 
         if self._room_type == RoomType.GAME:
@@ -145,7 +145,7 @@ class Room(object):
         # Fetch the leader and follower user information.
         if remote != None and self._room_type != RoomType.PRESET_GAME:
             # If mturk..
-            is_mturk = self._lobby.lobby_type() == LobbyType.MTURK
+            is_mturk = IsMturkLobby(self._lobby.lobby_type())
             if is_mturk:
                 remote_record = (
                     clients_db.Remote.select()

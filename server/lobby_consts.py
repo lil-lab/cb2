@@ -12,6 +12,10 @@ class LobbyType(IntEnum):
     FOLLOWER_PILOT = 4
 
 
+def IsMturkLobby(lobby_type):
+    return lobby_type in [LobbyType.MTURK, LobbyType.FOLLOWER_PILOT]
+
+
 def LobbyTypeFromString(data):
     if data == "LobbyType.MTURK":
         return LobbyType.MTURK

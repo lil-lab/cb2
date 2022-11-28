@@ -115,9 +115,8 @@ class Config(DataClassJSONMixin):
     # Client-side FPS limit. -1 means the browser controls frame rate to optimize performance.
     fps_limit: int = -1
 
-    analytics_since_game_id: int = (
-        -1
-    )  # The game ID to start all statistical/research calculations from (discard before this).
+    # The game ID to start all statistical/research calculations from (discard before this).
+    analytics_since_game_id: int = -1
 
     live_feedback_enabled: bool = True  # Is leader live feedback enabled for games?
 

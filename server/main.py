@@ -306,13 +306,19 @@ async def GetUsername(request):
 async def MessagesFromServer(request):
     lobby_name = ""
     lobby_type = LobbyType.NONE
+    only_follower_bot_games = False
     if "lobby_name" in request.query:
         lobby_name = request.query["lobby_name"]
     if "lobby_type" in request.query:
         lobby_type_string = request.query["lobby_type"]
         lobby_type = LobbyType(int(lobby_type_string))
-    board = leaderboard.GetLeaderboard(lobby_name, lobby_type)
+    if "only_follower_bot_games" in request.query:
+        only_follower_bot_games = (
+            request.query["only_follower_bot_games"].lower() == "true"
+        )
+    board = leaderboard.GetLeaderboard(lobby_name, lobby_type, only_follower_bot_games)
     leaderboard_entries = []
+    logger.info(f"Leaderboard for {lobby_name} {lobby_type} has {len(board)} entries")
     for i, entry in enumerate(board):
         leader_name = entry.leader_name
         follower_name = entry.follower_name
@@ -320,7 +326,7 @@ async def MessagesFromServer(request):
             leader_name = ""
         if follower_name == None:
             follower_name = ""
-        print(
+        logger.info(
             f"{i:3}: scr: {entry.score} ldr: {leader_name} flwr: {follower_name} time: {entry.time}"
         )
         entry = {

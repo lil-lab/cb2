@@ -10,13 +10,22 @@ from server.schemas.google_user import GoogleUser
 from server.username_word_list import USERNAME_WORDLIST
 
 
-def GetLeaderboard(lobby_name: str = "", lobby_type: LobbyType = LobbyType.NONE):
+def GetLeaderboard(
+    lobby_name: str = "",
+    lobby_type: LobbyType = LobbyType.NONE,
+    only_bot_follower_games: bool = False,
+):
     """Returns a list of the top 10 leaderboard entries."""
     query = leaderboard_db.Leaderboard.select()
     if len(lobby_name) > 0:
         query = query.where(leaderboard_db.Leaderboard.lobby_name == lobby_name)
     if lobby_type != LobbyType.NONE:
         query = query.where(leaderboard_db.Leaderboard.lobby_type == lobby_type)
+    if only_bot_follower_games:
+        query = query.where(
+            (leaderboard_db.Leaderboard.follower_name == "<Bot>")
+            & (leaderboard_db.Leaderboard.leader_name != "<Bot>")
+        )
     return query.order_by(leaderboard_db.Leaderboard.score.desc()).limit(10)
 
 
@@ -31,6 +40,8 @@ def UpdateLeaderboard(game_record):
         components[2]
     else:
         game_record.type
+    leader_name = ""
+    follower_name = ""
     if lobby_type == LobbyType.GOOGLE:
         leader_name = UsernameFromHashedGoogleUserId(
             game_record.google_leader.hashed_google_id
@@ -39,10 +50,24 @@ def UpdateLeaderboard(game_record):
             game_record.google_follower.hashed_google_id
         )
     elif lobby_type == LobbyType.MTURK:
-        leader_name = LookupUsernameFromMd5sum(game_record.leader.hashed_id)
-        follower_name = LookupUsernameFromMd5sum(game_record.follower.hashed_id)
+        if game_record.leader is not None:
+            leader_name = LookupUsernameFromMd5sum(game_record.leader.hashed_id)
+        if game_record.follower is not None:
+            follower_name = LookupUsernameFromMd5sum(game_record.follower.hashed_id)
+    elif lobby_type == LobbyType.FOLLOWER_PILOT:
+        leader_name = "<Bot>"
+        if game_record.leader is not None:
+            leader_name = LookupUsernameFromMd5sum(game_record.leader.hashed_id)
+        follower_name = "<Bot>"
+        if game_record.follower is not None:
+            follower_name = LookupUsernameFromMd5sum(game_record.follower.hashed_id)
     else:
         leader_name = ""
+        follower_name = ""
+
+    if leader_name is None:
+        leader_name = ""
+    if follower_name is None:
         follower_name = ""
 
     if game_record.score > 0 and lobby_name != "" and lobby_type != LobbyType.NONE:
