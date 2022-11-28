@@ -89,9 +89,10 @@ class SocketInfo:
 
 class Lobby(ABC):
     @abstractmethod
-    def __init__(self, lobby_name):
+    def __init__(self, lobby_name, lobby_comment):
         """This class is abstract. Must call super().__init__() in subclasses."""
         self._lobby_name = lobby_name
+        self._lobby_comment = lobby_comment
         self._rooms = {}
         self._room_id_assigner = IdAssigner()
         self._remotes = {}  # {ws: SocketInfo}
@@ -144,6 +145,9 @@ class Lobby(ABC):
 
     def lobby_name(self):
         return self._lobby_name
+
+    def lobby_comment(self):
+        return self._lobby_comment
 
     def register_game_logging_directory(self, dir) -> None:
         """Each lobby has its own log directory. Game logs are written to this directory."""

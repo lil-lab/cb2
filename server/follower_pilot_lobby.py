@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 class FollowerPilotLobby(lobby.Lobby):
     """Used to manage game rooms."""
 
-    def __init__(self, lobby_name):
+    def __init__(self, lobby_name, lobby_comment):
         # Call the superconstructor.
-        super().__init__(lobby_name=lobby_name)
+        super().__init__(lobby_name=lobby_name, lobby_comment=lobby_comment)
 
     def is_mturk_player(self, ws: web.WebSocketResponse) -> bool:
         return GetWorkerFromRemote(ws) is not None

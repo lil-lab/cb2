@@ -171,6 +171,8 @@ def LobbyStatus(player_lobby):
     leader_queue = [str(remote_table[x]) for _, x, _ in player_lobby.leader_queue()]
 
     return {
+        "type": repr(player_lobby.lobby_type()),
+        "comment": player_lobby.lobby_comment(),
         "number_rooms": len(player_lobby.room_ids()),
         "hash": hash(player_lobby),
         "lobby_remotes": [

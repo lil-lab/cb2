@@ -20,9 +20,9 @@ TESTING_CLIENT_ID = (
 class GoogleLobby(lobby.Lobby):
     """Used to manage Google account authenticated rooms."""
 
-    def __init__(self, lobby_name):
+    def __init__(self, lobby_name, lobby_comment):
         # Call the superconstructor.
-        super().__init__(lobby_name=lobby_name)
+        super().__init__(lobby_name=lobby_name, lobby_comment=lobby_comment)
 
     def accept_player(self, ws: web.WebSocketResponse) -> bool:
         remote = GetRemote(ws)

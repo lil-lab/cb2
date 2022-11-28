@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 class OpenLobby(lobby.Lobby):
     """Used to manage game rooms."""
 
-    def __init__(self, lobby_name):
+    def __init__(self, lobby_name, lobby_comment):
         # Call the superconstructor.
-        super().__init__(lobby_name=lobby_name)
+        super().__init__(lobby_name=lobby_name, lobby_comment=lobby_comment)
 
     # OVERRIDES Lobby.lobby_type()
     def lobby_type(self) -> LobbyType:

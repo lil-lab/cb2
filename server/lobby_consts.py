@@ -32,3 +32,4 @@ def LobbyTypeFromString(data):
 class LobbyInfo(DataClassJSONMixin):
     name: str
     type: LobbyType
+    comment: str = ""
