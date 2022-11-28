@@ -32,7 +32,8 @@ class FollowerPilotLobby(lobby.Lobby):
         return GetWorkerFromRemote(ws) is not None
 
     def is_follower_bot(self, ws: web.WebSocketResponse) -> bool:
-        return GetRemote(ws).user_type == UserType.BOT
+        remote = GetRemote(ws)
+        return remote is not None and remote.user_type == UserType.BOT
 
     def accept_player(self, ws: web.WebSocketResponse) -> bool:
         return self.is_mturk_player(ws) or self.is_follower_bot(ws)
@@ -47,17 +48,17 @@ class FollowerPilotLobby(lobby.Lobby):
         then UUID will be empty string.
 
         There are three queues of players: General players, follower-only,
-        and leader-only players.
-        General players must wait for either a follower or for 10 seconds to
-        pass. Once 10 seconds have passed, they can match with other general
-        players.
-        Follower-only players must wait for a general player to become
-        available. If a follower has waited for > 5m, they're expired from
-        the queue.
-        There's also a leader-only queue, which is similar to follower-only.
+        and leader-only players. This lobby only uses the follower-only and
+        leader-only queues.
 
-        If multiple matches are available, selects the most-experienced
-        leader and least-experienced follower.
+        Follower-only queues can contain either human MTurk workers or follower
+        bots, while leader-only queues only contain human MTurk workers. If a worker
+        is qualified to be a leader, they will always be sent to the leader-only queue.
+
+        Leader-only players are preferentially matched with human followers. If 10 seconds
+        pass and there are no humans in the follower queue, the leader will be matched
+        with the first player in the follower queue. If a queued player gets no matches
+        in 5 minutes, they are removed from the queue.
 
         Leaders and followers are removed from their respective queues. If
         either queue is empty, leaves the other untouched.
@@ -128,14 +129,9 @@ class FollowerPilotLobby(lobby.Lobby):
                         i_uuid = ""
                     return leader, follower, i_uuid
             else:
-                # 2: Match with follower. Give priority to human players.
+                # 2: No humans in the first 10 seconds. Match with the first follower in the queue.
                 (_, leader, l_i_uuid) = self._leader_queue.popleft()
-                human_follower = self.pop_human_follower()
-                if human_follower is None:
-                    (_, follower, f_i_uuid) = self._follower_queue.popleft()
-                else:
-                    (_, follower, f_i_uuid) = human_follower
-
+                (_, follower, f_i_uuid) = self._follower_queue.popleft()
                 if l_i_uuid:
                     i_uuid = l_i_uuid
                 elif f_i_uuid:
@@ -152,7 +148,6 @@ class FollowerPilotLobby(lobby.Lobby):
         This will be hacky, but given that there won't be that many
         AMT workers in this lobby, I'd say it's ok.
         """
-
         human_follower = None
 
         # Pop all items until you reach a human follower
