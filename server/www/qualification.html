@@ -496,15 +496,15 @@
             function RewriteLinkWithForwardParams(link_id, url) {
                 var mturkParameters = new URLSearchParams(window.location.search);
                 var link = document.getElementById(link_id);
-                link.href = url + "&" + mturkParameters.toString(); 
+                link.href = url + "&" + mturkParameters.toString();
             }
 
             function RewriteLeaderTutorialLink() {
-                RewriteLinkWithForwardParams("leader-link", "https://cerealbar2.com/?skipToTask=leaderTutorial");
+                RewriteLinkWithForwardParams("leader-link", "https://cerealbar2.com/?skipToTask=leaderTutorial&lobby_name=mturk-lobby");
             }
 
             function RewriteFollowerTutorialLink() {
-                RewriteLinkWithForwardParams("follower-link", "https://cerealbar2.com/?skipToTask=followerTutorial");
+                RewriteLinkWithForwardParams("follower-link", "https://cerealbar2.com/?skipToTask=followerTutorial&lobby_name=mturk-lobby");
             }
         </script>
         <div>
@@ -521,7 +521,7 @@
                 <li>Take the qualification test (below)</li>
             </ol>
             <p style="background-color: rgb(255, 255, 170); font-size: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center; width: 60%;">
-                You are <b>strongly</b> encouraged to 
+                You are <b>strongly</b> encouraged to
                 <a href="https://discord.gg/YtFcCpKqfa" target="_blank">join the discord</a> for
                 support, updates and <b>notifications of new assignments</b>.
             </p>
