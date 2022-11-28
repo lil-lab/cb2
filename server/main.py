@@ -100,6 +100,11 @@ async def Index(request):
     return web.FileResponse("server/www/WebGL/index.html")
 
 
+@routes.get("/consent-form")
+async def ConsentForm(request):
+    return web.FileResponse("server/www/pdfs/consent-form.pdf")
+
+
 @routes.get("/rules")
 async def Rules(request):
     return web.FileResponse("server/www/rules.html")
