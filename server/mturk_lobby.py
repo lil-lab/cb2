@@ -169,7 +169,7 @@ class MturkLobby(lobby.Lobby):
                 )
                 return (player1, player2, i_uuid)
             return leader, follower, i_uuid
-        return None, None
+        return None, None, ""
 
     # OVERRIDES Lobby.handle_join_request()
     def handle_join_request(
