@@ -12,6 +12,9 @@ from server.hex import HecsCoord
 
 logger = logging.getLogger()
 
+DEFAULT_WALK_TIME_S = 0.45
+DEFAULT_TURN_TIME_S = 0.33
+
 
 class ActionType(Enum):
     INIT = 0
@@ -110,7 +113,7 @@ def Init(id, location, orientation):
     )
 
 
-def Turn(id, angle, duration=0.33):
+def Turn(id, angle, duration=DEFAULT_TURN_TIME_S):
     NYC = tz.gettz("America/New_York")
     return Action(
         id=id,
@@ -125,7 +128,7 @@ def Turn(id, angle, duration=0.33):
     )
 
 
-def Walk(id, displacement, duration=0.45):
+def Walk(id, displacement, duration=DEFAULT_WALK_TIME_S):
     NYC = tz.gettz("America/New_York")
     return Action(
         id=id,

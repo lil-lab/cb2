@@ -1,4 +1,13 @@
 """Unit tests for tutorial state machine code."""
+
+# This is really hacky. Modifies the default action duration of walking and
+# turning to be instantaneous, so we can test realtime code path tutorial very
+# quickly.
+import server.messages.action as action_patch
+
+action_patch.Turn.__defaults__ = (0.01,)
+action_patch.Walk.__defaults__ = (0.01,)
+
 import logging
 import os
 import unittest
@@ -41,16 +50,9 @@ class TutorialTest(unittest.TestCase):
     """
 
     def setUp(self):
-        # Use an environment variable to indicate that tests should be realtime.
-        # This is done since it's impossible to add a command line argument
-        # to unit tests run with python3 -m unittest discover
-        # Unit tests are non-realtime when run in the commit hook.
-        # Otherwise, they are realtime (default).
         self.time_traveller = time_machine.travel(0, tick=True)
         self.timer = self.time_traveller.start()
         self.realtime = True
-        if "CB2_FAST_TESTS" in os.environ:
-            self.realtime = False
         logging.basicConfig(level=logging.INFO)
         self.config = Config(
             card_covers=True,
