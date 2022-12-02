@@ -1,12 +1,10 @@
 """Unit tests for tutorial state machine code."""
 import logging
 import os
-import time
 import unittest
-
-os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = ""  # Hide pygame welcome message
-
 from enum import IntEnum
+
+import time_machine
 
 from py_client.game_endpoint import Action
 from py_client.local_game_coordinator import LocalGameCoordinator
@@ -21,6 +19,8 @@ from server.schemas.base import (
 from server.schemas.defaults import ListDefaultTables
 from server.schemas.game import Game
 from server.tutorial_steps import FOLLOWER_TUTORIAL_STEPS, LEADER_TUTORIAL_STEPS
+
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = ""  # Hide pygame welcome message
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +46,8 @@ class TutorialTest(unittest.TestCase):
         # to unit tests run with python3 -m unittest discover
         # Unit tests are non-realtime when run in the commit hook.
         # Otherwise, they are realtime (default).
+        self.time_traveller = time_machine.travel(0, tick=True)
+        self.timer = self.time_traveller.start()
         self.realtime = True
         if "CB2_FAST_TESTS" in os.environ:
             self.realtime = False
@@ -60,6 +62,9 @@ class TutorialTest(unittest.TestCase):
         ConnectDatabase()
         CreateTablesIfNotExists(ListDefaultTables())
         self.coordinator = LocalGameCoordinator(self.config)
+
+    def tearDown(self) -> None:
+        self.time_traveller.stop()
 
     def StartLeaderTutorial(self):
         self.game_name = self.coordinator.CreateLeaderTutorial(realtime=self.realtime)
@@ -81,15 +86,15 @@ class TutorialTest(unittest.TestCase):
             if isinstance(action_queue[0], UnitTestActions):
                 if self.realtime:
                     if action_queue[0] == UnitTestActions.WAIT_1_S:
-                        time.sleep(1)
+                        self.timer.shift(1)
                     elif action_queue[0] == UnitTestActions.WAIT_2_S:
-                        time.sleep(2)
+                        self.timer.shift(2)
                     elif action_queue[0] == UnitTestActions.WAIT_3_S:
-                        time.sleep(3)
+                        self.timer.shift(3)
                     elif action_queue[0] == UnitTestActions.WAIT_4_S:
-                        time.sleep(4)
+                        self.timer.shift(4)
                     elif action_queue[0] == UnitTestActions.WAIT_HALF_S:
-                        time.sleep(0.5)
+                        self.timer.shift(0.5)
                 action_queue.pop(0)
                 _, _, turn_state, instructions, _, _ = self.endpoint.step(
                     Action.NoopAction(), wait_for_turn=False
