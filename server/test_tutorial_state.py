@@ -55,7 +55,7 @@ class TutorialTest(unittest.TestCase):
             comment="Tutorial Unit Test Config",
             live_feedback_enabled=True,
         )
-        # In-memory for test validation.
+        # In-memory db for test validation.
         SetDatabaseForTesting()
         ConnectDatabase()
         CreateTablesIfNotExists(ListDefaultTables())

@@ -208,7 +208,6 @@ class Lobby(ABC):
         while not self._is_done:
             try:
                 await asyncio.sleep(0.5)
-
                 # If the first follower has been waiting for 5m, remove them from the queue.
                 if len(self._follower_queue) > 0:
                     (ts, follower, i_uuid) = self._follower_queue[0]

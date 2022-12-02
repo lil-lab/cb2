@@ -7,13 +7,7 @@ from aiohttp import web
 
 import server.lobby as lobby
 from server.lobby import LobbyType
-from server.messages.rooms import (
-    JoinResponse,
-    Role,
-    RoomManagementRequest,
-    RoomManagementResponse,
-    RoomResponseType,
-)
+from server.messages.rooms import RoomManagementRequest
 from server.messages.user_info import UserType
 from server.remote_table import GetRemote, GetWorkerFromRemote
 from server.schemas.mturk import WorkerQualLevel
@@ -31,12 +25,12 @@ class FollowerPilotLobby(lobby.Lobby):
     def is_mturk_player(self, ws: web.WebSocketResponse) -> bool:
         return GetWorkerFromRemote(ws) is not None
 
-    def is_follower_bot(self, ws: web.WebSocketResponse) -> bool:
+    def is_bot(self, ws: web.WebSocketResponse) -> bool:
         remote = GetRemote(ws)
         return remote is not None and remote.user_type == UserType.BOT
 
     def accept_player(self, ws: web.WebSocketResponse) -> bool:
-        return self.is_mturk_player(ws) or self.is_follower_bot(ws)
+        return self.is_mturk_player(ws) or self.is_bot(ws)
 
     # OVERRIDES Lobby.get_leader_follower_match().
     def get_leader_follower_match(
@@ -69,15 +63,7 @@ class FollowerPilotLobby(lobby.Lobby):
             if datetime.now() - ts > timedelta(minutes=5):
                 self._follower_queue.popleft()
                 # Queue a room management response to notify the follower that they've been removed from the queue.
-                self._pending_room_management_responses[follower].put(
-                    RoomManagementResponse(
-                        RoomResponseType.JOIN_RESPONSE,
-                        None,
-                        JoinResponse(False, -1, Role.NONE, True),
-                        None,
-                        None,
-                    )
-                )
+                self.boot_from_queue(follower)
 
         # If a general player has been waiting alone for 5m, remove them from the queue.
         if len(self._player_queue) > 0:
@@ -85,15 +71,7 @@ class FollowerPilotLobby(lobby.Lobby):
             if datetime.now() - ts > timedelta(minutes=5):
                 self._player_queue.popleft()
                 # Queue a room management response to notify the player that they've been removed from the queue.
-                self._pending_room_management_responses[player].put(
-                    RoomManagementResponse(
-                        RoomResponseType.JOIN_RESPONSE,
-                        None,
-                        JoinResponse(False, -1, Role.NONE, True),
-                        None,
-                        None,
-                    )
-                )
+                self.boot_from_queue(player)
 
         # If a leader has been waiting alone for 5m, remove them from the queue.
         if len(self._leader_queue) > 0:
@@ -101,23 +79,15 @@ class FollowerPilotLobby(lobby.Lobby):
             if datetime.now() - ts > timedelta(minutes=5):
                 self._leader_queue.popleft()
                 # Queue a room management response to notify the leader that they've been removed from the queue.
-                self._pending_room_management_responses[leader].put(
-                    RoomManagementResponse(
-                        RoomResponseType.JOIN_RESPONSE,
-                        None,
-                        JoinResponse(False, -1, Role.NONE, True),
-                        None,
-                        None,
-                    )
-                )
+                self.boot_from_queue(leader)
 
         # If there's a leader in the leader queue and a follower in follower queue:
         if len(self._leader_queue) > 0 and len(self._follower_queue) > 0:
             (ts_l, leader, l_i_uuid) = self._leader_queue[0]
 
-            if datetime.now() - ts < timedelta(seconds=10):
+            if datetime.now() - ts_l < timedelta(seconds=10):
                 # 1: In first 10 seconds, only match with human players
-                human_follower = self.pop_human_follower()
+                human_follower = self._pop_human_follower()
                 if human_follower is not None:
                     (_, leader, l_i_uuid) = self._leader_queue.popleft()
                     (_, follower, f_i_uuid) = human_follower
@@ -143,29 +113,6 @@ class FollowerPilotLobby(lobby.Lobby):
         # For these experiments, assume that players are only assigned leader/follower only roles
         return None, None, ""
 
-    def pop_human_follower(self):
-        """
-        This will be hacky, but given that there won't be that many
-        AMT workers in this lobby, I'd say it's ok.
-        """
-        human_follower = None
-
-        # Pop all items until you reach a human follower
-        popped = []
-        while len(self._follower_queue) > 0:
-            curr_follower = self._follower_queue.popleft()
-            if self.is_mturk_player(curr_follower[1]):
-                human_follower = curr_follower
-                break
-            popped.append(curr_follower)
-
-        # Add all popped items before the human follower back
-        for i in range(len(popped) - 1, -1, -1):
-            curr_follower = popped[i]
-            self._follower_queue.appendleft(curr_follower)
-
-        return human_follower
-
     # OVERRIDES Lobby.handle_join_request()
     def handle_join_request(
         self, request: RoomManagementRequest, ws: web.WebSocketResponse
@@ -189,7 +136,7 @@ class FollowerPilotLobby(lobby.Lobby):
             return
 
         # If the remote is for a bot, add to follower queue
-        if self.is_follower_bot(ws):
+        if self.is_bot(ws):
             self.join_follower_queue(ws, request)
             return
 
@@ -210,3 +157,26 @@ class FollowerPilotLobby(lobby.Lobby):
     # OVERRIDES Lobby.lobby_type()
     def lobby_type(self) -> LobbyType:
         return LobbyType.FOLLOWER_PILOT
+
+    def _pop_human_follower(self):
+        """
+        This will be hacky, but given that there won't be that many
+        AMT workers in this lobby, I'd say it's ok.
+        """
+        human_follower = None
+
+        # Pop all items until you reach a human follower
+        popped = []
+        while len(self._follower_queue) > 0:
+            curr_follower = self._follower_queue.popleft()
+            if self.is_mturk_player(curr_follower[1]):
+                human_follower = curr_follower
+                break
+            popped.append(curr_follower)
+
+        # Add all popped items before the human follower back
+        for i in range(len(popped) - 1, -1, -1):
+            curr_follower = popped[i]
+            self._follower_queue.appendleft(curr_follower)
+
+        return human_follower
