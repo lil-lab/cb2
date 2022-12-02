@@ -5,6 +5,7 @@ import server.messages.message_to_server as message_to_server
 from server.messages import live_feedback, turn_state
 from server.messages.objective import ObjectiveCompleteMessage, ObjectiveMessage
 from server.messages.rooms import Role, RoomManagementRequest, RoomRequestType
+from server.messages.tutorials import TutorialRequest, TutorialRequestType
 
 
 def EndTurnMessage():
@@ -67,7 +68,8 @@ def NegativeFeedbackMessage():
 
 def InterruptMessage():
     message = message_to_server.MessageToServer(
-        transmit_time=datetime.utcnow(), type=message_to_server.MessageType.INTERRUPT
+        transmit_time=datetime.utcnow(),
+        type=message_to_server.MessageType.CANCEL_PENDING_OBJECTIVES,
     )
     return message
 
@@ -119,5 +121,17 @@ def ActionsMessage(actions):
         transmit_time=datetime.utcnow(),
         type=message_to_server.MessageType.ACTIONS,
         actions=actions,
+    )
+    return message
+
+
+def TutorialNextStepMessage():
+    message = message_to_server.MessageToServer(
+        transmit_time=datetime.utcnow(),
+        type=message_to_server.MessageType.TUTORIAL_REQUEST,
+        tutorial_request=TutorialRequest(
+            type=TutorialRequestType.REQUEST_NEXT_STEP,
+            tutorial_name="",
+        ),
     )
     return message

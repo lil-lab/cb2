@@ -43,11 +43,11 @@ from server.tutorial_steps import LoadTutorialSteps
 LEADER_MOVES_PER_TURN = -1
 FOLLOWER_MOVES_PER_TURN = -1
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class TutorialGameState(object):
-    def __init__(self, room_id, tutorial_name, tutorial_record):
+    def __init__(self, room_id, tutorial_name, tutorial_record, realtime: bool = True):
         self._room_id = room_id
 
         self._player_role = RoleFromTutorialName(tutorial_name)
@@ -58,6 +58,8 @@ class TutorialGameState(object):
         self._tutorial_record.valid = True
         self._tutorial_record.who_is_agent = ""
 
+        self._realtime = realtime
+
         self._last_move = None
 
         # Maps from player_id -> live_feedback.FeedbackType if live feedback is
@@ -65,12 +67,6 @@ class TutorialGameState(object):
         self._live_feedback = {}
 
         # Logging init.
-        self._recvd_log = logging.getLogger(f"room_{room_id}.recv")
-        self._record_log = logging.getLogger(f"room_{room_id}.log")
-        self._sent_log = logging.getLogger(f"room_{room_id}.sent")
-        self._recvd_log.info("Tutorial State created.")
-        self._record_log.info("Tutorial State created.")
-        self._sent_log.info("Tutorial State created.")
 
         self._tutorial_name = tutorial_name
         self._tutorial_steps = LoadTutorialSteps(tutorial_name)
@@ -138,10 +134,10 @@ class TutorialGameState(object):
         self._done = False
 
         if self._player_role == Role.LEADER:
-            dummy_character_id = self.create_actor(Role.FOLLOWER, True)
+            dummy_character_id = self.create_actor(Role.FOLLOWER, self._realtime)
             self._dummy_character = self._actors[dummy_character_id]
         elif self._player_role == Role.FOLLOWER:
-            dummy_character_id = self.create_actor(Role.LEADER, True)
+            dummy_character_id = self.create_actor(Role.LEADER, self._realtime)
             self._dummy_character = self._actors[dummy_character_id]
         self._prop_update = map_utils.CensorCards(
             self._prop_update, self._dummy_character
@@ -155,7 +151,6 @@ class TutorialGameState(object):
 
     def record_turn_state(self, turn_state):
         # Record a copy of the current turn state.
-        self._record_log.info(turn_state)
         self._turn_state = turn_state
         for actor_id in self._actors:
             if not actor_id in self._turn_history:
@@ -168,7 +163,6 @@ class TutorialGameState(object):
         if self._turn_history[actor_id].empty():
             return None
         turn = self._turn_history[actor_id].get()
-        self._sent_log.info(f"to: {actor_id} turn_state: {turn}")
         return turn
 
     def end_game(self):
@@ -180,7 +174,6 @@ class TutorialGameState(object):
     def record_action(self, action):
         # Marks an action as validated (i.e. it did not conflict with other actions).
         # Queues this action to be sent to each user.
-        self._record_log.info(action)
         for id in self._actors:
             actor = self._actors[id]
             self._action_history[actor.actor_id()].append(action)
@@ -285,19 +278,19 @@ class TutorialGameState(object):
         for actor_id in self._actors:
             actor = self._actors[actor_id]
             if actor.has_actions():
-                logger.info(f"Actor {actor_id} has pending actions.")
+                logger.debug(f"Actor {actor_id} has pending actions.")
                 proposed_action = actor.peek()
                 if not self._turn_state.turn == actor.role():
                     actor.drop()
                     self.desync(actor_id)
-                    logger.info(
+                    logger.debug(
                         f"Actor {actor_id} is not the current role. Dropping pending action."
                     )
                     continue
                 if self._turn_state.moves_remaining == 0:
                     actor.drop()
                     self.desync(actor_id)
-                    logger.info(
+                    logger.debug(
                         f"Actor {actor_id} is out of moves. Dropping pending action."
                     )
                     continue
@@ -305,9 +298,7 @@ class TutorialGameState(object):
                 if not self.valid_action(actor_id, proposed_action):
                     actor.drop()
                     self.desync(actor_id)
-                    self._record_log.error(
-                        f"Resyncing {actor_id} after invalid action."
-                    )
+                    logger.error(f"Resyncing {actor_id} after invalid action.")
                     continue
 
                 if (not actor.is_realtime()) or actor.peek_action_done():
@@ -325,7 +316,6 @@ class TutorialGameState(object):
                             self._tutorial_step_index - 1
                         ]
                         if actor.location() in self._step_indicators:
-                            logger.info("STEPPED ON INDICATOR!!")
                             self._step_indicators.remove(actor.location())
 
         if self._turn_state.turn != self._player_role:
@@ -335,16 +325,13 @@ class TutorialGameState(object):
             if (
                 current_step.tooltip.type == TooltipType.FOLLOWER_TURN
             ) and not self._dummy_character.has_actions():
-                logger.info(f"Dummy character has no actions. Advancing to next step.")
+                logger.debug(f"Dummy character has no actions. Advancing to next step.")
                 if self._tutorial_step_index > 0:
                     current_step = self._tutorial_steps[self._tutorial_step_index - 1]
                     if current_step.tooltip.type == TooltipType.FOLLOWER_TURN:
                         self.send_next_tutorial_step()
 
         if len(self._turn_complete_queue) > 0:
-            logger.info(
-                f"Turn complete queue has {len(self._turn_complete_queue)} items."
-            )
             reason = self._turn_complete_queue.pop()
             if self._tutorial_step_index != 0:
                 current_step = self._tutorial_steps[self._tutorial_step_index - 1]
@@ -353,7 +340,7 @@ class TutorialGameState(object):
                     TooltipType.UNTIL_TURN_ENDED,
                     TooltipType.FOLLOWER_TURN,
                 ]:
-                    logger.info(
+                    logger.debug(
                         f"Not sending next tutorial step. current step: {current_step.tooltip}"
                     )
                     return
@@ -367,7 +354,6 @@ class TutorialGameState(object):
             # Check to see if the indicator has been reached.
             if (len(current_step.indicators) > 0) and len(self._step_indicators) == 0:
                 if current_step.tooltip.type == TooltipType.UNTIL_INDICATOR_REACHED:
-                    logger.info("INDICATOR REACHED")
                     self.send_next_tutorial_step()
             # Check to see if instructions have been followed.
             if current_step.tooltip.type == TooltipType.UNTIL_OBJECTIVES_COMPLETED:
@@ -400,7 +386,7 @@ class TutorialGameState(object):
             and not self._current_set_invalid
         ):
             self._current_set_invalid = True
-            self._record_log.info("Invalid set detected.")
+            logger.info("Invalid set detected.")
             cards_changed = True
             # Indicate invalid set.
             for card in selected_cards:
@@ -413,7 +399,7 @@ class TutorialGameState(object):
             not self._map_provider.selected_cards_collide()
             and self._current_set_invalid
         ):
-            logger.info(
+            logger.debug(
                 "Marking set as clear (not invalid) because it is smaller than 3."
             )
             self._current_set_invalid = False
@@ -425,7 +411,7 @@ class TutorialGameState(object):
                 self.record_action(card_select_action)
 
         if self._map_provider.selected_valid_set():
-            self._record_log.info("Unique set collected. Awarding points.")
+            logger.info("Unique set collected. Awarding points.")
             self._current_set_invalid = False
             added_turns = 0
             cards_changed = True
@@ -567,36 +553,22 @@ class TutorialGameState(object):
 
     def _handle_packet(self, id, message):
         if message.type == message_to_server.MessageType.ACTIONS:
-            logger.info(f"Actions received. Room: {self._room_id}")
             for action in message.actions:
                 logger.info(f"{action.id}:{action.displacement}")
                 self.handle_action(id, action)
         elif message.type == message_to_server.MessageType.OBJECTIVE:
-            logger.info(
-                f"Objective received. Room: {self._room_id}, Text: {message.objective.text}"
-            )
             self.handle_objective(id, message.objective)
         elif message.type == message_to_server.MessageType.OBJECTIVE_COMPLETED:
-            logger.info(
-                f"Objective Compl received. Room: {self._room_id}, Text: {message.objective_complete.uuid}"
-            )
             self.handle_objective_complete(id, message.objective_complete)
         elif message.type == message_to_server.MessageType.STATE_SYNC_REQUEST:
-            logger.info(f"Sync request recvd. Room: {self._room_id}, Player: {id}")
             self.desync(id)
         elif message.type == message_to_server.MessageType.TUTORIAL_REQUEST:
-            logger.info(f"Tutorial request. Room: {self._room_id}, Player: {id}")
             self.handle_tutorial_request(id, message.tutorial_request)
         elif message.type == message_to_server.MessageType.TURN_COMPLETE:
-            logger.info(f"Turn Complete received. Room: {self._room_id}")
             self.handle_turn_complete(id, message.turn_complete)
         elif message.type == message_to_server.MessageType.CANCEL_PENDING_OBJECTIVES:
-            logger.info(
-                f"Cancel pending objectives recvd. Room: {self._room_id}, Player: {id}"
-            )
             self.handle_cancel_pending_objectives(id)
         elif message.type == message_to_server.MessageType.LIVE_FEEDBACK:
-            logger.info(f"Live feedback recvd. Room: {self._room_id}, Player: {id}")
             self.handle_live_feedback(id, message.live_feedback)
         else:
             logger.warn(f"Received unknown packet type: {message.type}")
@@ -624,7 +596,6 @@ class TutorialGameState(object):
         if action.id != actor_id:
             self.desync(actor_id)
             return
-        self._recvd_log.info(action)
         self._actors[actor_id].add_action(action)
 
     def handle_objective(self, id, objective):
@@ -633,7 +604,6 @@ class TutorialGameState(object):
             return
         # TODO: Make UUID and non-UUID'd objectives separate message types.
         objective.uuid = uuid.uuid4().hex
-        self._recvd_log.info(objective)
         self._objectives.append(objective)
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True
@@ -656,7 +626,6 @@ class TutorialGameState(object):
                     f"Warning, turn complete received from leader ID: {str(id)} when there are no pending instructions!"
                 )
                 return
-        self._recvd_log.info(f"player_id: {id} turn_complete received.")
         if len(self._turn_complete_queue) >= 1:
             logger.warn(
                 f"Warning, turn complete queued from ID: {str(id)}, but one was already received! queue size: {len(self._turn_complete_queue)}"
@@ -670,19 +639,21 @@ class TutorialGameState(object):
                 f"Warning, obj complete received from non-follower ID: {str(id)}"
             )
             return
-        self._recvd_log.info(objective_complete)
         for i, objective in enumerate(self._objectives):
             if objective.uuid == objective_complete.uuid:
-                self._record_log.info(objective_complete)
                 self._objectives[i].completed = True
                 break
         for actor_id in self._actors:
             self._objectives_stale[actor_id] = True
-        instruction = (
-            game_db.Instruction.select()
-            .where(game_db.Instruction.uuid == objective_complete.uuid)
-            .get()
+        instruction_query = game_db.Instruction.select().where(
+            game_db.Instruction.uuid == objective_complete.uuid
         )
+        if not instruction_query.exists():
+            logger.warn(
+                f"Warning, obj complete received for unknown objective: {objective_complete.uuid}"
+            )
+            return
+        instruction = instruction_query.get()
         instruction.turn_completed = self._turn_state.turn_number
         instruction.save()
 
@@ -771,7 +742,6 @@ class TutorialGameState(object):
         if next_step.other_player_turn is not None:
             logger.info(f"Sending {len(next_step.other_player_turn)} dummy actions...")
             for action in next_step.other_player_turn:
-                logger.info("Sending dummy action: " + str(action))
                 if action == FollowerActions.FORWARDS:
                     self._dummy_character.WalkForwards()
                 elif action == FollowerActions.BACKWARDS:
@@ -865,13 +835,10 @@ class TutorialGameState(object):
             if not self.is_synced(actor_id):
                 return True
             if len(self._action_history[actor_id]) > 0:
-                logger.info("Pending actions")
                 return True
             if self._objectives_stale[actor_id]:
-                logger.info("Pending objectives")
                 return True
             if not self._turn_history[actor_id].empty():
-                logger.info("Pending turn history")
                 return True
             if not self._tutorial_responses.empty():
                 return True
@@ -895,7 +862,6 @@ class TutorialGameState(object):
             out_messages.append(message)
             messages_added += 1
             message = self._next_message(player_id)
-            logger.info(f"Filling message: {message} for player {player_id}")
 
         if messages_added == 0:
             return False
@@ -955,9 +921,6 @@ class TutorialGameState(object):
 
         tutorial_response = self._next_tutorial_response(player_id)
         if tutorial_response is not None:
-            logger.info(
-                f"Room {self._room_id} tr {tutorial_response} for player_id {player_id}"
-            )
             msg = message_from_server.TutorialResponseFromServer(tutorial_response)
             return msg
         live_feedback = self._next_live_feedback(player_id)
@@ -978,8 +941,6 @@ class TutorialGameState(object):
         action_history = self._action_history[actor_id]
 
         # Log actions sent to client.
-        for action in action_history:
-            self._sent_log.info(f"to: {actor_id} action: {action}")
         self._action_history[actor_id] = []
         return action_history
 
@@ -992,7 +953,6 @@ class TutorialGameState(object):
 
         # Send the latest objective list and mark as fresh for this player.
         self._objectives_stale[actor_id] = False
-        self._sent_log.info(f"to: {actor_id} objectives: {self._objectives}")
         return self._objectives
 
     def _next_map_update(self, actor_id):
@@ -1021,7 +981,6 @@ class TutorialGameState(object):
 
         # Send the latest map and mark as fresh for this player.
         self._map_stale[actor_id] = False
-        self._sent_log.info(f"to: {actor_id} map: {map_update}")
         return map_update
 
     def _next_prop_update(self, actor_id):

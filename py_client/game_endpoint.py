@@ -20,7 +20,10 @@ from py_client.client_messages import (
     InstructionMessage,
     InterruptMessage,
     LeaveMessage,
+    NegativeFeedbackMessage,
     PongMessage,
+    PositiveFeedbackMessage,
+    TutorialNextStepMessage,
 )
 from py_client.follower_data_masking import (
     CensorActors,
@@ -82,7 +85,8 @@ class Action(object):
         INSTRUCTION_DONE = 8
         POSITIVE_FEEDBACK = 9
         NEGATIVE_FEEDBACK = 10
-        MAX = 11
+        TUTORIAL_NEXT_STEP = 11
+        MAX = 12
 
     # Helper initialization functions.
     @staticmethod
@@ -126,6 +130,10 @@ class Action(object):
         return Action(Action.ActionCode.NEGATIVE_FEEDBACK)
 
     @staticmethod
+    def TutorialNextStep():
+        return Action(Action.ActionCode.TUTORIAL_NEXT_STEP)
+
+    @staticmethod
     def NoopAction():
         return Action(Action.ActionCode.NONE)
 
@@ -139,7 +147,6 @@ class Action(object):
                 Action.ActionCode.TURN_LEFT,
                 Action.ActionCode.TURN_RIGHT,
                 Action.ActionCode.END_TURN,
-                Action.ActionCode.INTERRUPT,
                 Action.ActionCode.SEND_INSTRUCTION,
             ]
         )
@@ -150,6 +157,7 @@ class Action(object):
             [
                 Action.ActionCode.POSITIVE_FEEDBACK,
                 Action.ActionCode.NEGATIVE_FEEDBACK,
+                Action.ActionCode.INTERRUPT,
             ]
         )
 
@@ -173,6 +181,14 @@ class Action(object):
                 Action.ActionCode.BACKWARDS,
                 Action.ActionCode.TURN_LEFT,
                 Action.ActionCode.TURN_RIGHT,
+            ]
+        )
+
+    @staticmethod
+    def TutorialActions():
+        return set(
+            [
+                Action.ActionCode.TUTORIAL_NEXT_STEP,
             ]
         )
 
@@ -270,6 +286,8 @@ class Action(object):
             return "POSITIVE_FEEDBACK"
         elif action_code == Action.ActionCode.NEGATIVE_FEEDBACK:
             return "NEGATIVE_FEEDBACK"
+        elif action_code == Action.ActionCode.TUTORIAL_NEXT_STEP:
+            return "TUTORIAL_NEXT_STEP"
         elif action_code == Action.ActionCode.NONE:
             return "NONE"
         else:
@@ -297,6 +315,12 @@ class Action(object):
             return InstructionMessage(self.action[1]), ""
         elif action_code == Action.ActionCode.INSTRUCTION_DONE:
             return InstructionDoneMessage(self.action[1]), ""
+        elif action_code == Action.ActionCode.TUTORIAL_NEXT_STEP:
+            return TutorialNextStepMessage(), ""
+        elif action_code == Action.ActionCode.NEGATIVE_FEEDBACK:
+            return NegativeFeedbackMessage(), ""
+        elif action_code == Action.ActionCode.POSITIVE_FEEDBACK:
+            return PositiveFeedbackMessage(), ""
         else:
             return None, "Invalid lead action"
         assert action != None, "Invalid lead action"
@@ -347,6 +371,7 @@ class GameEndpoint(object):
         self._follower_moved = False
         self.live_feedback = None
         self.pygame_task = None
+        self._tutorial_messages = []
         # Always create the display, even if render == None.
         # This lets the user access the the display object manually if they need.
         # It's a bit of a hack, because pygame can't render unless they're on the main thread.
@@ -375,10 +400,10 @@ class GameEndpoint(object):
 
     def initial_state(self):
         if self._initial_state_retrieved:
-            logger.warn("Initial state already retrieved")
+            logger.warning("Initial state already retrieved")
             return None
         if not self._initial_state_ready:
-            logger.warn("Initial state not ready")
+            logger.warning("Initial state not ready")
             return None
         self._initial_state_retrieved = True
         return self._state()
@@ -403,7 +428,7 @@ class GameEndpoint(object):
         if datetime.now() - self.last_step_call > timedelta(
             seconds=HEARTBEAT_TIMEOUT_S
         ):
-            logger.warn(
+            logger.warning(
                 f"NOTE: Over {HEARTBEAT_TIMEOUT_S} seconds between calls to step(). Must call step more frequently than this, or the server will disconnect."
             )
 
@@ -428,6 +453,8 @@ class GameEndpoint(object):
             valid_actions.add(Action.ActionCode.NONE)
         else:
             valid_actions = set()
+        for action_code in Action.TutorialActions():
+            valid_actions.add(action_code)
         if action.action_code() not in valid_actions:
             raise ValueError(
                 f"Player is role {self._player_role} and turn {self.turn_state.turn} but sent inappropriate action: {action}"
@@ -446,12 +473,12 @@ class GameEndpoint(object):
         # miss any state transitions that took place on the server.
         waited, reason = self._wait_for_tick()
         if not waited:
-            logger.warn(f"Issue waiting for tick: {reason}")
+            logger.warning(f"Issue waiting for tick: {reason}")
         if wait_for_turn:
             while not self._can_act() and not self.over() and self.socket.connected():
                 waited, reason = self._wait_for_tick()
                 if not waited:
-                    logger.warn(f"Issue waiting for tick: {reason}")
+                    logger.warning(f"Issue waiting for tick: {reason}")
                 if self.render:
                     # Handle pygame events while waiting in between turns.
                     pygame_handle_events()
@@ -496,7 +523,7 @@ class GameEndpoint(object):
                 return False, "Timed out waiting for tick"
             message, reason = self.socket.receive_message(end_time - datetime.utcnow())
             if message is None:
-                logger.warn(f"Received None from _receive_message. Reason: {reason}")
+                logger.warning(f"Received None from _receive_message. Reason: {reason}")
                 continue
             self._handle_message(message)
             if message.type == message_from_server.MessageType.STATE_MACHINE_TICK:
@@ -520,6 +547,9 @@ class GameEndpoint(object):
             return Action.ActionMaskFromSet(set())
         return Action.ActionMaskFromActor(self.player_actor, self.map_update)
 
+    def tutorial_messages(self):
+        return self._tutorial_messages
+
     def __enter__(self):
         return self
 
@@ -541,7 +571,7 @@ class GameEndpoint(object):
             elif self.actors[id].role() == Role.FOLLOWER:
                 follower = self.actors[id]
         if leader is None or follower is None:
-            logger.warn(f"One of leader/follower missing!")
+            logger.warning(f"One of leader/follower missing!")
         map_update = self.map_update
         props = self.cards.values()
         actors = [leader, follower]
@@ -567,7 +597,7 @@ class GameEndpoint(object):
         Initially, the game expects a certain number of messages to be sent. _initialize() blocks until these are received and then returns.
         """
         if self._initial_state_ready:
-            logger.warn("Initial state already ready")
+            logger.warning("Initial state already ready")
             return
 
         end_time = datetime.utcnow() + timeout
@@ -579,7 +609,7 @@ class GameEndpoint(object):
                 timeout=end_time - datetime.utcnow()
             )
             if response is None:
-                logger.warn(
+                logger.warning(
                     f"No message received from _receive_message(). Reason: {reason}"
                 )
                 continue
@@ -642,7 +672,7 @@ class GameEndpoint(object):
                         self._render()
                     return True, ""
                 else:
-                    logger.warn(
+                    logger.warning(
                         f"Init not ready. Player role: {self._player_role}, map update: {self.map_update is not None}, prop update: {self.prop_update is not None}, turn state: {self.turn_state is not None}"
                     )
         return False, "Game initialization timed out."
@@ -706,7 +736,9 @@ class GameEndpoint(object):
         elif message.type == message_from_server.MessageType.GAME_STATE:
             self.turn_state = message.turn_state
         elif message.type == message_from_server.MessageType.MAP_UPDATE:
-            logger.warn(f"Received map update after game started. This is unexpected.")
+            logger.warning(
+                f"Received map update after game started. This is unexpected."
+            )
             self.map_update = message.map_update
         elif message.type == message_from_server.MessageType.OBJECTIVE:
             self.instructions = message.objectives
@@ -718,8 +750,10 @@ class GameEndpoint(object):
             self._handle_prop_update(message.prop_update)
         elif message.type == message_from_server.MessageType.STATE_MACHINE_TICK:
             return
+        elif message.type == message_from_server.MessageType.TUTORIAL_RESPONSE:
+            self._tutorial_messages.append(message.tutorial_response)
         else:
-            logger.warn(
+            logger.warning(
                 f"Received unexpected message type: {message.type}. msg: {message}"
             )
 

@@ -10,7 +10,12 @@ from py_client.game_endpoint import Action
 from py_client.local_game_coordinator import LocalGameCoordinator
 from server.config.config import Config
 from server.messages.rooms import Role
-from server.schemas.base import ConnectDatabase, SetDatabaseForTesting
+from server.schemas.base import (
+    ConnectDatabase,
+    CreateTablesIfNotExists,
+    SetDatabaseForTesting,
+)
+from server.schemas.defaults import ListDefaultTables
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +38,7 @@ class RandomRealtimeLocalSelfPlayTest(unittest.TestCase):
         # In-memory for test validation.
         SetDatabaseForTesting()
         ConnectDatabase()
+        CreateTablesIfNotExists(ListDefaultTables())
         self.coordinator = LocalGameCoordinator(self.config)
         self.game_name = self.coordinator.CreateGame(
             log_to_db=False, realtime_actions=True
