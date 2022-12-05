@@ -104,7 +104,7 @@ def PrintWorkerExperienceEntries(entries, role, no_sparklines):
             f"hash: {entry.worker.get().hashed_id}, role: {role}, avg score: {avg_metric:.2f}, num games: {num_games_metric}"
         )
         if not no_sparklines:
-            for line in sparklines(recent_games, num_lines=2):
+            for line in sparklines(recent_games, num_lines=2, minimum=0, maximum=30):
                 print(line)
 
 
