@@ -1,4 +1,5 @@
 import asyncio
+import atexit
 import dataclasses
 import hashlib
 import json
@@ -7,7 +8,6 @@ import multiprocessing as mp
 import os
 import pathlib
 import queue
-import shutil
 import statistics
 import sys
 import tempfile
@@ -473,26 +473,15 @@ def GatherDataForDownload(config, response, logs):
         ],
     )
     log_entry(f"Starting...")
-    database.backup_to_file(config.backup_database_path())
-    log_entry(f"DB backed up. Archiving game files...")
-    time_string = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
-    game_archive = shutil.make_archive(
-        f"{config.record_directory()}-{time_string}", "gztar", config.record_directory()
-    )
-    log_entry("Game files archived. Compressing to zip...")
+    log_entry("Compressing to zip...")
     download_file = tempfile.NamedTemporaryFile(
         delete=False, prefix="game_data_", suffix=".zip"
     )
     download_file_path = download_file.name
     with zipfile.ZipFile(download_file, "a", False) as zip_file:
-        with open(config.backup_database_path(), "rb") as db_file:
+        with open(config.database_path(), "rb") as db_file:
             zip_file.writestr("game_data.db", db_file.read())
             log_entry(f"DB file added to download ZIP.")
-        with open(game_archive, "rb") as game_file:
-            zip_file.writestr("game_records.zip", game_file.read())
-            log_entry(f"Game archive added to download ZIP.")
-    # Delete the game archive now that we've read it into memory and added it to the zip file.
-    os.remove(game_archive)
     download_file.close()
     log_entry("Zip file written to disk.")
     log_entry(f"Download ready in temp file at {download_file_path}.")
@@ -505,10 +494,23 @@ async def DownloadStatus(request):
     return web.json_response(download_status)
 
 
+files_to_clean = []  # [file_path_1: str, ...]
+
+
+def CleanupDownloadFiles():
+    # Cleanup temporary download files that have been sitting around
+    global files_to_clean
+    logger.info("Deleting temporary files...")
+    for file in files_to_clean:
+        logger.info(f"Deleting: {file}")
+        os.remove(file)
+
+
 @routes.get("/data/download_retrieve")
 async def RetrieveData(request):
     global download_status
     global download_file_path
+    global files_to_clean
     NYC = tz.gettz("America/New_York")
     timestamp = lambda: datetime.now(NYC).strftime("%Y-%m-%d %H:%M:%S")
     log_entry = lambda x: download_status["log"].append(f"{timestamp()}: {x}")
@@ -520,6 +522,7 @@ async def RetrieveData(request):
     download_status["status"] = "done"
     local_download_file_path = download_file_path
     download_file_path = ""
+    files_to_clean.append(local_download_file_path)
     return web.FileResponse(
         local_download_file_path,
         headers={
@@ -1241,6 +1244,9 @@ def main(config_filepath="server/config/server-config.yaml"):
     global assets_map
     global lobby
 
+    # On exit, deletes temporary download files.
+    atexit.register(CleanupDownloadFiles)
+
     InitPythonLogging()
     InitGlobalConfig(config_filepath)
 
@@ -1264,11 +1270,12 @@ def main(config_filepath="server/config/server-config.yaml"):
         lobby_coroutines.append(lobby.cleanup_rooms())
 
     assets_map = HashCollectAssets(GlobalConfig().assets_directory())
+    logger.info(f"WARNING: ")
     tasks = asyncio.gather(
         *lobby_coroutines,
         serve(GlobalConfig()),
-        MapGenerationTask(lobby, GlobalConfig()),
-        DataDownloader(lobby),
+        MapGenerationTask(lobbies, GlobalConfig()),
+        DataDownloader(lobbies),
     )
     loop = asyncio.get_event_loop()
     # loop.set_debug(enabled=True)
