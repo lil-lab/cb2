@@ -104,7 +104,7 @@ def ListMturkGames():
         )
         .where(
             Game.valid == True,
-            Game.type == "game-mturk",
+            Game.type.contains("game-mturk"),
             (
                 (Game.lead_assignment != None)
                 & (Game.lead_assignment.submit_to_url == "https://www.mturk.com")
@@ -122,14 +122,14 @@ def ListMturkGames():
 def ListGames():
     games = (
         Game.select()
-        .where(Game.valid == True, (Game.type == "game") or (Game.type == "game-mturk"))
+        .where(Game.valid == True, ("game" in Game.type) or ("game-mturk" in Game.type))
         .switch(Game)
     )
     return games
 
 
 def is_mturk(game):
-    return game.type == "game-mturk"
+    return "game-mturk" in game.type
 
 
 def is_mturk_sandbox(game):

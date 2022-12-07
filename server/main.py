@@ -758,19 +758,21 @@ async def GameData(request):
 @routes.get("/data/stats")
 async def stats(request):
     games = db_utils.ListAnalysisGames(GlobalConfig())
-    post_data = request.query.get("request", 0)
+    post_data = request.query.get("request", None)
     try:
         post_data = json.loads(post_data)
     except:
         logger.info(f"Unable to parse JSON: {post_data}")
-    from_game_id = post_data.get("from_game_id", 0)
-    to_game_id = post_data.get("to_game_id", 0)
+    from_game_id = 0
+    to_game_id = max([game.id for game in games])
+    if post_data:
+        from_game_id = post_data.get("from_game_id", 0)
+        to_game_id = post_data.get("to_game_id", 0)
     try:
         from_game_id = int(from_game_id)
         to_game_id = int(to_game_id)
         if (from_game_id > 0) or (to_game_id > 0) and (from_game_id < to_game_id):
-            games = [game for game in games if game.id >= from_game_id]
-            games = [game for game in games if game.id <= to_game_id]
+            games = [game for game in games if from_game_id <= game.id <= to_game_id]
             logger.info(
                 f"Filtered games to those >= game {from_game_id} and <= {to_game_id}. Remaining: {len(games)}"
             )

@@ -67,7 +67,6 @@ class TutorialGameState(object):
         self._live_feedback = {}
 
         # Logging init.
-
         self._tutorial_name = tutorial_name
         self._tutorial_steps = LoadTutorialSteps(tutorial_name)
         self._tutorial_step_index = 0
