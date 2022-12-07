@@ -155,6 +155,11 @@ async def Changelist(request):
     return web.FileResponse("server/www/changelist.html")
 
 
+@routes.get("/privacy")
+async def Privacy(request):
+    return web.FileResponse("server/www/privacy-policy.html")
+
+
 @routes.get("/images/{filename}")
 async def Images(request):
     if not request.match_info.get("filename"):
