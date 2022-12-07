@@ -87,9 +87,6 @@ $(function () {
               type: 'scatter',
               name: lobby_name,
               opacity: 0.5,
-              marker: {
-                color: 'rgb(55, 83, 109)'
-              }
             }
           } else {
             // Update the game trace.
@@ -125,9 +122,6 @@ $(function () {
                 type: 'scatter',
                 name: remote.uuid.slice(0,6),
                 opacity: 0.5,
-                marker: {
-                  color: 'rgb(55, 83, 109)'
-                }
               }
             } else {
                 latency_traces[remote.uuid].y.push(remote.latency);
@@ -138,9 +132,6 @@ $(function () {
                     name: remote.uuid.slice(0,6),
                     type: 'histogram',
                     opacity: 0.5,
-                    marker: {
-                    color: 'rgb(55, 83, 109)'
-                    }
                 }
             } else {
                 time_offsets[remote.uuid].x.push(remote.time_offset);
@@ -168,9 +159,6 @@ $(function () {
                 type: 'scatter',
                 name: remote.uuid.slice(0,6),
                 opacity: 0.5,
-                marker: {
-                color: 'rgb(55, 83, 109)'
-                }
             }
             bandwidth_down_traces[remote.uuid] = {
                 x0: 1,
@@ -179,9 +167,6 @@ $(function () {
                 type: 'scatter',
                 name: remote.uuid.slice(0,6),
                 opacity: 0.5,
-                marker: {
-                color: 'rgb(55, 83, 109)'
-                }
             }
         }
         // Remove UUID traces which are no longer in the remotes list.
