@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import aiohttp
 import dateutil
+import uuid
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
 
@@ -25,6 +26,7 @@ def AddRemote(web_socket_response, remote, assignment=None):
         remote_record.assignment = assignment
         remote_worker_table[web_socket_response] = assignment.worker
     remote_record.save()
+    remote.uuid = uuid.uuid4()
     remote_table[web_socket_response] = remote
 
 
@@ -80,12 +82,9 @@ class Remote:
         ),
         default=datetime.min,
     )
-    time_offset: timedelta = field(
-        metadata=config(encoder=str), default=timedelta(seconds=0)
-    )
-    latency: timedelta = field(
-        metadata=config(encoder=str), default=timedelta(seconds=0)
-    )
+    time_offset: float = 0.0
+    latency: float = 0.0
+    uuid: str = ""
 
     def __str__(self):
         return f"m5sum hashed ip: {self.hashed_ip}, bytes (up/down): {self.bytes_up}/{self.bytes_down}, last message (up/down): {self.last_message_up}/{self.last_message_down}, time_offset: {self.time_offset}, latency: {self.latency}"

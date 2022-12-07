@@ -160,11 +160,23 @@ async def Privacy(request):
     return web.FileResponse("server/www/privacy-policy.html")
 
 
+@routes.get("/view/dashboard")
+async def Dashboard(request):
+    return web.FileResponse("server/www/dashboard.html")
+
+
 @routes.get("/images/{filename}")
 async def Images(request):
     if not request.match_info.get("filename"):
         return web.HTTPNotFound()
     return web.FileResponse(f"server/www/images/{request.match_info['filename']}")
+
+
+@routes.get("/css/{filename}")
+async def css(request):
+    if not request.match_info.get("filename"):
+        return web.HTTPNotFound()
+    return web.FileResponse(f"server/www/css/{request.match_info['filename']}")
 
 
 @routes.get("/js/{filename}")
@@ -180,16 +192,31 @@ def LobbyStatus(player_lobby):
     follower_queue = [str(remote_table[x]) for _, x, _ in player_lobby.follower_queue()]
     leader_queue = [str(remote_table[x]) for _, x, _ in player_lobby.leader_queue()]
 
+    remotes = [
+        GetRemote(ws) for ws in remote_table if player_lobby.socket_info(ws) is not None
+    ]
+    remote_infos = [
+        {
+            "hashed_ip": ws.hashed_ip,
+            "time_offset": ws.time_offset,
+            "latency": ws.latency,
+            "bytes_up": ws.bytes_up,
+            "bytes_down": ws.bytes_down,
+            "mturk_id_hash": hashlib.md5(ws.mturk_id.encode("utf-8")).hexdigest()
+            if ws.mturk_id
+            else None,
+            "user_type": ws.user_type,
+            "uuid": ws.uuid,
+        }
+        for ws in remotes
+    ]
+
     return {
         "type": repr(player_lobby.lobby_type()),
         "comment": player_lobby.lobby_comment(),
         "number_rooms": len(player_lobby.room_ids()),
         "hash": hash(player_lobby),
-        "lobby_remotes": [
-            str(player_lobby.socket_info(ws))
-            for ws in remote_table
-            if player_lobby.socket_info(ws) is not None
-        ],
+        "lobby_remotes": remote_infos,
         "rooms": [
             player_lobby.get_room(room_id).state()
             for room_id in player_lobby.room_ids()
@@ -209,10 +236,26 @@ async def Status(request):
     global assets_map
     remote_table = GetRemoteTable()
     lobbies = GetLobbies()
+    remotes = [GetRemote(ws) for ws in remote_table]
+    remote_infos = [
+        {
+            "hashed_ip": ws.hashed_ip,
+            "time_offset": ws.time_offset,
+            "latency": ws.latency,
+            "bytes_up": ws.bytes_up,
+            "bytes_down": ws.bytes_down,
+            "mturk_id_hash": hashlib.md5(ws.mturk_id.encode("utf-8")).hexdigest()
+            if ws.mturk_id
+            else None,
+            "user_type": ws.user_type,
+            "uuid": ws.uuid,
+        }
+        for ws in remotes
+    ]
     status = {
         "assets": assets_map,
         "map_cache_size": MapPoolSize(),
-        "remotes": [str(remote_table[ws]) for ws in remote_table],
+        "remotes": remote_infos,
         "lobbies": {},
     }
     for lobby in lobbies:

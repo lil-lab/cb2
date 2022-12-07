@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="https://w2ui.com/src/w2ui-1.5.min.css" />
+<link rel="" type="text/css" href="/css/normalize.css" />
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.0/jquery.min.js"></script>
+<script type="text/javascript" src="https://w2ui.com/src/w2ui-1.5.min.js"></script>
+<script type="text/javascript" src="/js/plotly-2.16.1.min.js"></script>
+</head>
+<body style="margin: 0;">
+  <div id="grid" style="width: 100%; height: 400px;"></div>
+  <div id="status-monitor" style="width: 100%; height: 400px;">
+    <div id="lobbies" style="width: 100%; height: 10%; display: flex; background: black;"></div>
+    <div id="latency_graph" style="width: 100%; height: 20%"></div>
+    <div id="time_offset_graph" style="width: 100%; height: 20%"></div>
+    <div id="bandwidth_up_graph" style="display: inline-block; margin: 0; padding: 0; width: 49%; height: 20%"></div><!--
+    --><div id="bandwidth_down_graph" style="display: inline-block; margin: 0; padding: 0; width: 49%; height: 20%"></div>
+    <div id="games_graph" style="width: 100%; height: 20%"></div>
+  </div>
+</body>
+<script>
+$(function () {
+    // Resize $("#grid") to 50% of the window height.
+    $("#grid").height($(window).height() * 0.5);
+    // Resize Status Monitor to 50% of the window height.
+    $("#status-monitor").height($(window).height() * 0.5);
+
+    // On window resize, resize the grid and status monitor.
+    $(window).resize(function() {
+      $("#grid").height($(window).height() * 0.5);
+      $("#status-monitor").height($(window).height() * 0.5);
+    });
+
+    $('#grid').w2grid({
+        name: 'grid',
+        header: 'List of Games',
+        selectType: 'cell',
+        columns: [
+          { field: 'id', text: 'Game ID', size: '30%' },
+          { field: 'type', text: 'Game Type', size: '30%' },
+          { field: 'leader', text: 'Leader ID (hashed)', size: '40%' },
+          { field: 'follower', text: 'Follower ID (hashed)', size: '40%' },
+          { field: 'score', text: 'Score', size: '40%' },
+          { field: 'turns', text: 'Number of Turns', size: '40%' },
+          { field: 'start_time', text: 'Start Time', size: '120px' },
+          { field: 'duration', text: 'Duration', size: '120px' },
+          { field: 'completed', text: 'Game Finished?', size: '120px' },
+          { field: 'research_valid', text: 'Research Useful?', size: '120px' },
+          { field: 'link', text: 'Link', size: '120px', render: function(rec, extra) {
+              return '<a href="/view/game/' + rec.id + '">Link</a>';
+            }
+          }
+        ],
+        url: "/data/game-list",
+    });
+
+    // Every second, poll /status for the latest status struct.
+    // Update the status monitor with the latest data. Append to the below
+    // traces and use Plotly to plot them.
+    //
+    // Line chart for each remote. Y axis in seconds.
+    var latency_traces = {}
+    // Histogram bucketing time offsets (time zones).
+    var time_offsets = {}
+    // Line chart of bandwidth for each remote. Y axis in kb/s. Also include total.
+    var bandwidth_up_traces = {}
+    var bandwidth_down_traces = {}
+    // To calculate bandwidth per second, we need to keep track of the cumulative bandwidth and take a derivative.
+    var bandwidth_cumulative_up = {};
+    var bandwidth_cumulative_down = {};
+    // Map from lobby name to Plotly trace.
+    var game_traces = {};
+    // Prefix all traces with 0 to give them the same length. This is used to
+    // find the max timestamp.
+    var max_timestep = 0;
+    setInterval(function() {
+      $.get("/status", function(data) {
+        // lobbies is a dictionary of "lobby_name": -> {<lobby description object>}
+        var lobbies = data.lobbies;
+        // Check if the trace already exists in game_traces.
+        // If not, create a new trace.
+        for (var lobby_name in lobbies) {
+          if (!(lobby_name in game_traces)) {
+            game_traces[lobby_name] = {
+              x: [1],
+              y: [number_of_games],
+              type: 'scatter',
+              name: lobby_name,
+              opacity: 0.5,
+              marker: {
+                color: 'rgb(55, 83, 109)'
+              }
+            }
+          } else {
+            // Update the game trace.
+            game_traces[lobby_name].x.push(game_traces[lobby_name].x.length + 1);
+            game_traces[lobby_name].y.push(number_of_games);
+          }
+        }
+        for (var lobby_name in lobbies) {
+        }
+        // Put the first half of the lobbies in the top row. Second half in the bottom row.
+        var lobby_htmls = [];
+        for (var lobby_name in lobbies) {
+            var lobby_html = "<div style='margin: auto; font-size: 16px; font-family:monospace; color: lightgreen; background: black; line-height:normal; '><p style='margin: 0;'> Lobby Name: " + lobby_name + "</p>";
+            var number_of_games = lobbies[lobby_name].number_rooms;
+            var leaders_in_queue = lobbies[lobby_name].leader_queue.length;
+            var followers_in_queue = lobbies[lobby_name].follower_queue.length;
+            lobby_html += "<p style='margin: 0;'> Number of Games: " + number_of_games + "</p>";
+            lobby_html += "<p style='margin: 0;'> Leaders in Queue: " + leaders_in_queue + "</p>";
+            lobby_html += "<p style='margin: 0;'> Followers in Queue: " + followers_in_queue + "</p></div>";
+            lobby_htmls.push(lobby_html);
+        }
+        $("#lobbies").html(lobby_htmls.join(""));
+        var remotes = data.remotes;
+        var remote_uuids = []
+        for (var i = 0; i < remotes.length; i++) {
+            var remote = remotes[i];
+            remote_uuids.push(remote.uuid);
+            if (!(remote.uuid in latency_traces)) {
+              latency_traces[remote.uuid] = {
+                x0: 1,
+                dx: 1,
+                y: [remote.latency],
+                type: 'scatter',
+                name: remote.uuid.slice(0,6),
+                opacity: 0.5,
+                marker: {
+                  color: 'rgb(55, 83, 109)'
+                }
+              }
+            } else {
+                latency_traces[remote.uuid].y.push(remote.latency);
+            }
+            if (!(remote.uuid in time_offsets)) {
+                time_offsets[remote.uuid] = {
+                    x: [remote.time_offset],
+                    name: remote.uuid.slice(0,6),
+                    type: 'histogram',
+                    opacity: 0.5,
+                    marker: {
+                    color: 'rgb(55, 83, 109)'
+                    }
+                }
+            } else {
+                time_offsets[remote.uuid].x.push(remote.time_offset);
+            }
+            if (!(remote.uuid in bandwidth_cumulative_up)) {
+                bandwidth_cumulative_up[remote.uuid] = [remote.bytes_up];
+                bandwidth_cumulative_down[remote.uuid] = [remote.bytes_down];
+            } else {
+                bandwidth_cumulative_up[remote.uuid].push(remote.bytes_up);
+                bandwidth_cumulative_down[remote.uuid].push(remote.bytes_down);
+                if (bandwidth_cumulative_up[remote.uuid].length > max_timestep) {
+                    max_timestep = bandwidth_cumulative_up[remote.uuid].length;
+                } else {
+                    // Expand bandwidth_cumulative_up and bandwidth_cumulative_down to length max_timestep.
+                    for (var i = bandwidth_cumulative_up[remote.uuid].length; i < max_timestep; i++) {
+                        bandwidth_cumulative_up[remote.uuid].unshift(0);
+                        bandwidth_cumulative_down[remote.uuid].unshift(0);
+                    }
+                }
+            }
+            bandwidth_up_traces[remote.uuid] = {
+                x0: 1,
+                dx: 1,
+                y: bandwidth_cumulative_up[remote.uuid].map(function(x, i) { return (i > 0) ? x - bandwidth_cumulative_up[remote.uuid][i - 1] : 0 }),
+                type: 'scatter',
+                name: remote.uuid.slice(0,6),
+                opacity: 0.5,
+                marker: {
+                color: 'rgb(55, 83, 109)'
+                }
+            }
+            bandwidth_down_traces[remote.uuid] = {
+                x0: 1,
+                dx: 1,
+                y: bandwidth_cumulative_down[remote.uuid].map(function(x, i) { return (i > 0) ? x - bandwidth_cumulative_down[remote.uuid][i - 1] : 0 }),
+                type: 'scatter',
+                name: remote.uuid.slice(0,6),
+                opacity: 0.5,
+                marker: {
+                color: 'rgb(55, 83, 109)'
+                }
+            }
+        }
+        // Remove UUID traces which are no longer in the remotes list.
+        for (var uuid in latency_traces) {
+            if (remote_uuids.indexOf(uuid) == -1) {
+                delete latency_traces[uuid];
+                delete time_offsets[uuid];
+                delete bandwidth_up_traces[uuid];
+                delete bandwidth_down_traces[uuid];
+            }
+        }
+        Plotly.newPlot('latency_graph', Object.values(latency_traces), {
+            title: 'Latency graph (includes timezone delta)',
+            yaxis: {
+                title: 'Ping (ms)'
+            },
+            xaxis: {
+                title: 'Time (seconds)'
+            },
+            margin: {
+                l: 60,
+                r: 10,
+                b: 0,
+                t: 30,
+                pad: 10
+            },
+        });
+        Plotly.newPlot('time_offset_graph', Object.values(time_offsets), {
+            title: 'Time Offset Histogram (includes timezone delta)',
+            xaxis: {
+                title: 'Time Offset (seconds)'
+            },
+            margin: {
+                l: 60,
+                r: 10,
+                b: 0,
+                t: 30,
+                pad: 10
+            },
+        });
+        Plotly.newPlot('bandwidth_up_graph', Object.values(bandwidth_up_traces), {
+            title: 'Bandwidth Up',
+            yaxis: {
+                title: 'Bandwidth (bytes)',
+                autorange: true,
+            },
+            xaxis: {
+                title: 'Time (seconds)',
+                autorange: true,
+            },
+            margin: {
+                l: 60,
+                r: 10,
+                b: 0,
+                t: 30,
+                pad: 10
+            },
+        });
+        Plotly.newPlot('bandwidth_down_graph', Object.values(bandwidth_down_traces), {
+            title: 'Bandwidth Down',
+            yaxis: {
+                title: 'Bandwidth (bytes)',
+                autorange: true,
+            },
+            xaxis: {
+                title: 'Time (seconds)',
+                autorange: true,
+            },
+            margin: {
+                l: 60,
+                r: 10,
+                b: 0,
+                t: 30,
+                pad: 10
+            },
+        });
+        Plotly.newPlot('games_graph', Object.values(game_traces), {
+            title: 'Number of games',
+            yaxis: {
+                title: 'Number of games'
+            },
+            xaxis: {
+                title: 'Time (seconds)'
+            },
+            margin: {
+                l: 60,
+                r: 10,
+                b: 0,
+                t: 30,
+                pad: 10
+            },
+        });
+      });
+    }, 1000);
+});
+</script>
+</html>

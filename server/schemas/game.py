@@ -37,6 +37,7 @@ class Game(BaseModel):
     lead_remote = ForeignKeyField(Remote, backref="leader_games", null=True)
     follow_remote = ForeignKeyField(Remote, backref="follower_games", null=True)
     server_software_commit = TextField(null=False, default="")
+    kvals = TextField(null=True)  # JSON of key-value pairs.
 
 
 class HecsCoordField(TextField):
