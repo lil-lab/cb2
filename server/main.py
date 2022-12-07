@@ -588,6 +588,7 @@ async def DataDownloadStart(request):
 
 @routes.get("/data/game-list")
 async def GameList(request):
+    # Get search data from request.
     games = (
         game_db.Game.select()
         .join(
@@ -611,7 +612,42 @@ async def GameList(request):
     response = []
     # For convenience, convert timestamps to US eastern time.
     NYC = tz.gettz("America/New_York")
+    # Parse the "searches" array of json objects.
+    # w2_request = request.query.getall("request", {"searches": []})
+    # Get the searches array from post data and confirm it matches.
+
+    # Print the request query.
+    searchRequest = json.loads(request.query.get("request", "{}"))
+    searches = searchRequest.get("search", [])
+
+    for search in searches:
+        if search["field"] in ["leader", "follower"]:
+            logger.info(
+                f"Hashing value: {search['value']} and len: {len(search['value'])}"
+            )
+            search["value-md5"] = hashlib.md5(
+                search["value"].encode("utf-8")
+            ).hexdigest()
     for game in games:
+        search_found = False
+        for search in searches:
+            if search["field"] == "id":
+                if search["value"] in str(game.id):
+                    search_found = True
+            elif search["field"] == "leader":
+                if game.leader:
+                    if search["value"] in game.leader.hashed_id or (
+                        search["value-md5"] == game.leader.hashed_id
+                    ):
+                        search_found = True
+            elif search["field"] == "follower":
+                if game.follower:
+                    if search["value"] in game.follower.hashed_id or (
+                        search["value-md5"] == game.follower.hashed_id
+                    ):
+                        search_found = True
+        if not search_found and len(searches) > 0:
+            continue
         response.append(
             {
                 "id": game.id,
@@ -628,6 +664,7 @@ async def GameList(request):
                 "research_valid": db_utils.IsGameResearchData(game),
             }
         )
+    logger.info(f"Number of search results: {len(response)}")
     return web.json_response(response)
 
 

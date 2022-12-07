@@ -1,9 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="utf-8">
 <link rel="stylesheet" type="text/css" href="https://w2ui.com/src/w2ui-1.5.min.css" />
 <link rel="" type="text/css" href="/css/normalize.css" />
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/core.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/md5.js"></script>
 <script type="text/javascript" src="https://w2ui.com/src/w2ui-1.5.min.js"></script>
 <script type="text/javascript" src="/js/plotly-2.16.1.min.js"></script>
 </head>
@@ -35,11 +38,33 @@ $(function () {
         name: 'grid',
         header: 'List of Games',
         selectType: 'cell',
+        limit: 10000,
+        autoLoad: true,
+        markSearchResult: false,
+        textSearch: "contains",
+        show: {
+            toolbar: true,
+            toolbarSearch: true,
+            toolbarReload: false,
+        },
+        toolbar: {
+          items: [
+            { type: 'break' },
+            { type: 'button', id: 'refresh-button', text: 'Refresh', icon: 'w2ui-icon-reload'},
+            { type: 'break' },
+            { type: 'button', id: 'search-hash', text: 'md5: '},
+          ],
+            onClick: function(event) {
+                if (event.target == 'refresh-button') {
+                  w2ui['grid'].reload();
+                }
+            },
+        },
         columns: [
-          { field: 'id', text: 'Game ID', size: '30%' },
+          { field: 'id', text: 'Game ID', size: '30%', searchable: true },
           { field: 'type', text: 'Game Type', size: '30%' },
-          { field: 'leader', text: 'Leader ID (hashed)', size: '40%' },
-          { field: 'follower', text: 'Follower ID (hashed)', size: '40%' },
+          { field: 'leader', text: 'Leader ID (hashed)', size: '40%', searchable: true },
+          { field: 'follower', text: 'Follower ID (hashed)', size: '40%', searchable: true},
           { field: 'score', text: 'Score', size: '40%' },
           { field: 'turns', text: 'Number of Turns', size: '40%' },
           { field: 'start_time', text: 'Start Time', size: '120px' },
@@ -52,6 +77,14 @@ $(function () {
           }
         ],
         url: "/data/game-list",
+        onSearch: function(event) {
+          // Calculate the search text md5hash and put it in the toolbar.
+          const searchValue = event.searchValue;
+          console.log("searchValue: " + searchValue + " and len: " + searchValue.length);
+          // Encode as utf-8.
+          const md5hash = CryptoJS.MD5(searchValue).toString();
+          w2ui['grid'].toolbar.set('search-hash', {text: "md5: " + md5hash});
+        },
     });
 
     // Every second, poll /status for the latest status struct.
