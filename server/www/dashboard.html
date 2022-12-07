@@ -11,6 +11,7 @@
 <script type="text/javascript" src="/js/plotly-2.16.1.min.js"></script>
 </head>
 <body style="margin: 0;">
+  <a href="/view/stats">Stats</a>
   <div id="grid" style="width: 100%; height: 400px;"></div>
   <div id="status-monitor" style="width: 100%; height: 400px;">
     <div id="lobbies" style="width: 100%; height: 10%; display: flex; background: black;"></div>
@@ -24,13 +25,13 @@
 <script>
 $(function () {
     // Resize $("#grid") to 50% of the window height.
-    $("#grid").height($(window).height() * 0.5);
+    $("#grid").height($(window).height() * 0.49);
     // Resize Status Monitor to 50% of the window height.
     $("#status-monitor").height($(window).height() * 0.5);
 
     // On window resize, resize the grid and status monitor.
     $(window).resize(function() {
-      $("#grid").height($(window).height() * 0.5);
+      $("#grid").height($(window).height() * 0.49);
       $("#status-monitor").height($(window).height() * 0.5);
     });
 
@@ -200,15 +201,6 @@ $(function () {
                 type: 'scatter',
                 name: remote.uuid.slice(0,6),
                 opacity: 0.5,
-            }
-        }
-        // Remove UUID traces which are no longer in the remotes list.
-        for (var uuid in latency_traces) {
-            if (remote_uuids.indexOf(uuid) == -1) {
-                delete latency_traces[uuid];
-                delete time_offsets[uuid];
-                delete bandwidth_up_traces[uuid];
-                delete bandwidth_down_traces[uuid];
             }
         }
         Plotly.newPlot('latency_graph', Object.values(latency_traces), {
