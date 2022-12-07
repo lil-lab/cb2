@@ -667,7 +667,7 @@ async def GameData(request):
     return web.json_response(json_instructions)
 
 
-@routes.get("/data/game_live_feedback_percent/{game_id}")
+@routes.get("/data/game_live_feedback/{game_id}")
 async def GetGameLiveFeedback(request):
     game_id = request.match_info.get("game_id")
     # Fetch all instructions from this game. Then, check if at least 75% of them have live feedback.
@@ -691,7 +691,13 @@ async def GetGameLiveFeedback(request):
 
     total_instructions = len(instruction_uuids)
     total_live_feedback = len(live_feedback_uuids)
-    return web.json_response(total_live_feedback / total_instructions)
+    response = {
+        "game_id": game_id,
+        "total_instructions": total_instructions,
+        "total_live_feedback": total_live_feedback,
+        "percent": total_live_feedback / total_instructions,
+    }
+    return web.json_response(response)
 
 
 @routes.get("/data/instruction/{i_uuid}")
