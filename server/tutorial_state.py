@@ -146,7 +146,7 @@ class TutorialGameState(object):
         return self._actors.keys()
 
     def turn_duration(self, role):
-        return timedelta(seconds=60) if role == Role.LEADER else timedelta(seconds=45)
+        return timedelta(days=1) if role == Role.LEADER else timedelta(days=1)
 
     def record_turn_state(self, turn_state):
         # Record a copy of the current turn state.
@@ -786,7 +786,7 @@ class TutorialGameState(object):
             self._player_role,
             10,
             10,
-            datetime.now() + timedelta(minutes=1),
+            datetime.now() + timedelta(days=1),
             self._turn_state.game_start,
             self._turn_state.sets_collected,
             self._turn_state.score,
