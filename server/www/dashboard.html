@@ -194,6 +194,8 @@ $(function () {
                 name: remote.uuid.slice(0,6),
                 opacity: 0.5,
             }
+            // Mark the first entry as zero so that the graph starts at zero.
+            bandwidth_up_traces[remote.uuid].y[0] = 0;
             bandwidth_down_traces[remote.uuid] = {
                 x0: 1,
                 dx: 1,
@@ -202,6 +204,7 @@ $(function () {
                 name: remote.uuid.slice(0,6),
                 opacity: 0.5,
             }
+            bandwidth_down_traces[remote.uuid].y[0] = 0;
         }
         Plotly.newPlot('latency_graph', Object.values(latency_traces), {
             title: 'Latency graph (includes timezone delta)',
