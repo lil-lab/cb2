@@ -667,6 +667,33 @@ async def GameData(request):
     return web.json_response(json_instructions)
 
 
+@routes.get("/data/game_had_live_feedback/{game_id}")
+async def GetGameLiveFeedback(request):
+    game_id = request.match_info.get("game_id")
+    # Fetch all instructions from this game. Then, check if at least 75% of them have live feedback.
+    instructions = (
+        game_db.Instruction.select()
+        .join(game_db.Game, join_type=peewee.JOIN.LEFT_OUTER)
+        .where(game_db.Instruction.game == game_id)
+    )
+    if len(instructions) == 0:
+        return web.json_response(False)
+
+    # Now fetch all live feedback for this game.
+    live_feedback = (
+        game_db.LiveFeedback.select()
+        .join(game_db.Instruction, join_type=peewee.JOIN.LEFT_OUTER)
+        .where(game_db.LiveFeedback.game_id == game_id)
+    )
+
+    instruction_uuids = set([instruction.uuid for instruction in instructions])
+    live_feedback_uuids = set([feedback.instruction.uuid for feedback in live_feedback])
+
+    total_instructions = len(instruction_uuids)
+    total_live_feedback = len(live_feedback_uuids)
+    return web.json_response(total_live_feedback / total_instructions >= 0.75)
+
+
 @routes.get("/data/instruction/{i_uuid}")
 async def GameData(request):
     instruction_uuid = request.match_info.get("i_uuid")
