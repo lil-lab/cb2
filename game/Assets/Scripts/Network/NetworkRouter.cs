@@ -223,7 +223,11 @@ namespace Network
             }
             if (message.type == MessageFromServer.MessageType.STATE_MACHINE_TICK)
             {
-                // Do nothing, this is more useful for bots.
+                // Forward the tick to the network manager.
+                if (_networkManager != null)
+                {
+                    _networkManager.HandleTick();
+                }
             }
             if (message.type == MessageFromServer.MessageType.MAP_UPDATE)
             {
@@ -325,22 +329,22 @@ namespace Network
             }
         }
 
-        public void TransmitAction(ActionQueue.IAction action)
+        public bool TransmitAction(ActionQueue.IAction action)
         {
             if (_player == null)
             {
                 _logger.Info("Can't send action to server; Player object null.");
-                return;
+                return false;
             }
             if (_player.PlayerId() == -1)
             {
                 _logger.Info("Can't send action to server; Player ID unknown.");
-                return;
+                return false;
             }
             if (_client == null)
             {
                 Debug.Log("Can't send action to server; Client object null.");
-                return;
+                return false;
             }
             MessageToServer toServer = new MessageToServer();
             toServer.transmit_time = DateTime.UtcNow.ToString("o");
@@ -348,6 +352,7 @@ namespace Network
             toServer.actions = new List<Action>();
             toServer.actions.Add(action.Packet(_player.PlayerId()));
             _client.TransmitMessage(toServer);
+            return true;
         }
 
         private ActionQueue.IAction TeleportToStartState(Network.StateSync.Actor actorState)

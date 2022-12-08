@@ -241,8 +241,9 @@ public class Player : MonoBehaviour
             Translate action = Translate.Walk(
                 HecsCoord.ORIGIN.NeighborAtHeading(_actor.HeadingDegrees()),
                                                    1 / MoveSpeed);
-            _actor.AddAction(action);
-            _network.TransmitAction(action);
+            if (_network.TransmitAction(action)) {
+                _actor.AddAction(action);
+            }
             return;
         }
         if (DownKey() &&
@@ -251,23 +252,26 @@ public class Player : MonoBehaviour
             Translate action = Translate.Walk(
                 HecsCoord.ORIGIN.NeighborAtHeading(
                     _actor.HeadingDegrees() + 180), 1 / MoveSpeed);
-            _actor.AddAction(action);
-            _network.TransmitAction(action);
+            if (_network.TransmitAction(action)) {
+                _actor.AddAction(action);
+            }
             return;
         }
         if (LeftKey())
         {
             Debug.Log("Heading: " + (_actor.HeadingDegrees() - 60.0f));
             Rotate action = Rotate.Turn(-60.0f, 1 / TurnSpeed);
-            _actor.AddAction(action);
-            _network.TransmitAction(action);
+            if (_network.TransmitAction(action)) {
+                _actor.AddAction(action);
+            }
             return;
         }
         if (RightKey())
         {
             Rotate action = Rotate.Turn(60.0f, 1 / TurnSpeed);
-            _actor.AddAction(action);
-            _network.TransmitAction(action);
+            if (_network.TransmitAction(action)) {
+                _actor.AddAction(action);
+            }
             return;
         }
     }

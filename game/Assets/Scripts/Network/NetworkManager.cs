@@ -35,6 +35,7 @@ namespace Network
         private Role _role = Network.Role.NONE;
         private Role _replayRole = Network.Role.NONE;
         private Role _currentTurn = Network.Role.NONE;
+        private bool _waitingForTick = false;
 
         // A JWT encoded Google OneTap token. See GoogleOneTapLogin.cs
         // https://www.rfc-editor.org/rfc/rfc7519
@@ -219,9 +220,23 @@ namespace Network
             return _currentTurn;
         }
 
-        public void TransmitAction(ActionQueue.IAction action)
+        public void HandleTick()
         {
-            _router.TransmitAction(action);
+            _waitingForTick = false;
+        }
+
+        public bool TransmitAction(ActionQueue.IAction action)
+        {
+            if (_waitingForTick) {
+                _logger.Warn("Attempted to transmit action while waiting for tick.");
+                return false;
+            }
+            bool transmitted = _router.TransmitAction(action);
+            if (transmitted)
+            {
+                _waitingForTick = true;
+            }
+            return transmitted;
         }
 
         public void RespondToPing()
