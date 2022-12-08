@@ -193,11 +193,13 @@ class Room(object):
         self._player_endpoints.append(ws)
         return id
 
-    def remove_player(self, id, ws):
-        """Removes a player from the room."""
+    def remove_player(self, id, ws, disconnected=False):
+        """Removes a player from the room. Optionally mark the player as abandoning the game due to disconnect."""
         self._players.remove(id)
         self._player_endpoints.remove(ws)
         self._state_machine_driver.state_machine().free_actor(id)
+        if disconnected:
+            self._state_machine_driver.state_machine().mark_player_disconnected(id)
 
     def player_endpoints(self):
         return self._player_endpoints

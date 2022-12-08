@@ -4,6 +4,8 @@ import random
 from datetime import datetime
 from queue import Queue
 
+import orjson
+
 import server.messages.live_feedback as live_feedback
 import server.schemas as schemas
 from server.hex import HecsCoord
@@ -328,6 +330,15 @@ class GameRecorder(object):
         self._game_record.completed = True
         self._game_record.end_time = datetime.utcnow()
         self._game_record.score = self._last_turn_state.score
+        self._game_record.save()
+
+    def kvals(self):
+        if self._game_record.kvals is None:
+            return {}
+        return orjson.loads(self._game_record.kvals)
+
+    def set_kvals(self, kvals):
+        self._game_record.kvals = orjson.dumps(kvals)
         self._game_record.save()
 
     def _get_or_create_card_record(self, card):

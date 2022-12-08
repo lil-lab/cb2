@@ -662,6 +662,7 @@ async def GameList(request):
                 "duration": str(game.end_time - game.start_time),
                 "completed": game.completed,
                 "research_valid": db_utils.IsGameResearchData(game),
+                "kvals": game.kvals,
             }
         )
     logger.info(f"Number of search results: {len(response)}")
@@ -1237,6 +1238,7 @@ async def PlayerEndpoint(request):
             stream_game_state(request, ws, lobby),
         )
     finally:
+        logger.info("=====================================")
         logger.info("player disconnected from : " + request.remote)
         LogConnectionEvent(remote, "Disconnected from Server.")
         lobby.disconnect_socket(ws)

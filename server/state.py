@@ -317,6 +317,9 @@ class State(object):
 
         # Maps from actor_id (prop id) to actor object (see definition below).
         self._actors = {}
+        self._role_history = (
+            {}
+        )  # Map from actor_id to role. Preserved after free_actor().
         # True if a player was added since the last iteration.
         self._actors_added = False
         self._realtime_actions = realtime_actions
@@ -450,6 +453,19 @@ class State(object):
         for id in self._actors:
             actor = self._actors[id]
             self._action_history[actor.actor_id()].append(action)
+
+    def mark_player_disconnected(self, id):
+        if id not in self._role_history:
+            logger.warning(f"Player {id} not found in game.")
+            return
+        role = self._role_history[id]
+        kvals = self._game_recorder.kvals()
+        if "disconnected" in kvals:
+            logger.warning(f"Player {kvals['disconnected']} already disconnected.")
+            kvals["disconnected"].push(role.name)
+        kvals["disconnected"] = [role.name]
+        logging.info(f"Setting kvals: {kvals}")
+        self._game_recorder.set_kvals(kvals)
 
     def map(self):
         return self._map_provider.map()
@@ -979,6 +995,7 @@ class State(object):
             spawn_point,
             realtime=self._realtime_actions,
         )
+        self._role_history[actor.actor_id()] = role
         self._actors[actor.actor_id()] = actor
         self._action_history[actor.actor_id()] = []
         # Resend the latest turn state.
@@ -1002,7 +1019,11 @@ class State(object):
             del self._instructions_stale[actor_id]
         if actor_id in self._turn_history:
             del self._turn_history[actor_id]
-        self._id_assigner.free(actor_id)
+        # We don't free actor IDs. We'll never run out, and
+        # keeping them from being re-used makes saving a history of which ID was
+        # which role easier. Hence following line is commented:
+        # self._id_assigner.free(actor_id)
+        #
         # Mark clients as desynced.
         self.desync_all()
 

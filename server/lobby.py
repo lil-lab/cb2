@@ -176,6 +176,7 @@ class Lobby(ABC):
 
     def disconnect_socket(self, ws):
         """This socket terminated its connection. End the game that the person was in."""
+        logger.info(f"disconnect_socket()")
         self.remove_socket_from_queue(ws)
         if not ws in self._remotes:
             logging.info("Socket not found in self._remotes!")
@@ -185,7 +186,7 @@ class Lobby(ABC):
             # The room was already terminated by the other player.
             del self._remotes[ws]
             return
-        self._rooms[room_id].remove_player(player_id, ws)
+        self._rooms[room_id].remove_player(player_id, ws, disconnected=True)
         # If a player leaves, the game ends for everyone in the room. Send them leave notices and end the game.
         for socket in self._rooms[room_id].player_endpoints():
             if not socket.closed:
@@ -485,7 +486,7 @@ class Lobby(ABC):
         player_endpoints = list(self._rooms[id].player_endpoints())
         for ws in player_endpoints:
             room_id, player_id, _ = self._remotes[ws].as_tuple()
-            self._rooms[id].remove_player(player_id, ws)
+            self._rooms[id].remove_player(player_id, ws, disconnected=False)
             del self._remotes[ws]
         del self._rooms[id]
 
