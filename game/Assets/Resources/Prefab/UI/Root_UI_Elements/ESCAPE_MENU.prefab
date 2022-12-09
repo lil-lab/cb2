@@ -76,9 +76,9 @@ MonoBehaviour:
     Enter
     - Send instruction
 
-    G - Send Positive (Good) feedback
+    G/9 - Send Positive (Good) feedback
 
-    B - Send Negative
+    B/0 - Send Negative
     (Bad) feedback
 
     Esc - Menu

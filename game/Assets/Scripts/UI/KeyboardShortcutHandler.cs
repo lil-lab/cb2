@@ -111,10 +111,10 @@ public class KeyboardShortcutHandler : MonoBehaviour
         }
 
         // Live feedback keyboard combos.
-        if (Input.GetKeyDown(KeyCode.G)) {
+        if (Input.GetKeyDown(KeyCode.G) || Input.GetKeyDown(KeyCode.Alpha9)) {
             SendPositiveFeedback();
         }
-        if (Input.GetKeyDown(KeyCode.B)) {
+        if (Input.GetKeyDown(KeyCode.B) || Input.GetKeyDown(KeyCode.Alpha0)) {
             SendNegativeFeedback();
         }
     }
