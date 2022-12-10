@@ -260,7 +260,7 @@ namespace Network
             MessageToServer toServer = new MessageToServer();
             toServer.transmit_time = DateTime.UtcNow.ToString("s");
             toServer.type = MessageToServer.MessageType.PONG;
-            toServer.pong = new Pong{ping_receive_time = DateTime.Now.ToString("o")};
+            toServer.pong = new Pong{ping_receive_time = DateTime.UtcNow.ToString("o")};
             _client.TransmitMessage(toServer);
         }
 
