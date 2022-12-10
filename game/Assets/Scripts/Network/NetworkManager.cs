@@ -21,6 +21,8 @@ namespace Network
 
         public readonly static string URL = "localhost:8080/";
 
+        private readonly static double TICK_WAIT_TIMEOUT_S = 5.0;
+
         private ClientConnection _client;
         private NetworkMapSource _networkMapSource;
         private NetworkRouter _router;
@@ -36,6 +38,11 @@ namespace Network
         private Role _replayRole = Network.Role.NONE;
         private Role _currentTurn = Network.Role.NONE;
         private bool _waitingForTick = false;
+
+        // The time at which we should stop waiting for a tick.
+        // Tick waiting is a soft constraint - we don't want to wait forever and
+        // freeze the client.
+        private DateTime _tickWaitDeadline = DateTime.MinValue;
 
         // A JWT encoded Google OneTap token. See GoogleOneTapLogin.cs
         // https://www.rfc-editor.org/rfc/rfc7519
@@ -223,11 +230,19 @@ namespace Network
         public void HandleTick()
         {
             _waitingForTick = false;
+            _tickWaitDeadline = DateTime.MaxValue;
         }
 
         public bool TransmitAction(ActionQueue.IAction action)
         {
+            if (_waitingForTick && DateTime.Now > _tickWaitDeadline)
+            {
+                _logger.Warn("Timed out waiting for tick.");
+                _waitingForTick = false;
+                _tickWaitDeadline = DateTime.MaxValue;
+            }
             if (_waitingForTick) {
+
                 _logger.Warn("Attempted to transmit action while waiting for tick.");
                 return false;
             }
@@ -235,6 +250,7 @@ namespace Network
             if (transmitted)
             {
                 _waitingForTick = true;
+                _tickWaitDeadline = DateTime.Now.AddSeconds(TICK_WAIT_TIMEOUT_S);
             }
             return transmitted;
         }
