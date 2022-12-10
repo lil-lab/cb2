@@ -16,8 +16,24 @@ from server.schemas.base import (
     SetDatabaseForTesting,
 )
 from server.schemas.defaults import ListDefaultTables
+from server.state import FOLLOWER_MOVES_PER_TURN, LEADER_MOVES_PER_TURN
 
 logger = logging.getLogger(__name__)
+
+
+def has_instruction_available(instructions):
+    for instruction in instructions:
+        if not instruction.completed and not instruction.cancelled:
+            return True
+    return False
+
+
+def get_active_instruction(instructions):
+    for instruction in instructions:
+        if not instruction.completed and not instruction.cancelled:
+            return instruction
+    return None
+
 
 # Ideas for future: Make a test that starts from pre-defined point in game. Make
 # test that uses realtime animations instead of instant play (local self play
@@ -112,6 +128,102 @@ class RandomRealtimeLocalSelfPlayTest(unittest.TestCase):
             21,
             "Game should have ended after 21 ticks.",
         )
+
+    def test_move_counter(self):
+        """Tests a game where the leader and follower make moves and verify their move counter
+        decrements as expected."""
+
+        self.endpoint_pair.initialize()
+        self.coordinator.StepGame(self.game_name)
+        (
+            map_update,
+            _,
+            turn_state,
+            instructions,
+            actors,
+            _,
+        ) = self.endpoint_pair.initial_state()
+        last_leader_moves_remaining = turn_state.moves_remaining
+        leader_moved = False
+        last_follower_moves_remaining = 0
+        follower_moved = False
+        while not self.endpoint_pair.over():
+            if turn_state.turn == Role.LEADER:
+                leader, follower = actors
+                if turn_state.moves_remaining > 0:
+                    # If we have moves remaining, use them. Get the leader's position in the map.
+                    # If the space in front of us is empty, move forwards. Otherwise, turn right.
+                    leader_position = leader.location()
+                    in_front_of_leader = leader.location().neighbor_at_heading(
+                        leader.heading_degrees()
+                    )
+                    if not map_update.get_edge_between(
+                        leader_position, in_front_of_leader
+                    ):
+                        action = Action.Forwards()
+                    else:
+                        action = Action.Right()
+                    leader_moved = True
+                elif turn_state.moves_remaining == 0:
+                    if has_instruction_available(instructions):
+                        action = Action.EndTurn()
+                    else:
+                        action = Action.SendInstruction("TEST")
+            elif turn_state.turn == Role.FOLLOWER:
+                if len(actors) == 2:
+                    (leader, follower) = actors
+                else:
+                    follower = actors[0]
+                if turn_state.moves_remaining > 0:
+                    # If we have moves remaining, use them. Get the leader's position in the map.
+                    # If the space in front of us is empty, move forwards. Otherwise, turn right.
+                    follower_position = follower.location()
+                    in_front_of_follower = follower.location().neighbor_at_heading(
+                        follower.heading_degrees()
+                    )
+                    if not map_update.get_edge_between(
+                        follower_position, in_front_of_follower
+                    ):
+                        action = Action.Forwards()
+                    else:
+                        action = Action.Right()
+                    follower_moved = True
+                elif turn_state.moves_remaining == 0:
+                    active_instruction = get_active_instruction(instructions)
+                    if active_instruction is not None:
+                        action = Action.InstructionDone(active_instruction.uuid)
+                    else:
+                        action = Action.NoopAction()
+            # Make a move.
+            (
+                map_update,
+                _,
+                turn_state,
+                instructions,
+                actors,
+                _,
+            ) = self.endpoint_pair.step(action)
+            # Check the number of turns remaining.
+            if (turn_state.turn == Role.LEADER) and leader_moved:
+                self.assertEqual(
+                    turn_state.moves_remaining,
+                    last_leader_moves_remaining - 1,
+                    "Leader should have one less move remaining.",
+                )
+                last_leader_moves_remaining = turn_state.moves_remaining
+            elif (turn_state.turn == Role.FOLLOWER) and follower_moved:
+                self.assertEqual(
+                    turn_state.moves_remaining,
+                    last_follower_moves_remaining - 1,
+                    "Follower should have one less move remaining.",
+                )
+                last_follower_moves_remaining = turn_state.moves_remaining
+            if not leader_moved:
+                last_leader_moves_remaining = LEADER_MOVES_PER_TURN
+            if not follower_moved:
+                last_follower_moves_remaining = FOLLOWER_MOVES_PER_TURN
+            leader_moved = False
+            follower_moved = False
 
 
 if __name__ == "__main__":

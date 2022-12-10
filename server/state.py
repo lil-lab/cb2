@@ -491,6 +491,7 @@ class State(object):
         )
 
     def update(self):
+        logger.debug("update()")
         send_tick = False
 
         # Have we received an instruction since the last iteration?
@@ -510,7 +511,9 @@ class State(object):
             send_tick = True
 
         # Handle actor actions.
+        logger.debug(f"Actors: {len(self._actors)}")
         for actor_id in self._actors:
+            logger.debug("Actor: ()")
             actor = self._actors[actor_id]
             while actor.has_actions():
                 proposed_action = actor.peek()
