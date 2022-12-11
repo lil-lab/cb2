@@ -45,11 +45,11 @@ public class CancelButtonHandler : MonoBehaviour, IPointerDownHandler, IPointerU
 
     public void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Tab))
+        if (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.Q))
         {
             StartHoldTimerIfAllowed();
         }
-        if (Input.GetKeyUp(KeyCode.Tab))
+        if (Input.GetKeyUp(KeyCode.Tab) || Input.GetKeyUp(KeyCode.Q))
         {
             ClearHoldTimer();
             var cancelRing = GameObject.FindGameObjectWithTag(CANCEL_RING_TAG);
