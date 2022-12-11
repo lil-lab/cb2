@@ -1,5 +1,6 @@
 """ Code for updating the leaderboard table. """
 import hashlib
+import logging
 
 import humanhash
 
@@ -8,6 +9,8 @@ import server.schemas.mturk as mturk_db
 from server.lobby_consts import LobbyType
 from server.schemas.google_user import GoogleUser
 from server.username_word_list import USERNAME_WORDLIST
+
+logger = logging.getLogger(__name__)
 
 
 def GetLeaderboard(
@@ -31,6 +34,7 @@ def GetLeaderboard(
 
 def UpdateLeaderboard(game_record):
     """Updates the leaderboard table with the latest score."""
+    logger.info(f"Updating leaderboard for game {game_record.id}")
     components = game_record.type.split("|")
     lobby_name = ""
     lobby_type = LobbyType.NONE
@@ -85,6 +89,9 @@ def UpdateLeaderboard(game_record):
         elif lobby_type in [LobbyType.GOOGLE]:
             leaderboard_entry.google_leader = game_record.google_leader
             leaderboard_entry.google_follower = game_record.google_follower
+        elif lobby_type in [LobbyType.FOLLOWER_PILOT]:
+            leaderboard_entry.mturk_leader = game_record.leader
+            leaderboard_entry.mturk_follower = game_record.follower
         leaderboard_entry.save()
     # If there are now more than 10 entries, delete the one with the lowest score.
     query = leaderboard_db.Leaderboard.select()
@@ -92,6 +99,11 @@ def UpdateLeaderboard(game_record):
         query = query.where(leaderboard_db.Leaderboard.lobby_name == lobby_name)
     if lobby_type != LobbyType.NONE:
         query = query.where(leaderboard_db.Leaderboard.lobby_type == lobby_type)
+    if (leader_name == "<Bot>") or (follower_name == "<Bot>"):
+        query = query.where(
+            (leaderboard_db.Leaderboard.follower_name == "<Bot>")
+            & (leaderboard_db.Leaderboard.leader_name != "<Bot>")
+        )
     if query.count() > 10:
         lowest_entry = query.order_by(leaderboard_db.Leaderboard.score.asc()).get()
         lowest_entry.delete_instance()
