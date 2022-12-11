@@ -7,6 +7,7 @@ import humanhash
 from sparklines import sparklines
 
 import server.config.config as config
+import server.leaderboard as leaderboard
 import server.schemas.defaults as defaults_db
 from server.db_tools import db_utils
 from server.schemas import base
