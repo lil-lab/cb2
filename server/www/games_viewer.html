@@ -24,10 +24,9 @@ $(function () {
           { field: 'start_time', text: 'Start Time', size: '120px' },
           { field: 'duration', text: 'Duration', size: '120px' },
           { field: 'completed', text: 'Game Finished?', size: '120px' },
-          { field: 'research_valid', text: 'Research Useful?', size: '120px' },
           { field: 'link', text: 'Link', size: '120px', render: function(rec, extra) {
               return '<a href="/view/game/' + rec.id + '">Link</a>';
-            } 
+            }
           }
         ],
         url: "/data/game-list",

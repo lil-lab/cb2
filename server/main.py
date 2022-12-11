@@ -233,6 +233,7 @@ def LobbyStatus(player_lobby):
 
 @routes.get("/status")
 async def Status(request):
+    start_time = time.time()
     global assets_map
     remote_table = GetRemoteTable()
     lobbies = GetLobbies()
@@ -266,6 +267,7 @@ async def Status(request):
     pretty_dumper = lambda x: orjson.dumps(
         x, option=orjson.OPT_NAIVE_UTC | orjson.OPT_INDENT_2
     ).decode("utf-8")
+    logger.info(f"Status request took {time.time() - start_time} seconds")
     return web.json_response(status, dumps=pretty_dumper)
 
 
@@ -588,6 +590,7 @@ async def DataDownloadStart(request):
 
 @routes.get("/data/game-list")
 async def GameList(request):
+    start_time = time.time()
     # Get search data from request.
     games = (
         game_db.Game.select()
@@ -599,16 +602,8 @@ async def GameList(request):
                 or (game_db.Game.follower == mturk.Worker.id)
             ),
         )
-        .join(
-            mturk.Assignment,
-            on=(
-                (game_db.Game.lead_assignment == mturk.Assignment.id)
-                or (game_db.Game.follow_assignment == mturk.Assignment.id)
-            ),
-            join_type=peewee.JOIN.LEFT_OUTER,
-        )
         .order_by(game_db.Game.id.desc())
-    )
+    ).limit(100)
     response = []
     # For convenience, convert timestamps to US eastern time.
     NYC = tz.gettz("America/New_York")
@@ -661,11 +656,17 @@ async def GameList(request):
                 ),
                 "duration": str(game.end_time - game.start_time),
                 "completed": game.completed,
-                "research_valid": db_utils.IsGameResearchData(game),
+                # Calculating this is too expensive per-game. Running it on
+                # every game entry (done here) actually pauses running games
+                # for 2 seconds.
+                #
+                # "research_valid": db_utils.IsGameResearchData(game),
                 "kvals": game.kvals,
             }
         )
     logger.info(f"Number of search results: {len(response)}")
+    end_time = time.time()
+    logger.info(f"Search took {end_time - start_time} seconds.")
     return web.json_response(response)
 
 
