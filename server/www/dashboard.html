@@ -95,7 +95,7 @@ $(function () {
     //
     // Line chart for each remote. Y axis in seconds.
     var latency_traces = {}
-    // Histogram bucketing time offsets (time zones).
+    // Histogram bucketing time offsets.
     var time_offsets = {}
     // Line chart of bandwidth for each remote. Y axis in kb/s. Also include total.
     var bandwidth_up_traces = {}
@@ -211,7 +211,7 @@ $(function () {
             bandwidth_down_traces[remote.uuid].y[0] = 0;
         }
         Plotly.newPlot('latency_graph', Object.values(latency_traces), {
-            title: 'Latency graph (includes timezone delta)',
+            title: 'Latency graph',
             yaxis: {
                 title: 'Ping (ms)'
             },
@@ -227,7 +227,7 @@ $(function () {
             },
         });
         Plotly.newPlot('time_offset_graph', Object.values(time_offsets), {
-            title: 'Time Offset Histogram (includes timezone delta)',
+            title: 'Time Offset Histogram',
             xaxis: {
                 title: 'Time Offset (seconds)'
             },
