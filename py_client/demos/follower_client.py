@@ -135,8 +135,8 @@ class NaiveFollower(object):
             raise self.exc
 
 
-def main(host, render=False, i_uuid: str = ""):
-    client = RemoteClient(host, render)
+def main(host, render=False, i_uuid: str = "", lobby="bot-sandbox"):
+    client = RemoteClient(host, render, lobby_name=lobby)
     connected, reason = client.Connect()
     assert connected, f"Unable to connect: {reason}"
     i_uuid = i_uuid.strip()
