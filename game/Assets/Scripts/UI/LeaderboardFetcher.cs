@@ -49,11 +49,11 @@ public class LeaderboardFetcher : MonoBehaviour
         {
             string text = string.Format("Your username (auto-generated): {0, 15} and lobby type: {1, 15}\n", _user_info.user_name, _user_info.user_type);
             text += "Leaderboard: \n";
-            text += string.Format("{0,10} {1,6} {2,25} {3,25} {4,15}\n", "Date", "Score", "Leader", "Follower", "Lobby Type");
+            text += string.Format("{0,10} {1,6} {2,23} {3,23} {4,15}\n", "Date", "Score", "Leader", "Follower", "Lobby Type");
             // Convert the leaderboard to text, using a fixed-width encoding for each field.
             foreach (LeaderboardRecord record in _board)
             {
-                text += string.Format("{0,10} {1,6} {2,25} {3,25} {4, 15}\n", record.time, record.score, record.leader, record.follower, NameFromLobbyType(record.lobby_type));
+                text += string.Format("{0,10} {1,6} {2,23} {3,23} {4, 15}\n", record.time, record.score, record.leader, record.follower, NameFromLobbyType(record.lobby_type));
             }
             GetComponent<Text>().text = text;
             _leaderboardDisplayed = true;
