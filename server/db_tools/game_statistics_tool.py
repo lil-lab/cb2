@@ -34,6 +34,7 @@ COMMANDS = [
     "instruction_chaining_amount",  # Prints stats related to instruction chaining
     "num_invalid_games",  # Prints the number and type of invalid games
     "leader_feedback_rates",  # Prints information about individual leaders' feedback
+    "execution_length_cap",  # Prints info about what percentage
 ]
 
 
@@ -390,6 +391,8 @@ def ReportFeedbackActionStats(ids, game_type):
 
 def get_feedback_dictionary(ids, game_type):
     instruction_to_feedbacks = {}
+    used_feedbacks = set()
+
     for i in ids:
         game = Game.select().where(Game.id == i).get()
         if filter_game(game):
@@ -399,12 +402,17 @@ def get_feedback_dictionary(ids, game_type):
         if game_type == "ai" and game.follower_id is not None:
             continue
 
-        instructions = Instruction.select().join(Game).where(Instruction.game == game)
+        instructions = (
+            Instruction.select()
+            .join(Game)
+            .where(Instruction.game == game)
+            .order_by(Instruction.id)
+        )
         active_instructions = get_active_instructions(instructions)
         for inst in active_instructions:
             curr_dict = {"dropped": [], "action_stats": []}
 
-            # Get moves: their types and times
+            # Get standard moves and feedback
             moves = (
                 Move.select()
                 .join(Game)
@@ -414,36 +422,110 @@ def get_feedback_dictionary(ids, game_type):
                 )
                 .order_by(Move.id)
             )
-            move_types = [move.action_code for move in moves]
-            move_times = [time_in_seconds(move.game_time) for move in moves]
-            move_buckets = [[] for i in range(len(move_types))]
-
-            # Get all feedback
+            move_buckets = [[] for move in moves]
             feedbacks = (
                 LiveFeedback.select()
                 .join(Game)
                 .where(LiveFeedback.instruction_id == inst.id)
                 .order_by(LiveFeedback.id)
             )
-            feedback_values = [
-                numeric_feedback(feedback.feedback_type) for feedback in feedbacks
-            ]
-            feedback_times = [
-                time_in_seconds(feedback.game_time) for feedback in feedbacks
-            ]
 
-            # Assign feedbacks to buckets
-            feedback_times = [f_time - 0.2 for f_time in feedback_times]
-            assign_feedback_to_buckets(
-                move_times, feedback_values, feedback_times, move_buckets, curr_dict
+            # Get feedback and moves if the last action is a DONE
+            move_types = [move.action_code for move in moves]
+            all_moves = [move for move in moves]
+            remaining_feedbacks = []
+            if len(move_types) > 0 and move_types[-1] == "DONE":
+                remaining_moves = (
+                    Move.select()
+                    .join(Game)
+                    .where(
+                        Move.game_id == all_moves[-1].game_id,
+                        Move.character_role == "Role.FOLLOWER",
+                        Move.turn_number == all_moves[-1].turn_number,
+                        Move.game_time > all_moves[-1].game_time,
+                    )
+                )
+                remaining_moves = [move for move in remaining_moves.order_by(Move.id)]
+                all_moves += remaining_moves[:1]
+
+                remaining_feedbacks = (
+                    LiveFeedback.select()
+                    .join(Game)
+                    .where(
+                        LiveFeedback.game_id == all_moves[-1].game_id,
+                        LiveFeedback.turn_number == all_moves[-1].turn_number,
+                        LiveFeedback.game_time > all_moves[-1].game_time,
+                    )
+                )
+                remaining_feedbacks = remaining_feedbacks.order_by(LiveFeedback.id)
+
+            # Assign the feedbacks to moves
+            assign_feedback_to_moves(
+                all_moves,
+                move_buckets,
+                feedbacks,
+                remaining_feedbacks,
+                used_feedbacks,
+                curr_dict,
             )
 
-            # Populate action stats
+            # Record the feedbacks
             for action, feedbacks in zip(move_types, move_buckets):
                 curr_dict["action_stats"].append((action, feedbacks))
             instruction_to_feedbacks[inst.id] = curr_dict
 
     return instruction_to_feedbacks
+
+
+def assign_feedback_to_moves(
+    all_moves, move_buckets, feedbacks, remaining_feedbacks, used_feedbacks, curr_dict
+):
+    # First go through standard feedback
+    for feedback in feedbacks:
+        if feedback.id in used_feedbacks:
+            continue
+
+        bucket_index = get_bucket_index(all_moves, feedback, len(move_buckets))
+        curr_value = numeric_feedback(feedback.feedback_type)
+        if bucket_index != -1:
+            move_buckets[bucket_index].append(curr_value)
+            used_feedbacks.add(feedback.id)
+        else:
+            curr_dict["dropped"].append(curr_value)
+
+    for feedback in remaining_feedbacks:
+        bucket_index = get_bucket_index(all_moves, feedback, len(move_buckets))
+        curr_value = numeric_feedback(feedback.feedback_type)
+        if bucket_index != -1:
+            move_buckets[bucket_index].append(curr_value)
+            used_feedbacks.add(feedback.id)
+
+
+def get_bucket_index(moves, feedback, num_moves):
+    standard_time = time_in_seconds(feedback.game_time)
+    adjusted_time = standard_time - 0.2
+
+    for i in range(num_moves):
+        # If the feedback was issued in a different turn, skip.
+        if moves[i].turn_number != feedback.turn_number:
+            continue
+
+        move_time = time_in_seconds(moves[i].game_time)
+        if i == 0 or moves[i - 1].turn_number != moves[i].turn_number:
+            if adjusted_time < move_time and move_time <= standard_time:
+                return i
+            elif move_time <= adjusted_time:
+                if i == len(moves) - 1:
+                    return i
+                elif adjusted_time < time_in_seconds(moves[i + 1].game_time):
+                    return i
+        elif move_time <= adjusted_time:
+            if i == len(moves) - 1:
+                return i
+            elif adjusted_time < time_in_seconds(moves[i + 1].game_time):
+                return i
+
+    return -1
 
 
 def time_in_seconds(game_time):
@@ -453,31 +535,6 @@ def time_in_seconds(game_time):
 
 def numeric_feedback(feedback_type):
     return 1 if feedback_type == "POSITIVE" else -1
-
-
-def assign_feedback_to_buckets(
-    move_times, feedback_values, feedback_times, move_buckets, stats
-):
-    for i in range(len(feedback_values)):
-        curr_value = feedback_values[i]
-        curr_time = feedback_times[i]
-
-        bucket_index = get_bucket_index(move_times, curr_time)
-        if bucket_index != -1:
-            move_buckets[bucket_index].append(curr_value)
-        else:
-            stats["dropped"].append(curr_value)
-
-
-def get_bucket_index(move_times, curr_time):
-    bucket_index = -1
-    for i in range(len(move_times)):
-        feedback_after_move = move_times[i] <= curr_time
-        feedback_in_window = curr_time <= move_times[i] + ACTIVE_MOVE_WINDOW
-        if feedback_after_move and feedback_in_window:
-            bucket_index = i
-            break
-    return bucket_index
 
 
 def report_dropped_feedback(i2f, game_type):
@@ -973,6 +1030,36 @@ def get_leader_to_rates(ids):
     return leader_to_rates
 
 
+def ReportExecutionLengthCap(ids):
+    num_instructions = 0
+    num_below_cap = 0
+    for i in ids:
+        game = Game.select().where(Game.id == i).get()
+        if filter_game(game):
+            continue
+
+        # Get the associated instructions
+        instructions = Instruction.select().join(Game).where(Instruction.game == game)
+        active_instructions = get_active_instructions(instructions)
+        for inst in active_instructions:
+            num_instructions += 1
+            moves = (
+                Move.select()
+                .join(Game)
+                .where(
+                    Move.instruction_id == inst.id,
+                    Move.character_role == "Role.FOLLOWER",
+                )
+                .order_by(Move.id)
+            )
+            if len(moves) <= 22:
+                num_below_cap += 1
+
+    print(
+        f"Executions with a length less than or equal to the cap form {num_below_cap / num_instructions * 100}% of instructions"
+    )
+
+
 def main(
     command,
     to_id="",
@@ -1051,6 +1138,9 @@ def main(
     elif command == "leader_feedback_rates":
         ids = get_list_of_ids(to_id, from_id, id_file)
         ReportLeaderFeedbackRates(ids)
+    elif command == "execution_length_cap":
+        ids = get_list_of_ids(to_id, from_id, id_file)
+        ReportExecutionLengthCap(ids)
     else:
         PrintUsage()
 
