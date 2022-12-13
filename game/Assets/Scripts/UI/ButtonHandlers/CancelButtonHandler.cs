@@ -9,7 +9,7 @@ public class CancelButtonHandler : MonoBehaviour, IPointerDownHandler, IPointerU
 {
     private DateTime _onMouseDownTime;
     private static readonly string CANCEL_RING_TAG = "CANCEL_LOADING_RING";
-    private static readonly int CANCEL_HOLD_SECONDS = 1;
+    private static readonly double CANCEL_HOLD_SECONDS = 0.25;
 
     private void StartHoldTimerIfAllowed()
     {
