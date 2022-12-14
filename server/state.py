@@ -308,6 +308,7 @@ class State(object):
         log_to_db: bool = True,
         realtime_actions: bool = False,
     ):
+        self._start_time = datetime.utcnow()
         self._room_id = room_id
 
         # Rolling count of iteration loop. Used to indicate when an iteration of
@@ -407,6 +408,10 @@ class State(object):
         self._current_set_invalid = self._map_provider.selected_cards_collide()
         # Adds card covers.
         self._prop_update = map_utils.CensorCards(self._prop_update, None)
+
+    def game_time(self):
+        """Return timedelta between now and when the game started."""
+        return datetime.utcnow() - self._start_time
 
     @classmethod
     def turn_duration(self, role):

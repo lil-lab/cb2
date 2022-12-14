@@ -241,6 +241,9 @@ class Room(object):
             return
         return self._state_machine_driver.done()
 
+    def game_time(self):
+        return self._state_machine_driver.state_machine().game_time()
+
     def has_pending_messages(self):
         return self._state_machine_driver.state_machine().has_pending_messages()
 

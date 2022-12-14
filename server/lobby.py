@@ -480,6 +480,11 @@ class Lobby(ABC):
             if room.done() and not room.has_pending_messages():
                 logger.info(f"Deleting unused room: {room.name()}")
                 self.delete_room(room.id())
+            if room.game_time() > timedelta(hours=2):
+                logger.info(
+                    f"Room {room.name()} expired after 2 hours. Terminating game!"
+                )
+                self.delete_room(room.id())
 
     def delete_room(self, id):
         self._rooms[id].stop()
@@ -498,7 +503,7 @@ class Lobby(ABC):
 
     async def cleanup_rooms(self):
         while not self._is_done:
-            await asyncio.sleep(2)
+            await asyncio.sleep(5)
             self.delete_unused_rooms()
 
     def create_tutorial(self, player, tutorial_name):
