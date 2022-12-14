@@ -33,7 +33,7 @@ import server.schemas.game as game_db
 import server.schemas.mturk as mturk
 from server.config.config import Config, GlobalConfig, InitGlobalConfig
 from server.google_authenticator import GoogleAuthenticator
-from server.lobby_consts import LobbyType
+from server.lobby_consts import IsMturkLobby, LobbyType
 from server.lobby_utils import GetLobbies, GetLobby, InitializeLobbies
 from server.map_provider import MapGenerationTask, MapPoolSize
 from server.messages import message_from_server, message_to_server
@@ -486,8 +486,10 @@ async def DataDownloader(lobbies):
                 download_status["log"] = []
                 continue
 
-        # Check lobbies to see if there are any active games.
+        # Check mturk lobbies to see if there are any active games.
         for lobby in lobbies:
+            if not IsMturkLobby(lobby.lobby_type()):
+                continue
             if len(lobby.room_ids()) > 0:
                 download_status["status"] = "busy"
                 break
