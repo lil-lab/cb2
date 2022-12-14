@@ -48,6 +48,7 @@ logger = logging.getLogger(__name__)
 
 class TutorialGameState(object):
     def __init__(self, room_id, tutorial_name, tutorial_record, realtime: bool = True):
+        self._start_time = datetime.utcnow()
         self._room_id = room_id
 
         self._player_role = RoleFromTutorialName(tutorial_name)
@@ -253,9 +254,11 @@ class TutorialGameState(object):
                 return True
         return False
 
-    # Unimplemented. Exists to satisfy state machine interface.
     def start(self):
-        ...
+        self._start_time = datetime.utcnow()
+
+    def game_time(self):
+        return datetime.utcnow() - self._start_time
 
     def update(self):
         self._iter += 1

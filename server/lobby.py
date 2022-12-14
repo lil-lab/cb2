@@ -484,6 +484,16 @@ class Lobby(ABC):
                 logger.info(
                     f"Room {room.name()} expired after 2 hours. Terminating game!"
                 )
+                for socket in room.player_endpoints():
+                    if not socket.closed:
+                        leave_notice = LeaveRoomNotice(
+                            "Game ended by server after 2 hours."
+                        )
+                        self._pending_room_management_responses[socket].put(
+                            RoomManagementResponse(
+                                RoomResponseType.LEAVE_NOTICE, None, None, leave_notice
+                            )
+                        )
                 self.delete_room(room.id())
 
     def delete_room(self, id):

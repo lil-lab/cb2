@@ -488,6 +488,7 @@ class State(object):
         return self._actors[id].role()
 
     def start(self):
+        self._start_time = datetime.utcnow()
         self._game_recorder.initial_state(
             self._map_provider.map(),
             self._map_provider.prop_update(),
