@@ -1,11 +1,11 @@
 import logging
 
 from peewee import Model
-from playhouse.sqlite_ext import CSqliteExtDatabase
+from playhouse.sqlite_ext import SqliteExtDatabase
 
 logger = logging.getLogger(__name__)
 
-database = CSqliteExtDatabase(None)
+database = SqliteExtDatabase(None)
 
 
 class BaseModel(Model):

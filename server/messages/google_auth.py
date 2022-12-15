@@ -3,12 +3,12 @@ from dataclasses import dataclass
 from mashumaro.mixins.json import DataClassJSONMixin
 
 
-@dataclass
+@dataclass(frozen=True)
 class GoogleAuth(DataClassJSONMixin):
     token: str = ""
 
 
-@dataclass
+@dataclass(frozen=True)
 class GoogleAuthConfirmation(DataClassJSONMixin):
     success: bool = False
     user_name: str = ""

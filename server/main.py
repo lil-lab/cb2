@@ -23,7 +23,7 @@ import orjson
 import peewee
 from aiohttp import web
 from dateutil import parser, tz
-from playhouse.sqlite_ext import CSqliteExtDatabase
+from playhouse.sqlite_ext import SqliteExtDatabase
 
 import server.db_tools.db_utils as db_utils
 import server.leaderboard as leaderboard
@@ -516,7 +516,7 @@ def GatherDataForDownload(config, response, logs):
     NYC = tz.gettz("America/New_York")
     timestamp = lambda: datetime.now(NYC).strftime("%Y-%m-%d %H:%M:%S")
     log_entry = lambda x: logs.put(f"{timestamp()}: {x}")
-    database = CSqliteExtDatabase(
+    database = SqliteExtDatabase(
         config.database_path(),
         pragmas=[
             ("cache_size", -1024 * 64),  # 64MB page-cache.

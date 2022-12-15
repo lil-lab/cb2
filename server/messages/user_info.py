@@ -12,7 +12,7 @@ class UserType(IntEnum):
     BOT = 4
 
 
-@dataclass
+@dataclass(frozen=True)
 class UserInfo(DataClassJSONMixin):
     user_name: str = ""
     user_type: UserType = UserType.NONE
