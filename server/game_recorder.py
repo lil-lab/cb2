@@ -3,6 +3,7 @@ import queue
 import random
 from datetime import datetime
 from queue import Queue
+from typing import List
 
 import orjson
 
@@ -11,8 +12,157 @@ import server.schemas as schemas
 from server.hex import HecsCoord
 from server.messages.action import Action
 from server.messages.rooms import Role
+from server.schemas.game import Event, EventOrigin, EventType
 
 logger = logging.getLogger(__name__)
+
+
+def EventFromMapUpdate(game, tick: int, map_update):
+    return Event(
+        game=game,
+        type=EventType.MAP_UPDATE,
+        tick=tick,
+        origin=EventOrigin.SERVER,
+        data=map_update.to_json(),
+    )
+
+
+def EventFromStateSync(game, tick: int, state_sync):
+    return Event(
+        game=game,
+        type=EventType.STATE_SYNC,
+        tick=tick,
+        origin=EventOrigin.SERVER,
+        data=state_sync.to_json(),
+    )
+
+
+def EventFromTurnState(game, tick: int, origin: EventOrigin, turn_state):
+    return Event(
+        game=game,
+        type=EventType.TURN_STATE,
+        tick=tick,
+        origin=origin,
+        data=turn_state.to_json(),
+    )
+
+
+def EventFromCardSpawn(game, tick: int, origin: EventOrigin, card):
+    return Event(
+        game=game,
+        type=EventType.CARD_SPAWN,
+        tick=tick,
+        origin=EventOrigin.SERVER,
+        data=card.to_json(),
+        location=card.location,
+        orientation=card.orientation,
+    )
+
+
+def EventFromCardSelect(game, tick: int, origin: EventOrigin, card, last_move):
+    short_code = "select" if card.selected else "unselect"
+    return Event(
+        game=game,
+        type=EventType.CARD_SELECT,
+        tick=tick,
+        origin=origin,
+        parent_event=last_move,
+        data=card.to_json(),
+        short_code=short_code,
+        location=card.location,
+        orientation=card.orientation,
+    )
+
+
+def EventFromCardSet(
+    game, tick: int, origin: EventOrigin, cardset: List, score, last_move
+):
+    data = {
+        "cards": [card.to_dict() for card in cardset],
+        "score": score,
+    }
+    return Event(
+        game=game,
+        type=EventType.CARD_SET,
+        tick=tick,
+        origin=origin,
+        parent_event=last_move,
+        data=orjson.dumps(data),
+    )
+
+
+def EventFromInstructionSent(game, tick: int, instruction):
+    return Event(
+        game=game,
+        type=EventType.INSTRUCTION_SENT,
+        tick=tick,
+        origin=EventOrigin.LEADER,
+        data=instruction.to_json(),
+    )
+
+
+def EventFromInstructionActivated(game, tick, instruction_event):
+    return Event(
+        game=game,
+        type=EventType.INSTRUCTION_ACTIVATED,
+        tick=tick,
+        origin=EventOrigin.SERVER,
+        parent_event=instruction_event,
+    )
+
+
+def EventFromInstructionDone(game, tick, instruction_event):
+    return Event(
+        game=game,
+        type=EventType.INSTRUCTION_DONE,
+        tick=tick,
+        origin=EventOrigin.FOLLOWER,
+        parent_event=instruction_event,
+    )
+
+
+def EventFromInstructionCancelled(game, tick, instruction_event):
+    return Event(
+        game=game,
+        type=EventType.INSTRUCTION_CANCELLED,
+        tick=tick,
+        origin=EventOrigin.FOLLOWER,
+        parent_event=instruction_event,
+    )
+
+
+def EventFromMove(
+    game,
+    tick: int,
+    origin: EventOrigin,
+    action,
+    location_before,
+    orientation_before,
+    instruction_event,
+):
+    return Event(
+        game=game,
+        type=EventType.MOVE,
+        tick=tick,
+        origin=origin,
+        parent_event=instruction_event,
+        data=action.to_json(),
+        location=location_before,
+        orientation=orientation_before,
+    )
+
+
+def EventFromLiveFeedback(
+    game, tick: int, feedback: live_feedback.LiveFeedback, last_move
+):
+    return Event(
+        game=game,
+        type=EventType.LIVE_FEEDBACK,
+        tick=tick,
+        origin=EventOrigin.SERVER,
+        parent_event=last_move,
+        data=feedback.to_json(),
+    )
 
 
 class GameRecorder(object):
