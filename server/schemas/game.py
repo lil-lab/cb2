@@ -4,12 +4,12 @@ import json
 import orjson
 from peewee import *
 
-from server.hex import HecsCoord
 from server.messages.action import Action
 from server.schemas.base import *
 from server.schemas.clients import *
 from server.schemas.google_user import GoogleUser
 from server.schemas.mturk import *
+from server.schemas.util import HecsCoordField
 
 
 class Game(BaseModel):
@@ -40,14 +40,6 @@ class Game(BaseModel):
     kvals = TextField(null=True)  # JSON of key-value pairs.
 
 
-class HecsCoordField(TextField):
-    def db_value(self, value):
-        return orjson.dumps(value, option=orjson.OPT_NAIVE_UTC).decode("utf-8")
-
-    def python_value(self, db_val):
-        return HecsCoord.from_json(db_val)
-
-
 class ActionField(TextField):
     def db_value(self, value):
         return orjson.dumps(
@@ -58,17 +50,6 @@ class ActionField(TextField):
 
     def python_value(self, db_val):
         return Action.from_json(db_val)
-
-
-class InitialState(BaseModel):
-    game = ForeignKeyField(Game, backref="initial_state", null=True)
-    time = DateTimeField(default=datetime.datetime.utcnow)
-    leader_id = IntegerField()  # In-game ID of the leader.
-    follower_id = IntegerField()  # In-game ID of the follower.
-    leader_position = HecsCoordField()
-    leader_rotation_degrees = IntegerField()
-    follower_position = HecsCoordField()
-    follower_rotation_degrees = IntegerField()
 
 
 class Turn(BaseModel):
@@ -82,21 +63,6 @@ class Turn(BaseModel):
     end_method = (
         TextField()
     )  # Something like 'RanOutOfTime' or 'UserPrompted', or 'FollowerOutOfMoves', 'FollowerFinishedInstructions', or 'UserPromptedInterruption'
-
-
-def InstructionTurnActive(instruction):
-    game = instruction.game
-    instruction_before_query = (
-        Instruction.select()
-        .where(Instruction.game == game, Instruction.time < instruction.time)
-        .order_by(Instruction.time.desc())
-    )
-    if instruction_before_query.count() == 0:
-        return 0
-    instruction_before = instruction_before_query.get()
-    if instruction_before.turn_completed == -1:
-        return instruction_before.turn_cancelled
-    return instruction_before.turn_completed
 
 
 class Instruction(BaseModel):
@@ -123,6 +89,17 @@ class Instruction(BaseModel):
             "turn_completed": self.turn_completed,
             "turn_cancelled": self.turn_cancelled,
         }
+
+
+class InitialState(BaseModel):
+    game = ForeignKeyField(Game, backref="initial_state", null=True)
+    time = DateTimeField(default=datetime.datetime.utcnow)
+    leader_id = IntegerField()  # In-game ID of the leader.
+    follower_id = IntegerField()  # In-game ID of the follower.
+    leader_position = HecsCoordField()
+    leader_rotation_degrees = IntegerField()
+    follower_position = HecsCoordField()
+    follower_rotation_degrees = IntegerField()
 
 
 class Move(BaseModel):

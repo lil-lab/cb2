@@ -1092,23 +1092,34 @@ class MapProvider(object):
     def add_random_cards(self, number_of_cards):
         card_spawn_locations = self.choose_card_spawn_locations(number_of_cards)
 
+        new_cards = []
+
         for loc in card_spawn_locations:
             (r, c) = loc
-            self._cards.append(self._card_generator.generate_random_card_at(r, c))
+            new_card = self._card_generator.generate_random_card_at(r, c)
+            new_cards.append(new_card)
+            self._cards.append(new_card)
             self._cards_by_location[self._cards[-1].location] = self._cards[-1]
 
+        return new_cards
+
     def add_random_unique_set(self):
+        """Generates 3 unique cards and adds them to the map. Returns a list of the card objects."""
         card_spawn_locations = self.choose_card_spawn_locations(3)
 
         unique_set = card.RandomUniqueSet()
 
+        new_cards = []
+
         for i, loc in enumerate(card_spawn_locations):
             (shape, color, count) = unique_set[i]
             (r, c) = loc
-            self._cards.append(
-                self._card_generator.generate_card_at(r, c, shape, color, count)
-            )
+            new_card = self._card_generator.generate_card_at(r, c, shape, color, count)
+            new_cards.append(new_card)
+            self._cards.append(new_card)
             self._cards_by_location[self._cards[-1].location] = self._cards[-1]
+
+        return new_cards
 
     def spawn_points(self):
         return self._spawn_points

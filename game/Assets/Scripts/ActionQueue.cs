@@ -164,16 +164,20 @@ public class ActionQueue
 
             TimeSpan delta = DateTime.Now - _actionStarted;
 
-            // Immediately skip any expired animations.
+            // Immediately skip any expired animations. Once triggered, this will
+            // continue to fast-forward until the queue is empty or an unexpired
             if (_actionInProgress && (DateTime.Now > _actionQueue.Peek().Expiration()))
             {
-                _logger.Debug(_name + " Q Fast-forwarding expired action of duration " 
-                                + _actionQueue.Peek().DurationS() + "s. Duration: "
-                                + delta.Seconds);
-                _state = _actionQueue.Peek().Transfer(_state);
-                _actionQueue.Dequeue();
-                _actionInProgress = false;
-                return;
+                while (_actionQueue.Count > 0 && (DateTime.Now > _actionQueue.Peek().Expiration()))
+                {
+                    _logger.Debug(_name + " Q Fast-forwarding expired action of duration " 
+                                    + _actionQueue.Peek().DurationS() + "s. Duration: "
+                                    + delta.Seconds);
+                    _state = _actionQueue.Peek().Transfer(_state);
+                    _actionQueue.Dequeue();
+                    _actionInProgress = false;
+                    return;
+                }
             }
 
             // Convert to milliseconds for higher-resolution progress.

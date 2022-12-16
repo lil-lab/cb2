@@ -4,8 +4,11 @@ import contextvars
 import functools
 import pathlib
 import subprocess
+import sys
 import time
+import traceback
 from asyncio import events
+from datetime import timedelta
 
 MAX_ID = 1000000
 
@@ -60,19 +63,36 @@ class CountDownTimer(object):
 
     """
 
-    def __init__(self, duration_s: float):
+    def __init__(self, duration_s: float = 0):
         self._duration_s = duration_s
         self._end_time = None
+        self._remaining_duration_s = None
 
     def start(self):
         """Starts the timer. Does nothing if the timer is already started"""
         if self._end_time is not None:
             return
-        self._end_time = time.time() + self._duration_s
+        if self._remaining_duration_s is None:
+            self._end_time = time.time() + self._duration_s
+            return
+        self._end_time = time.time() + self._remaining_duration_s
+
+    def pause(self):
+        """Pauses the timer -- stores the currently elapsed time in _base_elapsed and sets _end_time to None."""
+        if self._end_time is not None:
+            self._remaining_duration_s = self._end_time - time.time()
+        self._end_time = None
 
     def clear(self):
         """Stops the timer. Resets all state."""
         self._end_time = None
+        self._remaining_duration_s = None
+
+    def time_remaining(self):
+        """Returns the remaining time. If the timer is not started, returns 0."""
+        if self._end_time is None:
+            return timedelta(seconds=0)
+        return timedelta(seconds=(self._end_time - time.time()))
 
     def expired(self):
         """Returns true if the timer has expired."""
@@ -95,3 +115,44 @@ async def to_thread(func, /, *args, **kwargs):
     ctx = contextvars.copy_context()
     func_call = functools.partial(ctx.run, func, *args, **kwargs)
     return await loop.run_in_executor(None, func_call)
+
+
+def exc_info_plus():
+    """
+    Print the usual traceback information, followed by a listing of all the
+    local variables in each frame.
+    Shamelessly taken from oreilly and modified.
+    """
+    output = ""
+    tb = sys.exc_info()[2]
+    while 1:
+        if not tb.tb_next:
+            break
+        tb = tb.tb_next
+    stack = []
+    f = tb.tb_frame
+    while f:
+        stack.append(f)
+        f = f.f_back
+    stack.reverse()
+    output += traceback.format_exc()
+    output += "Locals by frame, innermost last\n"
+    for frame in stack:
+        output += "\n"
+        output += "Frame %s in %s at line %s\n" % (
+            frame.f_code.co_name,
+            frame.f_code.co_filename,
+            frame.f_lineno,
+        )
+        for key, value in frame.f_locals.items():
+            output += "\t%20s = " % key
+            # We have to be VERY careful not to cause a new error in our error
+            # printer! Calling str(  ) on an unknown object could cause an
+            # error we don't want, so we must use try/except to catch it --
+            # we can't stop it from happening, but we can and should
+            # stop it from propagating if it does happen!
+            try:
+                output += value
+            except:
+                output += "<ERROR WHILE PRINTING VALUE>"
+    return output

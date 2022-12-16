@@ -1,20 +1,27 @@
 # Creates a set of graphics where an instruction is displayed on the left, and
 # the follower's pathway is displayed on the right.
+import json
+import logging
 import pathlib
 
 import fire
+import peewee
 import pygame
 import pygame.freetype
 
 import server.config.config as config
 import server.db_tools.db_utils as db_utils
+import server.messages.live_feedback as live_feedback_msg
+import server.messages.map_update as map_update_msg
+import server.messages.prop as prop_msg
 import server.schemas.defaults as defaults_db
+from server.card import Card
 from server.hex import HecsCoord
 from server.map_tools import visualize
+from server.messages.action import Action
+from server.messages.objective import ObjectiveMessage
 from server.schemas import base
-from server.schemas.game import Game, Instruction, LiveFeedback, Move
-from server.schemas.map import MapUpdate
-from server.schemas.prop import PropUpdate
+from server.schemas.event import Event, EventType
 
 pygame.freetype.init()
 INSTRUCTION_FONT = pygame.freetype.SysFont("Times New Roman", 30)
@@ -66,27 +73,24 @@ def draw_instruction(
     display = visualize.GameDisplay(SCREEN_SIZE)
     display.set_map(map_update)
     display.set_props(props)
-    trajectory = [(move.position_before, move.orientation_before) for move in moves]
+    trajectory = [(move.location, move.orientation) for move in moves]
     if len(moves) > 0:
-        final_position = HecsCoord.add(
-            moves[-1].position_before, moves[-1].action.displacement
-        )
-        final_orientation = moves[-1].orientation_before + moves[-1].action.rotation
+        first_action = Action.from_json(moves[-1].data)
+        final_position = HecsCoord.add(moves[-1].location, first_action.displacement)
+        final_orientation = moves[-1].orientation + first_action.rotation
         trajectory.append((final_position, final_orientation))
     display.set_trajectory(trajectory)
     positive_markers = []
     negative_markers = []
-    for feedback in feedbacks:
-        if feedback.feedback_type == "POSITIVE":
-            positive_markers.append(
-                (feedback.follower_position, feedback.follower_orientation)
-            )
-        elif feedback.feedback_type == "NEGATIVE":
-            negative_markers.append(
-                (feedback.follower_position, feedback.follower_orientation)
-            )
+    for event in feedbacks:
+        feedback_obj = live_feedback_msg.LiveFeedback.from_json(event.data)
+        if feedback_obj.signal == live_feedback_msg.FeedbackType.POSITIVE:
+            positive_markers.append((event.location, event.orientation))
+        elif feedback_obj.signal == live_feedback_msg.FeedbackType.NEGATIVE:
+            negative_markers.append((event.location, event.orientation))
         else:
-            print(f"Ignoring unknown feedback type: {feedback.feedback_type}")
+            print(f"Ignoring unknown feedback type: {feedback_obj.signal}")
+            print(f"Original data: {event.data}")
     display.set_positive_markers(positive_markers)
     display.set_negative_markers(negative_markers)
     display.draw()
@@ -108,6 +112,7 @@ def main(
     output_dir="output",
     research_only=True,
 ):
+    logging.basicConfig(level=logging.INFO)
     cfg = config.ReadConfigOrDie(config_filepath)
 
     print(f"Reading database from {cfg.database_path()}")
@@ -130,52 +135,97 @@ def main(
             game for game in db_utils.ListGames() if db_utils.IsConfigGame(cfg, game)
         ]
     print(f"Found {len(games)} games.")
+    ParentEvent = Event.alias()
     # For each game.
     for game in games:
         # Create a directory for the game.
         game_dir = output_dir / str(game.id)
         game_dir.mkdir(parents=False, exist_ok=True)
-        maps = MapUpdate.select().join(Game).where(MapUpdate.game == game)
-        prop_updates = PropUpdate.select().join(Game).where(PropUpdate.game == game)
-        instructions = Instruction.select().join(Game).where(Instruction.game == game)
+        # Do a self-join to link parent events. ParentEvent is an alias of Event defined above.
+        game_events = (
+            Event.select()
+            .join(
+                ParentEvent,
+                peewee.JOIN.LEFT_OUTER,
+                on=(Event.parent_event == ParentEvent.id),
+            )
+            .where(Event.game_id == game.id)
+            .order_by(Event.server_time)
+        )
+        map_events = (
+            game_events.select()
+            .where(Event.type == EventType.MAP_UPDATE)
+            .order_by(Event.server_time)
+        )
+        if map_events.count() == 0:
+            print(f"Skipping game {game.id} because it has no map update events.")
+            continue
+        prop_updates = game_events.where(Event.type == EventType.PROP_UPDATE).order_by(
+            Event.server_time
+        )
+        if not prop_updates.exists():
+            print(f"Skipping game {game.id} because it has no prop update events.")
+            continue
+        first_map_update = map_update_msg.MapUpdate.from_json(map_events.get().data)
+        first_prop_update = prop_msg.PropUpdate.from_json(prop_updates.get().data)
+        initial_cards = [Card.FromProp(prop) for prop in first_prop_update.props]
+        instructions = game_events.where(Event.type == EventType.INSTRUCTION_SENT)
         for instruction in instructions:
-            moves = (
-                Move.select()
-                .join(Game)
-                .where(Move.game == game, Move.instruction == instruction)
-                .order_by(Move.id)
+            activation_query = instruction.children.where(
+                Event.type == EventType.INSTRUCTION_ACTIVATED
             )
-            feedbacks = (
-                LiveFeedback.select()
-                .join(Game)
-                .where(
-                    LiveFeedback.game == game, LiveFeedback.instruction == instruction
+            if not activation_query.exists():
+                print(
+                    f"Skipping instruction {instruction.id} because it was never activated."
                 )
-                .order_by(LiveFeedback.id)
+                continue
+            activation = activation_query.get()
+
+            cards_by_location = {card.location: card for card in initial_cards}
+            card_events = game_events.where(
+                Event.type
+                << [
+                    EventType.CARD_SPAWN,
+                    EventType.CARD_SET,
+                    Event.server_time <= activation.server_time,
+                ]
+            ).order_by(Event.server_time)
+            for event in card_events:
+                if event.type == EventType.CARD_SPAWN:
+                    card = Card.from_json(event.data)
+                    cards_by_location[card.location] = card
+                elif event.type == EventType.CARD_SET:
+                    data_obj = json.loads(event.data)
+                    cards = [Card.from_dict(card) for card in data_obj["cards"]]
+                    for card in cards:
+                        cards_by_location[card.location] = None
+            props = [
+                card.prop() for card in cards_by_location.values() if card is not None
+            ]
+
+            moves = instruction.children.where(Event.type == EventType.ACTION)
+            feedbacks = (
+                game_events.select()
+                .where(
+                    Event.parent_event << moves, Event.type == EventType.LIVE_FEEDBACK
+                )
+                .order_by(Event.server_time)
             )
-            # Get the most recent map and prop updates (filter to only previous updates, order by descending ID, then grab the first one).
-            map = (
-                maps.where(MapUpdate.time <= instruction.time)
-                .order_by(MapUpdate.id.desc())
-                .get()
-            )
-            prop_update = (
-                prop_updates.where(PropUpdate.time <= instruction.time)
-                .order_by(PropUpdate.id.desc())
-                .get()
-            )
-            filepath = game_dir / f"instruction_vis_{instruction.id}.png"
+
+            dt_string = instruction.server_time.strftime("%Y-%m-%d_%H-%M-%S")
+            filepath = game_dir / f"instruction_vis_{dt_string}.png"
+            instruction_obj = ObjectiveMessage.from_json(instruction.data)
             draw_instruction(
-                instruction,
+                instruction_obj,
                 moves,
                 feedbacks,
-                map.map_data,
+                first_map_update,
                 filepath,
                 game.id,
-                prop_update.prop_data.props,
+                props,
             )
-            instruction_list.append(instruction.text)
-            for word in instruction.text.split(" "):
+            instruction_list.append(instruction_obj.text)
+            for word in instruction_obj.text.split(" "):
                 words.add(word)
             if max_instructions == 0:
                 break

@@ -61,7 +61,7 @@ class MturkLobby(lobby.Lobby):
         """
         # First of all, if the first follower has been waiting for 5m, remove them from the queue.
         if len(self._follower_queue) > 0:
-            (ts, follower, i_uuid) = self._follower_queue[0]
+            (ts, follower, e_uuid) = self._follower_queue[0]
             if datetime.now() - ts > timedelta(minutes=5):
                 self._follower_queue.popleft()
                 # Queue a room management response to notify the follower that they've been removed from the queue.
@@ -77,7 +77,7 @@ class MturkLobby(lobby.Lobby):
 
         # If a general player has been waiting alone for 5m, remove them from the queue.
         if len(self._player_queue) > 0:
-            (ts, player, i_uuid) = self._player_queue[0]
+            (ts, player, e_uuid) = self._player_queue[0]
             if datetime.now() - ts > timedelta(minutes=5):
                 self._player_queue.popleft()
                 # Queue a room management response to notify the player that they've been removed from the queue.
@@ -93,7 +93,7 @@ class MturkLobby(lobby.Lobby):
 
         # If a leader has been waiting alone for 5m, remove them from the queue.
         if len(self._leader_queue) > 0:
-            (ts, leader, i_uuid) = self._leader_queue[0]
+            (ts, leader, e_uuid) = self._leader_queue[0]
             if datetime.now() - ts > timedelta(minutes=5):
                 self._leader_queue.popleft()
                 # Queue a room management response to notify the leader that they've been removed from the queue.
@@ -109,15 +109,15 @@ class MturkLobby(lobby.Lobby):
 
         # If there's a leader in the leader queue and a follower in the follower queue, match them.
         if len(self._leader_queue) > 0 and len(self._follower_queue) > 0:
-            (_, leader, l_i_uuid) = self._leader_queue.popleft()
-            (_, follower, f_i_uuid) = self._follower_queue.popleft()
-            if l_i_uuid:
-                i_uuid = l_i_uuid
-            elif f_i_uuid:
-                i_uuid = f_i_uuid
+            (_, leader, l_e_uuid) = self._leader_queue.popleft()
+            (_, follower, f_e_uuid) = self._follower_queue.popleft()
+            if l_e_uuid:
+                e_uuid = l_e_uuid
+            elif f_e_uuid:
+                e_uuid = f_e_uuid
             else:
-                i_uuid = ""
-            return leader, follower, i_uuid
+                e_uuid = ""
+            return leader, follower, e_uuid
 
         # If there's no general players, a match can't be made.
         if len(self._player_queue) < 1:
@@ -125,27 +125,27 @@ class MturkLobby(lobby.Lobby):
 
         # If there's a leader and a general player, match them.
         if len(self._leader_queue) > 0 and len(self._player_queue) > 0:
-            (_, leader, l_i_uuid) = self._leader_queue.popleft()
-            (_, player, f_i_uuid) = self._player_queue.popleft()
-            if l_i_uuid:
-                i_uuid = l_i_uuid
-            elif f_i_uuid:
-                i_uuid = f_i_uuid
+            (_, leader, l_e_uuid) = self._leader_queue.popleft()
+            (_, player, f_e_uuid) = self._player_queue.popleft()
+            if l_e_uuid:
+                e_uuid = l_e_uuid
+            elif f_e_uuid:
+                e_uuid = f_e_uuid
             else:
-                i_uuid = ""
-            return leader, player, i_uuid
+                e_uuid = ""
+            return leader, player, e_uuid
 
         # If there's a follower waiting, match them with the first general player.
         if len(self._follower_queue) >= 1:
-            (_, leader, l_i_uuid) = self._player_queue.popleft()
-            (_, follower, f_i_uuid) = self._follower_queue.popleft()
-            if l_i_uuid:
-                i_uuid = l_i_uuid
-            elif f_i_uuid:
-                i_uuid = f_i_uuid
+            (_, leader, l_e_uuid) = self._player_queue.popleft()
+            (_, follower, f_e_uuid) = self._follower_queue.popleft()
+            if l_e_uuid:
+                e_uuid = l_e_uuid
+            elif f_e_uuid:
+                e_uuid = f_e_uuid
             else:
-                i_uuid = ""
-            return leader, follower, i_uuid
+                e_uuid = ""
+            return leader, follower, e_uuid
 
         # If there's no follower waiting, check if there's two general players...
         if len(self._player_queue) < 2:
@@ -154,21 +154,21 @@ class MturkLobby(lobby.Lobby):
         # If a general player has been waiting for >= 10 seconds with no follower, match them with another general player.
         (ts, _, _) = self._player_queue[0]
         if datetime.now() - ts > timedelta(seconds=10):
-            (_, player1, i_uuid_1) = self._player_queue.popleft()
-            (_, player2, i_uuid_2) = self._player_queue.popleft()
+            (_, player1, e_uuid_1) = self._player_queue.popleft()
+            (_, player2, e_uuid_2) = self._player_queue.popleft()
             leader, follower = self.assign_leader_follower(player1, player2)
-            if i_uuid_1:
-                i_uuid = i_uuid_1
-            elif i_uuid_2:
-                i_uuid = i_uuid_2
+            if e_uuid_1:
+                e_uuid = e_uuid_1
+            elif e_uuid_2:
+                e_uuid = e_uuid_2
             else:
-                i_uuid = ""
+                e_uuid = ""
             if leader is None or follower is None:
                 logger.warning(
                     "Could not assign leader and follower based on experience. Using random assignment."
                 )
-                return (player1, player2, i_uuid)
-            return leader, follower, i_uuid
+                return (player1, player2, e_uuid)
+            return leader, follower, e_uuid
         return None, None, ""
 
     # OVERRIDES Lobby.handle_join_request()
@@ -204,6 +204,17 @@ class MturkLobby(lobby.Lobby):
             logger.warning(f"Worker has invalid qual level: {worker.qual_level}.")
             self.boot_from_queue(ws)
             return
+
+    # Overrides Lobby.handle_replay_request()
+    def handle_replay_request(
+        self, request: RoomManagementRequest, ws: web.WebSocketResponse
+    ) -> None:
+        """Handles a request to join a replay room. In most lobbies, this should be ignored (except lobbies supporting replay)."""
+        logger.warning(
+            f"Received replay request from {str(ws)} in non-replay lobby. Ignoring."
+        )
+        self.boot_from_queue(ws)
+        return
 
     # OVERRIDES Lobby.lobby_type()
     def lobby_type(self) -> LobbyType:

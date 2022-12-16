@@ -308,6 +308,15 @@ namespace Network
             _client.TransmitMessage(toServer);
         }
 
+        public void TransmitReplayMessage(ReplayRequest request)
+        {
+            MessageToServer toServer = new MessageToServer();
+            toServer.transmit_time = DateTime.UtcNow.ToString("s");
+            toServer.type = MessageToServer.MessageType.REPLAY_REQUEST;
+            toServer.replay_request = request;
+            _client.TransmitMessage(toServer);
+        }
+
         public void Awake()
         {
             gameObject.tag = TAG;
@@ -414,9 +423,7 @@ namespace Network
             _currentTurn = Network.Role.NONE;
             if (_router != null)
             {
-                _router.ClearEntityManager();
-                _router.ClearPlayer();
-                _router.ClearMenuTransitionHandler();
+                _router.Clear();
             }
             SceneManager.LoadScene("menu_scene");
         }
@@ -543,6 +550,7 @@ namespace Network
             Logger.SetGlobalLogLevel(Logger.LogLevel.INFO);
             _logger.Info("Scene loaded: " + scene.name);
             if (scene.name == "menu_scene") {
+                _router.SetMode(NetworkRouter.Mode.NETWORK);
                 // Refetch config on menu scene. Then return.
                 _lastServerConfigPoll = DateTime.Now;
                 _serverConfigPollInProgress = true;
@@ -557,6 +565,13 @@ namespace Network
             {
                 _logger.Warn(result.ToString());
             }
+
+            if (scene.name == "replay_scene")
+            {
+                _router.SetMode(NetworkRouter.Mode.REPLAY);
+            } else {
+                _router.SetMode(NetworkRouter.Mode.NETWORK);
+            }
         }
 
         public void OnApplicationQuit()
@@ -569,9 +584,7 @@ namespace Network
             if (tutorialResponse.type == TutorialResponseType.STARTED)
             {
                 _logger.Info("Tutorial started.");
-                _router.ClearEntityManager();
-                _router.ClearPlayer();
-                _router.ClearMenuTransitionHandler();
+                _router.Clear();
                 SceneManager.LoadScene("tutorial_scene");
                 _role = tutorialResponse.Role();
             }
@@ -594,9 +607,7 @@ namespace Network
                 if (response.join_response.joined)
                 {
                     _logger.Info("Joined room as " + response.join_response.role + "!");
-                    _router.ClearEntityManager();
-                    _router.ClearPlayer();
-                    _router.ClearMenuTransitionHandler();
+                    _router.Clear();
                     SceneManager.LoadScene("game_scene");
                     _role = response.join_response.role;
                 } else if (response.join_response.booted_from_queue) {

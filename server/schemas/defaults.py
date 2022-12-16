@@ -1,6 +1,7 @@
 from server.schemas.base import *
 from server.schemas.cards import *
 from server.schemas.clients import *
+from server.schemas.event import *
 from server.schemas.game import *
 from server.schemas.google_user import *
 from server.schemas.leaderboard import *
@@ -28,6 +29,7 @@ TABLES = [
     Leaderboard,
     Username,
     GoogleUser,
+    Event,
 ]
 
 

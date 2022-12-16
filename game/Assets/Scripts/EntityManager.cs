@@ -87,6 +87,17 @@ public class EntityManager : MonoBehaviour
         _actors[id] = actor;
     }
 
+    public void DestroyProp(int id)
+    {
+        if (_props.ContainsKey(id))
+        {
+            _props[id].Destroy();
+            _props.Remove(id);
+            return;
+        }
+        _logger.Warn("Warning, invalid prop id received: " + id);
+    }
+
     public void FlushActors()
     {
         foreach (var kvPair in _actors)
@@ -144,6 +155,18 @@ public class EntityManager : MonoBehaviour
         }
         _props = new Dictionary<int, Prop>();
         _logger.Info("Queued " + _graveyard.Count + " props for destruction.");
+    }
+
+    public void QueueDestroyProp(int id)
+    {
+        if (_props.ContainsKey(id))
+        {
+            Prop prop = _props[id];
+            prop.AddAction(Death.DieImmediately());
+            _graveyard.Add(prop);
+            _props.Remove(id);
+            return;
+        }
     }
 
     public void Update()

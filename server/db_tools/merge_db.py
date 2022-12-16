@@ -17,6 +17,14 @@
 # script is probably out of date. Check the fields in schemas/* to make sure
 # that all the fields are correctly handled.
 
+# 4 months pass.
+
+# Okay, this script is coming in handy again! I've decided to migrate
+# everything, and I can repurpose this script for that. Previously, things were
+# too complicated and inefficient. We resend the entire map and props every time
+# a game changes. Moves, instructions, actions, etc are all in separate tables,
+# making logic to access games very complicated. Let's smoosh everything into one table: Events.
+
 import logging
 import sys
 
@@ -82,7 +90,6 @@ def main(db_main_path, db_branch_path):
         branch_worker_id_to_hash, main_worker_id_by_hash
     )
 
-    branch_workers = []
     branch_assignments = []
     branch_games = []
     branch_turns = []
@@ -96,17 +103,6 @@ def main(db_main_path, db_branch_path):
 
     # TODO sharf move all the ID translation here. It'll be safer as we're in branch context.
     with db_branch.connection_context():
-        workers = Worker.select().order_by(Worker.id)
-        for worker in workers:
-            if worker.hashed_id not in main_worker_id_by_hash:
-                logger.info(f"Worker {worker.id} not in {db_main}")
-                sys.exit(1)
-            if worker.hashed_id in main_worker_id_by_hash:
-                worker.experience_id = worker_exp_id_by_hash[worker.hashed_id]
-            branch_workers.append(worker)
-
-        print(f"Found no new workers not in main branch already. That's good!")
-
         # Query all assignments and inner join with workers.
         for assignment in Assignment.select().join(Worker):
             if assignment.worker.hashed_id in main_worker_id_by_hash:
@@ -178,7 +174,6 @@ def main(db_main_path, db_branch_path):
             branch_turns.append(turn)
 
     # We've queried all tables. Print the size of each table.
-    logger.info(f"Workers: {len(branch_workers)}")
     logger.info(f"Assignments: {len(branch_assignments)}")
     logger.info(f"Games: {len(branch_games)}")
     logger.info(f"Turns: {len(branch_turns)}")

@@ -4,6 +4,8 @@ import queue
 import time
 from queue import Queue
 
+from server.util import exc_info_plus
+
 logger = logging.getLogger(__name__)
 
 
@@ -18,13 +20,15 @@ class StateMachineDriver(object):
         """
         self._state_machine = state_machine
 
-        # Logging init.
         self._room_id = room_id
 
         # Message output. Each iteration loop, messages are serialized into per-player queues for sending.
         self._messages_out = {}  # Player ID -> Queue() of messages
         # Linear message input. As network packets come in, they are placed in a queue for processing.
         self._messages_in = Queue()  # Queue() of (player_id, message) tuples
+
+        self._exception = None
+        self._traceback = None
 
     def state_machine(self):
         return self._state_machine
@@ -55,16 +59,24 @@ class StateMachineDriver(object):
         return packets_added
 
     async def run(self):
-        last_loop = time.time()
-        self._state_machine.start()  # Initialize the state machine.
-        while not self._state_machine.done():
-            self.step()
-            poll_period = time.time() - last_loop
-            if (poll_period) > 0.1:
-                logging.warn(f"Game {self._room_id} slow poll period of {poll_period}s")
+        try:
             last_loop = time.time()
-            await asyncio.sleep(0)
-        self._state_machine.on_game_over()
+            self._state_machine.start()  # Initialize the state machine.
+            while not self._state_machine.done():
+                self.step()
+                poll_period = time.time() - last_loop
+                if (poll_period) > 0.1:
+                    logging.warn(
+                        f"Game {self._room_id} slow poll period of {poll_period}s"
+                    )
+                last_loop = time.time()
+                await asyncio.sleep(0)
+            self._state_machine.on_game_over()
+        except Exception as e:
+            logger.exception(f"Error in game {self._room_id}: {e}")
+            self._exception = e
+            self._traceback = exc_info_plus()
+            self.end_game()
 
     def step(self):
         self._process_incoming_messages()
@@ -76,6 +88,12 @@ class StateMachineDriver(object):
 
     def end_game(self):
         self._state_machine.end_game()
+
+    def exception(self):
+        return self._exception
+
+    def traceback(self):
+        return self._traceback
 
     def _process_incoming_messages(self):
         # Process all available messages.

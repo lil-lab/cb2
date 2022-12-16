@@ -126,7 +126,7 @@ class LocalGameCoordinator:
             game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
             game_name = f"{game_time}_{game_id}_GAME"
             game_record.server_software_commit = GetCommitHash()
-            game_record.type = "local|0|simulated"
+            game_record.type = "local-simulated|0|simulated"
             game_record.save()
         else:
             game_record = None
@@ -136,7 +136,7 @@ class LocalGameCoordinator:
         self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)
         return game_name
 
-    def CreateGameFromDatabase(self, instruction_uuid: str):
+    def CreateGameFromDatabase(self, event_uuid: str):
         """Creates a new game from a specific instruction in a recorded game.
 
         Exactly two agents can join this game with JoinGame().
@@ -151,11 +151,11 @@ class LocalGameCoordinator:
 
         # For cards, take all cards so far and then delete any CardSets().
         state_machine, reason = State.InitializeFromExistingState(
-            room_id, instruction_uuid, realtime_actions=False
+            room_id, event_uuid, realtime_actions=False
         )
         assert (
             state_machine is not None
-        ), f"Failed to init from instr {instruction_uuid}: {reason}"
+        ), f"Failed to init from event {event_uuid}: {reason}"
         state_machine.state(-1)
 
         self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)
@@ -194,7 +194,7 @@ class LocalGameCoordinator:
         game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
         game_name = f"{game_time}_{game_id}_GAME"
         game_record.server_software_commit = GetCommitHash()
-        game_record.type = "local|0|tutorial"
+        game_record.type = "local-simulated|0|tutorial"
         game_record.save()
         # The value
         state_machine = TutorialGameState(room_id, tutorial_name, game_record, realtime)

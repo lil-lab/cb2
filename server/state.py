@@ -9,14 +9,14 @@ from datetime import datetime, timedelta
 from queue import Queue
 from typing import List
 
+import orjson
+
 import server.config.config as config
 import server.google_experience as google_experience
 import server.leaderboard as leaderboard
 import server.map_utils as map_utils
 import server.mturk_experience as mturk_experience
-import server.schemas.cards as cards_db
 import server.schemas.game as game_db
-import server.schemas.map as map_db
 from server.actor import Actor
 from server.assets import AssetId
 from server.card import Card, CardSelectAction, SetCompletionActions
@@ -30,12 +30,14 @@ from server.messages import (
     objective,
     state_sync,
 )
-from server.messages.action import ActionType, Color
+from server.messages.action import Action, ActionType, Color
 from server.messages.map_update import MapUpdate
-from server.messages.prop import Prop
+from server.messages.prop import Prop, PropUpdate
 from server.messages.rooms import Role
 from server.messages.state_sync import StateMachineTick
 from server.messages.turn_state import GameOverMessage, TurnState, TurnUpdate
+from server.schemas.event import Event, EventOrigin, EventType
+from server.schemas.util import InitialState
 from server.util import CountDownTimer
 
 LEADER_MOVES_PER_TURN = 5
@@ -84,61 +86,70 @@ def cumulative_turns_added(score):
 class State(object):
     @classmethod
     def InitializeFromExistingState(
-        cls, room_id, instruction_uuid: str = "", realtime_actions: bool = False
+        cls, room_id, event_uuid: str = "", realtime_actions: bool = False
     ):
-        """Initialize the game from a given instruction.
+        """Initialize the game from a given event.
 
         Returns: (state_machine: State, failure_reason: str = "")
 
         If return value state_machine is none, the reason for failure is in failure_reason.
         """
-        instruction_query = (
-            game_db.Instruction.select()
-            .join(game_db.Game)
-            .where(game_db.Instruction.uuid == instruction_uuid)
+        event_query = (
+            Event.select().join(game_db.Game).where(Event.id == event_uuid).limit(1)
         )
-        if instruction_query.count() != 1:
+        if event_query.count() != 1:
             return (
                 None,
-                f"Single instruction {instruction_uuid} not found. ({instruction_query.count()} found)",
+                f"1 Event {event_uuid} not found. ({event_query.count()} found)",
             )
-        instruction_record = instruction_query.get()
-        game_record = instruction_record.game
-        game_db.InstructionTurnActive(instruction_record)
-        if len(instruction_record.moves) != 0:
-            map_time = instruction_record.moves[0].server_time
-            map = (
-                map_db.MapUpdate.select()
-                .where(
-                    map_db.MapUpdate.game == instruction_record.game,
-                    map_db.MapUpdate.time <= map_time,
-                )
-                .order_by(map_db.MapUpdate.time.desc())
-                .get()
-            )
-        else:
-            # Hacky, for now just use map before instruction received. Several queued instructions in the meantime could have changed the map.
-            logger.warn(
-                f"Map reconstruction might not be accurate. Instruction had no moves, so exact timing of instruction activation unknown."
-            )
-            map = (
-                map_db.MapUpdate.select()
-                .where(
-                    map_db.MapUpdate.game == instruction_record.game,
-                    map_db.MapUpdate.time <= instruction_record.time,
-                )
-                .order_by(map_db.MapUpdate.time)
-                .get()
-            )
+        event = event_query.get()
+        game_record = event.game
 
-        turn_record_query = (
-            game_db.Turn.select()
-            .where(
-                game_db.Turn.game == game_record,
-                game_db.Turn.time <= instruction_record.time,
-            )
-            .order_by(game_db.Turn.time.desc())
+        game_events = (
+            Event.select()
+            .where(Event.game == game_record, Event.server_time <= event.server_time)
+            .order_by(Event.server_time)
         )
+
+        map_event = game_events.where(Event.type == EventType.MAP_UPDATE).get()
+        map_update = MapUpdate.from_json(map_event.data)
+
+        prop_event = game_events.where(Event.type == EventType.PROP_UPDATE).get()
+        prop_update = PropUpdate.from_json(prop_event.data)
+        cards = [Card.FromProp(prop) for prop in prop_update.props]
+        cards_by_loc = {}
+        for card in cards:
+            cards_by_loc[card.location] = card
+
+        card_events = game_events.where(
+            Event.type
+            << [EventType.CARD_SET, EventType.CARD_SPAWN, EventType.CARD_SELECT]
+        ).order_by(Event.server_time)
+
+        # Integrate all cardset and card spawn events up to the given event, to get the current card state
+        for event in card_events:
+            if event.type == EventType.CARD_SET:
+                data = orjson.loads(event.data)
+                set_cards = [Card.from_dict(card) for card in data["cards"]]
+                # Clear cards that were in the set
+                for card in set_cards:
+                    cards_by_loc[card.location] = None
+            if event.type == EventType.CARD_SPAWN:
+                data = orjson.loads(event.data)
+                card = Card.from_dict(data)
+                cards_by_loc[card.location] = card
+            if event.type == EventType.CARD_SELECT:
+                card = Card.from_json(event.data)
+                cards_by_loc[card.location] = card
+
+        cards = cards_by_loc.values()
+        # Filter out None values
+        cards = [card for card in cards if card is not None]
+        logger.debug(f"Detected {len(cards)} cards in the game. at this point.")
+
+        turn_record_query = game_events.where(
+            Event.type << [EventType.TURN_STATE, EventType.START_OF_TURN]
+        ).order_by(Event.server_time.desc())
         if turn_record_query.count() == 0:
             # Initial turn.
             turn_record = TurnUpdate(
@@ -152,63 +163,79 @@ class State(object):
                 0,
             )
         else:
-            turn_record = (
-                game_db.Turn.select()
-                .where(
-                    game_db.Turn.game == game_record,
-                    game_db.Turn.time <= instruction_record.time,
+            turn_record = turn_record_query.get()
+
+        turn_state = TurnState.from_json(turn_record.data)
+
+        # Integrate all instruction events up to the given event, to get the current instruction state
+        instruction_list = []
+        instruction_events = game_events.where(
+            Event.type
+            << [
+                EventType.INSTRUCTION_SENT,
+                EventType.INSTRUCTION_ACTIVATED,
+                EventType.INSTRUCTION_CANCELLED,
+                EventType.INSTRUCTION_DONE,
+            ]
+        ).order_by(Event.server_time)
+        for event in instruction_events:
+            if event.type == EventType.INSTRUCTION_SENT:
+                instruction_list.append(
+                    objective.ObjectiveMessage.from_json(event.data)
                 )
-                .order_by(game_db.Turn.time.desc())
-                .get()
-            )
+                logger.info(f"Sent: {instruction_list[-1].uuid}")
+            if event.type == EventType.INSTRUCTION_ACTIVATED:
+                parent_instruction_event = event.parent_event
+                instruction = objective.ObjectiveMessage.from_json(
+                    parent_instruction_event.data
+                )
+                logger.info(f"Activated: {instruction.uuid}")
+                if instruction_list[0].uuid != instruction.uuid:
+                    for instruction in instruction_list:
+                        logger.info(f"Instruction: {instruction.uuid}")
+                    return (
+                        None,
+                        f"Activated instruction {instruction.uuid} not found in instruction list.",
+                    )
+            if event.type == EventType.INSTRUCTION_CANCELLED:
+                parent_instruction_event = event.parent_event
+                instruction = objective.ObjectiveMessage.from_json(
+                    parent_instruction_event.data
+                )
+                if instruction_list[0].uuid != instruction.uuid:
+                    return (
+                        None,
+                        f"Cancelled instruction {event.data} not found in instruction list.",
+                    )
+                if len(instruction_list) > 0:
+                    logger.info(f"Cancelled: {instruction_list[0].uuid}")
+                    # Delete the instruction from the list.
+                    instruction_list = instruction_list[1:]
+            if event.type == EventType.INSTRUCTION_DONE:
+                parent_instruction_event = event.parent_event
+                instruction = objective.ObjectiveMessage.from_json(
+                    parent_instruction_event.data
+                )
+                logger.info(f"Done: {instruction_list[0].uuid}")
+                # Make sure this instruction is at the head of the list.
+                if instruction_list[0].uuid != instruction.uuid:
+                    return (
+                        None,
+                        f"Done instruction {event.data} not found in instruction list.",
+                    )
+                # Delete the instruction from the list.
+                instruction_list = instruction_list[1:]
 
-        last_set = (
-            cards_db.CardSets.select()
-            .join(game_db.Move)
-            .where(
-                cards_db.CardSets.game == game_record,
-                cards_db.CardSets.move.server_time <= instruction_record.time,
+        initial_state_event = game_events.where(
+            Event.type == EventType.INITIAL_STATE,
+        )
+        if initial_state_event.count() != 1:
+            return (
+                None,
+                f"Single initial state event not found. ({initial_state_event.count()} found)",
             )
-            .order_by(cards_db.CardSets.move.server_time.desc())
-        )
-        score = 0
-        if last_set.count() != 0:
-            score = last_set.get().score
-
-        turns_left = 6 + cumulative_turns_added(score) - turn_record.turn_number
-        logger.debug(
-            f"Turns left: {turns_left}. Start: 6, added: {cumulative_turns_added(score)}, current turn: {turn_record.turn_number}"
-        )
-        turn_state = TurnState(
-            Role.FOLLOWER,
-            10,  # moves.
-            turns_left,
-            datetime.utcnow()
-            + timedelta(seconds=FOLLOWER_SECONDS_PER_TURN),  # Time left.
-            datetime.utcnow(),  # Time started.
-            score,  # Sets collected.
-            score,  # Sets collected.
-            turns_left < 0,  # Game over.
-            turn_record.turn_number,
-        )
-        cards = []
-        if len(map.map_data.props) != 0:
-            logger.debug(
-                f"Loading cards from map, which contains {len(map.map_data.props)} cards."
-            )
-            cards = map.map_data.props
-        else:
-            logger.error(f"Map {map.id} has no props. Cannot recover cards.")
-
-        instruction = objective.ObjectiveMessage(
-            Role.LEADER, instruction_record.text, instruction_record.uuid, False, False
-        )
-        initial_state = (
-            game_db.InitialState.select()
-            .join(game_db.Game)
-            .where(game_db.Game.id == game_record.id)
-            .get()
-        )
+        initial_state_event = initial_state_event.get()
+        initial_state = InitialState.from_json(initial_state_event.data)
 
         leader = Actor(
             21,
@@ -227,34 +254,33 @@ class State(object):
             initial_state.follower_rotation_degrees,
         )
 
-        moves = (
-            game_db.Move.select()
-            .join(game_db.Instruction)
-            .where(
-                game_db.Move.game_id == game_record.id,
-                game_db.Move.instruction.time < instruction_record.time,
-            )
-        )
-        logger.debug(
-            f"Found {moves.count()} moves before instruction {instruction_record.uuid}"
-        )
+        moves = game_events.where(Event.type == EventType.ACTION)
+        logger.debug(f"Found {moves.count()} moves before event {event_uuid}")
         for move in moves:
-            if move.character_role == "Role.LEADER":
-                leader.add_action(move.action)
+            action = Action.from_json(move.data)
+            if action.action_type not in [
+                ActionType.INIT,
+                ActionType.INSTANT,
+                ActionType.ROTATE,
+                ActionType.TRANSLATE,
+            ]:
+                continue
+            if move.origin == EventOrigin.LEADER:
+                leader.add_action(action)
                 leader.step()
-            elif move.character_role == "Role.FOLLOWER":
-                follower.add_action(move.action)
+            elif move.origin == EventOrigin.FOLLOWER:
+                follower.add_action(action)
                 follower.step()
             else:
-                return None, f"Unknown character role {move.character_role}"
+                return None, f"Unknown event origin: {move.origin}"
         s = State(
             room_id,
             None,
             True,
-            map.map_data,
-            cards,
+            map_update,
+            [card.prop() for card in cards],
             turn_state,
-            [instruction],
+            instruction_list,
             [leader, follower],
             realtime_actions=realtime_actions,
             log_to_db=False,
@@ -278,6 +304,7 @@ class State(object):
         self._instructions_stale = {}
         self._turn_complete_queue = deque()
         self._instruction_complete_queue = deque()
+        self._live_feedback_queue = deque()
         self._preloaded_actors = {}
         for actor in actors:
             asset_id = (
@@ -316,8 +343,12 @@ class State(object):
         # (only if an event occurred that loop).
         self._iter = 0
 
+        self._initialized = False
+
         # Maps from actor_id (prop id) to actor object (see definition below).
         self._actors = {}
+        self._leader = None
+        self._follower = None
         self._role_history = (
             {}
         )  # Map from actor_id to role. Preserved after free_actor().
@@ -338,6 +369,7 @@ class State(object):
             False  # True if an instruction was added since the last iteration.
         )
         self._instruction_complete_queue = deque()
+        self._live_feedback_queue = deque()
 
         self._map_stale = {}  # Maps from player_id -> bool if their map is stale.
         self._map_update_count = 0
@@ -353,6 +385,8 @@ class State(object):
         self._turn_history = {}
 
         self._preloaded_actors = {}
+
+        self._last_card_step_actor = None
 
         self._turn_state = None
 
@@ -421,12 +455,10 @@ class State(object):
             else timedelta(seconds=FOLLOWER_SECONDS_PER_TURN)
         )
 
-    def send_turn_state(self, turn_state):
+    def send_turn_state(self, turn_state, reason=""):
         # Avoid unnecessary database writes.
         if self._turn_state == turn_state:
             return
-        # Record a copy of the current turn state.
-        self._game_recorder.record_turn_state(turn_state)
         self._turn_state = turn_state
         for actor_id in self._actors:
             if not actor_id in self._turn_history:
@@ -489,16 +521,27 @@ class State(object):
 
     def start(self):
         self._start_time = datetime.utcnow()
-        self._game_recorder.initial_state(
-            self._map_provider.map(),
-            self._map_provider.prop_update(),
-            self._turn_state,
-            self._actors,
-        )
 
     def update(self):
         logger.debug("update()")
         send_tick = False
+
+        if not self._initialized:
+            if self._leader is not None and self._follower is not None:
+                self._game_recorder.record_initial_state(
+                    self._iter,
+                    self._map_provider.map(),
+                    self._map_provider.prop_update(),
+                    self._turn_state,
+                    self._leader,
+                    self._follower,
+                )
+                self._game_recorder.record_start_of_turn(
+                    self._turn_state, "StartOfGame"
+                )
+                self._initialized = True
+            else:
+                return
 
         # Have we received an instruction since the last iteration?
         if self._instruction_added:
@@ -512,14 +555,14 @@ class State(object):
             send_tick = True
 
         if datetime.utcnow() >= self._turn_state.turn_end:
-            self.update_turn()
+            self.update_turn(end_reason="RanOutOfTime")
             logger.debug(f"Turn timed out.")
             send_tick = True
 
         # Handle actor actions.
         logger.debug(f"Actors: {len(self._actors)}")
         for actor_id in self._actors:
-            logger.debug("Actor: ()")
+            logger.debug("fActor: ()")
             actor = self._actors[actor_id]
             while actor.has_actions():
                 proposed_action = actor.peek()
@@ -554,8 +597,21 @@ class State(object):
                     or (not actor.is_realtime)
                     or actor.peek_action_done()
                 ):
-                    self._game_recorder.record_move(actor, proposed_action)
+                    position_before = actor.location()
+                    heading_before = actor.heading_degrees()
                     actor.step()
+                    active_instruction = None
+                    if (actor.role() == Role.FOLLOWER) and (
+                        len(self._instructions) > 0
+                    ):
+                        active_instruction = self._instructions[0]
+                    self._game_recorder.record_move(
+                        actor,
+                        proposed_action,
+                        active_instruction,
+                        position_before,
+                        heading_before,
+                    )
                     self.record_action(proposed_action)
                     color = (
                         Color(0, 0, 1, 1)
@@ -606,6 +662,24 @@ class State(object):
             logger.debug(f"instruction complete tick.")
             send_tick = True
 
+        while len(self._live_feedback_queue) > 0:
+            (id, feedback) = self._live_feedback_queue.popleft()
+            for actor_id in self._actors:
+                self._live_feedback[actor_id] = feedback.signal
+            # Find the follower. TODO(sharf): cleanup code like this in the file...
+            follower = None
+            for actor_id in self._actors:
+                if self._actors[actor_id].role() == Role.FOLLOWER:
+                    follower = self._actors[actor_id]
+                    break
+            send_tick = True
+            active_instruction = None
+            if len(self._instructions) > 0:
+                active_instruction = self._instructions[0]
+            self._game_recorder.record_live_feedback(
+                feedback, follower, active_instruction
+            )
+
         # If the follower currently has no instructions, end their turn.
         if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
             if self._realtime_actions:
@@ -646,6 +720,13 @@ class State(object):
                 card_select_action = CardSelectAction(card.id, True, Color(1, 0, 0, 1))
                 self._map_provider.set_color(card.id, Color(1, 0, 0, 1))
                 self.record_action(card_select_action)
+                # Find the actor that selected this card.
+                stepping_actor = None
+                for actor_id in self._actors:
+                    if self._actors[actor_id].location() == card.location:
+                        stepping_actor = self._actors[actor_id]
+                        break
+                self._game_recorder.record_card_selection(stepping_actor, card)
 
         if (
             not self._map_provider.selected_cards_collide()
@@ -678,11 +759,16 @@ class State(object):
                 self._turn_state.turn_number,
             )
             self.send_turn_state(new_turn_state)
-            self._game_recorder.record_card_set()
+            self._game_recorder.record_card_set(
+                self._last_card_step_actor, selected_cards, self._turn_state.score
+            )
+            self._game_recorder.record_turn_state(new_turn_state, "ScoredSet")
             # Add 3 new cards before clearing selected cards. This prevents
             # us from accidentally spawning cards in the same location as
             # the previous 3, which is confusing to the user.
-            self._map_provider.add_random_unique_set()
+            new_cards = self._map_provider.add_random_unique_set()
+            for card in new_cards:
+                self._game_recorder.record_card_spawn(card)
             # Clear card state and remove the cards in the winning set.
             logger.debug("Clearing selected cards")
             for card in selected_cards:
@@ -690,6 +776,9 @@ class State(object):
                 actions = SetCompletionActions(card.id)
                 for action in actions:
                     self.record_action(action)
+                    self._game_recorder.record_action(
+                        action, "select", card.location, card.rotation_degrees
+                    )
                 self._map_provider.remove_card(card.id)
 
         if cards_changed:
@@ -716,6 +805,7 @@ class State(object):
         # If any state transitions occurred which prompt a tick, send one.
         if send_tick:
             self._iter = (self._iter + 1) % 2**32
+            self._game_recorder.record_tick(self._iter)
             logger.debug(
                 f"============================================== Sending tick {self._iter}"
             )
@@ -778,9 +868,11 @@ class State(object):
             next_role = Role.LEADER
             turn_skipped = True
         moves_remaining = max(self._turn_state.moves_remaining - 1, 0)
+        previous_moves_remaining = moves_remaining
         turns_left = self._turn_state.turns_left
         turn_end = self._turn_state.turn_end
         turn_number = self._turn_state.turn_number
+        end_of_turn = False
         if role_switch:
             # This is a mitigation to the invisible cards glitch. Update cards on role switches.
             self._prop_update = self._map_provider.prop_update()
@@ -793,9 +885,6 @@ class State(object):
             if end_of_turn:
                 turns_left -= 1
                 turn_number += 1
-                self._game_recorder.record_end_of_turn(
-                    force_role_switch, end_reason, turn_skipped
-                )
 
         turn_update = TurnUpdate(
             next_role,
@@ -808,6 +897,18 @@ class State(object):
             turn_number,
         )
         self.send_turn_state(turn_update)
+
+        if end_of_turn:
+            self._game_recorder.record_start_of_turn(
+                self._turn_state,
+                end_reason,
+                turn_skipped,
+                previous_moves_remaining == 0,
+                len(self._instructions) == 0,
+            )
+        elif role_switch:
+            # Record a copy of the current turn state.
+            self._game_recorder.record_turn_state(self._turn_state, "RoleSwitch")
 
     def moves_per_turn(self, role):
         return LEADER_MOVES_PER_TURN if role == Role.LEADER else FOLLOWER_MOVES_PER_TURN
@@ -836,7 +937,8 @@ class State(object):
             self._map_provider.set_color(stepped_on_card.id, color)
             card_select_action = CardSelectAction(stepped_on_card.id, selected, color)
             self.record_action(card_select_action)
-            self._game_recorder.record_card_selection(stepped_on_card)
+            self._game_recorder.record_card_selection(actor, stepped_on_card)
+            self._last_card_step_actor = actor
 
     def drain_messages(self, id, messages):
         for message in messages:
@@ -894,7 +996,9 @@ class State(object):
             return
         # TODO: Make UUID and non-UUID'd objectives separate message types.
         objective.uuid = uuid.uuid4().hex
-        self._game_recorder.record_instruction(objective)
+        self._game_recorder.record_instruction_sent(objective)
+        if len(self._instructions) == 0:
+            self._game_recorder.record_instruction_activated(objective)
         self._instructions.append(objective)
         self._instruction_added = True
         for actor_id in self._actors:
@@ -918,15 +1022,7 @@ class State(object):
         if self._turn_state.turn != Role.FOLLOWER:
             logger.warn(f"Warning, live feedback received during the leader's turn.")
             return
-        for actor_id in self._actors:
-            self._live_feedback[actor_id] = feedback.signal
-        # Find the follower.
-        follower = None
-        for actor_id in self._actors:
-            if self._actors[actor_id].role() == Role.FOLLOWER:
-                follower = self._actors[actor_id]
-                break
-        self._game_recorder.record_live_feedback(feedback, follower)
+        self._live_feedback_queue.append((id, feedback))
 
     def _drain_turn_complete(self, id, turn_complete):
         if self._actors[id].role() != self._turn_state.turn:
@@ -972,16 +1068,21 @@ class State(object):
         while len(self._instructions) > 0:
             instruction = self._instructions.popleft()
             instruction.cancelled = True
+            self._game_recorder.record_instruction_cancelled(instruction)
             self._instruction_history.append(instruction)
 
         for actor_id in self._actors:
             self._instructions_stale[actor_id] = True
-        self._game_recorder.record_instruction_cancellation()
 
     def create_actor(self, role):
+        logger.info(f"create_actor() Role: {role}")
         if role in self._preloaded_actors:
             self._actors_added = True
             actor = self._preloaded_actors[role]
+            if role == Role.LEADER:
+                self._leader = actor
+            if role == Role.FOLLOWER:
+                self._follower = actor
             del self._preloaded_actors[role]
             self._actors[actor.actor_id()] = actor
             self._action_history[actor.actor_id()] = []
@@ -1004,6 +1105,10 @@ class State(object):
             spawn_point,
             realtime=self._realtime_actions,
         )
+        if role == Role.LEADER:
+            self._leader = actor
+        if role == Role.FOLLOWER:
+            self._follower = actor
         self._role_history[actor.actor_id()] = role
         self._actors[actor.actor_id()] = actor
         self._action_history[actor.actor_id()] = []
@@ -1165,7 +1270,6 @@ class State(object):
         return None
 
     def _next_actions(self, actor_id):
-        self._actors[actor_id]
         if not actor_id in self._action_history:
             return []
         action_history = self._action_history[actor_id]
@@ -1191,7 +1295,6 @@ class State(object):
         if self._actors[actor_id].role() == Role.LEADER:
             return list(self._instruction_history) + list(self._instructions)
 
-        list(self._instruction_history) + list(self._instructions)
         follower_instructions = list(self._instruction_history)
         # Also add the active instruction. Followers can see that too.
         if len(self._instructions) > 0:
@@ -1214,8 +1317,6 @@ class State(object):
                 map_update, self._actors[actor_id]
             )
 
-        self._game_recorder.record_map_update(map_update)
-
         # Send the latest map and mark as fresh for this player.
         self._map_stale[actor_id] = False
         return map_update
@@ -1228,9 +1329,6 @@ class State(object):
             return None
 
         prop_update = self._prop_update
-
-        # Record the prop update to the database.
-        self._game_recorder.record_prop_update(prop_update)
 
         self._prop_stale[actor_id] = False
         return prop_update
@@ -1331,8 +1429,8 @@ class State(object):
         active_instruction = self._instructions.popleft()
         active_instruction.completed = True
         self._instruction_history.append(active_instruction)
+        self._game_recorder.record_instruction_complete(objective_complete)
+        if len(self._instructions) > 0:
+            self._game_recorder.record_instruction_activated(self._instructions[0])
         for actor_id in self._actors:
             self._instructions_stale[actor_id] = True
-        self._game_recorder.record_instruction_complete(
-            objective_complete, actor=self._actors[id]
-        )

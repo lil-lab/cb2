@@ -10,6 +10,15 @@
 </body>
 <script>
 $(function () {
+    // Resize $("#grid") to 95% of the window height.
+    $("#grid").height($(window).height() * 0.95);
+
+    // On window resize, resize the grid and status monitor.
+    $(window).resize(function() {
+      $("#grid").height($(window).height() * 0.95);
+    });
+
+
     $('#grid').w2grid({
         name: 'grid',
         header: 'List of Games',

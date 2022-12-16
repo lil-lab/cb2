@@ -29,6 +29,7 @@ import server.db_tools.db_utils as db_utils
 import server.leaderboard as leaderboard
 import server.schemas as schemas
 import server.schemas.defaults as defaults
+import server.schemas.event as event_db
 import server.schemas.game as game_db
 import server.schemas.mturk as mturk
 from server.config.config import Config, GlobalConfig, InitGlobalConfig
@@ -184,6 +185,25 @@ async def Js(request):
     if not request.match_info.get("filename"):
         return web.HTTPNotFound()
     return web.FileResponse(f"server/www/js/{request.match_info['filename']}")
+
+
+def JsonFromEvent(event: event_db.Event):
+    # For convenience, convert timestamps to US eastern time.
+    NYC = tz.gettz("America/New_York")
+    return {
+        "id": event.id.hex,
+        "time": str(event.server_time.replace(tzinfo=tz.tzutc()).astimezone(NYC)),
+        "turn_number": event.turn_number,
+        "tick": event.tick,
+        "type": event_db.EventType(event.type).name,
+        "role": event.role,
+        "origin": event.origin,
+        "short_code": event.short_code,
+        "location": str(event.location),
+        "orientation": event.orientation,
+        "data": event.data,
+        "parent": event.parent_event.id.hex if event.parent_event is not None else None,
+    }
 
 
 def LobbyStatus(player_lobby):
@@ -699,84 +719,85 @@ async def Stats(request):
 @routes.get("/data/turns/{game_id}")
 async def GameData(request):
     game_id = request.match_info.get("game_id")
-    game = (
-        game_db.Game.select()
-        .join(game_db.Turn, join_type=peewee.JOIN.LEFT_OUTER)
-        .where(game_db.Game.id == game_id)
-        .get()
+    game_turn_events = event_db.Event.select().where(
+        event_db.Event.game == game_id,
+        event_db.Event.type == event_db.EventType.START_OF_TURN,
     )
     turns = []
-    # For convenience, convert timestamps to US eastern time.
-    NYC = tz.gettz("America/New_York")
-    for turn in game.turns:
-        turns.append(
-            {
-                "id": turn.id,
-                "number": turn.turn_number,
-                "time": str(turn.time.replace(tzinfo=tz.tzutc()).astimezone(NYC)),
-                "notes": turn.notes,
-                "end_method": turn.end_method,
-                "role": turn.role,
-            }
-        )
+    for event in game_turn_events:
+        turns.append(JsonFromEvent(event))
     return web.json_response(turns)
 
 
-@routes.get("/data/instructions/{turn_id}")
-async def GameData(request):
-    turn_id = request.match_info.get("turn_id")
-    turn = (
-        game_db.Turn.select().join(game_db.Game).where(game_db.Turn.id == turn_id).get()
+@routes.get("/data/events/{game_id}")
+async def EventData(request):
+    """HTTP endpoint to fetch all events for a particular game."""
+    game_id = request.match_info.get("game_id")
+    events = (
+        event_db.Event.select()
+        .where(event_db.Event.game == game_id)
+        .order_by(event_db.Event.server_time)
     )
-    game = turn.game
-    instructions = (
-        game_db.Instruction.select()
-        .join(game_db.Game, join_type=peewee.JOIN.LEFT_OUTER)
+    json_events = [JsonFromEvent(event) for event in events]
+    return web.json_response(json_events)
+
+
+@routes.get("/data/instructions/{game_id}")
+async def InstructionData(request):
+    """HTTP endpoint to fetch all instructions for a particular game."""
+    game_id = request.match_info.get("game_id")
+    events = (
+        event_db.Event.select()
         .where(
-            game_db.Instruction.turn_issued == turn.turn_number,
-            game_db.Instruction.game == game,
+            event_db.Event.game == game_id,
+            event_db.Event.type == event_db.EventType.INSTRUCTION_SENT,
         )
-        .order_by(game_db.Instruction.turn_issued)
+        .order_by(event_db.Event.server_time)
     )
-    NYC = tz.gettz("America/New_York")
-    json_instructions = []
-    for instruction in instructions:
-        json_instructions.append(
-            {
-                "instruction_number": instruction.instruction_number,
-                "turn_issued": instruction.turn_issued,
-                "uuid": instruction.uuid,
-                "time": str(
-                    instruction.time.replace(tzinfo=tz.tzutc()).astimezone(NYC)
-                ),
-                "turn_completed": instruction.turn_completed,
-                "text": instruction.text,
-            }
-        )
-    return web.json_response(json_instructions)
+    json_events = [JsonFromEvent(event) for event in events]
+    return web.json_response(json_events)
 
 
 @routes.get("/data/game_live_feedback/{game_id}")
 async def GetGameLiveFeedback(request):
+    """HTTP endpoint to fetch all live feedback for a particular game."""
     game_id = request.match_info.get("game_id")
+
+    game_events = (
+        event_db.Event.select()
+        .where(event_db.Event.game == game_id)
+        .join(event_db.Event)
+    )
+
     # Fetch all instructions from this game. Then, check if at least 75% of them have live feedback.
-    instructions = (
-        game_db.Instruction.select()
-        .join(game_db.Game, join_type=peewee.JOIN.LEFT_OUTER)
-        .where(game_db.Instruction.game == game_id)
+    instructions = game_events.where(
+        event_db.Event.type == event_db.EventType.INSTRUCTION_SENT
     )
     if len(instructions) == 0:
-        return web.json_response(0)
+        return web.json_response(
+            {
+                "game_id": game_id,
+                "total_instructions": 0,
+                "total_live_feedback": 0,
+                "percent": 0,
+            }
+        )
 
     # Now fetch all live feedback for this game.
-    live_feedback = (
-        game_db.LiveFeedback.select()
-        .join(game_db.Instruction, join_type=peewee.JOIN.LEFT_OUTER)
-        .where(game_db.LiveFeedback.game_id == game_id)
+    live_feedback = game_events.where(
+        event_db.Event.type == event_db.EventType.LIVE_FEEDBACK
     )
 
-    instruction_uuids = set([instruction.uuid for instruction in instructions])
-    live_feedback_uuids = set([feedback.instruction.uuid for feedback in live_feedback])
+    # Now, check if at least 75% of the instructions have live feedback.
+    live_feedback_uuids = []
+    for event in live_feedback:
+        move_event = event.parent_event
+        instruction_event = move_event.parent_event
+        instruction_uuid = instruction_event.short_code
+        live_feedback_uuids.append(instruction_uuid)
+
+    instruction_uuids = set([event.short_code for event in instructions])
+    live_feedback_uuids = set(live_feedback_uuids)
 
     total_instructions = len(instruction_uuids)
     total_live_feedback = len(live_feedback_uuids)
@@ -790,12 +811,12 @@ async def GetGameLiveFeedback(request):
 
 
 @routes.get("/data/instruction/{i_uuid}")
-async def GameData(request):
+async def InstructionFromUuid(request):
+    """HTTP endpoint to fetch an instruction from its UUID. Note that this is the in-game state machine UUID, not the database UUID."""
     instruction_uuid = request.match_info.get("i_uuid")
     instruction = (
-        game_db.Instruction.select()
-        .join(game_db.Game)
-        .where(game_db.Instruction.uuid == instruction_uuid)
+        event_db.Event.select()
+        .where(event_db.Event.short_code == instruction_uuid)
         .get()
     )
     tz.gettz("America/New_York")
@@ -807,74 +828,32 @@ async def GameData(request):
     )
 
 
-@routes.get("/data/live_feedback/{i_uuid}")
-async def GameData(request):
-    instruction_uuid = request.match_info.get("i_uuid")
-    instruction = (
-        game_db.Instruction.select()
-        .join(game_db.Game)
-        .where(game_db.Instruction.uuid == instruction_uuid)
-        .get()
-    )
-    json_responses = []
-    for feedback in instruction.feedbacks:
-        json_responses.append(feedback.dict())
-    return web.json_response(
-        json_responses,
-        dumps=lambda x: orjson.dumps(
-            x, option=orjson.OPT_NAIVE_UTC | orjson.OPT_INDENT_2
-        ).decode("utf-8"),
-    )
-
-
 @routes.get("/data/moves_for_instruction/{i_uuid}")
-async def GameData(request):
+async def MovesForInstruction(request):
     instruction_uuid = request.match_info.get("i_uuid")
     instruction = (
-        game_db.Instruction.select()
-        .join(game_db.Game)
-        .where(game_db.Instruction.uuid == instruction_uuid)
+        event_db.Event.select()
+        .where(
+            event_db.Event.type == event_db.EventType.INSTRUCTION_SENT,
+            event_db.Event.short_code == instruction_uuid,
+        )
         .get()
     )
-    json_responses = []
-    for move in instruction.moves:
-        json_responses.append(move.dict())
+    event_uuid = instruction.id
+    # Select moves with parent_event = event_uuid
+    moves = (
+        event_db.Event.select()
+        .where(event_db.Event.parent_event == event_uuid)
+        .order_by(event_db.Event.server_time)
+    )
+
+    json_responses = [JsonFromEvent(event) for event in moves]
     return web.json_response(
         json_responses,
         dumps=lambda x: orjson.dumps(
             x, option=orjson.OPT_NAIVE_UTC | orjson.OPT_INDENT_2
         ).decode("utf-8"),
     )
-
-
-@routes.get("/data/moves/{turn_id}")
-async def GameData(request):
-    turn_id = request.match_info.get("turn_id")
-    turn = (
-        game_db.Turn.select().join(game_db.Game).where(game_db.Turn.id == turn_id).get()
-    )
-    game = turn.game
-    moves = (
-        game_db.Move.select()
-        .join(game_db.Instruction, join_type=peewee.JOIN.LEFT_OUTER)
-        .join(game_db.Game, join_type=peewee.JOIN.LEFT_OUTER)
-        .where(
-            game_db.Move.turn_number == turn.turn_number, game_db.Move.game == game.id
-        )
-        .order_by(game_db.Move.game_time)
-    )
-    json_moves = []
-    for move in moves:
-        json_moves.append(
-            {
-                "character_role": move.character_role,
-                "action_code": move.action_code,
-                "game_time": move.game_time,
-                "position_before": str(move.position_before),
-                "instruction": move.instruction.text if move.instruction else "",
-            }
-        )
-    return web.json_response(json_moves)
 
 
 @routes.get("/data/stats")
@@ -883,10 +862,13 @@ async def stats(request):
     post_data = request.query.get("request", None)
     try:
         post_data = json.loads(post_data)
-    except:
-        logger.info(f"Unable to parse JSON: {post_data}")
+    except Exception as e:
+        logger.info(f"Unable to parse JSON: {post_data}. Error: {e}")
     from_game_id = 0
-    to_game_id = max([game.id for game in games])
+    if len(games) > 0:
+        to_game_id = max([game.id for game in games])
+    else:
+        to_game_id = 0
     if post_data:
         from_game_id = post_data.get("from_game_id", 0)
         to_game_id = post_data.get("to_game_id", 0)
@@ -907,17 +889,25 @@ async def stats(request):
     instruction_move_counts = []
     vocab = set()
     for game in games:
-        for instruction in game.instructions:
-            instruction_move_counts.append(instruction.moves.count())
-            instructions.append(instruction.text)
-            words = instruction.text.split(" ")
-            for word in words:
-                vocab.add(word)
+        game_events = event_db.Event.select().where(event_db.Event.game == game.id)
+        instructions = game_events.where(
+            event_db.Event.type == event_db.EventType.INSTRUCTION_SENT
+        )
+        for event in instructions:
+            moves = game_events.where(
+                event_db.Event.type == event_db.EventType.ACTION,
+                event_db.Event.parent_event == event.id,
+            )
+            instruction_move_counts.append(moves.count())
+            instruction_text = orjson.loads(event.data)["text"]
+            instructions.append(instruction_text)
+            words = instruction_text.split(" ")
+            vocab.extend(words)
         duration = (game.end_time - game.start_time).total_seconds()
         score = game.score
         durations.append(duration)
         scores.append(score)
-        instruction_counts.append(game.instructions.count())
+        instruction_counts.append(instructions.count())
 
     instruction_word_count = [
         len(instruction.split(" ")) for instruction in instructions
@@ -1354,6 +1344,12 @@ def CreateDataDirectory(config):
     data_prefix.mkdir(parents=False, exist_ok=True)
 
 
+def CreateExceptionDirectory(config):
+    # A directory to store exception logs. One file per exception.
+    exception_dir = config.exception_directory()
+    exception_dir.mkdir(parents=False, exist_ok=True)
+
+
 async def profiler():
     last_print = datetime.now()
     while True:
@@ -1383,6 +1379,7 @@ def main(config_filepath="server/config/server-config.yaml"):
 
     InitializeLobbies(GlobalConfig().lobbies)
     CreateDataDirectory(GlobalConfig())
+    CreateExceptionDirectory(GlobalConfig())
     InitGameRecording(GlobalConfig())
 
     # yappi.set_clock_type("cpu") # Use set_clock_type("wall") for wall time

@@ -15,7 +15,8 @@ from server.messages.google_auth import GoogleAuthConfirmation
 from server.messages.live_feedback import LiveFeedback
 from server.messages.map_update import MapUpdate
 from server.messages.objective import ObjectiveMessage
-from server.messages.prop import PropUpdate
+from server.messages.prop import Prop, PropUpdate
+from server.messages.replay_messages import ReplayResponse
 from server.messages.rooms import RoomManagementResponse
 from server.messages.state_sync import StateMachineTick, StateSync
 from server.messages.turn_state import TurnState
@@ -37,6 +38,13 @@ class MessageType(Enum):
     STATE_MACHINE_TICK = 10
     GOOGLE_AUTH_CONFIRMATION = 11
     USER_INFO = 12
+    # Triggers a prop spawn on the client
+    PROP_SPAWN = 13
+    # Used for signaling that a card set has been collected. The indicated props
+    # will disappear on the client.
+    PROP_DESPAWN = 14
+    # Used for starting/stopping replays, relaying replay state.
+    REPLAY_RESPONSE = 15
 
 
 def ActionsFromServer(actions):
@@ -228,6 +236,73 @@ def UserInfoFromServer(user_info):
     )
 
 
+def PropSpawnFromServer(prop):
+    return MessageFromServer(
+        datetime.utcnow(),
+        MessageType.PROP_SPAWN,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        prop,
+    )
+
+
+def PropDespawnFromServer(props):
+    return MessageFromServer(
+        datetime.utcnow(),
+        MessageType.PROP_DESPAWN,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        props,
+    )
+
+
+def ReplayResponseFromServer(replay_response):
+    return MessageFromServer(
+        datetime.utcnow(),
+        MessageType.REPLAY_RESPONSE,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        replay_response,
+    )
+
+
+def ExcludeIfNone(value):
+    return value is None
+
+
 @dataclass(frozen=True)
 class MessageFromServer(DataClassJSONMixin):
     transmit_time: datetime = field(
@@ -252,3 +327,12 @@ class MessageFromServer(DataClassJSONMixin):
         GoogleAuthConfirmation
     ] = GoogleAuthConfirmation()
     user_info: Optional[UserInfo] = UserInfo()
+    prop_spawn: Optional[Prop] = field(
+        default=None, metadata=config(exclude=ExcludeIfNone)
+    )
+    prop_despawn: Optional[List[Prop]] = field(
+        default=None, metadata=config(exclude=ExcludeIfNone)
+    )
+    replay_response: Optional[ReplayResponse] = field(
+        default=None, metadata=config(exclude=ExcludeIfNone)
+    )
