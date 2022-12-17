@@ -73,7 +73,7 @@ class EventType(IntEnum):
     INSTRUCTION_DONE = 10
     INSTRUCTION_CANCELLED = 11
     MOVE = 12
-    LIVE_FEEDBACK = 14
+    LIVE_FEEDBACK = 13
 
 
 class Event(BaseModel):

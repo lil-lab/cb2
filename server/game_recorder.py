@@ -37,6 +37,16 @@ def EventFromStateSync(game, tick: int, state_sync):
     )
 
 
+def EventFromPropUpdate(game, tick: int, prop_update):
+    return Event(
+        game=game,
+        type=EventType.PROP_UPDATE,
+        tick=tick,
+        origin=EventOrigin.SERVER,
+        data=prop_update.to_json(),
+    )
+
+
 def EventFromTurnState(game, tick: int, origin: EventOrigin, turn_state):
     return Event(
         game=game,
@@ -181,7 +191,6 @@ class GameRecorder(object):
         self._last_turn_state = None
         self._instruction_number = 1
         self._instruction_queue = Queue()
-        self._map_update_count = 1
 
         # Create an entry in the Game database table.
         self._game_record = game_record
@@ -226,22 +235,17 @@ class GameRecorder(object):
         )
         initial_state.save()
 
-    def record_map_update(self, map_update):
+    def record_map_update(self, tick, map_update):
         if self._disabled:
             return
-        # Record the map update to the database.
-        map_record = schemas.map.MapUpdate()
-        map_record.world_seed = self._game_record.world_seed
-        map_record.map_data = map_update
-        map_record.game = self._game_record
-        map_record.map_update_number = self._map_update_count
-        self._map_update_count += 1
-        map_record.save()
+        event = EventFromMapUpdate(self._game_record, tick, map_update)
+        event.save()
 
     def record_prop_update(self, prop_update):
         if self._disabled:
             return
         # Record the prop update to the database.
+        EventFromPropUpdate(self._game_record, tick, prop_update)
         prop_record = schemas.prop.PropUpdate()
         prop_record.prop_data = prop_update
         prop_record.game = self._game_record
