@@ -1,3 +1,5 @@
+import pickle
+
 import fire
 import numpy as np
 from autocorrect import Speller
@@ -17,7 +19,7 @@ from server.schemas.mturk import Worker
 
 SECRET_LEADER_ID = 3
 SECRET_FOLLOWER_ID = 4
-ACTIVE_MOVE_WINDOW = 0.25
+DISCOUNTING_START_ID = 396
 
 COMMANDS = [
     "game_counts",  # Prints out the number of human-human and human-AI games
@@ -35,6 +37,11 @@ COMMANDS = [
     "num_invalid_games",  # Prints the number and type of invalid games
     "leader_feedback_rates",  # Prints information about individual leaders' feedback
     "execution_length_cap",  # Prints info about what percentage
+    "avg_follower_earning",  # Print info about payment/hr for followers
+    "avg_leader_earning",  # Print info about payment/hr for leaders
+    "discounted_games",  # Get and save list of discounted games (for leaders)
+    "zero_score_games",  # Report the number and proportion of zero scoring games
+    "save_player_bonuses",  # Save the bonuses each player earned
 ]
 
 
@@ -112,6 +119,7 @@ def ReportGameTypes(ids):
 
     # Iterate over each mturk game in the set of ids. Update counter based on game type
     for i in ids:
+        print(i)
         game = Game.select().where(Game.id == i).get()
         if filter_game(game):
             continue
@@ -127,7 +135,7 @@ def ReportGameTypes(ids):
     print(f"Overall game count: {num_human_human + num_human_AI}")
 
 
-def ReportFollowerQualificationSpeed(ids):
+def ReportFollowerQualificationSpeed(ids, hash_filepath):
     follower_to_stats = {}
 
     for i in ids:
@@ -150,13 +158,25 @@ def ReportFollowerQualificationSpeed(ids):
     print(f"There are {len(follower_to_stats)} followers")
     total_passed = 0
     req_games = 0
+    passed_follower = []
     for follower, stats in follower_to_stats.items():
         if stats["above_2"] == 2:
             total_passed += 1
             req_games += stats["total_games"]
+            passed_follower.append(follower)
     print(
         f"{total_passed} followers passed the training stage. On average, this took {req_games / total_passed} games"
     )
+
+    # Report the followers who passed in list form
+    if hash_filepath != "":
+        passed_hashes = []
+        for follower_id in passed_follower:
+            worker_entry = Worker.select().where(Worker.id == follower_id).get()
+            worker_hash = worker_entry.hashed_id
+            passed_hashes.append(worker_hash)
+        with open(hash_filepath, "wb") as f:
+            pickle.dump(passed_hashes, f)
 
 
 def ReportBasicStats(ids, game_type):
@@ -944,7 +964,7 @@ def report_overall_leader_feedback_percentage(leader_to_rates):
 
         overall_with = 0
         overall_count = 0
-        for with_feedback, total_in_game, _ in l_dict["rates"]:
+        for _, with_feedback, total_in_game, _ in l_dict["rates"]:
             overall_with += with_feedback
             overall_count += total_in_game
         if overall_count > 0 and overall_with / overall_count >= 0.75:
@@ -974,7 +994,7 @@ def report_leaders_who_maintained_bonus_under_current_scheme(leader_to_rates):
         over_2_games += 1
         bad_in_sequence = 0
         failed = False
-        for _, _, rate in l_dict["rates"]:
+        for _, _, _, rate in l_dict["rates"]:
             if rate < 0.75:
                 bad_in_sequence += 1
             else:
@@ -1021,6 +1041,7 @@ def get_leader_to_rates(ids):
                 with_feedback += 1
         leader_to_rates[leader]["rates"].append(
             (
+                game.id,
                 with_feedback,
                 len(active_instructions),
                 with_feedback / len(active_instructions),
@@ -1060,11 +1081,370 @@ def ReportExecutionLengthCap(ids):
     )
 
 
+def ReportAvgFollowerEarning(ids):
+    follower_to_earnings = get_follower_to_earnings(ids)
+    report_avg_earning_per_game(follower_to_earnings, "follower")
+    report_avg_earning_per_hour(follower_to_earnings, "follower")
+
+
+def get_follower_to_earnings(ids):
+    follower_to_earnings = {}
+    for i in ids:
+        game = Game.select().where(Game.id == i).get()
+        if filter_game(game) or game.follower_id is None:
+            continue
+        if game.number_turns <= 2:
+            continue
+
+        # Initialize stats for follower
+        follower_id = game.follower_id
+        if follower_id not in follower_to_earnings:
+            follower_to_earnings[follower_id] = {"money": [], "duration": []}
+
+        follower_to_earnings[follower_id]["money"].append(
+            compute_award(game.score, "follower")
+        )
+        follower_to_earnings[follower_id]["duration"].append(
+            time_to_hour(game.start_time, game.end_time)
+        )
+
+    return follower_to_earnings
+
+
+def compute_award(score, agent_type, discount=False, game_type="ai"):
+    score_to_bonus = [
+        0.15,
+        0.25,
+        0.25,
+        0.30,
+        0.30,
+        0.35,
+        0.35,
+        0.40,
+        0.40,
+        0.40,
+        0.40,
+        0.50,
+        0.50,
+        0.60,
+    ]
+    base_award = 0.30
+    total_bonus = 0.00
+
+    for i in range(score):
+        curr_idx = i if i < len(score_to_bonus) else len(score_to_bonus) - 1
+        curr_bonus = score_to_bonus[curr_idx]
+        total_bonus += curr_bonus
+
+    if agent_type == "leader":
+        total_bonus *= 1.1
+
+        if game_type == "ai":
+            total_bonus *= 1.70
+        elif game_type == "human":
+            total_bonus *= 1.50
+
+        if discount:
+            total_bonus *= 0.5
+        if game_type == "ai":
+            total_bonus += 0.2
+    else:
+        total_bonus *= 1.5
+
+    return base_award + total_bonus
+
+
+def compute_bonus(score, agent_type, discount=False, game_type="ai"):
+    score_to_bonus = [
+        0.15,
+        0.25,
+        0.25,
+        0.30,
+        0.30,
+        0.35,
+        0.35,
+        0.40,
+        0.40,
+        0.40,
+        0.40,
+        0.50,
+        0.50,
+        0.60,
+    ]
+    total_bonus = 0.00
+
+    for i in range(score):
+        curr_idx = i if i < len(score_to_bonus) else len(score_to_bonus) - 1
+        curr_bonus = score_to_bonus[curr_idx]
+        total_bonus += curr_bonus
+
+    if agent_type == "leader":
+        total_bonus *= 1.1
+
+        if game_type == "ai":
+            total_bonus *= 1.70
+        elif game_type == "human":
+            total_bonus *= 1.50
+
+        if discount:
+            total_bonus *= 0.5
+        if game_type == "ai":
+            total_bonus += 0.2
+    else:
+        total_bonus *= 1.5
+
+    return total_bonus
+
+
+def time_to_hour(start_time, end_time):
+    diff = end_time - start_time
+    return diff.seconds / 3600
+
+
+def report_avg_earning_per_game(earnings_dict, agent_type, filtering=""):
+    total_earning = 0
+    game_count = 0
+    worker_to_avg = {}
+
+    for worker_id, earnings in earnings_dict.items():
+        earnings_per_game = earnings["money"]
+        worker_earning = 0
+        worker_games = 0
+
+        for i in range(len(earnings_per_game)):
+            if filtering != "" and earnings["game_type"][i] != filtering:
+                continue
+
+            worker_earning += earnings_per_game[i]
+            worker_games += 1
+
+        if worker_games > 0:
+            worker_to_avg[worker_id] = worker_earning / worker_games
+        total_earning += worker_earning
+        game_count += worker_games
+
+    # Report the average earning per game
+    print(
+        f"Workers in the {agent_type} role gain ${total_earning / game_count} per game. Filtering applied: {filtering}"
+    )
+
+    # Report most and least successful workers
+    best_earning = -1
+    worst_earning = 1000
+    for worker, avg_earning in worker_to_avg.items():
+        if best_earning < avg_earning:
+            best_earning = avg_earning
+        if worst_earning > avg_earning:
+            worst_earning = avg_earning
+
+    print(
+        f"The most successful worker in the {agent_type} role earned an average of ${best_earning} while the worst earned ${worst_earning}. Filter applied: {filtering}"
+    )
+
+
+def report_avg_earning_per_hour(earnings_dict, agent_type, filtering=""):
+    total_earning = 0
+    time_spent = 0
+    worker_to_avg = {}
+
+    for worker_id, earnings in earnings_dict.items():
+        earnings_per_game = earnings["money"]
+        time_per_game = earnings["duration"]
+        worker_earning = 0
+        worker_time = 0
+
+        for i in range(len(earnings_per_game)):
+            if filtering != "" and earnings["game_type"][i] != filtering:
+                continue
+
+            worker_earning += earnings_per_game[i]
+            worker_time += time_per_game[i]
+
+        if worker_time > 0:
+            worker_to_avg[worker_id] = worker_earning / worker_time
+        total_earning += worker_earning
+        time_spent += worker_time
+
+    # Report the average earning per game
+    print(
+        f"Workers in the {agent_type} role gain ${total_earning / time_spent} per hour. Filtering applied: {filtering}"
+    )
+
+    # Report most and least successful workers
+    best_earning = -1
+    worst_earning = 1000
+    for worker, avg_earning in worker_to_avg.items():
+        if best_earning < avg_earning:
+            best_earning = avg_earning
+        if worst_earning > avg_earning:
+            worst_earning = avg_earning
+
+    print(
+        f"The most successful worker in the {agent_type} role earned an average of ${best_earning}/hr while the worst earned ${worst_earning}/hr. Filter applied: {filtering}"
+    )
+
+
+def ReportAvgLeaderEarning(ids, discounted_game_filepath):
+    leader_to_earnings = get_leader_to_earnings(ids, discounted_game_filepath)
+    report_avg_earning_per_game(leader_to_earnings, "leader")
+    report_avg_earning_per_hour(leader_to_earnings, "leader")
+
+    report_avg_earning_per_game(leader_to_earnings, "leader", filtering="ai")
+    report_avg_earning_per_hour(leader_to_earnings, "leader", filtering="ai")
+
+    report_avg_earning_per_game(leader_to_earnings, "leader", filtering="human")
+    report_avg_earning_per_hour(leader_to_earnings, "leader", filtering="human")
+
+
+def get_leader_to_earnings(ids, discounted_game_filepath):
+    discounted_games = None
+    if discounted_game_filepath != "":
+        with open(discounted_game_filepath, "rb") as f:
+            discounted_games = pickle.load(f)
+
+    leader_to_earnings = {}
+    for i in ids:
+        game = Game.select().where(Game.id == i).get()
+        if filter_game(game):
+            continue
+        if game.number_turns <= 2:
+            continue
+
+        # if game.score == 0:
+        # continue
+
+        # Initialize stats for leader
+        leader_id = game.leader_id
+        if leader_id not in leader_to_earnings:
+            leader_to_earnings[leader_id] = {
+                "money": [],
+                "duration": [],
+                "game_type": [],
+            }
+
+        # Check whether to discount current game
+        if discounted_games is None:
+            discount = False
+        else:
+            discount = game.id in discounted_games
+
+        game_type = "ai" if game.follower_id is None else "human"
+        leader_to_earnings[leader_id]["money"].append(
+            compute_award(game.score, "leader", discount, game_type=game_type)
+        )
+        leader_to_earnings[leader_id]["duration"].append(
+            time_to_hour(game.start_time, game.end_time)
+        )
+        leader_to_earnings[leader_id]["game_type"].append(game_type)
+
+    return leader_to_earnings
+
+
+def ReportDiscountedGames(ids, discounted_game_filepath):
+    leader_to_rates = get_leader_to_rates(ids)
+
+    # Find discounted games
+    game_count = 0
+    discounted_games = []
+    for leader, l_dict in leader_to_rates.items():
+        bad_games_in_a_row = 0
+        good_games_in_a_row = 0
+        discounted = False
+        for game_id, _, _, rate in l_dict["rates"]:
+            game_count += 1
+
+            if discounted:
+                discounted_games.append(game_id)
+            if rate < 0.75:
+                bad_games_in_a_row += 1
+                good_games_in_a_row = 0
+            else:
+                bad_games_in_a_row = 0
+                good_games_in_a_row += 1
+            if bad_games_in_a_row >= 2:
+                discounted = True
+            if good_games_in_a_row >= 2:
+                discounted = False
+
+    print(f"{len(discounted_games)} out of {game_count} games were discounted")
+    with open(discounted_game_filepath, "wb") as f:
+        pickle.dump(discounted_games, f)
+
+
+def ReportZeroScoringGames(ids, game_type):
+    num_games = 0
+    num_zero = 0
+
+    for i in ids:
+        game = Game.select().where(Game.id == i).get()
+        if filter_game(game):
+            continue
+        if game_type == "human" and game.follower_id is None:
+            continue
+        if game_type == "ai" and game.follower_id is not None:
+            continue
+
+        num_games += 1
+        num_zero += 1 if game.score == 0 else 0
+
+    print(
+        f"Human-{game_type}, {num_zero}/{num_games} games score 0, forming {num_zero/num_games*100}%"
+    )
+
+
+def SavePlayerBonuses(ids, discounted_game_filepath, bonus_record_filepath):
+    assert discounted_game_filepath != ""
+    assert bonus_record_filepath != ""
+    with open(discounted_game_filepath, "rb") as f:
+        discounted_games = pickle.load(f)
+
+    player_to_earnings = {}
+    for i in ids:
+        game = Game.select().where(Game.id == i).get()
+        if filter_game(game):
+            continue
+
+        # Initialize stats for the leader
+        leader_id = game.leader_id
+        leader_hash = Worker.select().where(Worker.id == leader_id).get().hashed_id
+        if leader_hash not in player_to_earnings:
+            player_to_earnings[leader_hash] = {"num_games": 0, "bonuses": 0}
+
+        # Add bonus for current game to leader
+        player_to_earnings[leader_hash]["num_games"] += 1
+        discount = game.id in discounted_games
+        game_type = "ai" if game.follower_id is None else "human"
+        player_to_earnings[leader_hash]["bonuses"] += compute_bonus(
+            game.score, "leader", discount, game_type=game_type
+        )
+
+        # Initialize stats for the follower
+        if game.follower_id is not None:
+            follower_id = game.follower_id
+            follower_hash = (
+                Worker.select().where(Worker.id == follower_id).get().hashed_id
+            )
+            if follower_hash not in player_to_earnings:
+                player_to_earnings[follower_hash] = {"num_games": 0, "bonuses": 0}
+
+            # Add bonus for current game to follower
+            player_to_earnings[follower_hash]["num_games"] += 1
+            player_to_earnings[follower_hash]["bonuses"] += compute_bonus(
+                game.score, "follower"
+            )
+
+    with open(bonus_record_filepath, "wb") as f:
+        pickle.dump(player_to_earnings, f)
+
+
 def main(
     command,
     to_id="",
     from_id="",
     id_file="",
+    hash_filepath="",
+    discounted_game_filepath="",
+    bonus_record_filepath="",
     config_filepath="server/config/server-config.yaml",
 ):
     if command == "help":
@@ -1084,7 +1464,7 @@ def main(
         ReportGameTypes(ids)
     elif command == "follower_qualification_speed":
         ids = get_list_of_ids(to_id, from_id, id_file)
-        ReportFollowerQualificationSpeed(ids)
+        ReportFollowerQualificationSpeed(ids, hash_filepath)
     elif command == "basic_stats":
         ids = get_list_of_ids(to_id, from_id, id_file)
         ReportBasicStats(ids, "ai")
@@ -1141,6 +1521,23 @@ def main(
     elif command == "execution_length_cap":
         ids = get_list_of_ids(to_id, from_id, id_file)
         ReportExecutionLengthCap(ids)
+    elif command == "avg_follower_earning":
+        ids = get_list_of_ids(to_id, from_id, id_file)
+        ReportAvgFollowerEarning(ids)
+    elif command == "avg_leader_earning":
+        ids = get_list_of_ids(to_id, from_id, id_file)
+        ReportAvgLeaderEarning(ids, discounted_game_filepath)
+    elif command == "discounted_games":
+        ids = get_list_of_ids(to_id, from_id, id_file)
+        ReportDiscountedGames(ids, discounted_game_filepath)
+    elif command == "zero_score_games":
+        ids = get_list_of_ids(to_id, from_id, id_file)
+        ReportZeroScoringGames(ids, "ai")
+        ReportZeroScoringGames(ids, "human")
+        ReportZeroScoringGames(ids, "overall")
+    elif command == "save_player_bonuses":
+        ids = get_list_of_ids(to_id, from_id, id_file)
+        SavePlayerBonuses(ids, discounted_game_filepath, bonus_record_filepath)
     else:
         PrintUsage()
 
