@@ -2,6 +2,7 @@ import asyncio
 import logging
 import pathlib
 import queue
+import tempfile
 from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import dataclass
@@ -16,6 +17,7 @@ from dataclasses_json import dataclass_json
 import server.messages.message_from_server as message_from_server
 import server.messages.message_to_server as message_to_server
 import server.schemas.game as game_db
+from server.config.config import GlobalConfig
 from server.lobby_consts import LobbyType
 from server.map_provider import CachedMapRetrieval
 from server.messages.logs import GameInfo
@@ -479,6 +481,41 @@ class Lobby(ABC):
         for room in rooms:
             if room.done() and not room.has_pending_messages():
                 logger.info(f"Deleting unused room: {room.name()}")
+                self.delete_room(room.id())
+            if room.has_exception():
+                logger.info(f"Room {room.name()} has an exception. Terminating game!")
+                # Grab the global config.
+                config = GlobalConfig()
+                exception_directory = config.exception_directory()
+
+                # If the exception directory exists, create a temporary file with the exception type, date, and time.
+                if exception_directory is not None:
+                    exception_file = tempfile.NamedTemporaryFile(
+                        mode="w",
+                        prefix=type(room.exception()).__name__
+                        + "_"
+                        + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                        + "_game_id_"
+                        + str(room.id())
+                        + "_",
+                        suffix=".txt",
+                        dir=exception_directory,
+                        delete=False,
+                    )
+                    exception_file.write(str(room.traceback()))
+                    exception_file.close()
+
+                # Close the room.
+                for socket in room.player_endpoints():
+                    if not socket.closed:
+                        leave_notice = LeaveRoomNotice(
+                            f"Game ended by server due to: {type(room.exception()).__name__}"
+                        )
+                        self._pending_room_management_responses[socket].put(
+                            RoomManagementResponse(
+                                RoomResponseType.LEAVE_NOTICE, None, None, leave_notice
+                            )
+                        )
                 self.delete_room(room.id())
             if room.game_time() > timedelta(hours=2):
                 logger.info(

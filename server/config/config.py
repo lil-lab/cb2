@@ -148,6 +148,9 @@ class Config(DataClassJSONMixin):
 
     google_oauth_client_id: str = ""
 
+    # Where exceptions are logged.
+    exception_prefix: str = "exceptions/"
+
     # Data path accessors that add the requisite data_prefix.
     def data_directory(self):
         return pathlib.Path(self.data_prefix).expanduser()
@@ -163,3 +166,6 @@ class Config(DataClassJSONMixin):
 
     def backup_database_path(self):
         return pathlib.Path(self.data_prefix, self.backup_db_path_suffix).expanduser()
+
+    def exception_directory(self):
+        return pathlib.Path(self.data_prefix, self.exception_prefix).expanduser()

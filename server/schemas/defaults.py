@@ -28,6 +28,7 @@ TABLES = [
     Leaderboard,
     Username,
     GoogleUser,
+    Event,
 ]
 
 

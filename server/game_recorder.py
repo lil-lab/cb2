@@ -17,13 +17,24 @@ from server.schemas.game import Event, EventOrigin, EventType
 logger = logging.getLogger(__name__)
 
 
+def JsonSerialize(x):
+    pretty_dumper = lambda x: orjson.dumps(
+        x,
+        option=orjson.OPT_NAIVE_UTC
+        | orjson.OPT_INDENT_2
+        | orjson.OPT_PASSTHROUGH_DATETIME,
+        default=datetime.isoformat,
+    ).decode("utf-8")
+    return pretty_dumper(x)
+
+
 def EventFromMapUpdate(game, tick: int, map_update):
     return Event(
         game=game,
         type=EventType.MAP_UPDATE,
         tick=tick,
         origin=EventOrigin.SERVER,
-        data=map_update.to_json(),
+        data=JsonSerialize(map_update),
     )
 
 
@@ -33,7 +44,7 @@ def EventFromStateSync(game, tick: int, state_sync):
         type=EventType.STATE_SYNC,
         tick=tick,
         origin=EventOrigin.SERVER,
-        data=state_sync.to_json(),
+        data=JsonSerialize(state_sync),
     )
 
 
@@ -43,19 +54,19 @@ def EventFromPropUpdate(game, tick: int, prop_update):
         type=EventType.PROP_UPDATE,
         tick=tick,
         origin=EventOrigin.SERVER,
-        data=prop_update.to_json(),
+        data=JsonSerialize(prop_update),
     )
 
 
-def EventFromTurnState(game, tick: int, turn_state, short_code, role):
+def EventFromTurnState(game, tick: int, turn_state, short_code):
     return Event(
         game=game,
         type=EventType.TURN_STATE,
         tick=tick,
         origin=EventOrigin.SERVER,
-        data=turn_state.to_json(),
+        data=JsonSerialize(turn_state),
         short_code=short_code,
-        role=role,
+        role=turn_state.turn,
     )
 
 
@@ -65,7 +76,7 @@ def EventFromCardSpawn(game, tick: int, card):
         type=EventType.CARD_SPAWN,
         tick=tick,
         origin=EventOrigin.SERVER,
-        data=card.to_json(),
+        data=JsonSerialize(card),
         location=card.location,
         orientation=card.orientation,
     )
@@ -79,7 +90,7 @@ def EventFromCardSelect(game, tick: int, origin: EventOrigin, card, last_move):
         tick=tick,
         origin=origin,
         parent_event=last_move,
-        data=card.to_json(),
+        data=JsonSerialize(card),
         short_code=short_code,
         location=card.location,
         orientation=card.orientation,
@@ -99,7 +110,7 @@ def EventFromCardSet(
         tick=tick,
         origin=origin,
         parent_event=last_move,
-        data=orjson.dumps(data),
+        data=JsonSerialize(data),
     )
 
 
@@ -110,7 +121,7 @@ def EventFromInstructionSent(game, tick: int, instruction):
         tick=tick,
         origin=EventOrigin.LEADER,
         short_code=instruction.uuid,
-        data=instruction.to_json(),
+        data=JsonSerialize(instruction),
     )
 
 
@@ -164,7 +175,7 @@ def EventFromMove(
         tick=tick,
         origin=origin,
         parent_event=instruction_event,
-        data=action.to_json(),
+        data=JsonSerialize(action),
         location=location_before,
         orientation=orientation_before,
         short_code=action_code,
@@ -191,7 +202,7 @@ def EventFromLiveFeedback(
         origin=EventOrigin.LEADER,
         role=Role.LEADER,
         parent_event=last_move,
-        data=feedback.to_json(),
+        data=JsonSerialize(feedback),
         short_code=short_code,
         location=follower.location(),
         orientation=follower.heading_degrees(),
@@ -210,7 +221,6 @@ class GameRecorder(object):
         if self._disabled:
             return
         self._last_move = None
-        self._last_turn_state = None
         self._instruction_number = 1
         self._instruction_queue = Queue()
         self._tick = 0
@@ -235,7 +245,6 @@ class GameRecorder(object):
             return
         self._game_record.number_cards = len(prop_update.props)
         self._game_record.save()
-        self._last_turn_state = turn_state
         leader = None
         follower = None
         for id in actors:
@@ -399,7 +408,6 @@ class GameRecorder(object):
     def record_end_of_turn(
         self,
         turn_state,
-        new_role,
         end_reason,
         turn_skipped,
         used_all_moves,
@@ -419,14 +427,16 @@ class GameRecorder(object):
         notes_string = ",".join(notes)
         short_code = "|".join([end_reason, notes_string])
         event = EventFromTurnState(
-            self._game_record, self._tick, turn_state, short_code, new_role
+            self._game_record, self._tick, turn_state, short_code
         )
         event.save()
 
-    def record_turn_state(self, turn_state):
+    def record_turn_state(self, turn_state, reason):
         if self._disabled:
             return
-        self._last_turn_state = turn_state
+        "|".join([reason, ""])
+        event = EventFromTurnState(self._game_record, self._tick, turn_state, reason)
+        event.save()
         self._game_record.score = turn_state.score
         self._game_record.number_turns = turn_state.turn_number
         self._game_record.save()
@@ -436,7 +446,6 @@ class GameRecorder(object):
             return
         self._game_record.completed = True
         self._game_record.end_time = datetime.utcnow()
-        self._game_record.score = self._last_turn_state.score
         self._game_record.save()
 
     def kvals(self):
@@ -457,7 +466,6 @@ class GameRecorder(object):
             color=str(card.color),
             shape=str(card.shape),
             location=card.location,
-            defaults={"turn_created": self._last_turn_state.turn_number},
         )
         return record
 
@@ -485,7 +493,8 @@ class GameRecorder(object):
 
     def _get_event_for_instruction_uuid(self, instruction_uuid):
         instruction_sent_event_query = Event.select().where(
-            type == EventType.INSTRUCTION_SENT, short_code == objective.uuid
+            Event.type == EventType.INSTRUCTION_SENT,
+            Event.short_code == instruction_uuid,
         )
         if not instruction_sent_event_query.exists():
             return None

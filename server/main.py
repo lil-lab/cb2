@@ -1354,6 +1354,12 @@ def CreateDataDirectory(config):
     data_prefix.mkdir(parents=False, exist_ok=True)
 
 
+def CreateExceptionDirectory(config):
+    # A directory to store exception logs. One file per exception.
+    exception_dir = config.exception_directory()
+    exception_dir.mkdir(parents=False, exist_ok=True)
+
+
 async def profiler():
     last_print = datetime.now()
     while True:
@@ -1383,6 +1389,7 @@ def main(config_filepath="server/config/server-config.yaml"):
 
     InitializeLobbies(GlobalConfig().lobbies)
     CreateDataDirectory(GlobalConfig())
+    CreateExceptionDirectory(GlobalConfig())
     InitGameRecording(GlobalConfig())
 
     # yappi.set_clock_type("cpu") # Use set_clock_type("wall") for wall time

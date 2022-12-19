@@ -425,12 +425,12 @@ class State(object):
             else timedelta(seconds=FOLLOWER_SECONDS_PER_TURN)
         )
 
-    def send_turn_state(self, turn_state):
+    def send_turn_state(self, turn_state, reason=""):
         # Avoid unnecessary database writes.
         if self._turn_state == turn_state:
             return
         # Record a copy of the current turn state.
-        self._game_recorder.record_turn_state(turn_state)
+        self._game_recorder.record_turn_state(turn_state, reason)
         self._turn_state = turn_state
         for actor_id in self._actors:
             if not actor_id in self._turn_history:
@@ -844,7 +844,6 @@ class State(object):
         if end_of_turn:
             self._game_recorder.record_end_of_turn(
                 self._turn_state,
-                next_role,
                 end_reason,
                 turn_skipped,
                 previous_moves_remaining == 0,
@@ -878,7 +877,7 @@ class State(object):
             self._map_provider.set_color(stepped_on_card.id, color)
             card_select_action = CardSelectAction(stepped_on_card.id, selected, color)
             self.record_action(card_select_action)
-            self._game_recorder.record_card_selection(stepped_on_card)
+            self._game_recorder.record_card_selection(actor, stepped_on_card)
             self._last_card_step_actor = actor
 
     def drain_messages(self, id, messages):

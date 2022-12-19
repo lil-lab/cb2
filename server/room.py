@@ -226,6 +226,15 @@ class Room(object):
         self._update_loop = asyncio.create_task(self._state_machine_driver.run())
         logging.info(f"Room {self.id()} started game.")
 
+    def has_exception(self):
+        return self._state_machine_driver.exception() is not None
+
+    def exception(self):
+        return self._state_machine_driver.exception()
+
+    def traceback(self):
+        return self._state_machine_driver.traceback()
+
     def stop(self):
         if self._update_loop is None:
             return RuntimeError("stopped Room that is not running.")
