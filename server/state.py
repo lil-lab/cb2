@@ -278,6 +278,7 @@ class State(object):
         self._instructions_stale = {}
         self._turn_complete_queue = deque()
         self._instruction_complete_queue = deque()
+        self._live_feedback_queue = deque()
         self._preloaded_actors = {}
         for actor in actors:
             asset_id = (
@@ -338,6 +339,7 @@ class State(object):
             False  # True if an instruction was added since the last iteration.
         )
         self._instruction_complete_queue = deque()
+        self._live_feedback_queue = deque()
 
         self._map_stale = {}  # Maps from player_id -> bool if their map is stale.
         self._map_update_count = 0
@@ -353,6 +355,8 @@ class State(object):
         self._turn_history = {}
 
         self._preloaded_actors = {}
+
+        self._last_card_step_actor = None
 
         self._turn_state = None
 
@@ -512,7 +516,7 @@ class State(object):
             send_tick = True
 
         if datetime.utcnow() >= self._turn_state.turn_end:
-            self.update_turn()
+            self.update_turn(end_reason="RanOutOfTime")
             logger.debug(f"Turn timed out.")
             send_tick = True
 
@@ -554,8 +558,21 @@ class State(object):
                     or (not actor.is_realtime)
                     or actor.peek_action_done()
                 ):
-                    self._game_recorder.record_move(actor, proposed_action)
+                    position_before = actor.location()
+                    heading_before = actor.heading_degrees()
                     actor.step()
+                    active_instruction = None
+                    if (actor.role() == Role.FOLLOWER) and (
+                        len(self._instructions) > 0
+                    ):
+                        active_instruction = self._instructions[0]
+                    self._game_recorder.record_move(
+                        actor,
+                        proposed_action,
+                        active_instruction,
+                        position_before,
+                        heading_before,
+                    )
                     self.record_action(proposed_action)
                     color = (
                         Color(0, 0, 1, 1)
@@ -605,6 +622,19 @@ class State(object):
             self._handle_instruction_complete(id, objective_complete)
             logger.debug(f"instruction complete tick.")
             send_tick = True
+
+        while len(self._live_feedback_queue) > 0:
+            (id, feedback) = self._live_feedback_queue.popleft()
+            for actor_id in self._actors:
+                self._live_feedback[actor_id] = feedback.signal
+            # Find the follower. TODO(sharf): cleanup code like this in the file...
+            follower = None
+            for actor_id in self._actors:
+                if self._actors[actor_id].role() == Role.FOLLOWER:
+                    follower = self._actors[actor_id]
+                    break
+            send_tick = True
+            self._game_recorder.record_live_feedback(feedback, follower)
 
         # If the follower currently has no instructions, end their turn.
         if self._turn_state.turn == Role.FOLLOWER and not self.has_instructions_todo():
@@ -678,7 +708,9 @@ class State(object):
                 self._turn_state.turn_number,
             )
             self.send_turn_state(new_turn_state)
-            self._game_recorder.record_card_set()
+            self._game_recorder.record_card_set(
+                self._last_card_step_actor, selected_cards, self._turn_state.score
+            )
             # Add 3 new cards before clearing selected cards. This prevents
             # us from accidentally spawning cards in the same location as
             # the previous 3, which is confusing to the user.
@@ -716,6 +748,7 @@ class State(object):
         # If any state transitions occurred which prompt a tick, send one.
         if send_tick:
             self._iter = (self._iter + 1) % 2**32
+            self._game_recorder.record_tick(self._iter)
             logger.debug(
                 f"============================================== Sending tick {self._iter}"
             )
@@ -778,9 +811,11 @@ class State(object):
             next_role = Role.LEADER
             turn_skipped = True
         moves_remaining = max(self._turn_state.moves_remaining - 1, 0)
+        previous_moves_remaining = moves_remaining
         turns_left = self._turn_state.turns_left
         turn_end = self._turn_state.turn_end
         turn_number = self._turn_state.turn_number
+        end_of_turn = False
         if role_switch:
             # This is a mitigation to the invisible cards glitch. Update cards on role switches.
             self._prop_update = self._map_provider.prop_update()
@@ -793,9 +828,6 @@ class State(object):
             if end_of_turn:
                 turns_left -= 1
                 turn_number += 1
-                self._game_recorder.record_end_of_turn(
-                    force_role_switch, end_reason, turn_skipped
-                )
 
         turn_update = TurnUpdate(
             next_role,
@@ -808,6 +840,16 @@ class State(object):
             turn_number,
         )
         self.send_turn_state(turn_update)
+
+        if end_of_turn:
+            self._game_recorder.record_end_of_turn(
+                self._turn_state,
+                next_role,
+                end_reason,
+                turn_skipped,
+                previous_moves_remaining == 0,
+                len(self._instructions) == 0,
+            )
 
     def moves_per_turn(self, role):
         return LEADER_MOVES_PER_TURN if role == Role.LEADER else FOLLOWER_MOVES_PER_TURN
@@ -837,6 +879,7 @@ class State(object):
             card_select_action = CardSelectAction(stepped_on_card.id, selected, color)
             self.record_action(card_select_action)
             self._game_recorder.record_card_selection(stepped_on_card)
+            self._last_card_step_actor = actor
 
     def drain_messages(self, id, messages):
         for message in messages:
@@ -894,7 +937,9 @@ class State(object):
             return
         # TODO: Make UUID and non-UUID'd objectives separate message types.
         objective.uuid = uuid.uuid4().hex
-        self._game_recorder.record_instruction(objective)
+        self._game_recorder.record_instruction_sent(objective)
+        if len(self._instructions) == 0:
+            self._game_recorder.record_instruction_activated(objective)
         self._instructions.append(objective)
         self._instruction_added = True
         for actor_id in self._actors:
@@ -918,15 +963,7 @@ class State(object):
         if self._turn_state.turn != Role.FOLLOWER:
             logger.warn(f"Warning, live feedback received during the leader's turn.")
             return
-        for actor_id in self._actors:
-            self._live_feedback[actor_id] = feedback.signal
-        # Find the follower.
-        follower = None
-        for actor_id in self._actors:
-            if self._actors[actor_id].role() == Role.FOLLOWER:
-                follower = self._actors[actor_id]
-                break
-        self._game_recorder.record_live_feedback(feedback, follower)
+        self._live_feedback_queue.append((id, feedback))
 
     def _drain_turn_complete(self, id, turn_complete):
         if self._actors[id].role() != self._turn_state.turn:
@@ -972,11 +1009,11 @@ class State(object):
         while len(self._instructions) > 0:
             instruction = self._instructions.popleft()
             instruction.cancelled = True
+            self._game_recorder.record_instruction_cancelled(instruction)
             self._instruction_history.append(instruction)
 
         for actor_id in self._actors:
             self._instructions_stale[actor_id] = True
-        self._game_recorder.record_instruction_cancellation()
 
     def create_actor(self, role):
         if role in self._preloaded_actors:
@@ -1331,8 +1368,8 @@ class State(object):
         active_instruction = self._instructions.popleft()
         active_instruction.completed = True
         self._instruction_history.append(active_instruction)
+        if len(self._instructions) > 0:
+            self._game_recorder.record_instruction_activated(self._instructions[0])
         for actor_id in self._actors:
             self._instructions_stale[actor_id] = True
-        self._game_recorder.record_instruction_complete(
-            objective_complete, actor=self._actors[id]
-        )
+        self._game_recorder.record_instruction_complete(objective_complete)

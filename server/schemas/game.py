@@ -86,17 +86,23 @@ class Event(BaseModel):
     client_time = DateTimeField(null=True)
     # Who triggered the event.
     origin = IntegerField(default=EventOrigin.NONE)
+    # Who's turn it is, currently.
+    role = TextField(default="")  # 'Leader' or 'Follower'
     # If an event references a previous event, it is linked here.
     # Moves may have an instruction as their parent.
     # Live feedbacks may have a move as their parent.
+    # For instruction-related events, it always points to the initial INSTRUCTION_SENT event for that instruction.
     parent_event = ForeignKeyField("self", backref="children", null=True)
     data = TextField(null=True)
     # If the event has a brief/compressed representation, include it here. For
     # moves, this is the action code (MF/MB/TL/TR).
+    # If this is an instruction-related event, it's the instruction's UUID.
     short_code = TextField(null=True)
     # If applicable, the "location" of an event. For moves, this is the location *before* the action occurred.
+    # For live feedback, this is the follower location during the live feedback.
     location = HecsCoordField(null=True)
     # If applicable, the "orientation" of the agent. For moves, this is the location *before* the action occurred.
+    # For live feedback, this is the follower orientation during the live feedback.
     orientation = IntegerField(null=True)
 
 

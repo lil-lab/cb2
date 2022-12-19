@@ -1,5 +1,4 @@
 import logging
-import queue
 import random
 from datetime import datetime
 from queue import Queue
@@ -9,6 +8,7 @@ import orjson
 
 import server.messages.live_feedback as live_feedback
 import server.schemas as schemas
+from server.card import Card
 from server.hex import HecsCoord
 from server.messages.action import Action
 from server.messages.rooms import Role
@@ -47,17 +47,19 @@ def EventFromPropUpdate(game, tick: int, prop_update):
     )
 
 
-def EventFromTurnState(game, tick: int, origin: EventOrigin, turn_state):
+def EventFromTurnState(game, tick: int, turn_state, short_code, role):
     return Event(
         game=game,
         type=EventType.TURN_STATE,
         tick=tick,
-        origin=origin,
+        origin=EventOrigin.SERVER,
         data=turn_state.to_json(),
+        short_code=short_code,
+        role=role,
     )
 
 
-def EventFromCardSpawn(game, tick: int, origin: EventOrigin, card):
+def EventFromCardSpawn(game, tick: int, card):
     return Event(
         game=game,
         type=EventType.CARD_SPAWN,
@@ -85,7 +87,7 @@ def EventFromCardSelect(game, tick: int, origin: EventOrigin, card, last_move):
 
 
 def EventFromCardSet(
-    game, tick: int, origin: EventOrigin, cardset: List, score, last_move
+    game, tick: int, origin: EventOrigin, cardset: List[Card], score, last_move
 ):
     data = {
         "cards": [card.to_dict() for card in cardset],
@@ -107,37 +109,42 @@ def EventFromInstructionSent(game, tick: int, instruction):
         type=EventType.INSTRUCTION_SENT,
         tick=tick,
         origin=EventOrigin.LEADER,
+        short_code=instruction.uuid,
         data=instruction.to_json(),
     )
 
 
-def EventFromInstructionActivated(game, tick, instruction_event):
+def EventFromInstructionActivated(game, tick, instruction_event, uuid):
     return Event(
         game=game,
         type=EventType.INSTRUCTION_ACTIVATED,
         tick=tick,
         origin=EventOrigin.SERVER,
         parent_event=instruction_event,
+        short_code=uuid,
     )
 
 
-def EventFromInstructionDone(game, tick, instruction_event):
+def EventFromInstructionDone(game, tick, instruction_event, uuid):
     return Event(
         game=game,
         type=EventType.INSTRUCTION_DONE,
         tick=tick,
         origin=EventOrigin.FOLLOWER,
+        role=Role.FOLLOWER,
         parent_event=instruction_event,
+        short_code=uuid,
     )
 
 
-def EventFromInstructionCancelled(game, tick, instruction_event):
+def EventFromInstructionCancelled(game, tick, instruction_event, instruction_uuid):
     return Event(
         game=game,
         type=EventType.INSTRUCTION_CANCELLED,
         tick=tick,
-        origin=EventOrigin.FOLLOWER,
+        origin=EventOrigin.LEADER,
         parent_event=instruction_event,
+        short_code=instruction_uuid,
     )
 
 
@@ -149,6 +156,7 @@ def EventFromMove(
     location_before,
     orientation_before,
     instruction_event,
+    action_code,
 ):
     return Event(
         game=game,
@@ -159,19 +167,34 @@ def EventFromMove(
         data=action.to_json(),
         location=location_before,
         orientation=orientation_before,
+        short_code=action_code,
+        role=origin,
     )
 
 
 def EventFromLiveFeedback(
-    game, tick: int, feedback: live_feedback.LiveFeedback, last_move
+    game, tick: int, feedback: live_feedback.LiveFeedback, follower, last_move
 ):
+    short_code = ""
+    if feedback.signal == live_feedback.FeedbackType.POSITIVE:
+        short_code = "Positive"
+    elif feedback.signal == live_feedback.FeedbackType.NEGATIVE:
+        short_code = "Negative"
+    elif feedback.signal == live_feedback.FeedbackType.NONE:
+        short_code = "None"
+    else:
+        short_code = "Unknown"
     return Event(
         game=game,
         type=EventType.LIVE_FEEDBACK,
         tick=tick,
-        origin=EventOrigin.SERVER,
+        origin=EventOrigin.LEADER,
+        role=Role.LEADER,
         parent_event=last_move,
         data=feedback.to_json(),
+        short_code=short_code,
+        location=follower.location(),
+        orientation=follower.heading_degrees(),
     )
 
 
@@ -187,10 +210,10 @@ class GameRecorder(object):
         if self._disabled:
             return
         self._last_move = None
-        self._active_instruction = None
         self._last_turn_state = None
         self._instruction_number = 1
         self._instruction_queue = Queue()
+        self._tick = 0
 
         # Create an entry in the Game database table.
         self._game_record = game_record
@@ -199,6 +222,8 @@ class GameRecorder(object):
         self._game_record.valid = True
         self._game_record.who_is_agent = ""
         self._game_record.save()
+
+        self._last_follower_move = None
 
     def record(self):
         if self._disabled:
@@ -235,240 +260,168 @@ class GameRecorder(object):
         )
         initial_state.save()
 
-    def record_map_update(self, tick, map_update):
+    def record_tick(self, tick: int):
+        self._tick = tick
+
+    def record_map_update(self, map_update):
         if self._disabled:
             return
-        event = EventFromMapUpdate(self._game_record, tick, map_update)
+        event = EventFromMapUpdate(self._game_record, self._tick, map_update)
         event.save()
 
     def record_prop_update(self, prop_update):
         if self._disabled:
             return
         # Record the prop update to the database.
-        EventFromPropUpdate(self._game_record, tick, prop_update)
-        prop_record = schemas.prop.PropUpdate()
-        prop_record.prop_data = prop_update
-        prop_record.game = self._game_record
-        prop_record.save()
+        event = EventFromPropUpdate(self._game_record, self._tick, prop_update)
+        event.save()
 
-    def record_card_selection(self, card):
+    def record_card_spawn(self, card: Card):
         if self._disabled:
             return
-        selection_record = schemas.cards.CardSelections()
-        selection_record.game = self._game_record
-        selection_record.move = self._last_move
-        selection_record.type = "select" if card.selected else "unselect"
-        card_record = self._get_or_create_card_record(card)
-        selection_record.card = card_record
-        selection_record.save()
+        event = EventFromCardSpawn(self._game_record, self._tick, card)
+        event.save()
 
-    def record_card_set(self):
+    def record_card_selection(self, actor, card: Card):
         if self._disabled:
             return
-        set_record = schemas.cards.CardSets()
-        set_record.game = self._game_record
-        set_record.move = self._last_move
-        set_record.score = self._last_turn_state.score + 1
-        set_record.save()
-
-    def record_instruction(self, objective):
-        if self._disabled:
-            return
-        instruction = schemas.game.Instruction()
-        instruction.game = self._game_record
-        instruction.time = datetime.utcnow()
-        instruction.worker = self._game_record.leader
-        instruction.uuid = objective.uuid
-        instruction.text = objective.text
-        instruction.instruction_number = self._instruction_number
-        self._instruction_number += 1
-        instruction.turn_issued = self._last_turn_state.turn_number
-        instruction.save()
-
-        if self._active_instruction is None:
-            self._set_activated_instruction(objective)
-        else:
-            try:
-                self._instruction_queue.put_nowait(objective)
-            except queue.Full:
-                return
-
-    def _set_activated_instruction(self, next_active_instruction):
-        self._active_instruction = next_active_instruction
-        activated_instruction_entry = (
-            schemas.game.Instruction.select()
-            .where(schemas.game.Instruction.uuid == self._active_instruction.uuid)
-            .get()
+        origin = EventOrigin.NONE
+        if actor is not None:
+            origin = (
+                EventOrigin.LEADER
+                if actor.role() == Role.LEADER
+                else EventOrigin.FOLLOWER
+            )
+        event = EventFromCardSelect(
+            self._game_record, self._tick, origin, card, self._last_move
         )
-        activated_instruction_entry.turn_activated = self._last_turn_state.turn_number
-        activated_instruction_entry.save()
+        event.save()
 
-    def record_instruction_complete(self, objective_complete, actor):
+    def record_card_set(self, actor, cards: List[Card], score):
         if self._disabled:
             return
-        instruction = (
-            schemas.game.Instruction.select()
-            .where(schemas.game.Instruction.uuid == objective_complete.uuid)
-            .get()
+        origin = EventOrigin.NONE
+        if actor is not None:
+            origin = (
+                EventOrigin.LEADER
+                if actor.role() == Role.LEADER
+                else EventOrigin.FOLLOWER
+            )
+        event = EventFromCardSet(
+            self._game_record, self._tick, origin, cards, self._last_move
         )
-        instruction.turn_completed = self._last_turn_state.turn_number
-        instruction.save()
-        # Log an entry in the move table for this instruction.
-        self.record_move(actor=actor, proposed_action=None, instruction_done=True)
-        try:
-            next_active_instruction = self._instruction_queue.get_nowait()
-            self._set_activated_instruction(next_active_instruction)
-        except queue.Empty:
-            self._active_instruction = None
+        event.save()
+
+    def record_instruction_sent(self, objective):
+        if self._disabled:
+            return
+        event = EventFromInstructionSent(self._game_record, self._tick, objective)
+        event.save()
+
+    def record_instruction_activated(self, objective):
+        if self._disabled:
+            return
+        instruction_event = self._get_event_for_instruction_uuid(objective.uuid)
+        if instruction_event is None:
+            logger.error(
+                f"Could not find previous receipt of activated instruction with UUID {objective.uuid}"
+            )
+            return
+        event = EventFromInstructionActivated(
+            self._game_record, self._tick, instruction_event, objective.uuid
+        )
+        event.save()
+
+    def record_instruction_complete(self, objective_complete):
+        if self._disabled:
+            return
+        instruction_event = self._get_event_for_instruction_uuid(
+            objective_complete.uuid
+        )
+        if instruction_event is None:
+            logger.error(
+                f"Could not find previous receipt of activated instruction with UUID {objective.uuid}"
+            )
+            return
+        event = EventFromInstructionDone(
+            self._game_record, self._tick, instruction_event, objective_complete.uuid
+        )
+        event.save()
 
     def record_move(
-        self, actor, proposed_action: Action = None, instruction_done=False
+        self, actor, action: Action, active_instruction, position_before, heading_before
     ):
         if self._disabled:
             return
-        assert (
-            instruction_done or proposed_action is not None
-        ), "Must provide an action or set instruction_done to True"
-        move = schemas.game.Move()
-        move.game = self._game_record
-        if actor.role() == Role.FOLLOWER:
-            if self._active_instruction is not None:
-                last_obj_record = (
-                    schemas.game.Instruction.select()
-                    .where(
-                        schemas.game.Instruction.uuid == self._active_instruction.uuid
-                    )
-                    .get()
-                )
-                move.instruction = last_obj_record
-        move.character_role = actor.role()
-        if actor.role == Role.LEADER:
-            move.worker = self._game_record.leader
-        if actor.role == Role.FOLLOWER:
-            move.worker = self._game_record.follower
-        if proposed_action is not None:
-            move.action = proposed_action
-        move.position_before = actor.location()
-        move.orientation_before = actor.heading_degrees()
-        if self._last_turn_state is not None:
-            move.turn_number = self._last_turn_state.turn_number
-        move.game_time = datetime.utcnow() - self._game_record.start_time
-        move.server_time = datetime.utcnow()
-        move_code = ""
-        if instruction_done:
-            # Use a default, invalid action object for json.
-            move.action = Action()
-            move.action_code = "DONE"
-            self._last_move = move
-            move.save()
-            return
-        # instruction_done == False. We have a proposed action. Calculate move code...
-        forward_location = actor.location().neighbor_at_heading(actor.heading_degrees())
-        backward_location = actor.location().neighbor_at_heading(
-            actor.heading_degrees() + 180
+        instruction_event = None
+        if active_instruction is not None:
+            instruction_event = self._get_event_for_instruction_uuid(
+                active_instruction.uuid
+            )
+        move_code = self._get_move_code_for_action(actor, action)
+        origin = (
+            EventOrigin.LEADER if actor.role() == Role.LEADER else EventOrigin.FOLLOWER
         )
-        new_location = HecsCoord.add(actor.location(), proposed_action.displacement)
-        if new_location == forward_location:
-            move_code = "MF"
-        elif new_location == backward_location:
-            move_code = "MB"
-        elif new_location == actor.location():
-            if proposed_action.rotation == 60:
-                move_code = "TR"
-            elif proposed_action.rotation == -60:
-                move_code = "TL"
-            else:
-                move_code = "INVALID"
-        else:
-            move_code = "INVALID"
-        move.action_code = move_code
-        self._last_move = move
-        move.save()
+        event = EventFromMove(
+            self._game_record,
+            self._tick,
+            origin,
+            action,
+            position_before,
+            heading_before,
+            instruction_event,
+            move_code,
+        )
+        if actor.role == Role.FOLLOWER:
+            self._last_follower_move = event
+        event.save()
 
     def record_live_feedback(self, feedback, follower):
         if self._disabled:
             return
-        # TODO(sharf): Once we add a move column to live feedback. we can record
-        # the move that the live feedback is for.
-        live_feedback_record = schemas.game.LiveFeedback()
-        live_feedback_record.game = self._game_record
-        live_feedback_record.feedback_type = (
-            "POSITIVE"
-            if feedback.signal == live_feedback.FeedbackType.POSITIVE
-            else "NEGATIVE"
+        event = EventFromLiveFeedback(
+            self._game_record, self._tick, feedback, follower, self._last_follower_move
         )
+        event.save()
 
-        # Find the instruction that the feedback is for.
-        if self._active_instruction is not None:
-            last_obj_record = (
-                schemas.game.Instruction.select()
-                .where(schemas.game.Instruction.uuid == self._active_instruction.uuid)
-                .get()
-            )
-            live_feedback_record.instruction = last_obj_record
-        live_feedback_record.turn_number = self._last_turn_state.turn_number
-        if follower is not None:
-            live_feedback_record.follower_position = follower.location()
-            live_feedback_record.follower_orientation = follower.heading_degrees()
-        live_feedback_record.game_time = (
-            datetime.utcnow() - self._game_record.start_time
-        )
-        live_feedback_record.server_time = datetime.utcnow()
-        live_feedback_record.save()
-
-    def mark_instruction_cancelled(self, objective):
+    def record_instruction_cancelled(self, objective):
         if self._disabled:
             return
-        instruction_query = schemas.game.Instruction.select().where(
-            schemas.game.Instruction.uuid == objective.uuid
-        )
-        if instruction_query.count() == 0:
+        instruction_event = self._get_event_for_instruction_uuid(objective.uuid)
+        if instruction_event is None:
             logger.warn(f"Could not find instruction record for {objective.uuid}")
             return
-        instruction = instruction_query.get()
-        logger.info(f"Canceling instruction {instruction.text}")
-        instruction.turn_cancelled = self._last_turn_state.turn_number
-        instruction.save()
+        event = EventFromInstructionCancelled(
+            self._game_record, self._tick, instruction_event, objective.uuid
+        )
+        event.save()
 
-    def record_instruction_cancellation(self):
+    def record_end_of_turn(
+        self,
+        turn_state,
+        new_role,
+        end_reason,
+        turn_skipped,
+        used_all_moves,
+        finished_all_commands,
+    ):
         if self._disabled:
             return
-        if self._active_instruction != None:
-            self.mark_instruction_cancelled(self._active_instruction)
-        self._active_instruction = None
-        try:
-            while True:
-                objective = self._instruction_queue.get_nowait()
-                if not objective.completed and not objective.cancelled:
-                    self.mark_instruction_cancelled(objective)
-        except queue.Empty:
-            return
-
-    def record_end_of_turn(self, force_role_switch, end_reason, turn_skipped):
-        if self._disabled:
-            return
-        turn = schemas.game.Turn()
-        turn.game = self._game_record
-        # Due to a change in how turns are counted, each turn now
-        # includes movements for both roles. This field is now deprecated.
-        turn.role = ""
-        turn.turn_number = (
-            self._last_turn_state.turn_number
-        )  # Recording the turn that just ended.
-        end_method = end_reason if force_role_switch else "RanOutOfTime"
-        turn.end_method = end_method
+        # Clear at turn end.
+        self._last_follower_move = None
         notes = []
         if turn_skipped:
             notes.append("SkippedTurnNoInstructionsTodo")
-        if self._last_turn_state.moves_remaining <= 0:
+        if used_all_moves:
             notes.append("UsedAllMoves")
-        if (
-            self._last_turn_state.turn == Role.FOLLOWER
-            and self._instruction_queue.empty()
-        ):
+        if finished_all_commands:
             notes.append("FinishedAllCommands")
-        turn.notes = ",".join(notes)
-        turn.save()
+        notes_string = ",".join(notes)
+        short_code = "|".join([end_reason, notes_string])
+        event = EventFromTurnState(
+            self._game_record, self._tick, turn_state, short_code, new_role
+        )
+        event.save()
 
     def record_turn_state(self, turn_state):
         if self._disabled:
@@ -507,3 +460,33 @@ class GameRecorder(object):
             defaults={"turn_created": self._last_turn_state.turn_number},
         )
         return record
+
+    def _get_move_code_for_action(self, actor, action):
+        move_code = ""
+        forward_location = actor.location().neighbor_at_heading(actor.heading_degrees())
+        backward_location = actor.location().neighbor_at_heading(
+            actor.heading_degrees() + 180
+        )
+        new_location = HecsCoord.add(actor.location(), action.displacement)
+        if new_location == forward_location:
+            move_code = "MF"
+        elif new_location == backward_location:
+            move_code = "MB"
+        elif new_location == actor.location():
+            if action.rotation == 60:
+                move_code = "TR"
+            elif action.rotation == -60:
+                move_code = "TL"
+            else:
+                move_code = "INVALID"
+        else:
+            move_code = "INVALID"
+        return move_code
+
+    def _get_event_for_instruction_uuid(self, instruction_uuid):
+        instruction_sent_event_query = Event.select().where(
+            type == EventType.INSTRUCTION_SENT, short_code == objective.uuid
+        )
+        if not instruction_sent_event_query.exists():
+            return None
+        return instruction_sent_event_query.get()
