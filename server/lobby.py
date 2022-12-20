@@ -493,8 +493,6 @@ class Lobby(ABC):
                     exception_file = tempfile.NamedTemporaryFile(
                         mode="w",
                         prefix=type(room.exception()).__name__
-                        + "_"
-                        + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
                         + "_game_id_"
                         + str(room.id())
                         + "_",
