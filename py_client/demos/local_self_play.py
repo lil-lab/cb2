@@ -132,7 +132,11 @@ def PlayGame(coordinator, i_uuid="", log_to_db: bool = True):
     return endpoint_pair.score(), endpoint_pair.duration().total_seconds()
 
 
-def main(config_filepath="server/config/local-covers-config.yaml", instruction_uuid=""):
+def main(
+    config_filepath="server/config/local-covers-config.yaml",
+    instruction_uuid="",
+    num_games=10,
+):
     nest_asyncio.apply()
     # Disabling most logs improves performance by about 50ms per game.
     logging.basicConfig(level=logging.INFO)
@@ -143,7 +147,7 @@ def main(config_filepath="server/config/local-covers-config.yaml", instruction_u
     coordinator = LocalGameCoordinator(
         config, render_leader=False, render_follower=False
     )
-    for i in range(10):
+    for i in range(num_games):
         logger.info(
             f"========================== STARTING GAME {i} =========================="
         )

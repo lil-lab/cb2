@@ -35,6 +35,8 @@ def GetLeaderboard(
 def UpdateLeaderboard(game_record):
     """Updates the leaderboard table with the latest score."""
     logger.info(f"Updating leaderboard for game {game_record.id}")
+    if game_record.type is None:
+        return
     components = game_record.type.split("|")
     lobby_name = ""
     lobby_type = LobbyType.NONE
