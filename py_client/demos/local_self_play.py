@@ -5,6 +5,7 @@ import fire
 import matplotlib.pyplot as plt
 import nest_asyncio
 import numpy as np
+from viztracer import VizTracer
 
 import server.db_tools.db_utils as db_utils
 from py_client.demos.follower_client import *
@@ -132,7 +133,12 @@ def PlayGame(coordinator, i_uuid="", log_to_db: bool = True):
     return endpoint_pair.score(), endpoint_pair.duration().total_seconds()
 
 
-def main(config_filepath="server/config/local-covers-config.yaml", instruction_uuid=""):
+def main(
+    config_filepath="server/config/local-covers-config.yaml",
+    instruction_uuid="",
+    profile=False,
+    num_games=10,
+):
     nest_asyncio.apply()
     # Disabling most logs improves performance by about 50ms per game.
     logging.basicConfig(level=logging.INFO)
@@ -143,7 +149,14 @@ def main(config_filepath="server/config/local-covers-config.yaml", instruction_u
     coordinator = LocalGameCoordinator(
         config, render_leader=False, render_follower=False
     )
-    for i in range(10):
+    # If profile=True, play only 1 game, but import viztracer and save the trace to cb2-local.prof.
+    if profile:
+        with VizTracer(output_file="cb2-local-prof.json", tracer_entries=10000000):
+            score, duration = PlayGame(coordinator, instruction_uuid)
+        logger.info(f"Game over. Score: {score}, Duration: {duration}")
+        return
+
+    for i in range(num_games):
         logger.info(
             f"========================== STARTING GAME {i} =========================="
         )

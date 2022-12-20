@@ -1,16 +1,15 @@
 import datetime
 import json
-import uuid
 
 import orjson
 from peewee import *
 
-from server.hex import HecsCoord
 from server.messages.action import Action
 from server.schemas.base import *
 from server.schemas.clients import *
 from server.schemas.google_user import GoogleUser
 from server.schemas.mturk import *
+from server.schemas.util import HecsCoordField
 
 
 class Game(BaseModel):
@@ -41,71 +40,6 @@ class Game(BaseModel):
     kvals = TextField(null=True)  # JSON of key-value pairs.
 
 
-class HecsCoordField(TextField):
-    def __init__(self, null=False):
-        super(__class__, self).__init__(null=null)
-
-    def db_value(self, value):
-        return orjson.dumps(value, option=orjson.OPT_NAIVE_UTC).decode("utf-8")
-
-    def python_value(self, db_val):
-        return HecsCoord.from_json(db_val)
-
-
-class EventOrigin(IntEnum):
-    NONE = 0
-    LEADER = 1
-    FOLLOWER = 1
-    SERVER = 2
-
-
-class EventType(IntEnum):
-    NONE = 0
-    MAP_UPDATE = 1
-    STATE_SYNC = 2
-    TURN_STATE = 3
-    PROP_UPDATE = 4
-    CARD_SPAWN = 5
-    CARD_SELECT = 6
-    CARD_SET = 7
-    INSTRUCTION_SENT = 8
-    INSTRUCTION_ACTIVATED = 9
-    INSTRUCTION_DONE = 10
-    INSTRUCTION_CANCELLED = 11
-    MOVE = 12
-    LIVE_FEEDBACK = 13
-
-
-class Event(BaseModel):
-    id = UUIDField(primary_key=True, default=uuid.uuid4, unique=True)
-    game = ForeignKeyField(Game, backref="events")
-    type = IntegerField(default=EventType.NONE)
-    tick = IntegerField()
-    server_time = DateTimeField(default=datetime.datetime.utcnow)
-    # Determined by packet transmissions time. Nullable.
-    client_time = DateTimeField(null=True)
-    # Who triggered the event.
-    origin = IntegerField(default=EventOrigin.NONE)
-    # Who's turn it is, currently.
-    role = TextField(default="")  # 'Leader' or 'Follower'
-    # If an event references a previous event, it is linked here.
-    # Moves may have an instruction as their parent.
-    # Live feedbacks may have a move as their parent.
-    # For instruction-related events, it always points to the initial INSTRUCTION_SENT event for that instruction.
-    parent_event = ForeignKeyField("self", backref="children", null=True)
-    data = TextField(null=True)
-    # If the event has a brief/compressed representation, include it here. For
-    # moves, this is the action code (MF/MB/TL/TR).
-    # If this is an instruction-related event, it's the instruction's UUID.
-    short_code = TextField(null=True)
-    # If applicable, the "location" of an event. For moves, this is the location *before* the action occurred.
-    # For live feedback, this is the follower location during the live feedback.
-    location = HecsCoordField(null=True)
-    # If applicable, the "orientation" of the agent. For moves, this is the location *before* the action occurred.
-    # For live feedback, this is the follower orientation during the live feedback.
-    orientation = IntegerField(null=True)
-
-
 class ActionField(TextField):
     def db_value(self, value):
         return orjson.dumps(
@@ -116,17 +50,6 @@ class ActionField(TextField):
 
     def python_value(self, db_val):
         return Action.from_json(db_val)
-
-
-class InitialState(BaseModel):
-    game = ForeignKeyField(Game, backref="initial_state", null=True)
-    time = DateTimeField(default=datetime.datetime.utcnow)
-    leader_id = IntegerField()  # In-game ID of the leader.
-    follower_id = IntegerField()  # In-game ID of the follower.
-    leader_position = HecsCoordField()
-    leader_rotation_degrees = IntegerField()
-    follower_position = HecsCoordField()
-    follower_rotation_degrees = IntegerField()
 
 
 class Turn(BaseModel):

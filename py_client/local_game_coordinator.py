@@ -126,6 +126,7 @@ class LocalGameCoordinator:
             game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
             game_name = f"{game_time}_{game_id}_GAME"
             game_record.server_software_commit = GetCommitHash()
+            game_record.type = "local-simulated|0|simulated"
             game_record.save()
         else:
             game_record = None
@@ -193,6 +194,7 @@ class LocalGameCoordinator:
         game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
         game_name = f"{game_time}_{game_id}_GAME"
         game_record.server_software_commit = GetCommitHash()
+        game_record.type = "local-simulated|0|tutorial"
         game_record.save()
         # The value
         state_machine = TutorialGameState(room_id, tutorial_name, game_record, realtime)

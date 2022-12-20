@@ -203,6 +203,15 @@ class State(object):
         instruction = objective.ObjectiveMessage(
             Role.LEADER, instruction_record.text, instruction_record.uuid, False, False
         )
+        initial_state_event = game_db.Event.select().where(
+            game_db.Event.game == game_record,
+            game_db.Event.type == game_db.EventType.INITIAL_STATE,
+        )
+        if initial_state_event.count() != 1:
+            return (
+                None,
+                f"Single initial state event not found. ({initial_state_event.count()} found)",
+            )
         initial_state = (
             game_db.InitialState.select()
             .join(game_db.Game)
@@ -319,6 +328,8 @@ class State(object):
 
         # Maps from actor_id (prop id) to actor object (see definition below).
         self._actors = {}
+        self._leader = None
+        self._follower = None
         self._role_history = (
             {}
         )  # Map from actor_id to role. Preserved after free_actor().
@@ -493,11 +504,13 @@ class State(object):
 
     def start(self):
         self._start_time = datetime.utcnow()
-        self._game_recorder.initial_state(
+        self._game_recorder.record_initial_state(
+            self._iter,
             self._map_provider.map(),
             self._map_provider.prop_update(),
             self._turn_state,
-            self._actors,
+            self._leader,
+            self._follower,
         )
 
     def update(self):
@@ -1018,6 +1031,10 @@ class State(object):
         if role in self._preloaded_actors:
             self._actors_added = True
             actor = self._preloaded_actors[role]
+            if role == Role.LEADER:
+                self._leader = actor
+            if role == Role.FOLLOWER:
+                self._follower = actor
             del self._preloaded_actors[role]
             self._actors[actor.actor_id()] = actor
             self._action_history[actor.actor_id()] = []
@@ -1040,6 +1057,10 @@ class State(object):
             spawn_point,
             realtime=self._realtime_actions,
         )
+        if role == Role.LEADER:
+            self._leader = actor
+        if role == Role.FOLLOWER:
+            self._follower = actor
         self._role_history[actor.actor_id()] = role
         self._actors[actor.actor_id()] = actor
         self._action_history[actor.actor_id()] = []

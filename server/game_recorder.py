@@ -12,7 +12,8 @@ from server.card import Card
 from server.hex import HecsCoord
 from server.messages.action import Action
 from server.messages.rooms import Role
-from server.schemas.game import Event, EventOrigin, EventType
+from server.schemas.event import Event, EventOrigin, EventType
+from server.schemas.util import InitialState
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +39,21 @@ def EventFromMapUpdate(game, tick: int, map_update):
     )
 
 
-def EventFromStateSync(game, tick: int, state_sync):
+def EventFromInitialState(game, tick: int, leader, follower):
+    initial_state = InitialState(
+        leader_id=leader.actor_id(),
+        follower_id=follower.actor_id(),
+        leader_position=leader.location(),
+        leader_rotation_degrees=leader.heading_degrees(),
+        follower_position=follower.location(),
+        follower_rotation_degrees=follower.heading_degrees(),
+    )
     return Event(
         game=game,
-        type=EventType.STATE_SYNC,
+        type=EventType.INITIAL_STATE,
         tick=tick,
         origin=EventOrigin.SERVER,
-        data=JsonSerialize(state_sync),
+        data=JsonSerialize(initial_state),
     )
 
 
@@ -93,7 +102,7 @@ def EventFromCardSelect(game, tick: int, origin: EventOrigin, card, last_move):
         data=JsonSerialize(card),
         short_code=short_code,
         location=card.location,
-        orientation=card.orientation,
+        orientation=card.rotation_degrees,
     )
 
 
@@ -240,34 +249,26 @@ class GameRecorder(object):
             return None
         return self._game_record
 
-    def initial_state(self, map_update, prop_update, turn_state, actors):
+    def record_initial_state(
+        self, tick, map_update, prop_update, turn_state, leader, follower
+    ):
         if self._disabled:
             return
         self._game_record.number_cards = len(prop_update.props)
         self._game_record.save()
-        leader = None
-        follower = None
-        for id in actors:
-            actor = actors[id]
-            if actor.role() == Role.LEADER:
-                leader = actor
-            elif actor.role() == Role.FOLLOWER:
-                follower = actor
+
         if leader is None or follower is None:
             logger.warn(
                 f"Unable to log initial state for game {self._game_record.id}. Leader or follower None."
             )
             return
-        initial_state = schemas.game.InitialState(
-            game=self._game_record,
-            leader_id=leader.actor_id(),
-            follower_id=follower.actor_id(),
-            leader_position=leader.location(),
-            leader_rotation_degrees=leader.heading_degrees(),
-            follower_position=follower.location(),
-            follower_rotation_degrees=follower.heading_degrees(),
+        initial_state_event = EventFromInitialState(
+            self._game_record, tick, leader, follower
         )
-        initial_state.save()
+        initial_state_event.save(force_insert=True)
+        self.record_map_update(map_update)
+        self.record_turn_state(turn_state)
+        self.record_prop_update(prop_update)
 
     def record_tick(self, tick: int):
         self._tick = tick
@@ -276,20 +277,20 @@ class GameRecorder(object):
         if self._disabled:
             return
         event = EventFromMapUpdate(self._game_record, self._tick, map_update)
-        event.save()
+        event.save(force_insert=True)
 
     def record_prop_update(self, prop_update):
         if self._disabled:
             return
         # Record the prop update to the database.
         event = EventFromPropUpdate(self._game_record, self._tick, prop_update)
-        event.save()
+        event.save(force_insert=True)
 
     def record_card_spawn(self, card: Card):
         if self._disabled:
             return
         event = EventFromCardSpawn(self._game_record, self._tick, card)
-        event.save()
+        event.save(force_insert=True)
 
     def record_card_selection(self, actor, card: Card):
         if self._disabled:
@@ -304,7 +305,7 @@ class GameRecorder(object):
         event = EventFromCardSelect(
             self._game_record, self._tick, origin, card, self._last_move
         )
-        event.save()
+        event.save(force_insert=True)
 
     def record_card_set(self, actor, cards: List[Card], score):
         if self._disabled:
@@ -317,15 +318,15 @@ class GameRecorder(object):
                 else EventOrigin.FOLLOWER
             )
         event = EventFromCardSet(
-            self._game_record, self._tick, origin, cards, self._last_move
+            self._game_record, self._tick, origin, cards, score, self._last_move
         )
-        event.save()
+        event.save(force_insert=True)
 
     def record_instruction_sent(self, objective):
         if self._disabled:
             return
         event = EventFromInstructionSent(self._game_record, self._tick, objective)
-        event.save()
+        event.save(force_insert=True)
 
     def record_instruction_activated(self, objective):
         if self._disabled:
@@ -339,7 +340,7 @@ class GameRecorder(object):
         event = EventFromInstructionActivated(
             self._game_record, self._tick, instruction_event, objective.uuid
         )
-        event.save()
+        event.save(force_insert=True)
 
     def record_instruction_complete(self, objective_complete):
         if self._disabled:
@@ -349,13 +350,13 @@ class GameRecorder(object):
         )
         if instruction_event is None:
             logger.error(
-                f"Could not find previous receipt of activated instruction with UUID {objective.uuid}"
+                f"Could not find previous receipt of activated instruction with UUID {objective_complete.uuid}"
             )
             return
         event = EventFromInstructionDone(
             self._game_record, self._tick, instruction_event, objective_complete.uuid
         )
-        event.save()
+        event.save(force_insert=True)
 
     def record_move(
         self, actor, action: Action, active_instruction, position_before, heading_before
@@ -383,7 +384,8 @@ class GameRecorder(object):
         )
         if actor.role == Role.FOLLOWER:
             self._last_follower_move = event
-        event.save()
+        self._last_move = event
+        event.save(force_insert=True)
 
     def record_live_feedback(self, feedback, follower):
         if self._disabled:
@@ -391,7 +393,7 @@ class GameRecorder(object):
         event = EventFromLiveFeedback(
             self._game_record, self._tick, feedback, follower, self._last_follower_move
         )
-        event.save()
+        event.save(force_insert=True)
 
     def record_instruction_cancelled(self, objective):
         if self._disabled:
@@ -403,7 +405,7 @@ class GameRecorder(object):
         event = EventFromInstructionCancelled(
             self._game_record, self._tick, instruction_event, objective.uuid
         )
-        event.save()
+        event.save(force_insert=True)
 
     def record_end_of_turn(
         self,
@@ -429,14 +431,14 @@ class GameRecorder(object):
         event = EventFromTurnState(
             self._game_record, self._tick, turn_state, short_code
         )
-        event.save()
+        event.save(force_insert=True)
 
-    def record_turn_state(self, turn_state, reason):
+    def record_turn_state(self, turn_state, reason=""):
         if self._disabled:
             return
         "|".join([reason, ""])
         event = EventFromTurnState(self._game_record, self._tick, turn_state, reason)
-        event.save()
+        event.save(force_insert=True)
         self._game_record.score = turn_state.score
         self._game_record.number_turns = turn_state.turn_number
         self._game_record.save()

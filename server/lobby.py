@@ -492,10 +492,12 @@ class Lobby(ABC):
                 if exception_directory is not None:
                     exception_file = tempfile.NamedTemporaryFile(
                         mode="w",
-                        prefix=type(room.exception()).__name__
-                        + "_game_id_"
-                        + str(room.id())
-                        + "_",
+                        prefix=(
+                            str(room.id())
+                            + "_gameid_"
+                            + type(room.exception()).__name__
+                            + "_"
+                        ),
                         suffix=".txt",
                         dir=exception_directory,
                         delete=False,
