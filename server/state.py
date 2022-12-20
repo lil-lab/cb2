@@ -727,7 +727,9 @@ class State(object):
             # Add 3 new cards before clearing selected cards. This prevents
             # us from accidentally spawning cards in the same location as
             # the previous 3, which is confusing to the user.
-            self._map_provider.add_random_unique_set()
+            new_cards = self._map_provider.add_random_unique_set()
+            for card in new_cards:
+                self._game_recorder.record_card_spawn(card)
             # Clear card state and remove the cards in the winning set.
             logger.debug("Clearing selected cards")
             for card in selected_cards:
@@ -1285,9 +1287,6 @@ class State(object):
             return None
 
         prop_update = self._prop_update
-
-        # Record the prop update to the database.
-        self._game_recorder.record_prop_update(prop_update)
 
         self._prop_stale[actor_id] = False
         return prop_update

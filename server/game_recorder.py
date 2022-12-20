@@ -87,7 +87,7 @@ def EventFromCardSpawn(game, tick: int, card):
         origin=EventOrigin.SERVER,
         data=JsonSerialize(card),
         location=card.location,
-        orientation=card.orientation,
+        orientation=card.rotation_degrees,
     )
 
 
