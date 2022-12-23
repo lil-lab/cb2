@@ -16,7 +16,6 @@ TABLES = [
     Remote,
     ConnectionEvents,
     Game,
-    Turn,
     Instruction,
     Move,
     LiveFeedback,

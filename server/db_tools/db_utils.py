@@ -8,7 +8,7 @@ import peewee
 
 import server.schemas.base as base
 import server.schemas.defaults as defaults_db
-from server.schemas.game import Game, Instruction, Move, Turn
+from server.schemas.game import Game, Instruction, Move
 from server.schemas.mturk import Assignment
 
 # This document makes reference to the following game classifications:
@@ -212,8 +212,7 @@ def follower_got_lost(game_instructions):
 
 def short_game(game):
     # Make sure the game wasn't just given up on in the first 2 turns.
-    number_of_turns = Turn.select().join(Game).where(Turn.game == game).count()
-    return number_of_turns <= 2
+    return game.number_turns <= 2
 
 
 class GameDiagnosis(Enum):

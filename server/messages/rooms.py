@@ -76,7 +76,7 @@ class RoomManagementRequest(DataClassJSONMixin):
     # If you provide this, it limits who you can be paired with.
     # TODO(sharf): For now, if this is empty you might match with someone who
     # provided it. In the future, add stricter matching.
-    join_game_with_instruction_uuid: Optional[str] = None
+    join_game_with_event_uuid: Optional[str] = None
 
 
 class RoomResponseType(Enum):

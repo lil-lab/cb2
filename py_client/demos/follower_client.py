@@ -1,5 +1,6 @@
 import logging
 from datetime import timedelta
+from time import sleep
 
 import fire
 
@@ -40,11 +41,12 @@ def get_active_instruction(instructions):
 
 
 class NaiveFollower(object):
-    def __init__(self, game_endpoint):
+    def __init__(self, game_endpoint, pause_per_turn):
         self.instructions_processed = set()
         self.actions = []
         self.game = game_endpoint
         self.exc = None
+        self.pause_per_turn = pause_per_turn
 
     def run(self):
         try:
@@ -84,6 +86,7 @@ class NaiveFollower(object):
             ) = self.game.step(action)
 
             while not self.game.over():
+                sleep(self.pause_per_turn)
                 action = self.get_action(
                     self.game,
                     map,
@@ -135,19 +138,21 @@ class NaiveFollower(object):
             raise self.exc
 
 
-def main(host, render=False, i_uuid: str = "", lobby="bot-sandbox"):
+def main(host, render=False, e_uuid: str = "", lobby="bot-sandbox", pause_per_turn=0):
+    logging.basicConfig(level=logging.INFO)
     client = RemoteClient(host, render, lobby_name=lobby)
     connected, reason = client.Connect()
     assert connected, f"Unable to connect: {reason}"
-    i_uuid = i_uuid.strip()
+    e_uuid = e_uuid.strip()
+    logger.info(f"UUID: {e_uuid}")
 
     game, reason = client.JoinGame(
         timeout=timedelta(minutes=5),
         queue_type=RemoteClient.QueueType.FOLLOWER_ONLY,
-        i_uuid=i_uuid.strip(),
+        e_uuid=e_uuid.strip(),
     )
     assert game is not None, f"Unable to join game: {reason}"
-    follower = NaiveFollower(game)
+    follower = NaiveFollower(game, pause_per_turn)
     follower.run()
 
 

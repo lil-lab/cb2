@@ -136,7 +136,7 @@ class LocalGameCoordinator:
         self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)
         return game_name
 
-    def CreateGameFromDatabase(self, instruction_uuid: str):
+    def CreateGameFromDatabase(self, event_uuid: str):
         """Creates a new game from a specific instruction in a recorded game.
 
         Exactly two agents can join this game with JoinGame().
@@ -151,11 +151,11 @@ class LocalGameCoordinator:
 
         # For cards, take all cards so far and then delete any CardSets().
         state_machine, reason = State.InitializeFromExistingState(
-            room_id, instruction_uuid, realtime_actions=False
+            room_id, event_uuid, realtime_actions=False
         )
         assert (
             state_machine is not None
-        ), f"Failed to init from instr {instruction_uuid}: {reason}"
+        ), f"Failed to init from event {event_uuid}: {reason}"
         state_machine.state(-1)
 
         self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)

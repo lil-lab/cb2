@@ -47,9 +47,9 @@ class Room(object):
         lobby,
         room_type: RoomType = RoomType.GAME,
         tutorial_name: str = "",
-        from_instruction: str = "",
+        from_event_uuid: str = "",
     ):
-        """from_instruction is the UUID of an instruction to start the game from."""
+        """from_event_uuid is the UUID of an event to start the game from."""
         self._name = name
         self._max_players = max_players
         self._players = []
@@ -79,10 +79,10 @@ class Room(object):
                 self._game_record.type = game_type_prefix + "follow_tutorial"
             game_state = TutorialGameState(self._id, tutorial_name, self._game_record)
         elif self._room_type == RoomType.PRESET_GAME:
-            if not from_instruction:
+            if not from_event_uuid:
                 raise ValueError("Preset game must be initialized from an instruction.")
             game_state, reason = State.InitializeFromExistingState(
-                self._id, from_instruction, True
+                self._id, from_event_uuid, True
             )
             if game_state is None:
                 logger.warning(f"Failed to initialize game from instruction: {reason}")

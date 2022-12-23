@@ -174,7 +174,7 @@ class RemoteClient(object):
         self,
         timeout=timedelta(minutes=6),
         queue_type=QueueType.DEFAULT,
-        i_uuid: str = "",
+        e_uuid: str = "",
     ):
         """Enters the game queue and waits for a game.
 
@@ -187,13 +187,13 @@ class RemoteClient(object):
         Args:
             timeout: The maximum amount of time to wait for the game to start.
             queue_type: Which queue to join (DEFAULT, LEADER_ONLY, FOLLOWER_ONLY).
-            i_uuid: Instruction UUID to resume from. Empty implies new game.
+            e_uuid: Event UUID to resume from. Empty implies new game.
         Returns:
             (Game, str): The game that was started. If the game didn't start, the second element is an error message.
         Raises:
             TimeoutError: If the game did not start within the timeout.
         """
-        in_queue, reason = self._join_queue(queue_type, i_uuid)
+        in_queue, reason = self._join_queue(queue_type, e_uuid)
         if not in_queue:
             return None, f"Failed to join queue: {reason}"
 
@@ -229,7 +229,7 @@ class RemoteClient(object):
             logger.error(f"Connection reset: {e}")
             self.init_state = RemoteClient.State.CONNECTED
 
-    def _join_queue(self, queue_type=QueueType.DEFAULT, i_uuid: str = ""):
+    def _join_queue(self, queue_type=QueueType.DEFAULT, e_uuid: str = ""):
         """Sends a join queue message to the server."""
         if self.init_state not in [
             RemoteClient.State.CONNECTED,
@@ -237,11 +237,11 @@ class RemoteClient(object):
         ]:
             return False, f"Not ready to join game. State: {str(self.init_state)}"
         if queue_type == RemoteClient.QueueType.DEFAULT:
-            self._send_message(JoinQueueMessage(i_uuid))
+            self._send_message(JoinQueueMessage(e_uuid))
         elif queue_type == RemoteClient.QueueType.LEADER_ONLY:
-            self._send_message(JoinLeaderQueueMessage(i_uuid))
+            self._send_message(JoinLeaderQueueMessage(e_uuid))
         elif queue_type == RemoteClient.QueueType.FOLLOWER_ONLY:
-            self._send_message(JoinFollowerQueueMessage(i_uuid))
+            self._send_message(JoinFollowerQueueMessage(e_uuid))
         else:
             return False, f"Invalid queue type {queue_type}"
         self.init_state = RemoteClient.State.IN_QUEUE

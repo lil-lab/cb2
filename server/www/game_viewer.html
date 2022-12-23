@@ -9,9 +9,7 @@
 </head>
 <body>
 <a id="replay-link" href="" target="_blank">Link to Replay</a>
-<div id="turn-grid" style="width: 100%; height: 250px;"></div>
-<div id="instruction-grid" style="width: 100%; height: 250px;"></div>
-<div id="move-grid" style="width: 100%; height: 250px;"></div>
+<div id="event-grid" style="width: 100%; height: 400px;"></div>
 </body>
 <script>
 
@@ -27,53 +25,35 @@ function initAutocomplete() {
   var autocomplete = new google.maps.places.Autocomplete(input);
 }
 
-
 $(function () {
+    // On window resize, resize the grid and status monitor.
+    $("#event-grid").height($(window).height() * 0.95);
+    $(window).resize(function() {
+      $("#event-grid").height($(window).height() * 0.95);
+    });
+
     var path = window.location.pathname
     var game_id = parseInt(window.location.pathname.split("/").at(-1));
     WriteReplayLink("replay-link", game_id);
-    $('#turn-grid').w2grid({
-        name: 'turn-grid',
+    $('#event-grid').w2grid({
+        name: 'event-grid',
         header: 'Game Turns',
+        selectType: 'cell',
         columns: [
-          { field: 'id', text: 'Turn ID (Uniq)', size: '30%' },
-          { field: 'number', text: 'Turn No', size: '30%' },
-          { field: 'time', text: 'Time', size: '40%' },
-          { field: 'notes', text: 'Notes', size: '40%' },
-          { field: 'end_method', text: 'End Cause', size: '40%' }
+          { field: 'id', text: 'Event UUID', size: '5%' },
+          { field: 'time', text: 'Time', size: '5%' },
+          { field: 'turn_number', text: 'Turn No', size: '5%' },
+          { field: 'tick', text: 'Tick', size: '5%' },
+          { field: 'type', text: 'Event Type', size: '5%' },
+          { field: 'role', text: 'Role', size: '5%' },
+          { field: 'origin', text: 'Origin', size: '5%' },
+          { field: 'short_code', text: 'Summary', size: '5%' },
+          { field: 'data', text: 'Data', size: '5%' },
+          { field: 'location', text: 'Loc', size: '5%' },
+          { field: 'orientation', text: 'Orientation', size: '5%' },
+          { field: 'parent', text: 'Parent Event', size: '5%' },
         ],
-        url: "/data/turns/" + game_id,
-        onClick: function(event) {
-          w2ui['instruction-grid'].clear();
-          w2ui['move-grid'].clear();
-          var record = this.get(event.recid);
-          w2ui['instruction-grid'].load('/data/instructions/' + record.id);
-          w2ui['move-grid'].load('/data/moves/' + record.id);
-        }
-    });
-    $('#instruction-grid').w2grid({
-      name: 'instruction-grid',
-      header: "Turn Instructions",
-      selectType: 'cell',
-      columns: [
-          { field: 'instruction_number', text: 'Instruction No', size: '30%' },
-          { field: 'turn_issued', text: 'Turn Issued', size: '30%' },
-          { field: 'uuid', text: 'Unique ID', size: '20%'},
-          { field: 'time', text: 'Time', size: '40%' },
-          { field: 'turn_completed', text: 'Turn Completed', size: '40%' },
-          { field: 'text', text: 'Instruction Text', size: '40%' }
-      ],
-    });
-    $('#move-grid').w2grid({
-      name: 'move-grid',
-      header: "Turn Instructions",
-      columns: [
-          { field: 'character_role', text: 'Role', size: '30%' },
-          { field: 'action_code', text: 'Action Code', size: '30%' },
-          { field: 'game_time', text: 'Time', size: '40%' },
-          { field: 'position_before', text: 'Position Before', size: '40%' },
-          { field: 'instruction', text: 'Instruction Text', size: '40%' }
-      ]
+        url: "/data/events/" + game_id,
     });
 });
 </script>

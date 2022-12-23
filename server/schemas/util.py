@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import orjson
+from mashumaro.mixins.json import DataClassJSONMixin
 from peewee import TextField
 
 from server.hex import HecsCoord
@@ -20,7 +21,7 @@ class HecsCoordField(TextField):
 
 
 @dataclass(frozen=True)
-class InitialState:
+class InitialState(DataClassJSONMixin):
     leader_id: int  # In-game ID of the leader.
     follower_id: int  # In-game ID of the follower.
     leader_position: HecsCoord

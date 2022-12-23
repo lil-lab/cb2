@@ -33,6 +33,7 @@ def EventFromMapUpdate(game, tick: int, map_update):
     return Event(
         game=game,
         type=EventType.MAP_UPDATE,
+        turn_number=0,
         tick=tick,
         origin=EventOrigin.SERVER,
         data=JsonSerialize(map_update),
@@ -51,6 +52,7 @@ def EventFromInitialState(game, tick: int, leader, follower):
     return Event(
         game=game,
         type=EventType.INITIAL_STATE,
+        turn_number=0,
         tick=tick,
         origin=EventOrigin.SERVER,
         data=JsonSerialize(initial_state),
@@ -61,6 +63,7 @@ def EventFromPropUpdate(game, tick: int, prop_update):
     return Event(
         game=game,
         type=EventType.PROP_UPDATE,
+        turn_number=0,
         tick=tick,
         origin=EventOrigin.SERVER,
         data=JsonSerialize(prop_update),
@@ -71,6 +74,7 @@ def EventFromTurnState(game, tick: int, turn_state, short_code):
     return Event(
         game=game,
         type=EventType.TURN_STATE,
+        turn_number=turn_state.turn_number,
         tick=tick,
         origin=EventOrigin.SERVER,
         data=JsonSerialize(turn_state),
@@ -79,10 +83,24 @@ def EventFromTurnState(game, tick: int, turn_state, short_code):
     )
 
 
-def EventFromCardSpawn(game, tick: int, card):
+def EventFromStartOfTurn(game, tick: int, turn_state, short_code):
+    return Event(
+        game=game,
+        type=EventType.START_OF_TURN,
+        turn_number=turn_state.turn_number,
+        tick=tick,
+        origin=EventOrigin.SERVER,
+        data=JsonSerialize(turn_state),
+        short_code=short_code,
+        role=turn_state.turn,
+    )
+
+
+def EventFromCardSpawn(game, turn: int, tick: int, card):
     return Event(
         game=game,
         type=EventType.CARD_SPAWN,
+        turn_number=turn,
         tick=tick,
         origin=EventOrigin.SERVER,
         data=JsonSerialize(card),
@@ -91,11 +109,19 @@ def EventFromCardSpawn(game, tick: int, card):
     )
 
 
-def EventFromCardSelect(game, tick: int, origin: EventOrigin, card, last_move):
+def EventFromCardSelect(
+    game, turn: int, tick: int, origin: EventOrigin, card, last_move
+):
     short_code = "select" if card.selected else "unselect"
+    role = Role.NONE
+    if origin == EventOrigin.LEADER:
+        role = Role.LEADER
+    elif origin == EventOrigin.FOLLOWER:
+        role = Role.FOLLOWER
     return Event(
         game=game,
         type=EventType.CARD_SELECT,
+        turn_number=turn,
         tick=tick,
         origin=origin,
         parent_event=last_move,
@@ -103,11 +129,18 @@ def EventFromCardSelect(game, tick: int, origin: EventOrigin, card, last_move):
         short_code=short_code,
         location=card.location,
         orientation=card.rotation_degrees,
+        role=role,
     )
 
 
 def EventFromCardSet(
-    game, tick: int, origin: EventOrigin, cardset: List[Card], score, last_move
+    game,
+    turn: int,
+    tick: int,
+    origin: EventOrigin,
+    cardset: List[Card],
+    score,
+    last_move,
 ):
     data = {
         "cards": [card.to_dict() for card in cardset],
@@ -116,6 +149,7 @@ def EventFromCardSet(
     return Event(
         game=game,
         type=EventType.CARD_SET,
+        turn_number=turn,
         tick=tick,
         origin=origin,
         parent_event=last_move,
@@ -123,10 +157,11 @@ def EventFromCardSet(
     )
 
 
-def EventFromInstructionSent(game, tick: int, instruction):
+def EventFromInstructionSent(game, turn: int, tick: int, instruction):
     return Event(
         game=game,
         type=EventType.INSTRUCTION_SENT,
+        turn_number=turn,
         tick=tick,
         origin=EventOrigin.LEADER,
         short_code=instruction.uuid,
@@ -134,10 +169,11 @@ def EventFromInstructionSent(game, tick: int, instruction):
     )
 
 
-def EventFromInstructionActivated(game, tick, instruction_event, uuid):
+def EventFromInstructionActivated(game, turn: int, tick, instruction_event, uuid):
     return Event(
         game=game,
         type=EventType.INSTRUCTION_ACTIVATED,
+        turn_number=turn,
         tick=tick,
         origin=EventOrigin.SERVER,
         parent_event=instruction_event,
@@ -145,10 +181,11 @@ def EventFromInstructionActivated(game, tick, instruction_event, uuid):
     )
 
 
-def EventFromInstructionDone(game, tick, instruction_event, uuid):
+def EventFromInstructionDone(game, turn: int, tick: int, instruction_event, uuid):
     return Event(
         game=game,
         type=EventType.INSTRUCTION_DONE,
+        turn_number=turn,
         tick=tick,
         origin=EventOrigin.FOLLOWER,
         role=Role.FOLLOWER,
@@ -157,10 +194,13 @@ def EventFromInstructionDone(game, tick, instruction_event, uuid):
     )
 
 
-def EventFromInstructionCancelled(game, tick, instruction_event, instruction_uuid):
+def EventFromInstructionCancelled(
+    game, turn: int, tick: int, instruction_event, instruction_uuid
+):
     return Event(
         game=game,
         type=EventType.INSTRUCTION_CANCELLED,
+        turn_number=turn,
         tick=tick,
         origin=EventOrigin.LEADER,
         parent_event=instruction_event,
@@ -170,6 +210,7 @@ def EventFromInstructionCancelled(game, tick, instruction_event, instruction_uui
 
 def EventFromMove(
     game,
+    turn: int,
     tick: int,
     origin: EventOrigin,
     action,
@@ -178,9 +219,15 @@ def EventFromMove(
     instruction_event,
     action_code,
 ):
+    role = Role.NONE
+    if origin == EventOrigin.LEADER:
+        role = Role.LEADER
+    elif origin == EventOrigin.FOLLOWER:
+        role = Role.FOLLOWER
     return Event(
         game=game,
         type=EventType.MOVE,
+        turn_number=turn,
         tick=tick,
         origin=origin,
         parent_event=instruction_event,
@@ -188,12 +235,17 @@ def EventFromMove(
         location=location_before,
         orientation=orientation_before,
         short_code=action_code,
-        role=origin,
+        role=role,
     )
 
 
 def EventFromLiveFeedback(
-    game, tick: int, feedback: live_feedback.LiveFeedback, follower, last_move
+    game,
+    turn: int,
+    tick: int,
+    feedback: live_feedback.LiveFeedback,
+    follower,
+    last_move,
 ):
     short_code = ""
     if feedback.signal == live_feedback.FeedbackType.POSITIVE:
@@ -207,6 +259,7 @@ def EventFromLiveFeedback(
     return Event(
         game=game,
         type=EventType.LIVE_FEEDBACK,
+        turn_number=turn,
         tick=tick,
         origin=EventOrigin.LEADER,
         role=Role.LEADER,
@@ -233,6 +286,7 @@ class GameRecorder(object):
         self._instruction_number = 1
         self._instruction_queue = Queue()
         self._tick = 0
+        self._turn_number = 0
 
         # Create an entry in the Game database table.
         self._game_record = game_record
@@ -289,7 +343,9 @@ class GameRecorder(object):
     def record_card_spawn(self, card: Card):
         if self._disabled:
             return
-        event = EventFromCardSpawn(self._game_record, self._tick, card)
+        event = EventFromCardSpawn(
+            self._game_record, self._turn_number, self._tick, card
+        )
         event.save(force_insert=True)
 
     def record_card_selection(self, actor, card: Card):
@@ -297,13 +353,17 @@ class GameRecorder(object):
             return
         origin = EventOrigin.NONE
         if actor is not None:
-            origin = (
-                EventOrigin.LEADER
-                if actor.role() == Role.LEADER
-                else EventOrigin.FOLLOWER
-            )
+            if actor.role() == Role.LEADER:
+                origin = EventOrigin.LEADER
+            elif actor.role() == Role.FOLLOWER:
+                origin = EventOrigin.FOLLOWER
         event = EventFromCardSelect(
-            self._game_record, self._tick, origin, card, self._last_move
+            self._game_record,
+            self._turn_number,
+            self._tick,
+            origin,
+            card,
+            self._last_move,
         )
         event.save(force_insert=True)
 
@@ -312,20 +372,27 @@ class GameRecorder(object):
             return
         origin = EventOrigin.NONE
         if actor is not None:
-            origin = (
-                EventOrigin.LEADER
-                if actor.role() == Role.LEADER
-                else EventOrigin.FOLLOWER
-            )
+            if actor.role() == Role.LEADER:
+                origin = EventOrigin.LEADER
+            elif actor.role() == Role.FOLLOWER:
+                origin = EventOrigin.FOLLOWER
         event = EventFromCardSet(
-            self._game_record, self._tick, origin, cards, score, self._last_move
+            self._game_record,
+            self._turn_number,
+            self._tick,
+            origin,
+            cards,
+            score,
+            self._last_move,
         )
         event.save(force_insert=True)
 
     def record_instruction_sent(self, objective):
         if self._disabled:
             return
-        event = EventFromInstructionSent(self._game_record, self._tick, objective)
+        event = EventFromInstructionSent(
+            self._game_record, self._turn_number, self._tick, objective
+        )
         event.save(force_insert=True)
 
     def record_instruction_activated(self, objective):
@@ -338,7 +405,11 @@ class GameRecorder(object):
             )
             return
         event = EventFromInstructionActivated(
-            self._game_record, self._tick, instruction_event, objective.uuid
+            self._game_record,
+            self._turn_number,
+            self._tick,
+            instruction_event,
+            objective.uuid,
         )
         event.save(force_insert=True)
 
@@ -354,7 +425,11 @@ class GameRecorder(object):
             )
             return
         event = EventFromInstructionDone(
-            self._game_record, self._tick, instruction_event, objective_complete.uuid
+            self._game_record,
+            self._turn_number,
+            self._tick,
+            instruction_event,
+            objective_complete.uuid,
         )
         event.save(force_insert=True)
 
@@ -369,11 +444,14 @@ class GameRecorder(object):
                 active_instruction.uuid
             )
         move_code = self._get_move_code_for_action(actor, action)
-        origin = (
-            EventOrigin.LEADER if actor.role() == Role.LEADER else EventOrigin.FOLLOWER
-        )
+        origin = EventOrigin.NONE
+        if actor.role() == Role.LEADER:
+            origin = EventOrigin.LEADER
+        elif actor.role() == Role.FOLLOWER:
+            origin = EventOrigin.FOLLOWER
         event = EventFromMove(
             self._game_record,
+            self._turn_number,
             self._tick,
             origin,
             action,
@@ -387,11 +465,16 @@ class GameRecorder(object):
         self._last_move = event
         event.save(force_insert=True)
 
-    def record_live_feedback(self, feedback, follower):
+    def record_live_feedback(self, feedback, follower, active_instruction):
         if self._disabled:
             return
         event = EventFromLiveFeedback(
-            self._game_record, self._tick, feedback, follower, self._last_follower_move
+            self._game_record,
+            self._turn_number,
+            self._tick,
+            feedback,
+            follower,
+            self._last_follower_move,
         )
         event.save(force_insert=True)
 
@@ -403,7 +486,11 @@ class GameRecorder(object):
             logger.warn(f"Could not find instruction record for {objective.uuid}")
             return
         event = EventFromInstructionCancelled(
-            self._game_record, self._tick, instruction_event, objective.uuid
+            self._game_record,
+            self._turn_number,
+            self._tick,
+            instruction_event,
+            objective.uuid,
         )
         event.save(force_insert=True)
 
@@ -428,7 +515,7 @@ class GameRecorder(object):
             notes.append("FinishedAllCommands")
         notes_string = ",".join(notes)
         short_code = "|".join([end_reason, notes_string])
-        event = EventFromTurnState(
+        event = EventFromStartOfTurn(
             self._game_record, self._tick, turn_state, short_code
         )
         event.save(force_insert=True)
@@ -436,8 +523,11 @@ class GameRecorder(object):
     def record_turn_state(self, turn_state, reason=""):
         if self._disabled:
             return
-        "|".join([reason, ""])
-        event = EventFromTurnState(self._game_record, self._tick, turn_state, reason)
+        self._turn_number = turn_state.turn_number
+        short_code = "|".join([reason, ""])
+        event = EventFromTurnState(
+            self._game_record, self._tick, turn_state, short_code
+        )
         event.save(force_insert=True)
         self._game_record.score = turn_state.score
         self._game_record.number_turns = turn_state.turn_number

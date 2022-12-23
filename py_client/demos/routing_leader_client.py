@@ -135,15 +135,15 @@ def has_instruction_available(instructions):
     return False
 
 
-def main(host, render=False, i_uuid=""):
+def main(host, render=False, e_uuid="", lobby="bot-sandbox", pause_per_turn=0):
     logging.basicConfig(level=logging.INFO)
-    client = RemoteClient(host, render)
+    client = RemoteClient(host, render, lobby)
     connected, reason = client.Connect()
     assert connected, f"Unable to connect: {reason}"
     game, reason = client.JoinGame(
         timeout=timedelta(minutes=5),
         queue_type=RemoteClient.QueueType.LEADER_ONLY,
-        i_uuid=i_uuid,
+        e_uuid=e_uuid,
     )
     assert game is not None, f"Unable to join game: {reason}"
     (
@@ -156,14 +156,18 @@ def main(host, render=False, i_uuid=""):
     ) = game.initial_state()
     closest_card = get_next_card(cards, follower)
     if turn_state.turn == Role.LEADER:
-        action = Action.SendInstruction(
-            get_instruction_for_card(closest_card, follower, map, game, cards)
-        )
+        if closest_card is None:
+            action = Action.SendInstruction("random, random, random, random, random")
+        else:
+            action = Action.SendInstruction(
+                get_instruction_for_card(closest_card, follower, map, game, cards)
+            )
     else:
         action = Action.NoopAction()
     float("inf")
     while not game.over():
         print(f"step({action})")
+        sleep(pause_per_turn)
         if action.is_end_turn():
             sleep(0.2)
         (
@@ -178,6 +182,10 @@ def main(host, render=False, i_uuid=""):
         if turn_state.turn == Role.LEADER:
             if has_instruction_available(instructions):
                 action = Action.EndTurn()
+            elif closest_card is None:
+                action = Action.SendInstruction(
+                    "random, random, random, random, random"
+                )
             else:
                 action = Action.SendInstruction(
                     get_instruction_for_card(closest_card, follower, map, game, cards)

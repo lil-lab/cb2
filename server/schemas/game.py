@@ -65,21 +65,6 @@ class Turn(BaseModel):
     )  # Something like 'RanOutOfTime' or 'UserPrompted', or 'FollowerOutOfMoves', 'FollowerFinishedInstructions', or 'UserPromptedInterruption'
 
 
-def InstructionTurnActive(instruction):
-    game = instruction.game
-    instruction_before_query = (
-        Instruction.select()
-        .where(Instruction.game == game, Instruction.time < instruction.time)
-        .order_by(Instruction.time.desc())
-    )
-    if instruction_before_query.count() == 0:
-        return 0
-    instruction_before = instruction_before_query.get()
-    if instruction_before.turn_completed == -1:
-        return instruction_before.turn_cancelled
-    return instruction_before.turn_completed
-
-
 class Instruction(BaseModel):
     game = ForeignKeyField(Game, backref="instructions")
     worker = ForeignKeyField(Worker, backref="moves", null=True)

@@ -12,8 +12,8 @@ from server.schemas.util import HecsCoordField
 class EventOrigin(IntEnum):
     NONE = 0
     LEADER = 1
-    FOLLOWER = 1
-    SERVER = 2
+    FOLLOWER = 2
+    SERVER = 3
 
 
 class EventType(IntEnum):
@@ -21,22 +21,24 @@ class EventType(IntEnum):
     MAP_UPDATE = 1
     INITIAL_STATE = 2
     TURN_STATE = 3
-    PROP_UPDATE = 4
-    CARD_SPAWN = 5
-    CARD_SELECT = 6
-    CARD_SET = 7
-    INSTRUCTION_SENT = 8
-    INSTRUCTION_ACTIVATED = 9
-    INSTRUCTION_DONE = 10
-    INSTRUCTION_CANCELLED = 11
-    MOVE = 12
-    LIVE_FEEDBACK = 13
+    START_OF_TURN = 4
+    PROP_UPDATE = 5
+    CARD_SPAWN = 6
+    CARD_SELECT = 7
+    CARD_SET = 8
+    INSTRUCTION_SENT = 9
+    INSTRUCTION_ACTIVATED = 10
+    INSTRUCTION_DONE = 11
+    INSTRUCTION_CANCELLED = 12
+    MOVE = 13
+    LIVE_FEEDBACK = 14
 
 
 class Event(BaseModel):
     id = UUIDField(primary_key=True, default=uuid.uuid4, unique=True)
     game = ForeignKeyField(Game, backref="events")
     type = IntegerField(default=EventType.NONE)
+    turn_number = IntegerField(null=True)
     tick = IntegerField()
     server_time = DateTimeField(default=datetime.datetime.utcnow)
     # Determined by packet transmissions time. Nullable.

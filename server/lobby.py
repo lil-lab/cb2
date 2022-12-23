@@ -114,11 +114,11 @@ class Lobby(ABC):
     ) -> Tuple[web.WebSocketResponse, web.WebSocketResponse, str]:
         """Returns a leader-follower match, or None if no match is available.
 
-        Returns a tuple of (leader, follower, instruction_uuid="").
+        Returns a tuple of (leader, follower, event_uuid="").
 
         This function is also responsible for removing these entries from the queues.
 
-        Third return value is the instruction uuid to start the game from, if
+        Third return value is the event uuid to start the game from, if
         applicable. This is determined from UUIDs the clients may have
         requested.
         """
@@ -158,21 +158,21 @@ class Lobby(ABC):
     def player_queue(self) -> List[Tuple[(datetime, web.WebSocketResponse, str)]]:
         """Query the player queue.
 
-        Returns a list of tuples of (queue_entry_time, websocket, instruction_uuid).
+        Returns a list of tuples of (queue_entry_time, websocket, event_uuid).
         """
         return self._player_queue
 
     def leader_queue(self) -> List[Tuple[(datetime, web.WebSocketResponse, str)]]:
         """Query the leader queue.
 
-        Returns a list of tuples of (queue_entry_time, websocket, instruction_uuid).
+        Returns a list of tuples of (queue_entry_time, websocket, event_uuid).
         """
         return self._leader_queue
 
     def follower_queue(self) -> List[Tuple[(datetime, web.WebSocketResponse, str)]]:
         """Query the follower queue.
 
-        Returns a list of tuples of (queue_entry_time, websocket, instruction_uuid).
+        Returns a list of tuples of (queue_entry_time, websocket, event_uuid).
         """
         return self._follower_queue
 
@@ -213,7 +213,7 @@ class Lobby(ABC):
                 await asyncio.sleep(0.5)
                 # If the first follower has been waiting for 5m, remove them from the queue.
                 if len(self._follower_queue) > 0:
-                    (ts, follower, i_uuid) = self._follower_queue[0]
+                    (ts, follower, e_uuid) = self._follower_queue[0]
                     if datetime.now() - ts > timedelta(minutes=5):
                         self._follower_queue.popleft()
                         # Queue a room management response to notify the follower that they've been removed from the queue.
@@ -229,7 +229,7 @@ class Lobby(ABC):
 
                 # If a general player has been waiting alone for 5m, remove them from the queue.
                 if len(self._player_queue) > 0:
-                    (ts, player, i_uuid) = self._player_queue[0]
+                    (ts, player, e_uuid) = self._player_queue[0]
                     if datetime.now() - ts > timedelta(minutes=5):
                         self._player_queue.popleft()
                         # Queue a room management response to notify the player that they've been removed from the queue.
@@ -245,7 +245,7 @@ class Lobby(ABC):
 
                 # If a leader has been waiting alone for 5m, remove them from the queue.
                 if len(self._leader_queue) > 0:
-                    (ts, leader, i_uuid) = self._leader_queue[0]
+                    (ts, leader, e_uuid) = self._leader_queue[0]
                     if datetime.now() - ts > timedelta(minutes=5):
                         self._leader_queue.popleft()
                         # Queue a room management response to notify the leader that they've been removed from the queue.
@@ -259,7 +259,7 @@ class Lobby(ABC):
                             )
                         )
 
-                leader, follower, request = self.get_leader_follower_match()
+                leader, follower, event_uuid = self.get_leader_follower_match()
 
                 if (leader is None) or (follower is None):
                     continue
@@ -268,15 +268,17 @@ class Lobby(ABC):
                     f"Creating room for {leader} and {follower}. Queue size: {len(self._player_queue)} Follower Queue: {len(self._follower_queue)}"
                 )
 
-                i_uuid = request.join_game_with_instruction_uuid
-                if i_uuid is not None and i_uuid != "":
-                    logger.info(f"Starting game from i_uuid: {i_uuid}")
+                logger.info(
+                    f"================?!?!?!================== event_uuid: {event_uuid}"
+                )
+                if event_uuid is not None and event_uuid != "":
+                    logger.info(f"Starting game from event: {event_uuid}")
                     # Start game from a specific point.
                     room = self.create_room(
-                        i_uuid, None, RoomType.PRESET_GAME, "", i_uuid
+                        event_uuid, None, RoomType.PRESET_GAME, "", event_uuid
                     )
                     if (room is None) or (not room.initialized()):
-                        logger.warn(f"Error creating room from UUID {i_uuid}")
+                        logger.warn(f"Error creating room from UUID {event_uuid}")
                         # Boot the leader & follower from the queue.
                         self._pending_room_management_responses[leader].put(
                             RoomManagementResponse(
@@ -287,7 +289,7 @@ class Lobby(ABC):
                                     0,
                                     Role.LEADER,
                                     True,
-                                    "Could not create server from provided I_UUID",
+                                    "Could not create server from provided event UUID",
                                 ),
                                 None,
                                 None,
@@ -302,14 +304,14 @@ class Lobby(ABC):
                                     0,
                                     Role.FOLLOWER,
                                     True,
-                                    "Could not create server from provided I_UUID",
+                                    "Could not create server from provided event UUID",
                                 ),
                                 None,
                                 None,
                             )
                         )
                         continue
-                    logger.info(f"Creating new game from instruction {room.name()}")
+                    logger.info(f"Creating new game from event {room.name()}")
                     leader_id = room.add_player(leader, Role.LEADER)
                     follower_id = room.add_player(follower, Role.FOLLOWER)
                     self._remotes[leader] = SocketInfo(
@@ -450,7 +452,7 @@ class Lobby(ABC):
         game_record: game_db.Game,
         type: RoomType = RoomType.GAME,
         tutorial_name: str = "",
-        from_instruction: str = "",
+        from_event: str = "",
     ):
         """
         Creates a new room & starts an asyncio task to run the room's state machine.
@@ -468,7 +470,7 @@ class Lobby(ABC):
             self,
             type,
             tutorial_name,
-            from_instruction,
+            from_event,
         )
         if not room.initialized():
             return None
@@ -623,7 +625,9 @@ class Lobby(ABC):
                 f"Join request is from socket which is already in the leader wait queue. Ignoring."
             )
             return
-        self._player_queue.append((datetime.now(), ws, request))
+        self._player_queue.append(
+            (datetime.now(), ws, request.join_game_with_event_uuid)
+        )
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(
                 RoomResponseType.JOIN_RESPONSE,
@@ -650,7 +654,9 @@ class Lobby(ABC):
                 f"Join request is from socket which is already in the leader wait queue. Ignoring."
             )
             return
-        self._follower_queue.append((datetime.now(), ws, request))
+        self._follower_queue.append(
+            (datetime.now(), ws, request.join_game_with_event_uuid)
+        )
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(
                 RoomResponseType.JOIN_RESPONSE,
@@ -688,7 +694,9 @@ class Lobby(ABC):
                 f"Join request is from leader socket which is already in the follow wait queue. Ignoring."
             )
             return
-        self._leader_queue.append((datetime.now(), ws, request))
+        self._leader_queue.append(
+            (datetime.now(), ws, request.join_game_with_event_uuid)
+        )
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(
                 RoomResponseType.JOIN_RESPONSE,
@@ -701,7 +709,7 @@ class Lobby(ABC):
 
     def handle_follower_only_join_request(self, request, ws):
         logger.info(
-            f"Received follower only join request from : {str(ws)}. Queue size: {len(self._follower_queue)}. uuid: {request.join_game_with_instruction_uuid}"
+            f"Received follower only join request from : {str(ws)}. Queue size: {len(self._follower_queue)}. uuid: {request.join_game_with_event_uuid}"
         )
         self.join_follower_queue(ws, request)
 
