@@ -8,7 +8,8 @@ import peewee
 
 import server.schemas.base as base
 import server.schemas.defaults as defaults_db
-from server.schemas.game import Game, Instruction, Move
+from server.schemas.event import Event, EventType
+from server.schemas.game import Game
 from server.schemas.mturk import Assignment
 
 # This document makes reference to the following game classifications:
@@ -144,53 +145,37 @@ def is_mturk_sandbox(game):
     return (not has_leader_submit_url) and (not has_follower_submit_url)
 
 
-def high_percent_instructions_incomplete(game_instructions):
+def high_percent_instructions_incomplete(game_events):
     # Make sure there weren't too many instructions that never got completed.
     # Count the number of continuous incomplete instructions at the end of the game.
-    unfinished_instructions = 0
-    for instruction in game_instructions.order_by(Instruction.turn_issued.desc()):
-        if instruction.turn_completed == -1:
-            unfinished_instructions += 1
-        else:
-            break
+    #
+    # Event objects store the instruction UUID in the shortcode field.
+    instructions_sent = game_events.where(Event.type == EventType.INSTRUCTION_SENT)
+    instructions_completed = game_events.where(Event.type == EventType.INSTRUCTION_DONE)
+    sent_uuids = set([instr.short_code for instr in instructions_sent])
+    completed_uuids = set([instr.short_code for instr in instructions_completed])
+    unfinished_instructions = len(sent_uuids - completed_uuids)
 
-    high_percent_instructions_incomplete = (
-        unfinished_instructions / game_instructions.count() >= 0.2
-        if game_instructions.count() > 0
+    high_percent_incomplete = (
+        unfinished_instructions / instructions_sent.count() >= 0.2
+        if instructions_sent.count() > 0
         else True
     )
-    return high_percent_instructions_incomplete
+    return high_percent_incomplete
 
 
-def high_percent_cancelled_instructions(game_instructions):
-    # Compute the number of times the leader cancelled an active instruction
-    cancelled_instructions = 0
-    last_turn = -1
-    total_active_instructions = 0
-
-    for instruction in game_instructions.order_by(Instruction.turn_issued.desc()):
-        cancelled = instruction.turn_cancelled != -1
-        completed = instruction.turn_completed != -1
-
-        if not cancelled and not completed:
-            moves = (
-                Move.select()
-                .join(Instruction)
-                .where(
-                    Move.instruction == instruction,
-                    Move.character_role == "Role.FOLLOWER",
-                )
-            )
-            if moves.count() > 0:
-                total_active_instructions += 1
-        elif cancelled:
-            if instruction.turn_cancelled != last_turn:
-                last_turn = instruction.turn_cancelled
-                cancelled_instructions += 1
-                total_active_instructions += 1
-        else:
-            total_active_instructions += 1
-
+def high_percent_cancelled_instructions(game_events):
+    # Compute the number of times the leader cancelled an active instruction.
+    # Cancellations that occurred on the same tick count as one cancellation.
+    instructions_activated = game_events.where(
+        Event.type == EventType.INSTRUCTION_ACTIVATED
+    )
+    instructions_cancelled = game_events.where(
+        Event.type == EventType.INSTRUCTION_CANCELLED
+    )
+    cancellation_ticks = set([instr.tick for instr in instructions_cancelled])
+    cancelled_instructions = len(cancellation_ticks)
+    total_active_instructions = len(instructions_activated)
     high_percent_instructions_cancelled = (
         cancelled_instructions / total_active_instructions >= 0.2
         if total_active_instructions > 0
@@ -199,11 +184,12 @@ def high_percent_cancelled_instructions(game_instructions):
     return high_percent_instructions_cancelled
 
 
-def follower_got_lost(game_instructions):
+def follower_got_lost(game_events):
     # Make sure the follower didn't get stuck on an instruction.
+    game_instructions = game_events.where(Event.type == EventType.INSTRUCTION_SENT)
     follower_got_lost = False
     for instruction in game_instructions:
-        moves = instruction.moves
+        moves = game_events.where(Event.parent_event == instruction.id)
         if moves.count() >= 25:
             follower_got_lost = True
             break
@@ -250,15 +236,18 @@ def DiagnoseGame(game):
         game
     ):  # Only non-sandbox mturk games are considered research data.
         return GameDiagnosis.MTURK_SANDBOX
+
+    game_events = (
+        Event.select()
+        .join(Game)
+        .where(Event.game == game.id)
+        .order_by(Event.server_time)
+    )
     if short_game(game):  # Filter games that were just given up on.
         return GameDiagnosis.SHORT_GAME
-
-    game_instructions = Instruction.select().join(Game).where(Instruction.game == game)
-    if follower_got_lost(game_instructions):
+    if follower_got_lost(game_events):
         return GameDiagnosis.FOLLOWER_GOT_LOST
-    if high_percent_cancelled_instructions(
-        game_instructions
-    ):  # > % of instructions cancelled.
+    if high_percent_cancelled_instructions(game_events):
         return GameDiagnosis.HIGH_PERCENT_INSTRUCTIONS_CANCELLED
     return GameDiagnosis.GOOD
 

@@ -202,7 +202,7 @@ def JsonFromEvent(event: event_db.Event):
         "location": str(event.location),
         "orientation": event.orientation,
         "data": event.data,
-        "parent": str(event.parent_event_id),
+        "parent": event.parent_event.id.hex if event.parent_event is not None else None,
     }
 
 
@@ -865,7 +865,10 @@ async def stats(request):
     except Exception as e:
         logger.info(f"Unable to parse JSON: {post_data}. Error: {e}")
     from_game_id = 0
-    to_game_id = max([game.id for game in games])
+    if len(games) > 0:
+        to_game_id = max([game.id for game in games])
+    else:
+        to_game_id = 0
     if post_data:
         from_game_id = post_data.get("from_game_id", 0)
         to_game_id = post_data.get("to_game_id", 0)
