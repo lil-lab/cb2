@@ -536,6 +536,9 @@ class State(object):
                     self._leader,
                     self._follower,
                 )
+                self._game_recorder.record_start_of_turn(
+                    self._turn_state, "StartOfGame"
+                )
                 self._initialized = True
             else:
                 return
@@ -886,7 +889,7 @@ class State(object):
         self.send_turn_state(turn_update)
 
         if end_of_turn:
-            self._game_recorder.record_end_of_turn(
+            self._game_recorder.record_start_of_turn(
                 self._turn_state,
                 end_reason,
                 turn_skipped,

@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from mashumaro.mixins.json import DataClassJSONMixin
 
@@ -84,7 +84,7 @@ class MapUpdate(DataClassJSONMixin):
     cols: int
     tiles: List[Tile]
     metadata: MapMetadata = field(default_factory=MapMetadata)
-    props: List[Prop] = field(default_factory=list)
+    props: Optional[List[Prop]] = field(default_factory=list)
 
     @staticmethod
     def from_gym_state(observation):

@@ -123,7 +123,10 @@ def ListMturkGames():
 def ListGames():
     games = (
         Game.select()
-        .where(Game.valid == True, ("game" in Game.type) or ("game-mturk" in Game.type))
+        .where(
+            Game.valid == True,
+            Game.type.contains("game") or Game.type.contains("game-mturk"),
+        )
         .switch(Game)
     )
     return games

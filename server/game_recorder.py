@@ -97,6 +97,7 @@ def EventFromStartOfTurn(game, tick: int, turn_state, short_code):
 
 
 def EventFromCardSpawn(game, turn: int, tick: int, card):
+    card_str = " ".join([card.count, card.color, card.shape])
     return Event(
         game=game,
         type=EventType.CARD_SPAWN,
@@ -106,6 +107,7 @@ def EventFromCardSpawn(game, turn: int, tick: int, card):
         data=JsonSerialize(card),
         location=card.location,
         orientation=card.rotation_degrees,
+        short_code=card_str,
     )
 
 
@@ -154,6 +156,7 @@ def EventFromCardSet(
         origin=origin,
         parent_event=last_move,
         data=JsonSerialize(data),
+        short_code=score,
     )
 
 
@@ -164,6 +167,7 @@ def EventFromInstructionSent(game, turn: int, tick: int, instruction):
         turn_number=turn,
         tick=tick,
         origin=EventOrigin.LEADER,
+        role=Role.LEADER,
         short_code=instruction.uuid,
         data=JsonSerialize(instruction),
     )
@@ -176,6 +180,7 @@ def EventFromInstructionActivated(game, turn: int, tick, instruction_event, uuid
         turn_number=turn,
         tick=tick,
         origin=EventOrigin.SERVER,
+        role=Role.NONE,
         parent_event=instruction_event,
         short_code=uuid,
     )
@@ -203,6 +208,7 @@ def EventFromInstructionCancelled(
         turn_number=turn,
         tick=tick,
         origin=EventOrigin.LEADER,
+        role=Role.LEADER,
         parent_event=instruction_event,
         short_code=instruction_uuid,
     )
@@ -494,13 +500,13 @@ class GameRecorder(object):
         )
         event.save(force_insert=True)
 
-    def record_end_of_turn(
+    def record_start_of_turn(
         self,
         turn_state,
         end_reason,
-        turn_skipped,
-        used_all_moves,
-        finished_all_commands,
+        turn_skipped: bool = False,
+        used_all_moves: bool = False,
+        finished_all_commands: bool = False,
     ):
         if self._disabled:
             return

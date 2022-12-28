@@ -1,5 +1,6 @@
 # Creates a set of graphics where an instruction is displayed on the left, and
 # the follower's pathway is displayed on the right.
+import logging
 import pathlib
 
 import fire
@@ -108,6 +109,7 @@ def main(
     output_dir="output",
     research_only=True,
 ):
+    logging.basicConfig(level=logging.INFO)
     cfg = config.ReadConfigOrDie(config_filepath)
 
     print(f"Reading database from {cfg.database_path()}")

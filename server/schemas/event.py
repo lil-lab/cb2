@@ -56,6 +56,8 @@ class Event(BaseModel):
     # If the event has a brief/compressed representation, include it here. For
     # moves, this is the action code (MF/MB/TL/TR).
     # If this is an instruction-related event, it's the instruction's UUID.
+    # For START_OF_TURN, it contains [end_reason | notes_string], which is a
+    # string containing human-readable reasons why the previous turn ended.
     short_code = TextField(null=True)
     # If applicable, the "location" of an event. For moves, this is the location *before* the action occurred.
     # For live feedback, this is the follower location during the live feedback.
