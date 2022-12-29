@@ -149,26 +149,26 @@ def main(
                 peewee.JOIN.LEFT_OUTER,
                 on=(Event.parent_event == ParentEvent.id),
             )
-            .where(Event.game == game)
+            .where(Event.game_id == game.id)
             .order_by(Event.server_time)
         )
         map_events = (
             game_events.select()
             .where(Event.type == EventType.MAP_UPDATE)
-            .order_by(Event.server_time.desc())
+            .order_by(Event.server_time)
         )
         if map_events.count() == 0:
             print(f"Skipping game {game.id} because it has no map update events.")
             continue
         prop_updates = game_events.where(Event.type == EventType.PROP_UPDATE).order_by(
-            Event.server_time.desc()
+            Event.server_time
         )
         if not prop_updates.exists():
             print(f"Skipping game {game.id} because it has no prop update events.")
             continue
-        last_map_update = map_update_msg.MapUpdate.from_json(map_events.get().data)
-        last_prop_update = prop_msg.PropUpdate.from_json(prop_updates.get().data)
-        initial_cards = [Card.FromProp(prop) for prop in last_prop_update.props]
+        first_map_update = map_update_msg.MapUpdate.from_json(map_events.get().data)
+        first_prop_update = prop_msg.PropUpdate.from_json(prop_updates.get().data)
+        initial_cards = [Card.FromProp(prop) for prop in first_prop_update.props]
         instructions = game_events.where(Event.type == EventType.INSTRUCTION_SENT)
         for instruction in instructions:
             activation_query = instruction.children.where(
@@ -212,13 +212,14 @@ def main(
                 .order_by(Event.server_time)
             )
 
-            filepath = game_dir / f"instruction_vis_{instruction.id}.png"
+            dt_string = instruction.server_time.strftime("%Y-%m-%d_%H-%M-%S")
+            filepath = game_dir / f"instruction_vis_{dt_string}.png"
             instruction_obj = ObjectiveMessage.from_json(instruction.data)
             draw_instruction(
                 instruction_obj,
                 moves,
                 feedbacks,
-                last_map_update,
+                first_map_update,
                 filepath,
                 game.id,
                 props,
