@@ -359,7 +359,7 @@ def migrate_to_new_game(
                     game=new_game,
                     type=EventType.CARD_SPAWN,
                     server_time=prop_update.time,
-                    turn_number=last_turn_state.turn_number,
+                    turn_number=last_turn_state.turn_number if last_turn_state else 0,
                     origin=EventOrigin.SERVER,
                     data=JsonSerialize(card_obj),
                     short_code=short_code,

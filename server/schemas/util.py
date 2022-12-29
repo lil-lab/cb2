@@ -12,6 +12,8 @@ class HecsCoordField(TextField):
         super(__class__, self).__init__(null=null)
 
     def db_value(self, value):
+        if value is None:
+            return None
         return orjson.dumps(value, option=orjson.OPT_NAIVE_UTC).decode("utf-8")
 
     def python_value(self, db_val):
