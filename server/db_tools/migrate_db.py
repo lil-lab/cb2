@@ -103,6 +103,7 @@ def migrate_to_new_game(
         map_event = Event(
             game=new_game,
             type=EventType.MAP_UPDATE,
+            server_time=map_updates[0].time,
             turn_number=0,
             origin=EventOrigin.SERVER,
             data=map_updates[0].map_data.to_json(),
@@ -114,6 +115,7 @@ def migrate_to_new_game(
         prop_event = Event(
             game=new_game,
             type=EventType.PROP_UPDATE,
+            server_time=prop_updates[0].time,
             turn_number=0,
             origin=EventOrigin.SERVER,
             data=JsonSerialize(prop_updates[0].prop_data),
@@ -176,6 +178,7 @@ def migrate_to_new_game(
         initial_state_event = Event(
             game=new_game,
             type=EventType.INITIAL_STATE,
+            server_time=initial_state.time,
             turn_number=0,
             origin=EventOrigin.SERVER,
             data=JsonSerialize(initial_state_obj),
@@ -278,7 +281,7 @@ def migrate_to_new_game(
                 if move.instruction is not None
                 else None,
                 short_code=move.action_code,
-                data=move.action,
+                data=JsonSerialize(move.action),
                 location=move.position_before,
                 orientation=move.orientation_before,
                 tick=-1,
@@ -317,7 +320,7 @@ def migrate_to_new_game(
                 origin=EventOrigin.LEADER,
                 role="Role.LEADER",
                 parent_event=last_move,
-                data=feedback_data,
+                data=JsonSerialize(feedback_data),
                 short_code=short_code,
                 location=feedback.follower_position,
                 orientation=feedback.follower_orientation,
