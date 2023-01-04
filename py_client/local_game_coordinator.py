@@ -315,6 +315,7 @@ class LocalGameCoordinator:
                 logger.info(f"Game {game_name} has ended. Cleaning up.")
                 game_driver.state_machine().on_game_over()
                 del self._game_drivers[game_name]
+                del self._game_endpoints[game_name]
 
     @staticmethod
     def _unique_game_name():
