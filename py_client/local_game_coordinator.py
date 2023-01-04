@@ -317,6 +317,15 @@ class LocalGameCoordinator:
                 del self._game_drivers[game_name]
                 del self._game_endpoints[game_name]
 
+    def ForceCleanAll(self):
+        """Cleans up any games that are running or have ended."""
+        for game_name in list(self._game_drivers.keys()):
+            logger.info(f"Forcefully cleaning game {game_name} driver.")
+            del self._game_drivers[game_name]
+        for game_name in list(self._game_endpoints.keys()):
+            logger.info(f"Forcefully cleaning game {game_name} endpoint.")
+            del self._game_endpoints[game_name]
+
     @staticmethod
     def _unique_game_name():
         """Generates a random UUID and returns.
