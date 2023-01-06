@@ -312,8 +312,6 @@ class Room(object):
             return False
         out_messages.extend(messages)
 
-        logger.info(f"HIIIIIIIIIIIIIIIII {messages}")
-
         for message in messages:
             try:
                 log_bytes = orjson.dumps(

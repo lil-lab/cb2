@@ -510,7 +510,7 @@ Camera:
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 439
+    m_Bits: 2487
   m_RenderingPath: 1
   m_TargetTexture: {fileID: 8400000, guid: 583879c6f9dcc44a3845724e7ef37549, type: 2}
   m_TargetDisplay: 0
@@ -2112,11 +2112,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4653771508063167272, guid: 4eb3f7110a9774cf0a86967b666847d4, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 0
+      value: 370
       objectReference: {fileID: 0}
     - target: {fileID: 4653771508063167272, guid: 4eb3f7110a9774cf0a86967b666847d4, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 0
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 4653771508063167272, guid: 4eb3f7110a9774cf0a86967b666847d4, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -2320,11 +2320,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4653771509331922680, guid: 4eb3f7110a9774cf0a86967b666847d4, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 0
+      value: 370
       objectReference: {fileID: 0}
     - target: {fileID: 4653771509331922680, guid: 4eb3f7110a9774cf0a86967b666847d4, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 0
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 4653771509331922680, guid: 4eb3f7110a9774cf0a86967b666847d4, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -2762,7 +2762,7 @@ Camera:
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 439
+    m_Bits: 2487
   m_RenderingPath: 1
   m_TargetTexture: {fileID: 8400000, guid: 583879c6f9dcc44a3845724e7ef37549, type: 2}
   m_TargetDisplay: 0

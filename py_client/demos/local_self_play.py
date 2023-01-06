@@ -1,5 +1,6 @@
 import logging
 import threading
+import time
 
 import fire
 import matplotlib.pyplot as plt
@@ -75,7 +76,7 @@ class NaiveFollower(threading.Thread):
             return Action.RandomMovementAction()
 
 
-def PlayGame(coordinator, i_uuid="", log_to_db: bool = True):
+def PlayGame(coordinator, i_uuid="", log_to_db: bool = True, slow: bool = False):
     if len(i_uuid) > 0:
         game_name = coordinator.CreateGameFromDatabase(i_uuid)
     else:
@@ -93,6 +94,8 @@ def PlayGame(coordinator, i_uuid="", log_to_db: bool = True):
         live_feedback,
     ) = endpoint_pair.initial_state()
     while not endpoint_pair.over():
+        if slow:
+            time.sleep(0.5)
         if turn_state.turn == Role.LEADER:
             leader_action = leader_agent.get_action(
                 map, cards, turn_state, instructions, actors, live_feedback
@@ -138,6 +141,7 @@ def main(
     instruction_uuid="",
     profile=False,
     num_games=10,
+    slow: bool = False,
 ):
     nest_asyncio.apply()
     # Disabling most logs improves performance by about 50ms per game.
@@ -160,7 +164,7 @@ def main(
         logger.info(
             f"========================== STARTING GAME {i} =========================="
         )
-        score, duration = PlayGame(coordinator, instruction_uuid)
+        score, duration = PlayGame(coordinator, instruction_uuid, slow=slow)
         logger.info(f"Game over. Score: {score}, Duration: {duration}")
         scores.append(score)
         durations.append(duration)

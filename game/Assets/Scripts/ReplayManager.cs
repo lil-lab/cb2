@@ -193,5 +193,6 @@ public class ReplayManager : MonoBehaviour
         request.type = Network.ReplayRequestType.REPLAY_COMMAND;
         request.command = Network.ReplayCommand.REPLAY_SPEED;
         request.replay_speed = speed;
+        Network.NetworkManager.TaggedInstance().TransmitReplayMessage(request);
     }
 }

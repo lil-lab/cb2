@@ -58,4 +58,4 @@ class ReplayResponseType(Enum):
 @dataclass(frozen=True)
 class ReplayResponse(DataClassJSONMixin):
     type: ReplayResponseType
-    replay_info: Optional[ReplayInfo] = None
+    info: Optional[ReplayInfo] = None

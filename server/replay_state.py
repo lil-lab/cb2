@@ -1,7 +1,8 @@
+import dataclasses
 import json
 import logging
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 
 from server.assets import AssetId
@@ -83,14 +84,34 @@ class ReplayState(object):
         self._message_queue = {}
         self._command_queue = deque()
 
+        self._num_turns = 0
+
         self._speed = 1.0
+
+        initial_state_event = (
+            Event.select()
+            .where(
+                Event.game_id == self._game_record.id,
+                Event.type == EventType.INITIAL_STATE,
+            )
+            .get()
+        )
+        initial_state = InitialState.from_json(initial_state_event.data)
+        self._leader_id = initial_state.leader_id
 
     def has_pending_messages(self):
         # Make sure all lists in self._message_queue are empty.
         return any([len(l) > 0 for l in self._message_queue.values()])
 
-    def MessageFromEvent(self, event: Event, instructions):
-        """Converts a database Event to a MessageFromServer to send to the replay client."""
+    def MessageFromEvent(
+        self, player_id, event: Event, instructions, noduration: bool = False
+    ):
+        """Converts a database Event to a MessageFromServer to send to the replay client.
+
+        When rewinding, events need to be processed immediately. This is
+        accomplished by setting noduration to True. This will cause any
+        action objects to have their duration set to 0.
+        """
         if event.type == EventType.MAP_UPDATE:
             map_update = MapUpdate.from_json(event.data)
             return message_from_server.MapUpdateFromServer(map_update)
@@ -105,14 +126,14 @@ class ReplayState(object):
             )
             follower_state = state_sync.Actor(
                 initial_state.follower_id,
-                AssetId.PLAYER,
+                AssetId.FOLLOWER_BOT,
                 initial_state.follower_position,
                 initial_state.follower_rotation_degrees,
                 Role.FOLLOWER,
             )
             actor_states = [leader_state, follower_state]
             return message_from_server.StateSyncFromServer(
-                state_sync.StateSync(2, actor_states, 0, Role.NONE)
+                state_sync.StateSync(2, actor_states, player_id, Role.LEADER)
             )
         elif event.type == EventType.TURN_STATE:
             turn_state = TurnState.from_json(event.data)
@@ -148,6 +169,15 @@ class ReplayState(object):
             return message_from_server.ObjectivesFromServer(instructions)
         elif event.type == EventType.MOVE:
             action_obj = Action.from_json(event.data)
+            action_obj = dataclasses.replace(
+                action_obj,
+                expiration=datetime.utcnow() + timedelta(seconds=10),
+                duration_s=(action_obj.duration_s / self._speed),
+            )
+            if noduration:
+                action_obj = dataclasses.replace(
+                    action_obj, duration_s=0, expiration=datetime.min
+                )
             return message_from_server.ActionsFromServer([action_obj])
         elif event.type == EventType.LIVE_FEEDBACK:
             feedback = live_feedback.LiveFeedback.from_json(event.data)
@@ -175,7 +205,7 @@ class ReplayState(object):
         return self._player_ids
 
     def player_role(self, id):
-        return Role.NONE
+        return Role.LEADER
 
     def start(self):
         self._start_time = datetime.utcnow()
@@ -208,15 +238,16 @@ class ReplayState(object):
         if self._event_index >= len(self._events):
             return
         self._update_instructions(self._instructions, self._events[self._event_index])
-        message = self.MessageFromEvent(
-            self._events[self._event_index], self._instructions
-        )
         for actor_id in self._message_queue:
+            message = self.MessageFromEvent(
+                actor_id, self._events[self._event_index], self._instructions
+            )
             self._message_queue[actor_id].append(message)
         # Advance the event index.
         self._event_index += 1
         # If we haven't reached the end of the events, set the timer for the next event.
         if self._event_index < len(self._events):
+            self.time_to_next_event()
             self._event_timer = CountDownTimer(
                 self.time_to_next_event().total_seconds()
             )
@@ -239,10 +270,11 @@ class ReplayState(object):
             return 0
         if self._event_index >= len(self._events):
             return float("inf")
-        return (
+        time_difference = (
             self._events[self._event_index].server_time
             - self._events[self._event_index - 1].server_time
-        ) / self._speed
+        )
+        return (time_difference) / self._speed
 
     def rewind_event(self):
         self._event_index -= 1
@@ -250,8 +282,10 @@ class ReplayState(object):
         # Quickly resend all events leading up to the previous event.
         for i in range(0, self._event_index):
             self._update_instructions(self._instructions, self._events[i])
-            message = self.MessageFromEvent(self._events[i], self._instructions)
             for actor_id in self._message_queue:
+                message = self.MessageFromEvent(
+                    actor_id, self._events[i], self._instructions, noduration=True
+                )
                 self._message_queue[actor_id].append(message)
         self._event_timer = CountDownTimer(self.time_to_next_event().total_seconds())
         if not self._paused:
@@ -260,17 +294,24 @@ class ReplayState(object):
     def prime_replay(self):
         """The first few events contain the map and initial state. Until these load, the display will be blank. Call this method after a reset() to skip to these so that they are displayed immediately."""
         map_event_index = -1
+        prop_update_index = -1
         for i, event in enumerate(self._events):
             if event.type == EventType.MAP_UPDATE:
                 map_event_index = i
+            if event.type == EventType.PROP_UPDATE:
+                prop_update_index = i
+            if prop_update_index != -1 and map_event_index != -1:
                 break
-        if map_event_index == -1:
+        if map_event_index == -1 and prop_update_index == -1:
             return
+        skip_to_index = max(map_event_index, prop_update_index)
         # Quickly send all events leading up to the map event.
-        for i in range(0, map_event_index):
+        for i in range(0, skip_to_index + 1):
             self._update_instructions(self._instructions, self._events[i])
-            message = self.MessageFromEvent(self._events[i], self._instructions)
             for actor_id in self._message_queue:
+                message = self.MessageFromEvent(
+                    actor_id, self._events[i], self._instructions, noduration=True
+                )
                 self._message_queue[actor_id].append(message)
         self._event_index = map_event_index
 
@@ -286,21 +327,31 @@ class ReplayState(object):
         for actor_id in self._message_queue:
             self._message_queue[actor_id] = deque()
         self._command_queue = deque()
+        self._num_turns = 0
 
     def update(self):
-        logger.debug("update()")
         send_replay_state = False
 
         # Wait for someone to join in order to init.
         if not self._initialized and len(self._message_queue.keys()) > 0:
             self._initialized = True
             send_replay_state = True
+            logger.info("Replay initialized.")
             self._events = list(
                 Event.select()
                 .where(Event.game_id == self._game_record.id)
-                .order_by(Event.id)
+                .order_by(Event.server_time)
             )
             self.reset()
+            self._num_turns = max(
+                [
+                    x.turn_number
+                    for x in filter(
+                        lambda event: event.type == EventType.START_OF_TURN,
+                        self._events,
+                    )
+                ]
+            )
             self.prime_replay()
 
         if self._event_timer.expired():
@@ -326,13 +377,13 @@ class ReplayState(object):
             elif command == Command.RESET:
                 self.reset()
             elif command == Command.REPLAY_SPEED:
-                self._speed = request.speed
-
+                logger.info(f"Setting replay speed to {request.replay_speed}.")
+                self._speed = request.replay_speed
             else:
                 logger.info("Invalid command received.")
 
         if send_replay_state:
-            final_event = self._events[-1]
+            self._events[-1]
             previous_event = (
                 self._events[self._event_index - 1]
                 if self._event_index > 0
@@ -345,10 +396,9 @@ class ReplayState(object):
                 previous_event.tick,
                 self._events[-1].tick,
                 previous_event.turn_number,
-                final_event.turn_number,
+                self._num_turns,
                 previous_event.server_time,
             )
-            logger.info(f"Sending replay state: {replay_state}")
             response = ReplayResponse(ReplayResponseType.REPLAY_INFO, replay_state)
             message = message_from_server.ReplayResponseFromServer(response)
             for actor_id in self._message_queue:
@@ -393,7 +443,7 @@ class ReplayState(object):
     def create_actor(self, role):
         logger.info(f"create_actor() Role: {role}")
         # Replay actor. Just used to receive messages.
-        actor_id = self._id_assigner.alloc()
+        actor_id = self._leader_id
         if actor_id not in self._message_queue:
             self._message_queue[actor_id] = deque()
         self._player_ids.append(actor_id)
@@ -431,5 +481,5 @@ class ReplayState(object):
         return message
 
     # Returns the current state of the game.
-    def state(self, _=-1):
-        return state_sync.StateSync(0, [], -1, Role.LEADER)
+    def state(self, player_id=-1):
+        return state_sync.StateSync(0, [], player_id, Role.LEADER)
