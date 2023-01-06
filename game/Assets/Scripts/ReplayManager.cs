@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Networking;
-using Newtonsoft.Json;
 
 public class ReplayManager : MonoBehaviour
 {
@@ -12,19 +11,9 @@ public class ReplayManager : MonoBehaviour
     public static readonly string GAME_ID_PARAM = "game_id";
     public static readonly string ESCAPE_MENU_REPLAY_INFO_TAG = "ESCAPE_MENU_REPLAY_INFO";
     public static readonly string REPLAY_TURN = "REPLAY_TURN";
-    private Network.MessageFromServer[] _messagesFromServer;
-    private ReplayStateMachine _replayStateMachine;
-    private bool _requestFailed = false;
-    private bool _dataDownloaded = false;
-    private DateTime _lastDownloadAttempt = DateTime.MinValue;
-
-    private DateTime _lastInfoUpdate = DateTime.MinValue;
-    private Network.GameInfo _gameInfo;
-
-    public bool TestMode = false;
-    public int TestModeId;
-
     private Logger _logger;
+
+    private Network.ReplayInfo _gameInfo;
 
     void Awake()
     {
@@ -34,8 +23,23 @@ public class ReplayManager : MonoBehaviour
 
     void Start()
     {
-        _replayStateMachine = new ReplayStateMachine();
-        StartCoroutine(DownloadGameLogsFromServer());
+        // Get the game ID from the URL.
+        var urlParams = Network.NetworkManager.UrlParameters();
+        if (!urlParams.ContainsKey(GAME_ID_PARAM))
+        {
+            _logger.Info("No game ID found in URL parameters.");
+            return;
+        }
+        // Send a replay start request to the server.
+        Network.ReplayRequest request = new Network.ReplayRequest();
+        request.type = Network.ReplayRequestType.START_REPLAY;
+        request.game_id = int.Parse(urlParams[GAME_ID_PARAM]);
+        Network.NetworkManager.TaggedInstance().TransmitReplayMessage(request);
+
+        // Btw, NetworkRouter needs to be set to REPLAY mode to correctly handle
+        // messages during replay vs during a normal game. But this is handled
+        // in NetworkManager for us via OnSceneLoaded(). That way, it also can
+        // handle disabling replay mode when we leave the replay scene.
     }
 
     public static ReplayManager TaggedInstance()
@@ -46,11 +50,44 @@ public class ReplayManager : MonoBehaviour
         return replayObj.GetComponent<ReplayManager>();
     }
 
+    public void HandleReplayResponse(Network.ReplayResponse response)
+    {
+        if (response.type == Network.ReplayResponseType.REPLAY_STARTED)
+        {
+            _logger.Info("Replay started.");
+        }
+        else if (response.type == Network.ReplayResponseType.REPLAY_INFO)
+        {
+            HandleReplayInfo(response.info);
+        }
+    }
+
+    public void HandleReplayInfo(Network.ReplayInfo info)
+    {
+        _gameInfo = info;
+        if (_gameInfo == null)
+        {
+            _logger.Info("Replay info is still null.");
+            return;
+        }
+        SetTurnDisplay();
+    }
+
     string ReplayStatusInfo()
     {
         if (_gameInfo == null)
             return "";
-        return string.Format("Game name: {0}\nID: {1}\nStart Time: {2}", _gameInfo.game_name, _gameInfo.game_id, _gameInfo.start_time);
+        return string.Format("Game id: {0}\nID: {1}\nStart Time: {2}\nTick: {3}", _gameInfo.game_id, _gameInfo.start_time, _gameInfo.tick);
+    }
+
+    public void UpdateEscapeMenuText()
+    {
+        GameObject obj = GameObject.FindGameObjectWithTag(ESCAPE_MENU_REPLAY_INFO_TAG);
+        if (obj != null)
+        {
+            Text text = obj.GetComponent<Text>();
+            text.text = ReplayStatusInfo();
+        }
     }
 
     void Update()
@@ -62,35 +99,9 @@ public class ReplayManager : MonoBehaviour
         {
             PreviousTurn();
         }
-
         if (Input.GetKeyDown(KeyCode.RightArrow))
         {
             NextTurn();
-        }
-
-        if (_replayStateMachine.Started()){
-            _replayStateMachine.Update();
-        }
-        if ((DateTime.Now - _lastInfoUpdate).Seconds > 5)
-        {
-            GameObject obj = GameObject.FindGameObjectWithTag(ESCAPE_MENU_REPLAY_INFO_TAG);
-            if (obj != null)
-            {
-                TMPro.TMP_Text textMeshPro = obj.GetComponent<TMPro.TMP_Text>();
-                textMeshPro.text = ReplayStatusInfo();
-            }
-        }
-        if (_messagesFromServer != null && _dataDownloaded && !_requestFailed && !_replayStateMachine.Started())
-        {
-            _replayStateMachine.Load(_messagesFromServer);
-            _replayStateMachine.Start();
-            SetTurnDisplay();
-        }
-        if (_requestFailed && ((DateTime.Now - _lastDownloadAttempt).Seconds > 5))
-        {
-            _dataDownloaded = false;
-            _requestFailed = false;
-            StartCoroutine(DownloadGameLogsFromServer());
         }
     }
 
@@ -100,154 +111,87 @@ public class ReplayManager : MonoBehaviour
         if (obj != null)
         {
             Text text = obj.GetComponent<Text>();
-            text.text = string.Format("{0} / {1}", _replayStateMachine.Turn(), _replayStateMachine.TotalTurns());
+            text.text = string.Format("{0} / {1}", _gameInfo.turn, _gameInfo.total_turns);
+        }
+        if (_gameInfo.paused)
+        {
+            SetPlayButtonText("Play");
+        } else {
+            SetPlayButtonText("Pause");
         }
     }
 
     public void PreviousTurn()
     {
         _logger.Info("PreviousTurn");
-        _replayStateMachine.PreviousTurn();
+        Network.ReplayRequest request = new Network.ReplayRequest();
+        request.type = Network.ReplayRequestType.REPLAY_COMMAND;
+        request.command = Network.ReplayCommand.PREVIOUS;
+        Network.NetworkManager.TaggedInstance().TransmitReplayMessage(request);
         SetPlayButtonText("Play");
     }
 
     public void NextTurn()
     {
         _logger.Info("NextTurn");
-        _replayStateMachine.NextTurn();
+        Network.ReplayRequest request = new Network.ReplayRequest();
+        request.type = Network.ReplayRequestType.REPLAY_COMMAND;
+        request.command = Network.ReplayCommand.NEXT;
+        Network.NetworkManager.TaggedInstance().TransmitReplayMessage(request);
         SetPlayButtonText("Play");
     }
 
     public void Reset()
     {
-        _replayStateMachine.Reset();
+        _logger.Info("Reset");
+        Network.ReplayRequest request = new Network.ReplayRequest();
+        request.type = Network.ReplayRequestType.REPLAY_COMMAND;
+        request.command = Network.ReplayCommand.RESET;
+        Network.NetworkManager.TaggedInstance().TransmitReplayMessage(request);
+        SetPlayButtonText("Play");
     }
 
     private void SetPlayButtonText(string text)
     {
         GameObject button_obj = GameObject.FindGameObjectWithTag("PLAYPAUSE");
+        if (button_obj == null)
+        {
+            _logger.Warn("No play/pause button found.");
+            return;
+        }
         Button button = button_obj.GetComponent<Button>();
         button.GetComponentInChildren<Text>().text = text;
     }
 
     public void PlayPause()
     {
-        if (_replayStateMachine.PlayMode() == ReplayStateMachine.PlaybackMode.PLAY)
+        if (_gameInfo == null)
         {
-            _logger.Info("Paused");
-            SetPlayButtonText("Play");
-            _replayStateMachine.Pause();
+            _logger.Warn("No game info yet. Ignoring PlayPause request.");
+            return;
+        }
+        if (!_gameInfo.paused)
+        {
+            _logger.Info("Pausing...");
+            Network.ReplayRequest request = new Network.ReplayRequest();
+            request.type = Network.ReplayRequestType.REPLAY_COMMAND;
+            request.command = Network.ReplayCommand.PAUSE;
+            Network.NetworkManager.TaggedInstance().TransmitReplayMessage(request);
         } else {
-            _logger.Info("Play");
-            SetPlayButtonText("Pause");
-            _replayStateMachine.Play();
+            _logger.Info("Playing...");
+            Network.ReplayRequest request = new Network.ReplayRequest();
+            request.type = Network.ReplayRequestType.REPLAY_COMMAND;
+            request.command = Network.ReplayCommand.PLAY;
+            Network.NetworkManager.TaggedInstance().TransmitReplayMessage(request);
         }
     }
 
     public void SetSpeed(float speed)
     {
-        _replayStateMachine.SetSpeed(speed);
+        _logger.Info("SetSpeed " + speed);
+        Network.ReplayRequest request = new Network.ReplayRequest();
+        request.type = Network.ReplayRequestType.REPLAY_COMMAND;
+        request.command = Network.ReplayCommand.REPLAY_SPEED;
+        request.replay_speed = speed;
     }
-
-    public void ProcessGameLog(Network.GameLog log)
-    {
-        Network.NetworkManager.TaggedInstance().InjectReplayConfig(log.server_config);
-        RenderSettings.fogStartDistance = log.server_config.fog_start;
-        RenderSettings.fogEndDistance = log.server_config.fog_end;
-        _gameInfo = log.game_info;
-        // Find the leader ID.
-        int leader_id = -1;
-        for (int i = 0; i < log.game_info.roles.Count; ++i)
-        {
-            if (log.game_info.roles[i] == Network.Role.LEADER)
-            {
-                leader_id = log.game_info.ids[i];
-                break;
-            }
-        }
-        if (leader_id == -1)
-        {
-            _logger.Error("Error finding leader ID.");
-            _requestFailed = true;
-            return;
-        }
-        List<Network.LogEntry> leaderLogEntries = new List<Network.LogEntry>();
-        for (int i = 0; i < log.log_entries.Count; ++i)
-        {
-            if (log.log_entries[i].player_id == leader_id)
-            {
-                leaderLogEntries.Add(log.log_entries[i]);
-            }
-        }
-        _messagesFromServer = new Network.MessageFromServer[leaderLogEntries.Count];
-        for (int i = 0; i < leaderLogEntries.Count; ++i)
-        {
-            if (leaderLogEntries[i].message_direction != Network.Direction.FROM_SERVER)
-            {
-                _logger.Error("ERR: Encountered MessageToServer in game log!");
-                _requestFailed = true;
-                return;
-            }
-            _messagesFromServer[i] = leaderLogEntries[i].message_from_server;
-        }
-        _dataDownloaded = true;
-    }
-
-    private IEnumerator DownloadGameLogsFromServer()
-    {
-        _lastDownloadAttempt = DateTime.Now;
-        string url = Network.NetworkManager.BaseUrl(/*websocket=*/false) + "data/game_logs/" + GameId();
-        _logger.Info("Downloading game logs from " + url);
-        using (UnityWebRequest webRequest = UnityWebRequest.Get(url))
-        {
-            // Request and wait for the desired page.
-            yield return webRequest.SendWebRequest();
-
-            switch (webRequest.result)
-            {
-                case UnityWebRequest.Result.ConnectionError:
-                case UnityWebRequest.Result.DataProcessingError:
-                    _logger.Error("Error: " + webRequest.error);
-                    _requestFailed = true;
-                    break;
-                case UnityWebRequest.Result.ProtocolError:
-                    _logger.Error("HTTP Error: " + webRequest.error);
-                    _requestFailed = true;
-                    break;
-                case UnityWebRequest.Result.Success:
-                    _logger.Info("Logs downloaded for game " + GameId());
-                    string data = webRequest.downloadHandler.text;
-                    Network.GameLog log = JsonConvert.DeserializeObject<Network.GameLog>(data);
-                    ProcessGameLog(log);
-                    break;
-                default:
-                    _logger.Error("Unknown Error: " + webRequest.error);
-                    _requestFailed = true;
-                    break;
-            }
-        }
-
-    }
-
-    private int GameId()
-    {
-        // Allow a hardcoded test ID to be injected for testing.
-        if (TestMode && (Application.platform != RuntimePlatform.WebGLPlayer))
-        {
-            return TestModeId;
-        }
-        Dictionary<string, string> urlParameters = Network.NetworkManager.UrlParameters();
-        if (!urlParameters.ContainsKey(GAME_ID_PARAM))
-        {
-            return -1;
-        }
-        string gameIdValue = urlParameters[GAME_ID_PARAM];
-        if (!int.TryParse(gameIdValue, out int gameId)) 
-        {
-            return -1;
-        }
-        _logger.Info("Game ID: " + gameId);
-        return gameId;
-    }
-
 }

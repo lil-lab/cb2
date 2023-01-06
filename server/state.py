@@ -1260,7 +1260,6 @@ class State(object):
         return None
 
     def _next_actions(self, actor_id):
-        self._actors[actor_id]
         if not actor_id in self._action_history:
             return []
         action_history = self._action_history[actor_id]
@@ -1286,7 +1285,6 @@ class State(object):
         if self._actors[actor_id].role() == Role.LEADER:
             return list(self._instruction_history) + list(self._instructions)
 
-        list(self._instruction_history) + list(self._instructions)
         follower_instructions = list(self._instruction_history)
         # Also add the active instruction. Followers can see that too.
         if len(self._instructions) > 0:

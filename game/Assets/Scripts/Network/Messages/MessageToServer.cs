@@ -27,6 +27,7 @@ namespace Network
             CANCEL_PENDING_OBJECTIVES,
             GOOGLE_AUTH,
             USER_INFO,
+            REPLAY_REQUEST,
         }
 
         // These fields are populated for every packet.
@@ -44,6 +45,7 @@ namespace Network
         public Pong pong;
         public LiveFeedback live_feedback;
         public GoogleAuth google_auth;
+        public ReplayRequest replay_request;
     }
 
 }  // namespace Network

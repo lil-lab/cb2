@@ -13,6 +13,7 @@ from server.messages.google_auth import GoogleAuth
 from server.messages.live_feedback import LiveFeedback
 from server.messages.objective import ObjectiveCompleteMessage, ObjectiveMessage
 from server.messages.pong import Pong
+from server.messages.replay_messages import ReplayRequest
 from server.messages.rooms import RoomManagementRequest
 from server.messages.turn_state import TurnComplete
 from server.messages.tutorials import TutorialRequest
@@ -31,6 +32,7 @@ class MessageType(Enum):
     CANCEL_PENDING_OBJECTIVES = 9
     GOOGLE_AUTH = 10
     USER_INFO = 11
+    REPLAY_REQUEST = 12
 
 
 @dataclass(frozen=True)
@@ -48,3 +50,4 @@ class MessageToServer(DataClassJSONMixin):
     pong: Optional[Pong] = None
     live_feedback: Optional[LiveFeedback] = None
     google_auth: Optional[GoogleAuth] = None
+    replay_request: Optional[ReplayRequest] = None

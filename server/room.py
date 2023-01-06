@@ -20,6 +20,7 @@ from server.messages.logs import (
 from server.messages.rooms import Role
 from server.messages.tutorials import RoleFromTutorialName
 from server.remote_table import GetRemote
+from server.replay_state import ReplayState
 from server.schemas.google_user import GetOrCreateGoogleUser
 from server.state import State
 from server.state_machine_driver import StateMachineDriver
@@ -33,6 +34,7 @@ class RoomType(Enum):
     TUTORIAL = 1
     GAME = 2
     PRESET_GAME = 3  # Resuming from historical record.
+    REPLAY = 4  # Serve game events live to the client for replay.
 
 
 class Room(object):
@@ -87,15 +89,23 @@ class Room(object):
             if game_state is None:
                 logger.warning(f"Failed to initialize game from instruction: {reason}")
                 return
+        elif self._room_type == RoomType.REPLAY:
+            game_state = ReplayState(self._id, self._game_record)
         else:
             game_state = None
             logger.error(f"Room started with invalid type {self._room_type}.")
             return
         self._state_machine_driver = StateMachineDriver(game_state, self._id)
-        if self._room_type != RoomType.PRESET_GAME:
+        if self._room_type not in [RoomType.PRESET_GAME, RoomType.REPLAY]:
             self._game_record.save()
         self._update_loop = None
         if self._room_type == RoomType.PRESET_GAME:
+            # Create a dummy log directory for the game that ignores all writes.
+            self._log_directory = pathlib.Path("/dev/null")
+            # Create a dummy file object that ignores all bytes.
+            self._messages_from_server_log = open(os.devnull, "w")
+            self._messages_to_server_log = open(os.devnull, "w")
+        elif self._room_type == RoomType.REPLAY:
             # Create a dummy log directory for the game that ignores all writes.
             self._log_directory = pathlib.Path("/dev/null")
             # Create a dummy file object that ignores all bytes.
@@ -119,7 +129,7 @@ class Room(object):
             self._messages_to_server_log = messages_to_server_path.open("w")
 
         # Write the current server config to the log_directory as config.json.
-        if self._room_type != RoomType.PRESET_GAME:
+        if self._room_type not in [RoomType.PRESET_GAME, RoomType.REPLAY]:
             with open(pathlib.Path(self._log_directory, "config.json"), "w") as f:
                 server_config = GlobalConfig()
                 if server_config is not None:
@@ -301,6 +311,8 @@ class Room(object):
         if not self._state_machine_driver.fill_messages(player_id, messages):
             return False
         out_messages.extend(messages)
+
+        logger.info(f"HIIIIIIIIIIIIIIIII {messages}")
 
         for message in messages:
             try:

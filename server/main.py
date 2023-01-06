@@ -1092,6 +1092,7 @@ async def stream_game_state(request, ws, lobby):
         out_messages = []
         if room.fill_messages(player_id, out_messages):
             for message in out_messages:
+                logger.info(f"message: {message}")
                 await transmit_bytes(
                     ws,
                     orjson.dumps(

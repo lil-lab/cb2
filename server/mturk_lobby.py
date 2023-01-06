@@ -205,6 +205,17 @@ class MturkLobby(lobby.Lobby):
             self.boot_from_queue(ws)
             return
 
+    # Overrides Lobby.handle_replay_request()
+    def handle_replay_request(
+        self, request: RoomManagementRequest, ws: web.WebSocketResponse
+    ) -> None:
+        """Handles a request to join a replay room. In most lobbies, this should be ignored (except lobbies supporting replay)."""
+        logger.warning(
+            f"Received replay request from {str(ws)} in non-replay lobby. Ignoring."
+        )
+        self.boot_from_queue(ws)
+        return
+
     # OVERRIDES Lobby.lobby_type()
     def lobby_type(self) -> LobbyType:
         return LobbyType.MTURK

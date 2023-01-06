@@ -106,6 +106,7 @@ class Lobby(ABC):
         self._base_log_directory = pathlib.Path("/dev/null")
         self._pending_room_management_responses = {}  # {ws: room_management_response}
         self._pending_tutorial_messages = {}  # {ws: tutorial_response}
+        self._pending_replay_messages = {}  # {ws: replay_response}
         self._matchmaking_exc = None
 
     @abstractmethod
@@ -138,6 +139,13 @@ class Lobby(ABC):
         If the player isn't valid, reject them by calling:
         self.boot_from_queue(ws)
         """
+        ...
+
+    @abstractmethod
+    def handle_replay_request(
+        self, request: RoomManagementRequest, ws: web.WebSocketResponse
+    ) -> None:
+        """Handles a request to join a replay room. In most lobbies, this should be ignored (except lobbies supporting replay)."""
         ...
 
     @abstractmethod
@@ -268,9 +276,6 @@ class Lobby(ABC):
                     f"Creating room for {leader} and {follower}. Queue size: {len(self._player_queue)} Follower Queue: {len(self._follower_queue)}"
                 )
 
-                logger.info(
-                    f"================?!?!?!================== event_uuid: {event_uuid}"
-                )
                 if event_uuid is not None and event_uuid != "":
                     logger.info(f"Starting game from event: {event_uuid}")
                     # Start game from a specific point.
@@ -536,6 +541,9 @@ class Lobby(ABC):
                 self.delete_room(room.id())
 
     def delete_room(self, id):
+        if id not in self._rooms:
+            logger.warning(f"Room {id} does not exist. Cannot delete.")
+            return
         self._rooms[id].stop()
         player_endpoints = list(self._rooms[id].player_endpoints())
         for ws in player_endpoints:
@@ -572,7 +580,7 @@ class Lobby(ABC):
 
         # Create room.
         room = self.create_room(game_id, game_record, RoomType.TUTORIAL, tutorial_name)
-        if room == None:
+        if room is None:
             return None
         print("Creating new tutorial room " + room.name())
         role = RoleFromTutorialName(tutorial_name)
@@ -589,6 +597,22 @@ class Lobby(ABC):
         ).decode("utf-8")
         game_info_log.write(json_str + "\n")
         game_info_log.close()
+        return room
+
+    def create_replay(self, player, game_id):
+        """Creates a replay room to view a replay of the provided game ID."""
+        logger.info(f"Creating replay room for {player}.")
+
+        # Setup room log directory.
+        game_record = game_db.Game.select().where(game_db.Game.id == game_id).get()
+
+        # Create room.
+        room = self.create_room(game_id, game_record, RoomType.REPLAY)
+        if room is None:
+            return None
+        print("Creating new replay room " + room.name())
+        player_id = room.add_player(player, Role.LEADER)
+        self._remotes[player] = SocketInfo(room.id(), player_id, Role.LEADER)
         return room
 
     def handle_tutorial_request(self, tutorial_request, ws):
@@ -800,8 +824,10 @@ class Lobby(ABC):
     def handle_request(self, request: message_to_server.MessageToServer, ws):
         if request.type == message_to_server.MessageType.ROOM_MANAGEMENT:
             self.handle_room_request(request.room_request, ws)
-        if request.type == message_to_server.MessageType.TUTORIAL_REQUEST:
+        elif request.type == message_to_server.MessageType.TUTORIAL_REQUEST:
             self.handle_tutorial_request(request.tutorial_request, ws)
+        elif request.type == message_to_server.MessageType.REPLAY_REQUEST:
+            self.handle_replay_request(request.replay_request, ws)
 
     def handle_room_request(
         self, request: RoomManagementRequest, ws: web.WebSocketResponse
@@ -853,6 +879,17 @@ class Lobby(ABC):
                     f"Drained tutorial response type {tutorial_response.type} for {ws}."
                 )
                 return message_from_server.TutorialResponseFromServer(tutorial_response)
+            except queue.Empty:
+                pass
+        if ws not in self._pending_replay_messages:
+            self._pending_replay_messages[ws] = Queue()
+        if not self._pending_replay_messages[ws].empty():
+            try:
+                replay_response = self._pending_replay_messages[ws].get(False)
+                logger.info(
+                    f"Drained replay response type {replay_response.type} for {ws}."
+                )
+                return message_from_server.ReplayResponseFromServer(replay_response)
             except queue.Empty:
                 pass
 

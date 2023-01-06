@@ -143,6 +143,9 @@ class Config(DataClassJSONMixin):
                 LobbyType.FOLLOWER_PILOT,
                 "Lobby for MTurk follower pilot workers.",
             ),
+            LobbyInfo(
+                "replay-lobby", LobbyType.REPLAY, "Lobby for displaying replays."
+            ),
         ]
     )
 

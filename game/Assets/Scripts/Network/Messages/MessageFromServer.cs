@@ -22,6 +22,9 @@ namespace Network
             STATE_MACHINE_TICK,
             GOOGLE_AUTH_CONFIRMATION,
             USER_INFO,
+            PROP_SPAWN,
+            PROP_DESPAWN,
+            REPLAY_RESPONSE,
         }
 
         // These fields are always provided with any packet.
@@ -43,5 +46,8 @@ namespace Network
         public StateMachineInfo state_machine_tick;
         public GoogleAuthConfirmation google_auth_confirmation;
         public UserInfo user_info;
+        public Prop prop_spawn;
+        public List<Prop> prop_despawn;
+        public ReplayResponse replay_response;
     }
 }  // namespace Network

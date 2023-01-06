@@ -579,7 +579,7 @@ public class MenuTransitionHandler : MonoBehaviour
             Instance = this;
             DontDestroyOnLoad(this);  // Persist network connection between scene changes.
         } else if (Instance != this) {
-            _logger.Warn("Tried to create duplicate network manager. Self-destructed game object.");
+            _logger.Warn("Tried to create duplicate menu object. Self-destructed game object.");
             DestroyImmediate(gameObject);
             return;
         }

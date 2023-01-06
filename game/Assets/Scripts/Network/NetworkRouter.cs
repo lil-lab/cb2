@@ -78,6 +78,11 @@ namespace Network
             _menuTransitionHandler = menuTransitionHandler;
         }
 
+        public void SetMode(Mode mode)
+        {
+            _mode = mode;
+        }
+
         public void ClearMenuTransitionHandler()
         {
             _menuTransitionHandler = null;
@@ -86,6 +91,12 @@ namespace Network
         public void ClearPlayer()
         {
             _player = null;
+        }
+
+        public void ClearMode()
+        {
+            // Default to network mode.
+            _mode = Mode.NETWORK;
         }
 
         public bool Initialized() {
@@ -102,6 +113,14 @@ namespace Network
                 }
                 _pendingMessages.Clear();
             }
+        }
+
+        public void Clear()
+        {
+            ClearEntityManager();
+            ClearPlayer();
+            ClearMenuTransitionHandler();
+            ClearMode();
         }
 
         public bool ApplyStateSyncToPlayer(StateSync stateSync)
@@ -136,6 +155,34 @@ namespace Network
             return true;
         }
 
+        public void RegisterProp(Network.Prop netProp)
+        {
+            if (netProp.prop_type == PropType.CARD)
+            {
+                _logger.Info("Registering card " + netProp.id);
+                CardBuilder cardBuilder = CardBuilder.FromNetwork(netProp);
+                _entityManager.RegisterProp(netProp.id, cardBuilder.Build());
+                if (netProp.card_init.selected)
+                {
+                    _entityManager.AddAction(
+                        netProp.id,
+                        Outline.Select(netProp.prop_info.border_radius,
+                                        netProp.prop_info.border_color,
+                                        0.1f,
+                                        netProp.prop_info.border_color_follower));
+                }
+                return;
+            }
+            if (netProp.prop_type == PropType.SIMPLE)
+            {
+                _logger.Info("Registering prop " + netProp.id);
+                global::Prop prop = global::Prop.FromNetwork(netProp);
+                _entityManager.RegisterProp(netProp.id, prop);
+                return;
+            }
+            _logger.Warn("Unknown proptype encountered.");
+        }
+
         public bool ApplyPropUpdateToEntityManager(PropUpdate propUpdate)
         {
             _logger.Info("ApplyPropUpdateToEntityManager()");
@@ -144,30 +191,7 @@ namespace Network
             _entityManager.QueueDestroyProps();
             foreach (Network.Prop netProp in propUpdate.props)
             {
-                if (netProp.prop_type == PropType.CARD)
-                {
-                    _logger.Info("Registering card " + netProp.id);
-                    CardBuilder cardBuilder = CardBuilder.FromNetwork(netProp);
-                    _entityManager.RegisterProp(netProp.id, cardBuilder.Build());
-                    if (netProp.card_init.selected)
-                    {
-                        _entityManager.AddAction(
-                            netProp.id,
-                            Outline.Select(netProp.prop_info.border_radius,
-                                           netProp.prop_info.border_color,
-                                           0.1f,
-                                           netProp.prop_info.border_color_follower));
-                    }
-                    continue;
-                }
-                if (netProp.prop_type == PropType.SIMPLE)
-                {
-                    _logger.Info("Registering prop " + netProp.id);
-                    global::Prop prop = global::Prop.FromNetwork(netProp);
-                    _entityManager.RegisterProp(netProp.id, prop);
-                    continue;
-                }
-                _logger.Warn("Unknown proptype encountered.");
+                RegisterProp(netProp);
             }
             return true;
         }
@@ -282,10 +306,43 @@ namespace Network
             {
                 MenuTransitionHandler.TaggedInstance().HandleLiveFeedback(message.live_feedback);
             }
+            if (message.type == MessageFromServer.MessageType.PROP_SPAWN)
+            {
+                _logger.Info("Received prop spawn message!");
+                RegisterProp(message.prop_spawn);
+            }
+            if (message.type == MessageFromServer.MessageType.PROP_DESPAWN)
+            {
+                _logger.Info("Received prop despawn message with " + message.prop_despawn.Count + " props to destroy...");
+                for (int i = 0; i < message.prop_despawn.Count; i++)
+                {
+                    int id = message.prop_despawn[i].id;
+                    _entityManager.QueueDestroyProp(id);
+                }
+            }
+            if (message.type == MessageFromServer.MessageType.REPLAY_RESPONSE)
+            {
+                _logger.Info("Received replay response!");
+                if (_mode == Mode.REPLAY) {
+                    ReplayManager.TaggedInstance().HandleReplayResponse(message.replay_response); 
+                } else {
+                    _logger.Warn("Received replay response but not in replay mode.");
+                }
+            }
         }
 
         // For messages which don't require in-game UI to be rendered.
         public bool ProcessEarly(MessageFromServer message) {
+            if (message.type == MessageFromServer.MessageType.ROOM_MANAGEMENT)
+            {
+                if (_mode == Mode.NETWORK) _networkManager.HandleRoomManagement(message.room_management_response);
+                return true;
+            }
+            if (message.type == MessageFromServer.MessageType.TUTORIAL_RESPONSE)
+            {
+                if (_mode == Mode.NETWORK) _networkManager.HandleTutorialResponse(message.tutorial_response);
+                return true;
+            }
             // Handle AUTH messages immediately.
             if (message.type == MessageFromServer.MessageType.GOOGLE_AUTH_CONFIRMATION)
             {
@@ -308,20 +365,15 @@ namespace Network
         public void HandleMessage(MessageFromServer message)
         {
             _logger.Info("Received message of type: " + message.type);
-            if (message.type == MessageFromServer.MessageType.ROOM_MANAGEMENT)
+
+            // Some messages can short-circuit here instead of being buffered for when the UI loads.
+            if (ProcessEarly(message)) 
             {
-                if (_mode == Mode.NETWORK) _networkManager.HandleRoomManagement(message.room_management_response);
-                return;
-            }
-            if (message.type == MessageFromServer.MessageType.TUTORIAL_RESPONSE)
-            {
-                if (_mode == Mode.NETWORK) _networkManager.HandleTutorialResponse(message.tutorial_response);
+                _logger.Info("Processed early.");
                 return;
             }
 
-            // Some messages can short-circuit here.
-            if (ProcessEarly(message)) return;
-
+            // If the UI is loaded, process messages. Otherwise buffer them.
             if (Initialized()) {
                 ProcessMessage(message);
             } else {

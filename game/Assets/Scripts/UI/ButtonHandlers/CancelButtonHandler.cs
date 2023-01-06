@@ -64,7 +64,7 @@ public class CancelButtonHandler : MonoBehaviour, IPointerDownHandler, IPointerU
             var cancelRing = GameObject.FindGameObjectWithTag(CANCEL_RING_TAG);
             if (cancelRing != null)
             {
-                cancelRing.GetComponent<Image>().fillAmount = (float)timeSinceMouseDown.TotalSeconds / CANCEL_HOLD_SECONDS;
+                cancelRing.GetComponent<Image>().fillAmount = (float)((float)timeSinceMouseDown.TotalSeconds / CANCEL_HOLD_SECONDS);
             }
             if (timeSinceMouseDown.TotalSeconds > CANCEL_HOLD_SECONDS)
             {

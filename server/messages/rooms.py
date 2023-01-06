@@ -77,6 +77,7 @@ class RoomManagementRequest(DataClassJSONMixin):
     # TODO(sharf): For now, if this is empty you might match with someone who
     # provided it. In the future, add stricter matching.
     join_game_with_event_uuid: Optional[str] = None
+    replay_game_id: Optional[int] = None
 
 
 class RoomResponseType(Enum):

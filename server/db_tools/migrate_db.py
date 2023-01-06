@@ -74,6 +74,7 @@ def migrate_to_new_game(
 ):
     with new_db.connection_context():
         new_game = Game(
+            id=old_game.id,
             type=old_game.type,
             log_directory=old_game.log_directory,
             world_seed=old_game.world_seed,
@@ -97,7 +98,7 @@ def migrate_to_new_game(
             else None,
             server_software_commit=old_game.server_software_commit,
         )
-        new_game.save()
+        new_game.save(force_insert=True)
 
         map_updates = sorted(map_updates, key=lambda m: m.time)
         map_event = Event(
@@ -127,6 +128,7 @@ def migrate_to_new_game(
         card_sets = sorted(card_sets, key=lambda c: c.move.server_time)
         final_turn = game_turns[-1] if game_turns else None
         last_turn = None
+        time_per_turn = {}
         for i, turn_state in enumerate(game_turns):
             event_type = EventType.TURN_STATE
             if not last_turn or (last_turn.role != turn_state.role):
@@ -151,7 +153,10 @@ def migrate_to_new_game(
                 i == len(game_turns) - 1,
                 turn_state.turn_number,
             )
-            print(f"Serializing: turn_state_obj={turn_state_obj}")
+            if turn_state.turn_number not in time_per_turn:
+                time_per_turn[turn_state.turn_number] = turn_state.time
+            elif turn_state.time < time_per_turn[turn_state.turn_number]:
+                time_per_turn[turn_state.turn_number] = turn_state.time
             event = Event(
                 game=new_game,
                 type=event_type,
@@ -228,12 +233,18 @@ def migrate_to_new_game(
             )
             instr_activated_event.save(force_insert=True)
             if instruction.turn_completed != -1:
+                time_done = datetime.max
+                if instruction.turn_completed in time_per_turn:
+                    time_done = time_per_turn
+                if event_last_move and event_last_move.server_time > time_done:
+                    time_done = event_last_move.server_time
+                if time_done == datetime.max:
+                    time_done = instr_sent_event.server_time
+                # Use Action DONE for newer games
                 instr_done_event = Event(
                     game=new_game,
                     type=EventType.INSTRUCTION_DONE,
-                    server_time=event_last_move.server_time
-                    if event_last_move
-                    else instr_sent_event.server_time,
+                    server_time=time_done,
                     turn_number=event_last_move.turn_number
                     if event_last_move
                     else instr_sent_event.turn_number,
@@ -245,12 +256,17 @@ def migrate_to_new_game(
                 )
                 instr_done_event.save(force_insert=True)
             elif instruction.turn_cancelled != -1:
+                time_cancelled = datetime.max
+                if instruction.turn_completed in time_per_turn:
+                    time_cancelled = time_per_turn
+                if event_last_move and event_last_move.server_time > time_cancelled:
+                    time_cancelled = event_last_move.server_time
+                if time_cancelled == datetime.max:
+                    time_cancelled = instr_sent_event.server_time
                 instr_cancelled_event = Event(
                     game=new_game,
                     type=EventType.INSTRUCTION_CANCELLED,
-                    server_time=event_last_move.server_time
-                    if event_last_move
-                    else instr_sent_event.server_time,
+                    server_time=time_cancelled,
                     turn_number=event_last_move.turn_number
                     if event_last_move
                     else instr_sent_event.turn_number,
@@ -268,7 +284,6 @@ def migrate_to_new_game(
                 if move.character_role == "Role.LEADER"
                 else EventOrigin.FOLLOWER
             )
-            logger.info(f"Processing move {move}, origin: {origin.name}")
             # Generate an event from the move.
             move_event = Event(
                 game=new_game,
@@ -287,7 +302,6 @@ def migrate_to_new_game(
                 tick=-1,
             )
             move_event.save(force_insert=True)
-            logger.info(f"move event {move_event.id}, time {move_event.server_time}")
 
         game_feedback = sorted(live_feedback, key=lambda f: f.server_time)
         for feedback in game_feedback:
@@ -389,7 +403,6 @@ def migrate_to_new_game(
                 )
                 .order_by(Event.server_time, Event.server_time.desc())
             )
-            logger.info(f"num game move events <= selection time: {len(move_events)}")
             # It's very difficult and unnecessary to recover the card ID. Drop it for old games. In the future, we can recover this more easily using the new Event schema.
             is_selected = selection.type == "select"
             card_obj = card.Card(
@@ -584,6 +597,9 @@ def main(old_db_path, new_db_path):
         old_remotes = Remote.select()
         old_usernames = Username.select()
         old_leaderboards = Leaderboard.select()
+
+    non_tutorial_games = [game for game in old_games if "tutorial" not in game.type]
+    logger.info(f"Non tutorial games: {len(non_tutorial_games)}")
 
     # We've queried all tables. Print the size of each table.
     logger.info(f"Assignments: {len(old_assignments)}")

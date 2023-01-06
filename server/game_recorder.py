@@ -97,7 +97,7 @@ def EventFromStartOfTurn(game, tick: int, turn_state, short_code):
 
 
 def EventFromCardSpawn(game, turn: int, tick: int, card):
-    card_str = " ".join([card.count, card.color, card.shape])
+    card_str = " ".join([str(card.count), str(card.color), str(card.shape)])
     return Event(
         game=game,
         type=EventType.CARD_SPAWN,

@@ -8,6 +8,7 @@ import sys
 import time
 import traceback
 from asyncio import events
+from datetime import timedelta
 
 MAX_ID = 1000000
 
@@ -62,19 +63,36 @@ class CountDownTimer(object):
 
     """
 
-    def __init__(self, duration_s: float):
+    def __init__(self, duration_s: float = 0):
         self._duration_s = duration_s
         self._end_time = None
+        self._remaining_duration_s = None
 
     def start(self):
         """Starts the timer. Does nothing if the timer is already started"""
         if self._end_time is not None:
             return
-        self._end_time = time.time() + self._duration_s
+        if self._remaining_duration_s is None:
+            self._end_time = time.time() + self._duration_s
+            return
+        self._end_time = time.time() + self._remaining_duration_s
+
+    def pause(self):
+        """Pauses the timer -- stores the currently elapsed time in _base_elapsed and sets _end_time to None."""
+        if self._end_time is not None:
+            self._remaining_duration_s = self._end_time - time.time()
+        self._end_time = None
 
     def clear(self):
         """Stops the timer. Resets all state."""
         self._end_time = None
+        self._remaining_duration_s = None
+
+    def time_remaining(self):
+        """Returns the remaining time. If the timer is not started, returns 0."""
+        if self._end_time is None:
+            return timedelta(seconds=0)
+        return timedelta(seconds=(self._end_time - time.time()))
 
     def expired(self):
         """Returns true if the timer has expired."""
