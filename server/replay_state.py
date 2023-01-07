@@ -137,6 +137,14 @@ class ReplayState(object):
             )
         elif event.type == EventType.TURN_STATE:
             turn_state = TurnState.from_json(event.data)
+            # Rewrite the turn end. Calculate the time remaining for the turn by
+            # subtracting turn_end from event.server_time. Then, add that to the
+            # current time. This is so that the "Time left in turn" window
+            # renders correctly.
+            time_remaining = turn_state.turn_end - event.server_time
+            turn_state = dataclasses.replace(
+                turn_state, turn_end=datetime.utcnow() + time_remaining
+            )
             return message_from_server.GameStateFromServer(turn_state)
         elif event.type == EventType.START_OF_TURN:
             turn_state = TurnState.from_json(event.data)
@@ -225,12 +233,14 @@ class ReplayState(object):
             for i, instruction in enumerate(instructions):
                 if instruction.uuid == i_uuid:
                     instructions[i].cancelled = True
+                    instructions[i].activated = False
                     break
         elif event.type == EventType.INSTRUCTION_DONE:
             i_uuid = event.short_code
             for i, instruction in enumerate(instructions):
                 if instruction.uuid == i_uuid:
-                    instructions[i].done = True
+                    instructions[i].completed = True
+                    instructions[i].activated = False
                     break
 
     def advance_event(self):
