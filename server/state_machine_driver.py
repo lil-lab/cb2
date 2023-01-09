@@ -19,9 +19,6 @@ class StateMachineDriver(object):
         self._state_machine = state_machine
 
         # Logging init.
-        self._recvd_log = logging.getLogger(f"sm_driver_{room_id}.recv")
-        self._record_log = logging.getLogger(f"sm_driver_{room_id}.log")
-        self._sent_log = logging.getLogger(f"sm_driver_{room_id}.sent")
         self._room_id = room_id
 
         # Message output. Each iteration loop, messages are serialized into per-player queues for sending.
