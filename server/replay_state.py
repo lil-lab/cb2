@@ -84,6 +84,8 @@ class ReplayState(object):
         self._message_queue = {}
         self._command_queue = deque()
 
+        self._last_replay_info = datetime.min
+
         self._num_turns = 0
 
         self._speed = 1.0
@@ -161,6 +163,7 @@ class ReplayState(object):
             action = CardSelectAction(
                 card.id,
                 card.selected,
+                card.border_color,
             )
             return message_from_server.ActionsFromServer([action])
         elif event.type == EventType.CARD_SET:
@@ -352,15 +355,27 @@ class ReplayState(object):
                 .where(Event.game_id == self._game_record.id)
                 .order_by(Event.server_time)
             )
+            for event in self._events:
+                logger.info(f"Event time: {event.server_time}")
             self.reset()
+            logger.info(f"Found {len(self._events)} events.")
+            logger.info(f"Found {len(self._events)} events.")
+            turn_states = [
+                x
+                for x in self._events
+                if x.type in [EventType.START_OF_TURN, EventType.TURN_STATE]
+            ]
+            logger.info(f"Found {len(turn_states)} turn states.")
             self._num_turns = max(
                 [
                     x.turn_number
                     for x in filter(
-                        lambda event: event.type == EventType.START_OF_TURN,
+                        lambda event: event.type
+                        in [EventType.START_OF_TURN, EventType.TURN_STATE],
                         self._events,
                     )
-                ]
+                ],
+                default=0,
             )
             self.prime_replay()
 
@@ -389,16 +404,50 @@ class ReplayState(object):
             elif command == Command.REPLAY_SPEED:
                 logger.info(f"Setting replay speed to {request.replay_speed}.")
                 self._speed = request.replay_speed
+                if not self._event_timer.expired():
+                    self._event_timer.clear()
+                    self._event_timer = CountDownTimer(
+                        self.time_to_next_event().total_seconds()
+                    )
             else:
                 logger.info("Invalid command received.")
 
+        if datetime.utcnow() > self._last_replay_info + timedelta(seconds=5):
+            send_replay_state = True
+            self._last_replay_info = datetime.utcnow()
+
         if send_replay_state:
-            self._events[-1]
             previous_event = (
                 self._events[self._event_index - 1]
                 if self._event_index > 0
                 else self._events[0]
             )
+
+            # Calculate percent completion. We can't calculate this from time
+            # elapsed, as we may have replayed the game with speedups. Instead
+            # calculate the time remaining by subtracting the current event's
+            # time from the last event's time.  Then add the time remaining on
+            # the current event, and multiply by the speed to adjust for the
+            # current speedup.
+            logger.info(f"==============================")
+            duration = self._events[-1].server_time - self._events[0].server_time
+            logger.info(f"Duration: {duration}")
+            remaining = (
+                self._events[-1].server_time
+                - self._events[self._event_index].server_time
+            )
+            logger.info(f"Remaining: {remaining}")
+            current_event_remaining = (
+                self._event_timer.time_remaining() * self._speed
+                if not self._event_timer.expired()
+                else timedelta(seconds=0)
+            )
+            logger.info(f"Current event remaining: {current_event_remaining}")
+            total_remaining = remaining + current_event_remaining
+            logger.info(f"Total remaining: {total_remaining}")
+            percent_complete = 1 - (total_remaining / duration)
+            logger.info(f"Percent complete: {percent_complete}")
+
             replay_state = ReplayInfo(
                 self._game_record.id,
                 self._game_record.start_time,
@@ -408,6 +457,7 @@ class ReplayState(object):
                 previous_event.turn_number,
                 self._num_turns,
                 previous_event.server_time,
+                percent_complete,
             )
             response = ReplayResponse(ReplayResponseType.REPLAY_INFO, replay_state)
             message = message_from_server.ReplayResponseFromServer(response)

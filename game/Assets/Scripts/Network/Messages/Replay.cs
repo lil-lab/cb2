@@ -26,6 +26,7 @@ namespace Network
         public int total_turns;
         // When the message was sent in the original game.
         public string transmit_time;
+        public float percent_complete;
     }
 
     public enum ReplayRequestType

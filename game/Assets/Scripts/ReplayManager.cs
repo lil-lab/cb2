@@ -11,6 +11,7 @@ public class ReplayManager : MonoBehaviour
     public static readonly string GAME_ID_PARAM = "game_id";
     public static readonly string ESCAPE_MENU_REPLAY_INFO_TAG = "ESCAPE_MENU_REPLAY_INFO";
     public static readonly string REPLAY_TURN = "REPLAY_TURN";
+    public static readonly string PROGRESS_BAR_TAG = "PROGRESS_BAR";
     private Logger _logger;
 
     private Network.ReplayInfo _gameInfo;
@@ -118,6 +119,13 @@ public class ReplayManager : MonoBehaviour
             SetPlayButtonText("Play");
         } else {
             SetPlayButtonText("Pause");
+        }
+        GameObject progress_obj = GameObject.FindGameObjectWithTag(PROGRESS_BAR_TAG);
+        if (progress_obj != null)
+        {
+            Slider slider = progress_obj.GetComponent<Slider>();
+            slider.value = _gameInfo.percent_complete;
+            slider.maxValue = 1;
         }
     }
 

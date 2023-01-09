@@ -2,6 +2,7 @@
 # Migrates the old database schema to the new one.
 
 import bisect
+import copy
 import logging
 import sys
 from datetime import datetime
@@ -15,6 +16,7 @@ import server.messages.live_feedback as live_feedback_msg
 import server.messages.turn_state as turn_msg
 import server.schemas.defaults as defaults
 import server.schemas.util as schema_util
+from server.card_enums import Color, Shape
 from server.messages.objective import ObjectiveMessage
 from server.messages.rooms import Role
 from server.schemas import base
@@ -142,6 +144,45 @@ def migrate_to_new_game(
                 last_score = card_sets[last_score_i - 1].score
             elif len(card_sets) > 0:
                 last_score = card_sets[0].score
+            if turn_state.role not in [Role.LEADER, Role.FOLLOWER]:
+                logger.warning(
+                    f"Invalid role: ({turn_state.role}), attempting to recover."
+                )
+                if i < len(game_turns) - 1:
+                    next_turn_state = game_turns[i + 1]
+                    # If any moves between now and the next turn state are
+                    # leader moves, then we are the leader.
+                    if any(
+                        m.character_role == "Role.LEADER"
+                        for m in game_moves
+                        if m.server_time >= turn_state.time
+                        and m.server_time < next_turn_state.time
+                    ):
+                        turn_state.role = Role.LEADER
+                    elif any(
+                        m.character_role == "Role.FOLLOWER"
+                        for m in game_moves
+                        if m.server_time >= turn_state.time
+                        and m.server_time < next_turn_state.time
+                    ):
+                        turn_state.role = Role.FOLLOWER
+                if turn_state.role not in [Role.LEADER, Role.FOLLOWER]:
+                    # Check for instructions. If any were made by the leader,
+                    # then we are the leader.
+                    if (
+                        len(
+                            [
+                                instr
+                                for instr in instructions
+                                if instr.time >= turn_state.time
+                            ]
+                        )
+                        > 0
+                    ):
+                        turn_state.role = Role.LEADER
+                if turn_state.role not in [Role.LEADER, Role.FOLLOWER]:
+                    logger.error(f"Unable to recover role for turn state {turn_state}.")
+                    turn_state.role = Role.NONE
             turn_state_obj = turn_msg.TurnState(
                 turn_state.role,
                 moves_remaining,
@@ -160,14 +201,17 @@ def migrate_to_new_game(
             event = Event(
                 game=new_game,
                 type=event_type,
+                role=turn_state.role
+                if turn_state.role in [Role.LEADER, Role.FOLLOWER]
+                else Role.NONE,
                 turn_number=turn_state.turn_number,
                 server_time=turn_state.time,
                 origin=EventOrigin.SERVER,
                 data=JsonSerialize(turn_state_obj),
                 short_code="",
-                role=turn_state.role,
                 tick=-1,
             )
+            event.save(force_insert=True)
             last_turn = turn_state
 
         initial_states = sorted(initial_states, key=lambda i: i.time)
@@ -235,7 +279,7 @@ def migrate_to_new_game(
             if instruction.turn_completed != -1:
                 time_done = datetime.max
                 if instruction.turn_completed in time_per_turn:
-                    time_done = time_per_turn
+                    time_done = time_per_turn[instruction.turn_completed]
                 if event_last_move and event_last_move.server_time > time_done:
                     time_done = event_last_move.server_time
                 if time_done == datetime.max:
@@ -384,6 +428,7 @@ def migrate_to_new_game(
                     orientation=card_obj.rotation_degrees,
                     tick=-1,
                 )
+                prop_event.save(force_insert=True)
 
         game_card_selections = sorted(card_selections, key=lambda s: s.game_time)
         for selection in game_card_selections:
@@ -403,30 +448,77 @@ def migrate_to_new_game(
                 )
                 .order_by(Event.server_time, Event.server_time.desc())
             )
-            # It's very difficult and unnecessary to recover the card ID. Drop it for old games. In the future, we can recover this more easily using the new Event schema.
-            is_selected = selection.type == "select"
-            card_obj = card.Card(
-                -1,
-                selection.card.location,
-                0,
-                selection.card.shape,
-                selection.card.color,
-                selection.card.count,
-                is_selected,
+
+            # To get the card ID, we need to search the most recent prop update with a timestamp less than selection.game_time.
+            # Then we find the matching card based on location, count, shape, and color.
+            # Then we find the card's ID from the prop update.
+
+            # Find the most recent prop update with a timestamp less than selection.game_time.
+            last_prop_update = bisect.bisect(
+                prop_updates, selection.game_time, key=lambda p: p.time
             )
+            if last_prop_update > 0:
+                last_prop_update = prop_updates[last_prop_update - 1]
+            else:
+                logger.info(
+                    f"Couldn't find prop update for selection {selection} at time {selection.game_time}. Quitting."
+                )
+                import sys
+
+                sys.exit(1)
+
+            # Find the matching card based on location, count, shape, and color.
+            matching_card = None
+            for prop in last_prop_update.prop_data.props:
+                card_obj = card.Card.FromProp(prop)
+                if (
+                    card_obj.location == selection.card.location
+                    and card_obj.count == selection.card.count
+                    and str(card_obj.shape) == selection.card.shape
+                    and str(card_obj.color) == selection.card.color
+                ):
+                    matching_card = copy.deepcopy(card_obj)
+                    break
+            if matching_card is None:
+                logger.info(
+                    f"Couldn't find matching card for selection {selection} at time {selection.game_time}. Quitting."
+                )
+                import sys
+
+                sys.exit(1)
+
+            # It's very difficult and unnecessary to recover the card ID. Drop it for old games. In the future, we can recover this more easily using the new Event schema.
+            matching_card.selected = selection.type == "select"
+            # For color and shape, convert from strings like "Shape.PLUS" and
+            # "Color.RED" to the enum values. Remove the "Shape." and "Color."
+            # prefixes if they exist by searching for the period.
+            if "." not in selection.card.shape:
+                logger.info(f"Invalid color: {selection.card.shape}")
+                import sys
+
+                sys.exit(1)
+            Shape[selection.card.shape.split(".")[1]]
+            if "." not in selection.card.color:
+                logger.info(f"Invalid color: {selection.card.color}")
+                import sys
+
+                sys.exit(1)
+            Color[selection.card.color.split(".")[1]]
             event = Event(
                 game=new_game,
                 type=EventType.CARD_SELECT,
                 turn_number=selection.move.turn_number,
+                server_time=selection.game_time,
                 origin=origin,
                 role=selection.move.character_role,
                 parent_event=move_event,
-                data=JsonSerialize(card_obj),
+                data=JsonSerialize(matching_card),
                 short_code=selection.type,
                 location=selection.card.location,
                 orientation=0,
                 tick=-1,
             )
+            event.save(force_insert=True)
 
         game_card_sets = sorted(card_sets, key=lambda s: s.move.server_time)
         for card_set in game_card_sets:

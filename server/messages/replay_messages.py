@@ -32,6 +32,7 @@ class ReplayInfo(DataClassJSONMixin):
     transmit_time: datetime = field(
         metadata={"deserialize": "pendulum", "serialize": pass_through}
     )
+    percent_complete: float = 0
 
 
 class ReplayRequestType(Enum):
