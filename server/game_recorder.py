@@ -214,7 +214,7 @@ def EventFromInstructionCancelled(
     )
 
 
-def EventFromMove(
+def EventFromAction(
     game,
     turn: int,
     tick: int,
@@ -222,8 +222,8 @@ def EventFromMove(
     action,
     location_before,
     orientation_before,
-    instruction_event,
     action_code,
+    instruction_event=None,
 ):
     role = Role.NONE
     if origin == EventOrigin.LEADER:
@@ -232,7 +232,7 @@ def EventFromMove(
         role = Role.FOLLOWER
     return Event(
         game=game,
-        type=EventType.MOVE,
+        type=EventType.ACTION,
         turn_number=turn,
         tick=tick,
         origin=origin,
@@ -439,6 +439,22 @@ class GameRecorder(object):
         )
         event.save(force_insert=True)
 
+    def record_action(self, action, action_code, position, heading):
+        if self._disabled:
+            return
+        origin = EventOrigin.SERVER
+        event = EventFromAction(
+            self._game_record,
+            self._turn_number,
+            self._tick,
+            origin,
+            action,
+            position,
+            heading,
+            action_code,
+        )
+        event.save(force_insert=True)
+
     def record_move(
         self, actor, action: Action, active_instruction, position_before, heading_before
     ):
@@ -455,7 +471,7 @@ class GameRecorder(object):
             origin = EventOrigin.LEADER
         elif actor.role() == Role.FOLLOWER:
             origin = EventOrigin.FOLLOWER
-        event = EventFromMove(
+        event = EventFromAction(
             self._game_record,
             self._turn_number,
             self._tick,
@@ -463,8 +479,8 @@ class GameRecorder(object):
             action,
             position_before,
             heading_before,
-            instruction_event,
             move_code,
+            instruction_event,
         )
         if actor.role == Role.FOLLOWER:
             self._last_follower_move = event

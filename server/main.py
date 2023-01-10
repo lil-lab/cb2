@@ -895,7 +895,7 @@ async def stats(request):
         )
         for event in instructions:
             moves = game_events.where(
-                event_db.Event.type == event_db.EventType.MOVE,
+                event_db.Event.type == event_db.EventType.ACTION,
                 event_db.Event.parent_event == event.id,
             )
             instruction_move_counts.append(moves.count())

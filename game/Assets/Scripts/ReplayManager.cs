@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Networking;
+using Newtonsoft.Json;
 
 public class ReplayManager : MonoBehaviour
 {
@@ -26,11 +27,10 @@ public class ReplayManager : MonoBehaviour
     {
         // Get the game ID from the URL.
         var urlParams = Network.NetworkManager.UrlParameters();
-        if (!urlParams.ContainsKey(GAME_ID_PARAM))
-        {
-            _logger.Info("No game ID found in URL parameters.");
-            return;
-        }
+
+        Debug.Log("ReplayManager.Start() game_id: " + urlParams[GAME_ID_PARAM]);
+        Debug.Log("ReplayManager.Start() params: " + JsonConvert.SerializeObject(urlParams));
+        
         // Send a replay start request to the server.
         Network.ReplayRequest request = new Network.ReplayRequest();
         request.type = Network.ReplayRequestType.START_REPLAY;
@@ -108,6 +108,8 @@ public class ReplayManager : MonoBehaviour
 
     public void SetTurnDisplay()
     {
+        if (_gameInfo == null)
+            return;
         GameObject obj = GameObject.FindGameObjectWithTag(REPLAY_TURN);
         if (obj != null)
         {

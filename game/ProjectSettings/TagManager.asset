@@ -70,6 +70,7 @@ TagManager:
   - GoogleOneTapLogin
   - GOOGLE_LOGOUT
   - PROGRESS_BAR
+  - TEST_URL_PARAMS
   layers:
   - Default
   - TransparentFX

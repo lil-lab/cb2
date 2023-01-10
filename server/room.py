@@ -205,8 +205,14 @@ class Room(object):
 
     def remove_player(self, id, ws, disconnected=False):
         """Removes a player from the room. Optionally mark the player as abandoning the game due to disconnect."""
+        if id not in self._players:
+            logger.error(
+                f"Attempted to remove player {id} from room {self._id} but player was not in room."
+            )
+            return
         self._players.remove(id)
-        self._player_endpoints.remove(ws)
+        if ws in self._player_endpoints:
+            self._player_endpoints.remove(ws)
         self._state_machine_driver.state_machine().free_actor(id)
         if disconnected:
             self._state_machine_driver.state_machine().mark_player_disconnected(id)

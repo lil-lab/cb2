@@ -317,7 +317,7 @@ namespace Network
                 for (int i = 0; i < message.prop_despawn.Count; i++)
                 {
                     int id = message.prop_despawn[i].id;
-                    _entityManager.DestroyProp(id);
+                    _entityManager.QueueDestroyProp(id);
                 }
             }
             if (message.type == MessageFromServer.MessageType.REPLAY_RESPONSE)

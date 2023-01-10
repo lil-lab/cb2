@@ -384,7 +384,7 @@ public class MenuTransitionHandler : MonoBehaviour
             textMeshPro.text = twoLineSummary;
         }
 
-        if (_lastTurn.turn != state.turn)
+        if ((_lastTurn != null) && (_lastTurn.turn != state.turn))
         {
             Debug.Log("Changing turn animation. " + _lastTurn.turn + " -> " + state.turn);
             GameObject endTurnPanel = GameObject.FindGameObjectWithTag(END_TURN_PANEL);
@@ -417,6 +417,11 @@ public class MenuTransitionHandler : MonoBehaviour
         Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
         string twoLineSummary = state.ShortStatus(networkManager.Role(), networkManager.IsReplay());
         GameObject scoreObj = GameObject.FindWithTag(SCORE_TEXT_TAG);
+        if (scoreObj == null)
+        {
+            _logger.Warn("Could not find score text object.");
+            return;
+        }
         TMPro.TMP_Text textMeshPro = scoreObj.GetComponent<TMPro.TMP_Text>();
         textMeshPro.text = twoLineSummary;
     }

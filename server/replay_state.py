@@ -159,7 +159,15 @@ class ReplayState(object):
             prop = card.prop()
             return message_from_server.PropSpawnFromServer(prop)
         elif event.type == EventType.CARD_SELECT:
-            card = Card.from_json(event.data)
+            try:
+                card = Card.from_json(event.data)
+            except AttributeError:
+                pass
+
+                logger.info(f"Card select event ID: {event.id.hex}")
+                import sys
+
+                sys.exit()
             action = CardSelectAction(
                 card.id,
                 card.selected,
@@ -178,7 +186,7 @@ class ReplayState(object):
             EventType.INSTRUCTION_DONE,
         ]:
             return message_from_server.ObjectivesFromServer(instructions)
-        elif event.type == EventType.MOVE:
+        elif event.type == EventType.ACTION:
             action_obj = Action.from_json(event.data)
             action_obj = dataclasses.replace(
                 action_obj,
@@ -280,14 +288,15 @@ class ReplayState(object):
     def time_to_next_event(self):
         """Calculates the amount of time until the next event. Uses self._speed to scale the time. Returns a timedelta."""
         if self._event_index == 0:
-            return 0
+            return timedelta(second=0)
         if self._event_index >= len(self._events):
-            return float("inf")
+            # Maximum time.
+            return timedelta(days=365)
         time_difference = (
             self._events[self._event_index].server_time
             - self._events[self._event_index - 1].server_time
         )
-        return (time_difference) / self._speed
+        return time_difference / float(self._speed)
 
     def rewind_event(self):
         self._event_index -= 1
@@ -326,7 +335,7 @@ class ReplayState(object):
                     actor_id, self._events[i], self._instructions, noduration=True
                 )
                 self._message_queue[actor_id].append(message)
-        self._event_index = map_event_index
+        self._event_index = skip_to_index
 
     def reset(self):
         self._event_index = 0
@@ -355,17 +364,13 @@ class ReplayState(object):
                 .where(Event.game_id == self._game_record.id)
                 .order_by(Event.server_time)
             )
-            for event in self._events:
-                logger.info(f"Event time: {event.server_time}")
             self.reset()
-            logger.info(f"Found {len(self._events)} events.")
             logger.info(f"Found {len(self._events)} events.")
             turn_states = [
                 x
                 for x in self._events
                 if x.type in [EventType.START_OF_TURN, EventType.TURN_STATE]
             ]
-            logger.info(f"Found {len(turn_states)} turn states.")
             self._num_turns = max(
                 [
                     x.turn_number
@@ -379,13 +384,14 @@ class ReplayState(object):
             )
             self.prime_replay()
 
-        if self._event_timer.expired():
+        if self._event_timer.expired() and self._event_index < len(self._events):
             send_replay_state = True
             self.advance_event()
 
         if len(self._command_queue) > 0:
             request = self._command_queue.popleft()
             command = request.command
+            logger.info(f"Received command: {command}")
             send_replay_state = True
             if command == Command.PLAY:
                 logger.info("Playing replay.")
@@ -405,9 +411,16 @@ class ReplayState(object):
                 logger.info(f"Setting replay speed to {request.replay_speed}.")
                 self._speed = request.replay_speed
                 if not self._event_timer.expired():
+                    logger.info(
+                        f"Respeed Time remaining: {self._event_timer.time_remaining()}"
+                    )
                     self._event_timer.clear()
                     self._event_timer = CountDownTimer(
                         self.time_to_next_event().total_seconds()
+                    )
+                    self._event_timer.start()
+                    logger.info(
+                        f"Respeed recalculated time remaining: {self._event_timer.time_remaining()}"
                     )
             else:
                 logger.info("Invalid command received.")
@@ -429,24 +442,23 @@ class ReplayState(object):
             # time from the last event's time.  Then add the time remaining on
             # the current event, and multiply by the speed to adjust for the
             # current speedup.
-            logger.info(f"==============================")
             duration = self._events[-1].server_time - self._events[0].server_time
-            logger.info(f"Duration: {duration}")
-            remaining = (
-                self._events[-1].server_time
-                - self._events[self._event_index].server_time
-            )
-            logger.info(f"Remaining: {remaining}")
+            if self._event_index < len(self._events):
+                remaining = (
+                    self._events[-1].server_time
+                    - self._events[self._event_index].server_time
+                )
+            else:
+                remaining = timedelta(seconds=0)
             current_event_remaining = (
                 self._event_timer.time_remaining() * self._speed
                 if not self._event_timer.expired()
                 else timedelta(seconds=0)
             )
-            logger.info(f"Current event remaining: {current_event_remaining}")
             total_remaining = remaining + current_event_remaining
-            logger.info(f"Total remaining: {total_remaining}")
             percent_complete = 1 - (total_remaining / duration)
-            logger.info(f"Percent complete: {percent_complete}")
+
+            turn = previous_event.turn_number if previous_event.turn_number else -1
 
             replay_state = ReplayInfo(
                 self._game_record.id,
@@ -454,7 +466,7 @@ class ReplayState(object):
                 self._paused,
                 previous_event.tick,
                 self._events[-1].tick,
-                previous_event.turn_number,
+                turn,
                 self._num_turns,
                 previous_event.server_time,
                 percent_complete,

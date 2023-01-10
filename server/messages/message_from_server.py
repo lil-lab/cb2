@@ -299,6 +299,10 @@ def ReplayResponseFromServer(replay_response):
     )
 
 
+def ExcludeIfNone(value):
+    return value is None
+
+
 @dataclass(frozen=True)
 class MessageFromServer(DataClassJSONMixin):
     transmit_time: datetime = field(
@@ -323,6 +327,12 @@ class MessageFromServer(DataClassJSONMixin):
         GoogleAuthConfirmation
     ] = GoogleAuthConfirmation()
     user_info: Optional[UserInfo] = UserInfo()
-    prop_spawn: Optional[Prop] = None
-    prop_despawn: Optional[List[Prop]] = None
-    replay_response: Optional[ReplayResponse] = None
+    prop_spawn: Optional[Prop] = field(
+        default=None, metadata=config(exclude=ExcludeIfNone)
+    )
+    prop_despawn: Optional[List[Prop]] = field(
+        default=None, metadata=config(exclude=ExcludeIfNone)
+    )
+    replay_response: Optional[ReplayResponse] = field(
+        default=None, metadata=config(exclude=ExcludeIfNone)
+    )

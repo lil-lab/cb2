@@ -1,6 +1,7 @@
 # Adapted from merge_db.py.
 # Migrates the old database schema to the new one.
 
+
 import bisect
 import copy
 import logging
@@ -16,7 +17,6 @@ import server.messages.live_feedback as live_feedback_msg
 import server.messages.turn_state as turn_msg
 import server.schemas.defaults as defaults
 import server.schemas.util as schema_util
-from server.card_enums import Color, Shape
 from server.messages.objective import ObjectiveMessage
 from server.messages.rooms import Role
 from server.schemas import base
@@ -54,6 +54,22 @@ def JsonSerialize(x):
 def SwitchToDatabase(db):
     base.SetDatabaseByPath(db)
     base.ConnectDatabase()
+
+
+def FindMatchingCardProp(prop_update: PropUpdate, candidate: Card):
+    # Find the matching card based on location, count, shape, and color.
+    matching_card = None
+    for prop in prop_update.props:
+        card_obj = card.Card.FromProp(prop)
+        if (
+            card_obj.location == candidate.location
+            and card_obj.count == candidate.count
+            and str(card_obj.shape) == candidate.shape
+            and str(card_obj.color) == candidate.color
+        ):
+            matching_card = copy.deepcopy(card_obj)
+            break
+    return matching_card
 
 
 # TODO For every Event(), make tick = -1 and make sure server_time is populated.
@@ -145,9 +161,6 @@ def migrate_to_new_game(
             elif len(card_sets) > 0:
                 last_score = card_sets[0].score
             if turn_state.role not in [Role.LEADER, Role.FOLLOWER]:
-                logger.warning(
-                    f"Invalid role: ({turn_state.role}), attempting to recover."
-                )
                 if i < len(game_turns) - 1:
                     next_turn_state = game_turns[i + 1]
                     # If any moves between now and the next turn state are
@@ -180,8 +193,19 @@ def migrate_to_new_game(
                         > 0
                     ):
                         turn_state.role = Role.LEADER
+                # The following end_method strings indicate that its now the leader's turn.
+                if "FollowerOutOfMoves" in turn_state.end_method:
+                    turn_state.role = Role.LEADER
+                if "FollowerFinishedInstructions" in turn_state.end_method:
+                    turn_state.role = Role.LEADER
+                if "UserPromptedInterruption":
+                    turn_state.role = Role.LEADER
                 if turn_state.role not in [Role.LEADER, Role.FOLLOWER]:
-                    logger.error(f"Unable to recover role for turn state {turn_state}.")
+                    logger.error(
+                        f"---- Unable to recover role for turn state {turn_state}."
+                    )
+                    logger.error(f"Turn state end_method: {turn_state.end_method}")
+                    logger.error(f"Turn state notes: {turn_state.notes}")
                     turn_state.role = Role.NONE
             turn_state_obj = turn_msg.TurnState(
                 turn_state.role,
@@ -238,6 +262,19 @@ def migrate_to_new_game(
         game_instructions = sorted(instructions, key=lambda i: i.time)
         game_moves = sorted(game_moves, key=lambda m: m.server_time)
         event_per_i_uuid = {}
+
+        # Traverse instructions backwards. Propagate cancellations back to instructionos that were marked as neither DONE nor CANCELLED.
+        for i in range(len(game_instructions) - 1, -1, -1):
+            instruction = game_instructions[i]
+            if instruction.turn_cancelled != -1:
+                for j in range(i - 1, -1, -1):
+                    prev_instruction = game_instructions[j]
+                    if (
+                        prev_instruction.turn_cancelled == -1
+                        and prev_instruction.turn_completed == -1
+                    ):
+                        prev_instruction.turn_cancelled = instruction.turn_cancelled
+
         for instruction in game_instructions:
             instr_sent_event = Event(
                 game=new_game,
@@ -331,7 +368,7 @@ def migrate_to_new_game(
             # Generate an event from the move.
             move_event = Event(
                 game=new_game,
-                type=EventType.MOVE,
+                type=EventType.ACTION,
                 server_time=move.server_time,
                 origin=origin,
                 role=move.character_role,
@@ -354,7 +391,7 @@ def migrate_to_new_game(
                 .where(
                     Event.game == new_game,
                     Event.origin == EventOrigin.FOLLOWER,
-                    Event.type == EventType.MOVE,
+                    Event.type == EventType.ACTION,
                     Event.server_time < feedback.server_time,
                 )
                 .order_by(Event.server_time.desc())
@@ -443,33 +480,36 @@ def migrate_to_new_game(
                 Event.select()
                 .where(
                     Event.game == new_game,
-                    Event.type == EventType.MOVE,
+                    Event.type == EventType.ACTION,
                     Event.server_time <= selection.game_time,
                 )
                 .order_by(Event.server_time, Event.server_time.desc())
             )
 
-            # To get the card ID, we need to search the most recent prop update with a timestamp less than selection.game_time.
+            # To get the card ID, we need to search the next prop update by timestamp.
             # Then we find the matching card based on location, count, shape, and color.
             # Then we find the card's ID from the prop update.
 
-            # Find the most recent prop update with a timestamp less than selection.game_time.
-            last_prop_update = bisect.bisect(
+            # Find the next prop update with a timestamp less than selection.game_time.
+            prop_update_index = bisect.bisect(
                 prop_updates, selection.game_time, key=lambda p: p.time
             )
-            if last_prop_update > 0:
-                last_prop_update = prop_updates[last_prop_update - 1]
-            else:
+            if prop_update_index < 0:
+                # Search previous prop updates.
                 logger.info(
                     f"Couldn't find prop update for selection {selection} at time {selection.game_time}. Quitting."
                 )
                 import sys
 
                 sys.exit(1)
+            if prop_update_index == len(prop_updates):
+                # Use the previous prop update.
+                prop_update_index -= 1
+            prop_update = prop_updates[prop_update_index]
 
             # Find the matching card based on location, count, shape, and color.
             matching_card = None
-            for prop in last_prop_update.prop_data.props:
+            for prop in prop_update.prop_data.props:
                 card_obj = card.Card.FromProp(prop)
                 if (
                     card_obj.location == selection.card.location
@@ -480,30 +520,27 @@ def migrate_to_new_game(
                     matching_card = copy.deepcopy(card_obj)
                     break
             if matching_card is None:
+                # Use the previous prop update.
+                prop_update = prop_updates[prop_update_index - 1]
+                for prop in prop_update.prop_data.props:
+                    card_obj = card.Card.FromProp(prop)
+                    if (
+                        card_obj.location == selection.card.location
+                        and card_obj.count == selection.card.count
+                        and str(card_obj.shape) == selection.card.shape
+                        and str(card_obj.color) == selection.card.color
+                    ):
+                        matching_card = copy.deepcopy(card_obj)
+                        break
+            if matching_card is None:
                 logger.info(
-                    f"Couldn't find matching card for selection {selection} at time {selection.game_time}. Quitting."
+                    f"Couldn't find card for selection {selection} at time {selection.game_time}. Quitting."
                 )
                 import sys
 
                 sys.exit(1)
 
-            # It's very difficult and unnecessary to recover the card ID. Drop it for old games. In the future, we can recover this more easily using the new Event schema.
             matching_card.selected = selection.type == "select"
-            # For color and shape, convert from strings like "Shape.PLUS" and
-            # "Color.RED" to the enum values. Remove the "Shape." and "Color."
-            # prefixes if they exist by searching for the period.
-            if "." not in selection.card.shape:
-                logger.info(f"Invalid color: {selection.card.shape}")
-                import sys
-
-                sys.exit(1)
-            Shape[selection.card.shape.split(".")[1]]
-            if "." not in selection.card.color:
-                logger.info(f"Invalid color: {selection.card.color}")
-                import sys
-
-                sys.exit(1)
-            Color[selection.card.color.split(".")[1]]
             event = Event(
                 game=new_game,
                 type=EventType.CARD_SELECT,
@@ -531,7 +568,7 @@ def migrate_to_new_game(
                 Event.select()
                 .where(
                     Event.game == new_game,
-                    Event.type == EventType.MOVE,
+                    Event.type == EventType.ACTION,
                     Event.server_time <= card_set.move.server_time,
                 )
                 .order_by(Event.server_time.desc())
@@ -540,11 +577,46 @@ def migrate_to_new_game(
                 logger.error(
                     f"Could not find move event for card set {card_set.move.server_time} {card_set.move.turn_number}"
                 )
-                return
+                import sys
+
+                sys.exit()
             move_event = move_event_query.get()
+
+            # To get the card, we need to search the next prop update by timestamp.
+            # Then we find the matching card based on location, count, shape, and color.
+            # Then we find the card's ID from the prop update.
+
+            # Search for the most recent prop update with a timestamp less than card_set.move.server_time.
+            prop_update_index = bisect.bisect(
+                prop_updates, card_set.move.server_time, key=lambda p: p.time
+            )
+            prop_update = prop_updates[prop_update_index - 1]
+            set_card_locations = []
+            # Compare the next and previous prop updates to find the card that was gathered (removed) in the set.
+            for prop in prop_update.prop_data.props:
+                card_obj = card.Card.FromProp(prop)
+                set_card_locations.append(card_obj.location)
+
+            # Remove cards from the next prop update.
+            next_prop_update = prop_updates[prop_update_index]
+            for prop in next_prop_update.prop_data.props:
+                card_obj = card.Card.FromProp(prop)
+                if card_obj.location in set_card_locations:
+                    set_card_locations.remove(card_obj.location)
+
+            # Get the cards that were gathered in the set.
+            set_cards = []
+            for prop in prop_update.prop_data.props:
+                card_obj = card.Card.FromProp(prop)
+                if card_obj.location in set_card_locations:
+                    set_cards.append(card_obj)
+
+            assert (
+                len(set_cards) == 3
+            ), f"Expected 3 cards at set completion, got {len(set_cards)}. game: {new_game.id} card_set: {card_set.id}"
             data = {
-                "cards": [card.Card.FromProp(prop) for prop in card_set.cards],
-                "score": card_set.score,
+                "cards": set_cards,
+                "score": card_set.score - 1,
             }
             card_set_event = Event(
                 game=new_game,
@@ -653,13 +725,6 @@ def main(old_db_path, new_db_path):
             prop_update.game = prop_update.game
             old_props[prop_update.game_id].append(prop_update)
 
-        # Query all card sets.
-        for card_set in CardSets.select().join(Move).select():
-            if card_set.game_id not in old_card_sets:
-                old_card_sets[card_set.game_id] = []
-            card_set.move = card_set.move
-            old_card_sets[card_set.game_id].append(card_set)
-
         # Query all card selections.
         for card_selection in (
             CardSelections.select().join(Move).switch(CardSelections).join(Card)
@@ -681,6 +746,14 @@ def main(old_db_path, new_db_path):
                 old_initial_states[init_state.game_id] = []
             init_state.game = init_state.game
             old_initial_states[init_state.game_id].append(init_state)
+
+        # Query all card sets.
+        set([])
+        for card_set in CardSets.select().join(Move).select():
+            if card_set.game_id not in old_card_sets:
+                old_card_sets[card_set.game_id] = []
+            card_set.move = card_set.move
+            old_card_sets[card_set.game_id].append(card_set)
 
         old_assignments = Assignment.select()
         old_workers = Worker.select()
@@ -707,9 +780,14 @@ def main(old_db_path, new_db_path):
     logger.info(f"Moves: {len(old_moves)}")
     logger.info(f"Live Feedback: {len(old_live_feedback)}")
     logger.info(f"Maps: {len(old_maps)}")
-    logger.info(f"Card Sets: {len(old_card_sets)}")
+    logger.info(f"Card Sets: {len(old_card_sets.values())}")
     logger.info(f"Card Selections: {len(old_card_selections)}")
     logger.info(f"Initial States: {len(old_initial_states)}")
+
+    if 824 not in old_card_sets:
+        logger.info("No card sets for game 824 before DB switch. Quitting...")
+        logger.info(f"")
+        sys.exit(1)
 
     # Log each game on its own line and confirm that we should continue the
     # merge. Print the number of games too.

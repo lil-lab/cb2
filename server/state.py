@@ -254,7 +254,7 @@ class State(object):
             initial_state.follower_rotation_degrees,
         )
 
-        moves = game_events.where(Event.type == EventType.MOVE)
+        moves = game_events.where(Event.type == EventType.ACTION)
         logger.debug(f"Found {moves.count()} moves before event {event_uuid}")
         for move in moves:
             action = Action.from_json(move.data)
@@ -720,6 +720,13 @@ class State(object):
                 card_select_action = CardSelectAction(card.id, True, Color(1, 0, 0, 1))
                 self._map_provider.set_color(card.id, Color(1, 0, 0, 1))
                 self.record_action(card_select_action)
+                # Find the actor that selected this card.
+                stepping_actor = None
+                for actor_id in self._actors:
+                    if self._actors[actor_id].location() == card.location:
+                        stepping_actor = self._actors[actor_id]
+                        break
+                self._game_recorder.record_card_selection(stepping_actor, card)
 
         if (
             not self._map_provider.selected_cards_collide()
@@ -769,6 +776,9 @@ class State(object):
                 actions = SetCompletionActions(card.id)
                 for action in actions:
                     self.record_action(action)
+                    self._game_recorder.record_action(
+                        action, "select", card.location, card.rotation_degrees
+                    )
                 self._map_provider.remove_card(card.id)
 
         if cards_changed:

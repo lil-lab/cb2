@@ -3,6 +3,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
+from dataclasses_json import config
 from mashumaro import pass_through
 from mashumaro.mixins.json import DataClassJSONMixin
 
@@ -44,8 +45,8 @@ class ReplayRequestType(Enum):
 @dataclass(frozen=True)
 class ReplayRequest(DataClassJSONMixin):
     type: ReplayRequestType
-    game_id: int
-    command: Optional[Command] = None
+    game_id: int = -1
+    command: Optional[Command] = Command.NONE
     # Only valid if type == REPLAY_COMMAND and command == REPLAY_SPEED
     replay_speed: float = 1
 
@@ -56,7 +57,13 @@ class ReplayResponseType(Enum):
     REPLAY_INFO = 2
 
 
+def ExcludeIfNone(value):
+    return value is None
+
+
 @dataclass(frozen=True)
 class ReplayResponse(DataClassJSONMixin):
     type: ReplayResponseType
-    info: Optional[ReplayInfo] = None
+    info: Optional[ReplayInfo] = field(
+        default=None, metadata=config(exclude=ExcludeIfNone)
+    )

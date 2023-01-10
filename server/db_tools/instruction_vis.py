@@ -203,7 +203,7 @@ def main(
                 card.prop() for card in cards_by_location.values() if card is not None
             ]
 
-            moves = instruction.children.where(Event.type == EventType.MOVE)
+            moves = instruction.children.where(Event.type == EventType.ACTION)
             feedbacks = (
                 game_events.select()
                 .where(
