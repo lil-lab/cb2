@@ -263,7 +263,7 @@ def migrate_to_new_game(
         game_moves = sorted(game_moves, key=lambda m: m.server_time)
         event_per_i_uuid = {}
 
-        # Traverse instructions backwards. Propagate cancellations back to instructionos that were marked as neither DONE nor CANCELLED.
+        # Traverse instructions backwards. Propagate cancellations back to instructions that were marked as neither DONE nor CANCELLED.
         for i in range(len(game_instructions) - 1, -1, -1):
             instruction = game_instructions[i]
             if instruction.turn_cancelled != -1:
