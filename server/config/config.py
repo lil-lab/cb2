@@ -146,6 +146,9 @@ class Config(DataClassJSONMixin):
             LobbyInfo(
                 "replay-lobby", LobbyType.REPLAY, "Lobby for displaying replays."
             ),
+            LobbyInfo(
+                "scenario-lobby", LobbyType.SCENARIO, "Lobby for scenario experiments."
+            ),
         ]
     )
 

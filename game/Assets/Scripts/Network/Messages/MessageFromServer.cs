@@ -25,6 +25,7 @@ namespace Network
             PROP_SPAWN,
             PROP_DESPAWN,
             REPLAY_RESPONSE,
+            SCENARIO_RESPONSE,
         }
 
         // These fields are always provided with any packet.
@@ -49,5 +50,6 @@ namespace Network
         public Prop prop_spawn;
         public List<Prop> prop_despawn;
         public ReplayResponse replay_response;
+        public ScenarioResponse scenario_response;
     }
 }  // namespace Network

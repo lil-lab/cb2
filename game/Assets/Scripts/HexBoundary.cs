@@ -7,7 +7,7 @@ using UnityEngine;
 [Serializable]
 public class HexBoundary
 {
-    public byte Edges;
+    public byte edges;
 
     private static readonly int UP_RIGHT = 0b1;
     private static readonly int RIGHT = 0b10;
@@ -35,21 +35,21 @@ public class HexBoundary
 
     public HexBoundary()
     {
-        Edges = 0;
+        edges = 0;
     }
 
     public override string ToString()
     {
-        return base.ToString() + ": edges: " + Edges;
+        return base.ToString() + ": edges: " + edges;
     }
 
     // Accessor methods.
-    public bool UpRight() { return (Edges & UP_RIGHT) != 0; }
-    public bool Right() { return (Edges & RIGHT) != 0; }
-    public bool DownRight() { return (Edges & DOWN_RIGHT) != 0; }
-    public bool DownLeft() { return (Edges & DOWN_LEFT) != 0; }
-    public bool Left() { return (Edges & LEFT) != 0; }
-    public bool UpLeft() { return (Edges & UP_LEFT) != 0; }
+    public bool UpRight() { return (edges & UP_RIGHT) != 0; }
+    public bool Right() { return (edges & RIGHT) != 0; }
+    public bool DownRight() { return (edges & DOWN_RIGHT) != 0; }
+    public bool DownLeft() { return (edges & DOWN_LEFT) != 0; }
+    public bool Left() { return (edges & LEFT) != 0; }
+    public bool UpLeft() { return (edges & UP_LEFT) != 0; }
 
     // Accessor method. Takes in the cell location and a neighbor coordinate.
     // Gets the edge shared with that neighbor.
@@ -60,7 +60,7 @@ public class HexBoundary
     {
         HecsCoord displacement = HecsCoord.Sub(neighbor, loc);
         if (!LOC_TO_EDGE.ContainsKey(displacement)) return false;
-        return (Edges & LOC_TO_EDGE[displacement]) != 0;
+        return (edges & LOC_TO_EDGE[displacement]) != 0;
     }
 
     // Mutator methods.
@@ -77,7 +77,7 @@ public class HexBoundary
     {
         HecsCoord displacement = HecsCoord.Sub(neighbor, loc);
         if (!LOC_TO_EDGE.ContainsKey(displacement)) return;
-        Edges |= (byte)LOC_TO_EDGE[displacement];
+        edges |= (byte)LOC_TO_EDGE[displacement];
     }
 
     // Similar to SetEdgeWith, but clears the corresponding edge.
@@ -85,28 +85,28 @@ public class HexBoundary
     {
         HecsCoord displacement = HecsCoord.Sub(neighbor, loc);
         if (!LOC_TO_EDGE.ContainsKey(displacement)) return;
-        Edges &= ((byte)~LOC_TO_EDGE[displacement]);
+        edges &= ((byte)~LOC_TO_EDGE[displacement]);
     }
 
     public void AllBlocked()
     {
-        Edges = 0xFF;
+        edges = 0xFF;
     }
 
     public void Clear()
     {
-        Edges = 0;
+        edges = 0;
     }
 
     // Save the current edge boundary info to a single byte.
-    public byte Serialize() { return Edges; }
+    public byte Serialize() { return edges; }
 
     // Warning, this overwrites the current edge state.
-    public void Deserialize(byte edges) { Edges = edges; }
+    public void Deserialize(byte value) { edges = value; }
 
     public void MergeWith(HexBoundary other)
     {
-        Edges |= other.Edges;
+        edges |= other.edges;
     }
 
     private void SetBit(bool val, int bit)
@@ -114,8 +114,8 @@ public class HexBoundary
         int binVal = (val) ? 1 : 0;
         int mask = 1 << bit;
         byte clearMask = (byte)(~mask);
-        Edges &= clearMask;
-        Edges |= (byte)(binVal << bit);
+        edges &= clearMask;
+        edges |= (byte)(binVal << bit);
     }
 
     private int OppositeSide(int side)

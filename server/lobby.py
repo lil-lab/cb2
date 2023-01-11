@@ -21,6 +21,7 @@ from server.config.config import GlobalConfig
 from server.lobby_consts import LobbyType
 from server.map_provider import CachedMapRetrieval
 from server.messages.logs import GameInfo
+from server.messages.replay_messages import ReplayRequest
 from server.messages.rooms import (
     JoinResponse,
     LeaveRoomNotice,
@@ -143,9 +144,9 @@ class Lobby(ABC):
 
     @abstractmethod
     def handle_replay_request(
-        self, request: RoomManagementRequest, ws: web.WebSocketResponse
+        self, request: ReplayRequest, ws: web.WebSocketResponse
     ) -> None:
-        """Handles a request to join a replay room. In most lobbies, this should be ignored (except lobbies supporting replay)."""
+        """Handles a replay request from a player."""
         ...
 
     @abstractmethod
@@ -225,15 +226,7 @@ class Lobby(ABC):
                     if datetime.now() - ts > timedelta(minutes=5):
                         self._follower_queue.popleft()
                         # Queue a room management response to notify the follower that they've been removed from the queue.
-                        self._pending_room_management_responses[follower].put(
-                            RoomManagementResponse(
-                                RoomResponseType.JOIN_RESPONSE,
-                                None,
-                                JoinResponse(False, -1, Role.NONE, True),
-                                None,
-                                None,
-                            )
-                        )
+                        self.boot_from_queue(follower)
 
                 # If a general player has been waiting alone for 5m, remove them from the queue.
                 if len(self._player_queue) > 0:
@@ -241,15 +234,7 @@ class Lobby(ABC):
                     if datetime.now() - ts > timedelta(minutes=5):
                         self._player_queue.popleft()
                         # Queue a room management response to notify the player that they've been removed from the queue.
-                        self._pending_room_management_responses[player].put(
-                            RoomManagementResponse(
-                                RoomResponseType.JOIN_RESPONSE,
-                                None,
-                                JoinResponse(False, -1, Role.NONE, True),
-                                None,
-                                None,
-                            )
-                        )
+                        self.boot_from_queue(player)
 
                 # If a leader has been waiting alone for 5m, remove them from the queue.
                 if len(self._leader_queue) > 0:
@@ -257,17 +242,54 @@ class Lobby(ABC):
                     if datetime.now() - ts > timedelta(minutes=5):
                         self._leader_queue.popleft()
                         # Queue a room management response to notify the leader that they've been removed from the queue.
-                        self._pending_room_management_responses[leader].put(
+                        self.boot_from_queue(leader)
+
+                leader, follower, event_uuid = self.get_leader_follower_match()
+
+                if (leader is None) and (follower is None):
+                    continue
+
+                # Scenario games.
+                if (follower is not None) and (leader is None):
+                    # Follower-only games are allowed for scenario lobbies.
+                    if self.lobby_type() == LobbyType.SCENARIO:
+                        logger.info(
+                            f"Creating room for {follower}. Queue size: {len(self._player_queue)} Follower Queue: {len(self._follower_queue)}"
+                        )
+
+                        game_record = game_db.Game()
+                        game_record.save()
+                        game_id = game_record.id
+                        game_record.log_directory = ""
+                        game_record.server_software_commit = GetCommitHash()
+                        game_record.save()
+
+                        room = self.create_room(game_id, game_record, RoomType.SCENARIO)
+
+                        if (room is None) or (not room.initialized()):
+                            logger.warn(f"Error creating room.")
+                            # Boot the follower from the queue.
+                            self.boot_from_queue(follower)
+
+                        follower_id = room.add_player(follower, Role.FOLLOWER)
+                        self._remotes[follower] = SocketInfo(
+                            room.id(), follower_id, Role.FOLLOWER
+                        )
+                        # Tell the follower they've joined a room!
+                        self._pending_room_management_responses[follower].put(
                             RoomManagementResponse(
                                 RoomResponseType.JOIN_RESPONSE,
                                 None,
-                                JoinResponse(False, -1, Role.NONE, True),
+                                JoinResponse(True, 0, Role.FOLLOWER),
                                 None,
                                 None,
                             )
                         )
-
-                leader, follower, event_uuid = self.get_leader_follower_match()
+                        continue
+                    else:
+                        # If the lobby type is not scenario, then we don't want to create a follower-only game.
+                        # Send the follower a join response indicating that they were not added to a room.
+                        continue
 
                 if (leader is None) or (follower is None):
                     continue
@@ -282,40 +304,14 @@ class Lobby(ABC):
                     room = self.create_room(
                         event_uuid, None, RoomType.PRESET_GAME, "", event_uuid
                     )
+
                     if (room is None) or (not room.initialized()):
-                        logger.warn(f"Error creating room from UUID {event_uuid}")
+                        logger.warning(f"Error creating room from UUID {event_uuid}")
                         # Boot the leader & follower from the queue.
-                        self._pending_room_management_responses[leader].put(
-                            RoomManagementResponse(
-                                RoomResponseType.JOIN_RESPONSE,
-                                None,
-                                JoinResponse(
-                                    False,
-                                    0,
-                                    Role.LEADER,
-                                    True,
-                                    "Could not create server from provided event UUID",
-                                ),
-                                None,
-                                None,
-                            )
-                        )
-                        self._pending_room_management_responses[follower].put(
-                            RoomManagementResponse(
-                                RoomResponseType.JOIN_RESPONSE,
-                                None,
-                                JoinResponse(
-                                    False,
-                                    0,
-                                    Role.FOLLOWER,
-                                    True,
-                                    "Could not create server from provided event UUID",
-                                ),
-                                None,
-                                None,
-                            )
-                        )
+                        self.boot_from_queue(leader)
+                        self.boot_from_queue(follower)
                         continue
+
                     logger.info(f"Creating new game from event {room.name()}")
                     leader_id = room.add_player(leader, Role.LEADER)
                     follower_id = room.add_player(follower, Role.FOLLOWER)
@@ -363,24 +359,8 @@ class Lobby(ABC):
                 if room is None or not room.initialized():
                     logger.warn(f"Error creating room")
                     # Boot the leader & follower from the queue.
-                    self._pending_room_management_responses[leader].put(
-                        RoomManagementResponse(
-                            RoomResponseType.JOIN_RESPONSE,
-                            None,
-                            JoinResponse(False, 0, Role.LEADER, True),
-                            None,
-                            None,
-                        )
-                    )
-                    self._pending_room_management_responses[follower].put(
-                        RoomManagementResponse(
-                            RoomResponseType.JOIN_RESPONSE,
-                            None,
-                            JoinResponse(False, 0, Role.FOLLOWER, True),
-                            None,
-                            None,
-                        )
-                    )
+                    self.boot_from_queue(leader)
+                    self.boot_from_queue(follower)
                     continue
                 print("Creating new game " + room.name())
                 leader_id = room.add_player(leader, Role.LEADER)
@@ -563,7 +543,7 @@ class Lobby(ABC):
             await asyncio.sleep(5)
             self.delete_unused_rooms()
 
-    def create_tutorial(self, player, tutorial_name):
+    def create_tutorial(self, player: web.WebSocketResponse, tutorial_name):
         logger.info(f"Creating tutorial room for {player}.")
 
         # Setup room log directory.
@@ -599,7 +579,7 @@ class Lobby(ABC):
         game_info_log.close()
         return room
 
-    def create_replay(self, player, game_id):
+    def create_replay(self, player: web.WebSocketResponse, game_id):
         """Creates a replay room to view a replay of the provided game ID."""
         logger.info(f"Creating replay room for {player}.")
 
@@ -691,17 +671,6 @@ class Lobby(ABC):
             )
         )
 
-    def boot_from_queue(self, ws):
-        self._pending_room_management_responses[ws].put(
-            RoomManagementResponse(
-                RoomResponseType.JOIN_RESPONSE,
-                None,
-                JoinResponse(False, -1, Role.NONE, True),
-                None,
-                None,
-            )
-        )
-
     def join_leader_queue(self, ws, request: RoomManagementRequest = None):
         if ws in self._leader_queue:
             logger.info(
@@ -726,6 +695,17 @@ class Lobby(ABC):
                 RoomResponseType.JOIN_RESPONSE,
                 None,
                 JoinResponse(False, len(self._leader_queue), Role.NONE),
+                None,
+                None,
+            )
+        )
+
+    def boot_from_queue(self, ws):
+        self._pending_room_management_responses[ws].put(
+            RoomManagementResponse(
+                RoomResponseType.JOIN_RESPONSE,
+                None,
+                JoinResponse(False, -1, Role.NONE, True),
                 None,
                 None,
             )

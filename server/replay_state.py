@@ -72,6 +72,7 @@ class ReplayState(object):
         self._initialized = False
         self._events = []
         self._event_index = 0
+        self._starting_index = 0
         self._paused = True
         self._event_timer = CountDownTimer()
 
@@ -301,6 +302,8 @@ class ReplayState(object):
 
     def rewind_event(self):
         """Replays all events up to the previous event, integrating state on the server and then sends state to the client."""
+        if (self._event_index <= self._starting_index) or (self._event_index <= 0):
+            return
         start_time = datetime.utcnow()
         self._event_index -= 1
         self._instructions = []
@@ -410,6 +413,7 @@ class ReplayState(object):
                 )
                 self._message_queue[actor_id].append(message)
         self._event_index = skip_to_index
+        self._starting_index = skip_to_index
 
     def reset(self):
         self._event_index = 0

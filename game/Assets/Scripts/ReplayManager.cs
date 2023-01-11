@@ -35,7 +35,7 @@ public class ReplayManager : MonoBehaviour
         Network.ReplayRequest request = new Network.ReplayRequest();
         request.type = Network.ReplayRequestType.START_REPLAY;
         request.game_id = int.Parse(urlParams[GAME_ID_PARAM]);
-        Network.NetworkManager.TaggedInstance().TransmitReplayMessage(request);
+        Network.NetworkManager.TaggedInstance().TransmitReplayRequest(request);
 
         // Btw, NetworkRouter needs to be set to REPLAY mode to correctly handle
         // messages during replay vs during a normal game. But this is handled
@@ -137,7 +137,7 @@ public class ReplayManager : MonoBehaviour
         Network.ReplayRequest request = new Network.ReplayRequest();
         request.type = Network.ReplayRequestType.REPLAY_COMMAND;
         request.command = Network.ReplayCommand.PREVIOUS;
-        Network.NetworkManager.TaggedInstance().TransmitReplayMessage(request);
+        Network.NetworkManager.TaggedInstance().TransmitReplayRequest(request);
         SetPlayButtonText("Play");
     }
 
@@ -147,7 +147,7 @@ public class ReplayManager : MonoBehaviour
         Network.ReplayRequest request = new Network.ReplayRequest();
         request.type = Network.ReplayRequestType.REPLAY_COMMAND;
         request.command = Network.ReplayCommand.NEXT;
-        Network.NetworkManager.TaggedInstance().TransmitReplayMessage(request);
+        Network.NetworkManager.TaggedInstance().TransmitReplayRequest(request);
         SetPlayButtonText("Play");
     }
 
@@ -157,7 +157,7 @@ public class ReplayManager : MonoBehaviour
         Network.ReplayRequest request = new Network.ReplayRequest();
         request.type = Network.ReplayRequestType.REPLAY_COMMAND;
         request.command = Network.ReplayCommand.RESET;
-        Network.NetworkManager.TaggedInstance().TransmitReplayMessage(request);
+        Network.NetworkManager.TaggedInstance().TransmitReplayRequest(request);
         SetPlayButtonText("Play");
     }
 
@@ -186,13 +186,13 @@ public class ReplayManager : MonoBehaviour
             Network.ReplayRequest request = new Network.ReplayRequest();
             request.type = Network.ReplayRequestType.REPLAY_COMMAND;
             request.command = Network.ReplayCommand.PAUSE;
-            Network.NetworkManager.TaggedInstance().TransmitReplayMessage(request);
+            Network.NetworkManager.TaggedInstance().TransmitReplayRequest(request);
         } else {
             _logger.Info("Playing...");
             Network.ReplayRequest request = new Network.ReplayRequest();
             request.type = Network.ReplayRequestType.REPLAY_COMMAND;
             request.command = Network.ReplayCommand.PLAY;
-            Network.NetworkManager.TaggedInstance().TransmitReplayMessage(request);
+            Network.NetworkManager.TaggedInstance().TransmitReplayRequest(request);
         }
     }
 
@@ -203,6 +203,6 @@ public class ReplayManager : MonoBehaviour
         request.type = Network.ReplayRequestType.REPLAY_COMMAND;
         request.command = Network.ReplayCommand.REPLAY_SPEED;
         request.replay_speed = speed;
-        Network.NetworkManager.TaggedInstance().TransmitReplayMessage(request);
+        Network.NetworkManager.TaggedInstance().TransmitReplayRequest(request);
     }
 }

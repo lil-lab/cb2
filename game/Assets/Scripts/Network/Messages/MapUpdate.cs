@@ -79,7 +79,7 @@ namespace Network
         public List<City> cities;
         public List<Outpost> outposts;
         public int num_partitions;
-        public List<HecsCoord> partition_locations;
+        public List<Tile> partition_locations;
         public List<int> partition_sizes;
     }
 

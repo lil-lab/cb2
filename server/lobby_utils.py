@@ -8,6 +8,7 @@ from server.lobby_consts import LobbyInfo, LobbyType
 from server.mturk_lobby import MturkLobby
 from server.open_lobby import OpenLobby
 from server.replay_lobby import ReplayLobby
+from server.scenario_lobby import ScenarioLobby
 
 logger = logging.getLogger(__name__)
 
@@ -41,5 +42,7 @@ def CreateLobby(lobby_name: str, lobby_type: LobbyType, lobby_comment: str = "")
         lobbies[lobby_name] = FollowerPilotLobby(lobby_name, lobby_comment)
     elif lobby_type == LobbyType.REPLAY:
         lobbies[lobby_name] = ReplayLobby(lobby_name, lobby_comment)
+    elif lobby_type == LobbyType.SCENARIO:
+        lobbies[lobby_name] = ScenarioLobby(lobby_name, lobby_comment)
     else:
         raise ValueError(f"Invalid lobby type: {lobby_type}")

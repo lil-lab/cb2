@@ -190,4 +190,3 @@ class FollowerPilotLobby(lobby.Lobby):
             f"Received replay request from {str(ws)} in non-replay lobby. Ignoring."
         )
         self.boot_from_queue(ws)
-        return

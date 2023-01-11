@@ -18,9 +18,11 @@ from server.messages.logs import (
     LogEntryFromOutgoingMessage,
 )
 from server.messages.rooms import Role
+from server.messages.scenario import Scenario
 from server.messages.tutorials import RoleFromTutorialName
 from server.remote_table import GetRemote
 from server.replay_state import ReplayState
+from server.scenario_state import ScenarioState
 from server.schemas.google_user import GetOrCreateGoogleUser
 from server.state import State
 from server.state_machine_driver import StateMachineDriver
@@ -35,6 +37,7 @@ class RoomType(Enum):
     GAME = 2
     PRESET_GAME = 3  # Resuming from historical record.
     REPLAY = 4  # Serve game events live to the client for replay.
+    SCENARIO = 5  # Game type for scenario rooms
 
 
 class Room(object):
@@ -91,6 +94,11 @@ class Room(object):
                 return
         elif self._room_type == RoomType.REPLAY:
             game_state = ReplayState(self._id, self._game_record)
+        elif self._room_type == RoomType.SCENARIO:
+            self._game_record.type = f"{game_type_prefix}scenario"
+            game_state = ScenarioState(
+                self._id, self._game_record, realtime_actions=True
+            )
         else:
             game_state = None
             logger.error(f"Room started with invalid type {self._room_type}.")
@@ -260,6 +268,9 @@ class Room(object):
             return
         self._messages_from_server_log.close()
         self._messages_to_server_log.close()
+
+    def set_scenario(self, scenario: Scenario):
+        self._state_machine_driver.state_machine().set_scenario(scenario)
 
     def done(self):
         if not self._initialized:

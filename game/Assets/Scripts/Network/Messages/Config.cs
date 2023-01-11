@@ -8,7 +8,10 @@ namespace Network
         NONE = 0,
         MTURK,
         OPEN,
-        GOOGLE
+        GOOGLE,
+        FOLLOWER_PILOT,
+        REPLAY,
+        SCENARIO
     }
 
     [Serializable]
@@ -41,7 +44,7 @@ namespace Network
         // card. Leaders can still see card patterns.
         public bool card_covers = false;
 
-        // Everything is 100% visible if it's closer than fog_start units away.
+        // Everything is 100% visible if it's closer than fog_start units away. -1 means no fog.
         public int fog_start = 13;
         // Everything is 100% opaque if it's farther than fog_end units away.
         public int fog_end = 20;

@@ -8,9 +8,23 @@ import sys
 import time
 import traceback
 from asyncio import events
-from datetime import timedelta
+from datetime import datetime, timedelta
+
+import orjson
 
 MAX_ID = 1000000
+
+
+def JsonSerialize(x, pretty=True):
+    options = orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME
+    if pretty:
+        options |= orjson.OPT_INDENT_2
+    object_dumper = lambda x: orjson.dumps(
+        x,
+        option=options,
+        default=datetime.isoformat,
+    ).decode("utf-8")
+    return object_dumper(x)
 
 
 class IdAssigner(object):

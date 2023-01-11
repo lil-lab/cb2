@@ -308,12 +308,29 @@ namespace Network
             _client.TransmitMessage(toServer);
         }
 
-        public void TransmitReplayMessage(ReplayRequest request)
+        public void TransmitReplayRequest(ReplayRequest request)
         {
             MessageToServer toServer = new MessageToServer();
             toServer.transmit_time = DateTime.UtcNow.ToString("s");
             toServer.type = MessageToServer.MessageType.REPLAY_REQUEST;
             toServer.replay_request = request;
+            _client.TransmitMessage(toServer);
+        }
+
+        public void TransmitScenarioDownloadRequest()
+        {
+            MessageToServer toServer = new MessageToServer();
+            toServer.transmit_time = DateTime.UtcNow.ToString("s");
+            toServer.type = MessageToServer.MessageType.SCENARIO_DOWNLOAD;
+            _client.TransmitMessage(toServer);
+        }
+
+        public void TransmitScenarioRequest(ScenarioRequest request)
+        {
+            MessageToServer toServer = new MessageToServer();
+            toServer.transmit_time = DateTime.UtcNow.ToString("s");
+            toServer.type = MessageToServer.MessageType.SCENARIO_REQUEST;
+            toServer.scenario_request = request;
             _client.TransmitMessage(toServer);
         }
 
@@ -680,7 +697,7 @@ namespace Network
                 _router.Update();
             }
             // If it's been more than 5 mins since the last poll and _serverConfig is null, poll the server for the config.
-            // Alternatively, if _serverConfig is out of date and it's been > 10 seconds since the last poll, also poll the server.
+            // Alternatively, if _serverConfig is out of date and it's been > 1 seconds since the last poll, also poll the server.
             if (((_serverConfig != null) && (DateTime.UtcNow.Subtract(_serverConfig.timestamp).TotalMinutes > 5)) || 
                 ((_serverConfig == null) && (DateTime.UtcNow.Subtract(_lastServerConfigPoll).TotalSeconds > 1) && !_serverConfigPollInProgress))
             {
@@ -760,10 +777,10 @@ namespace Network
                 {
                     case UnityWebRequest.Result.ConnectionError:
                     case UnityWebRequest.Result.DataProcessingError:
-                        _logger.Error("Error: " + webRequest.error);
+                        _logger.Warn("Error: " + webRequest.error);
                         break;
                     case UnityWebRequest.Result.ProtocolError:
-                        _logger.Error("HTTP Error: " + webRequest.error);
+                        _logger.Warn("HTTP Error: " + webRequest.error);
                         break;
                     case UnityWebRequest.Result.Success:
                         _logger.Info("Received: " + webRequest.downloadHandler.text);

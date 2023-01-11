@@ -12,7 +12,6 @@ namespace Network
     // for the server.
     public class NetworkRouter
     {
-
         private Logger _logger;
         private readonly ClientConnection _client;
         private NetworkMapSource _mapSource;
@@ -115,85 +114,57 @@ namespace Network
             }
         }
 
+        public void HandleMessage(MessageFromServer message)
+        {
+            _logger.Info("Received message of type: " + message.type);
+
+            // Some messages can short-circuit here instead of being buffered for when the UI loads.
+            if (ProcessEarly(message)) 
+            {
+                _logger.Info("Processed early.");
+                return;
+            }
+
+            // If the UI is loaded, process messages. Otherwise buffer them.
+            if (Initialized()) {
+                ProcessMessage(message);
+            } else {
+                _pendingMessages.Add(message);
+            }
+        }
+
+        public bool TransmitAction(ActionQueue.IAction action)
+        {
+            if (_player == null)
+            {
+                _logger.Info("Can't send action to server; Player object null.");
+                return false;
+            }
+            if (_player.PlayerId() == -1)
+            {
+                _logger.Info("Can't send action to server; Player ID unknown.");
+                return false;
+            }
+            if (_client == null)
+            {
+                Debug.Log("Can't send action to server; Client object null.");
+                return false;
+            }
+            MessageToServer toServer = new MessageToServer();
+            toServer.transmit_time = DateTime.UtcNow.ToString("o");
+            toServer.type = MessageToServer.MessageType.ACTIONS;
+            toServer.actions = new List<Action>();
+            toServer.actions.Add(action.Packet(_player.PlayerId()));
+            _client.TransmitMessage(toServer);
+            return true;
+        }
+
         public void Clear()
         {
             ClearEntityManager();
             ClearPlayer();
             ClearMenuTransitionHandler();
             ClearMode();
-        }
-
-        public bool ApplyStateSyncToPlayer(StateSync stateSync)
-        {
-            if (_player == null) return false;
-            _player.SetPlayerId(stateSync.player_id);
-            _player.FlushActionQueue();
-            foreach (Network.StateSync.Actor actor in stateSync.actors)
-            {
-                if (actor.actor_id == _player.PlayerId())
-                {
-                    _logger.Info("SETTING player asset id to " + actor.asset_id);
-                    _player.SetAssetId(actor.asset_id);
-                    ActionQueue.IAction action = TeleportToStartState(actor);
-                    _player.AddAction(action);
-                    continue;
-                }
-            }
-            return true;
-        }
-        public bool ApplyStateSyncToEntityManager(StateSync stateSync)
-        {
-            if (_entityManager == null) return false;
-            _entityManager.DestroyActors();
-            foreach (Network.StateSync.Actor netActor in stateSync.actors)
-            {
-                if (netActor.actor_id == stateSync.player_id) continue;
-                Actor actor = Actor.FromStateSync(netActor);
-                actor.SetScale(1.8f);
-                _entityManager.RegisterActor(netActor.actor_id, actor);
-            }
-            return true;
-        }
-
-        public void RegisterProp(Network.Prop netProp)
-        {
-            if (netProp.prop_type == PropType.CARD)
-            {
-                _logger.Info("Registering card " + netProp.id);
-                CardBuilder cardBuilder = CardBuilder.FromNetwork(netProp);
-                _entityManager.RegisterProp(netProp.id, cardBuilder.Build());
-                if (netProp.card_init.selected)
-                {
-                    _entityManager.AddAction(
-                        netProp.id,
-                        Outline.Select(netProp.prop_info.border_radius,
-                                        netProp.prop_info.border_color,
-                                        0.1f,
-                                        netProp.prop_info.border_color_follower));
-                }
-                return;
-            }
-            if (netProp.prop_type == PropType.SIMPLE)
-            {
-                _logger.Info("Registering prop " + netProp.id);
-                global::Prop prop = global::Prop.FromNetwork(netProp);
-                _entityManager.RegisterProp(netProp.id, prop);
-                return;
-            }
-            _logger.Warn("Unknown proptype encountered.");
-        }
-
-        public bool ApplyPropUpdateToEntityManager(PropUpdate propUpdate)
-        {
-            _logger.Info("ApplyPropUpdateToEntityManager()");
-            if (_entityManager == null) return false;
-            _logger.Info("Applying prop update with " + propUpdate.props.Count + " props to entity manager...");
-            _entityManager.QueueDestroyProps();
-            foreach (Network.Prop netProp in propUpdate.props)
-            {
-                RegisterProp(netProp);
-            }
-            return true;
         }
 
         private void ProcessMessage(MessageFromServer message)
@@ -329,10 +300,15 @@ namespace Network
                     _logger.Warn("Received replay response but not in replay mode.");
                 }
             }
+            if (message.type == MessageFromServer.MessageType.SCENARIO_RESPONSE)
+            {
+                _logger.Info("Received scenario response!");
+                ProcessScenarioResponse(message.scenario_response);
+            }
         }
 
         // For messages which don't require in-game UI to be rendered.
-        public bool ProcessEarly(MessageFromServer message) {
+        private bool ProcessEarly(MessageFromServer message) {
             if (message.type == MessageFromServer.MessageType.ROOM_MANAGEMENT)
             {
                 if (_mode == Mode.NETWORK) _networkManager.HandleRoomManagement(message.room_management_response);
@@ -362,50 +338,98 @@ namespace Network
             return false;
         }
 
-        public void HandleMessage(MessageFromServer message)
+        private void ProcessScenarioResponse(ScenarioResponse response)
         {
-            _logger.Info("Received message of type: " + message.type);
-
-            // Some messages can short-circuit here instead of being buffered for when the UI loads.
-            if (ProcessEarly(message)) 
+            _logger.Info("Received scenario response!");
+            if (response.type == Network.ScenarioResponseType.LOADED)
             {
-                _logger.Info("Processed early.");
-                return;
-            }
-
-            // If the UI is loaded, process messages. Otherwise buffer them.
-            if (Initialized()) {
-                ProcessMessage(message);
-            } else {
-                _pendingMessages.Add(message);
+                _logger.Info("Received scenario loaded response!");
+            } else if (response.type == Network.ScenarioResponseType.TRIGGER_REPORT)
+            {
+                _logger.Info("Received scenario trigger report response!");
+            } else if (response.type == Network.ScenarioResponseType.SCENARIO_DOWNLOAD)
+            {
+                // We requested a scenario download from the server, and now
+                // it's ready. Send to MenuTransitionHandler to begin download
+                // of the JSON file.
+                MenuTransitionHandler.TaggedInstance().SaveScenarioData(response.scenario_download);
             }
         }
 
-        public bool TransmitAction(ActionQueue.IAction action)
+        private bool ApplyStateSyncToPlayer(StateSync stateSync)
         {
-            if (_player == null)
+            if (_player == null) return false;
+            _player.SetPlayerId(stateSync.player_id);
+            _player.FlushActionQueue();
+            foreach (Network.StateSync.Actor actor in stateSync.actors)
             {
-                _logger.Info("Can't send action to server; Player object null.");
-                return false;
+                if (actor.actor_id == _player.PlayerId())
+                {
+                    _logger.Info("SETTING player asset id to " + actor.asset_id);
+                    _player.SetAssetId(actor.asset_id);
+                    ActionQueue.IAction action = TeleportToStartState(actor);
+                    _player.AddAction(action);
+                    continue;
+                }
             }
-            if (_player.PlayerId() == -1)
-            {
-                _logger.Info("Can't send action to server; Player ID unknown.");
-                return false;
-            }
-            if (_client == null)
-            {
-                Debug.Log("Can't send action to server; Client object null.");
-                return false;
-            }
-            MessageToServer toServer = new MessageToServer();
-            toServer.transmit_time = DateTime.UtcNow.ToString("o");
-            toServer.type = MessageToServer.MessageType.ACTIONS;
-            toServer.actions = new List<Action>();
-            toServer.actions.Add(action.Packet(_player.PlayerId()));
-            _client.TransmitMessage(toServer);
             return true;
         }
+
+        private bool ApplyStateSyncToEntityManager(StateSync stateSync)
+        {
+            if (_entityManager == null) return false;
+            _entityManager.DestroyActors();
+            foreach (Network.StateSync.Actor netActor in stateSync.actors)
+            {
+                if (netActor.actor_id == stateSync.player_id) continue;
+                Actor actor = Actor.FromStateSync(netActor);
+                actor.SetScale(1.8f);
+                _entityManager.RegisterActor(netActor.actor_id, actor);
+            }
+            return true;
+        }
+
+        private void RegisterProp(Network.Prop netProp)
+        {
+            if (netProp.prop_type == PropType.CARD)
+            {
+                _logger.Info("Registering card " + netProp.id);
+                CardBuilder cardBuilder = CardBuilder.FromNetwork(netProp);
+                _entityManager.RegisterProp(netProp.id, cardBuilder.Build());
+                if (netProp.card_init.selected)
+                {
+                    _entityManager.AddAction(
+                        netProp.id,
+                        Outline.Select(netProp.prop_info.border_radius,
+                                        netProp.prop_info.border_color,
+                                        0.1f,
+                                        netProp.prop_info.border_color_follower));
+                }
+                return;
+            }
+            if (netProp.prop_type == PropType.SIMPLE)
+            {
+                _logger.Info("Registering prop " + netProp.id);
+                global::Prop prop = global::Prop.FromNetwork(netProp);
+                _entityManager.RegisterProp(netProp.id, prop);
+                return;
+            }
+            _logger.Warn("Unknown proptype encountered.");
+        }
+
+        private bool ApplyPropUpdateToEntityManager(PropUpdate propUpdate)
+        {
+            _logger.Info("ApplyPropUpdateToEntityManager()");
+            if (_entityManager == null) return false;
+            _logger.Info("Applying prop update with " + propUpdate.props.Count + " props to entity manager...");
+            _entityManager.QueueDestroyProps();
+            foreach (Network.Prop netProp in propUpdate.props)
+            {
+                RegisterProp(netProp);
+            }
+            return true;
+        }
+
 
         private ActionQueue.IAction TeleportToStartState(Network.StateSync.Actor actorState)
         {

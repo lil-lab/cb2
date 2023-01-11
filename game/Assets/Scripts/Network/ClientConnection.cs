@@ -15,6 +15,7 @@ namespace Network
         private bool _autoReconnect;
         private NetworkRouter _router;
         private ConcurrentQueue<Network.MessageToServer> _messageQueue;
+        private ConcurrentQueue<string> _messageQueueFromServer;
         private DateTime _lastReconnect;
         private Logger _logger;
 
@@ -29,6 +30,7 @@ namespace Network
             _logger = Logger.CreateTrackedLogger("ClientConnection");
             _url = url;
             _messageQueue = new ConcurrentQueue<Network.MessageToServer>();
+            _messageQueueFromServer = new ConcurrentQueue<string>();
             _autoReconnect = autoReconnect;
             _lastReconnect = DateTime.Now;
         }
@@ -93,9 +95,12 @@ namespace Network
             }
 
             string received = System.Text.Encoding.UTF8.GetString(bytes);
-            _logger.Info("[" + DateTime.Now.ToString() + "]: Received: " + received);
-            MessageFromServer message = JsonConvert.DeserializeObject<MessageFromServer>(System.Text.Encoding.ASCII.GetString(bytes));
-            _router.HandleMessage(message);
+            try {
+                _messageQueueFromServer.Enqueue(received);
+            } catch (Exception e)
+            {
+                _logger.Error("Error parsing message: " + e);
+            }
         }
 
         private async void Reconnect()
@@ -138,6 +143,7 @@ namespace Network
             }
 
             SendPendingActions();
+            HandleReceivedActions();
 #if !UNITY_WEBGL || UNITY_EDITOR
             if (_webSocket != null)
             {
@@ -148,23 +154,52 @@ namespace Network
 
         private async void SendPendingActions()
         {
-            if (_webSocket.State == WebSocketState.Open)
+            if (_webSocket.State != WebSocketState.Open)
             {
-                if (!_messageQueue.TryDequeue(out MessageToServer toServer))
-                {
-                    return;
-                }
-
-                if (toServer == null)
-                {
-                    _logger.Info("Dequeued a null MessageToServer.");
-                    return;
-                }
-
-                _logger.Info("[" + DateTime.Now.ToString() + "]: Sending: " + JsonUtility.ToJson(toServer));
-                await _webSocket.SendText(JsonUtility.ToJson(toServer));
+                return;
             }
+            if (!_messageQueue.TryDequeue(out MessageToServer toServer))
+            {
+                return;
+            }
+
+            if (toServer == null)
+            {
+                _logger.Info("Dequeued a null MessageToServer.");
+                return;
+            }
+
+            string serialized = JsonConvert.SerializeObject(toServer, Formatting.None, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+            _logger.Info("[" + DateTime.Now.ToString() + "]: Sending: " + serialized);
+            await _webSocket.SendText(serialized);
         }
+
+        private async void HandleReceivedActions()
+        {
+            if (_webSocket.State != WebSocketState.Open)
+            {
+                return;
+            }
+            if (_router == null)
+            {
+                return;
+            }
+            if (!_messageQueueFromServer.TryDequeue(out string fromServer))
+            {
+                return;
+            }
+
+            if (fromServer == null)
+            {
+                _logger.Info("Dequeued a null MessageFromServer.");
+                return;
+            }
+
+            _logger.Info("[" + DateTime.Now.ToString() + "]: Received: " + fromServer);
+            MessageFromServer message = JsonConvert.DeserializeObject<MessageFromServer>(fromServer);
+            _router.HandleMessage(message);
+        }
+
 
         public async void OnApplicationQuit()
         {

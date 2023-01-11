@@ -71,6 +71,9 @@ TagManager:
   - GOOGLE_LOGOUT
   - PROGRESS_BAR
   - TEST_URL_PARAMS
+  - POSITIVE_FEEDBACK
+  - NEGATIVE_FEEDBACK
+  - UploadScenarioState
   layers:
   - Default
   - TransparentFX

@@ -20,7 +20,10 @@ class Role(Enum):
     NONE = 0
     FOLLOWER = 1
     LEADER = 2
-    MAX = 3
+    SCENARIO_MONITOR = (
+        3  # Used for scenario rooms to load scenarios and trigger events.
+    )
+    MAX = 10
 
 
 @dataclass(frozen=True)

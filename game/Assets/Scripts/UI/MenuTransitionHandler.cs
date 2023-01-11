@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using Newtonsoft.Json;
 
 public class MenuTransitionHandler : MonoBehaviour
 {
@@ -133,8 +134,36 @@ public class MenuTransitionHandler : MonoBehaviour
             Debug.Log("Module: " + module + " and log size: " + moduleLog.Log.Length);
         }
 
-        string bugReportJson = JsonUtility.ToJson(localBugReport, /*prettyPrint=*/true);
+        string bugReportJson = JsonConvert.SerializeObject(localBugReport, Formatting.Indented);
         DownloadJson("client_bug_report.json.log", bugReportJson);
+    }
+
+    public delegate void UploadCallback(string contents);
+
+    private UploadCallback _uploadCallback;
+
+    [DllImport("__Internal")]
+    private static extern void PromptUpload();
+
+    public void AskForAFile(UploadCallback callback)
+    {
+        _uploadCallback = callback;
+        PromptUpload();
+    }
+
+    public void OnFileReady(string contents)
+    {
+        if (_uploadCallback == null)
+        {
+            Debug.LogError("No callback set for file upload.");
+            return;
+        }
+        _uploadCallback(contents);
+    }
+
+    public void SaveScenarioData(string scenario_data)
+    {
+        DownloadJson("scenario_state.json", scenario_data);
     }
 
     public void BackToMenu()
@@ -542,6 +571,11 @@ public class MenuTransitionHandler : MonoBehaviour
     public void DisplayEndGameMenu(string reason="")
     {
         Canvas gameOverCanvas = FindCanvasWithTag(GAME_OVER_MENU);
+        if (gameOverCanvas == null)
+        {
+            Debug.Log("Unable to find end game menu.");
+            return;
+        }
         if (gameOverCanvas.enabled)
         {
             // Don't do anything if the end game menu is already displayed. Just log the reason.
