@@ -5,6 +5,7 @@ from collections import deque
 from datetime import datetime, timedelta
 from typing import List
 
+import server.actor as actor
 from server.assets import AssetId
 from server.card import Card, CardSelectAction
 from server.messages import (
@@ -299,19 +300,92 @@ class ReplayState(object):
         return time_difference / float(self._speed)
 
     def rewind_event(self):
+        """Replays all events up to the previous event, integrating state on the server and then sends state to the client."""
+        start_time = datetime.utcnow()
         self._event_index -= 1
         self._instructions = []
+        # Map update is preserved across rewind. Actor, instruction and prop state are not. Iterate through all messages, integrating actor and prop positions across actions.
+        # Then, send a prop update and state sync update.
         # Quickly resend all events leading up to the previous event.
+        instructions = []
+        actors = []
+        props = []
         for i in range(0, self._event_index):
-            self._update_instructions(self._instructions, self._events[i])
-            for actor_id in self._message_queue:
-                message = self.MessageFromEvent(
-                    actor_id, self._events[i], self._instructions, noduration=True
+            self._update_instructions(instructions, self._events[i])
+            if self._events[i].type == EventType.PROP_UPDATE:
+                props = PropUpdate.from_json(self._events[i].data).props
+            elif self._events[i].type == EventType.INITIAL_STATE:
+                initial_state_obj = InitialState.from_json(self._events[i].data)
+                leader = actor.Actor(
+                    initial_state_obj.leader_id,
+                    AssetId.PLAYER,
+                    Role.LEADER,
+                    initial_state_obj.leader_position,
+                    False,
+                    initial_state_obj.leader_rotation_degrees,
                 )
-                self._message_queue[actor_id].append(message)
-        self._event_timer = CountDownTimer(self.time_to_next_event().total_seconds())
-        if not self._paused:
-            self._event_timer.start()
+                follower = actor.Actor(
+                    initial_state_obj.follower_id,
+                    AssetId.FOLLOWER_BOT,
+                    Role.FOLLOWER,
+                    initial_state_obj.follower_position,
+                    False,
+                    initial_state_obj.follower_rotation_degrees,
+                )
+                actors = [leader, follower]
+            elif self._events[i].type == EventType.ACTION:
+                action = Action.from_json(self._events[i].data)
+                for agent in actors:
+                    if agent.actor_id() == action.id:
+                        agent.add_action(action)
+                        agent.step()
+                        break
+            elif self._events[i].type == EventType.TURN_STATE:
+                TurnState.from_json(self._events[i].data)
+            elif self._events[i].type == EventType.CARD_SELECT:
+                card = Card.from_json(self._events[i].data)
+                for prop in props:
+                    if prop.id == card.id:
+                        prop.card_init.selected = card.selected
+                        prop.prop_info.border_color = card.border_color
+                        break
+            elif self._events[i].type == EventType.CARD_SPAWN:
+                card = Card.from_json(self._events[i].data)
+                props.append(card.prop())
+            elif self._events[i].type == EventType.CARD_SET:
+                data = json.loads(self._events[i].data)
+                cards_ids = set([int(card_dict["id"]) for card_dict in data["cards"]])
+                props = [prop for prop in props if prop.id not in cards_ids]
+        self._instructions = instructions
+        # Now send messages updating the accumulated state to the client.
+        # We send a state sync, an objectives message, and a prop update.
+        for actor_id in self._message_queue:
+            # Actor state.
+            role = Role.LEADER if actor_id == self._leader_id else Role.FOLLOWER
+            actor_state = state_sync.StateSync(
+                2, [actor.state() for actor in actors], actor_id, role
+            )
+            self._message_queue[actor_id].append(
+                message_from_server.StateSyncFromServer(actor_state)
+            )
+
+            # Objectives.
+            self._message_queue[actor_id].append(
+                message_from_server.ObjectivesFromServer(self._instructions)
+            )
+
+            # Prop state.
+            self._message_queue[actor_id].append(
+                message_from_server.PropUpdateFromServer(PropUpdate(props))
+            )
+
+        # Log how long this took.
+        end_time = datetime.utcnow()
+        logging.info("Rewind took {}".format(end_time - start_time))
+
+        # Pause the game on rewind.
+        self._paused = True
+        self._event_timer.pause()
 
     def prime_replay(self):
         """The first few events contain the map and initial state. Until these load, the display will be blank. Call this method after a reset() to skip to these so that they are displayed immediately."""

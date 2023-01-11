@@ -96,7 +96,7 @@ def EventFromStartOfTurn(game, tick: int, turn_state, short_code):
     )
 
 
-def EventFromCardSpawn(game, turn: int, tick: int, card):
+def EventFromCardSpawn(game, turn: int, tick: int, card: Card):
     card_str = " ".join([str(card.count), str(card.color), str(card.shape)])
     return Event(
         game=game,
@@ -112,7 +112,7 @@ def EventFromCardSpawn(game, turn: int, tick: int, card):
 
 
 def EventFromCardSelect(
-    game, turn: int, tick: int, origin: EventOrigin, card, last_move
+    game, turn: int, tick: int, origin: EventOrigin, card: Card, last_move
 ):
     short_code = "select" if card.selected else "unselect"
     role = Role.NONE

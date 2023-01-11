@@ -103,7 +103,7 @@ def RoomResponseFromServer(room_response):
     )
 
 
-def ObjectivesFromServer(texts):
+def ObjectivesFromServer(texts: List[ObjectiveMessage]):
     return MessageFromServer(
         datetime.utcnow(),
         MessageType.OBJECTIVE,
@@ -166,7 +166,7 @@ def LiveFeedbackFromServer(feedback):
     )
 
 
-def PropUpdateFromServer(props):
+def PropUpdateFromServer(props: PropUpdate):
     return MessageFromServer(
         datetime.utcnow(),
         MessageType.PROP_UPDATE,

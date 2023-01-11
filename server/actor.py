@@ -24,6 +24,17 @@ class Actor(object):
         self._projected_heading = 0
         self._role = role
 
+    @staticmethod
+    def from_state(state, realtime: bool = False):
+        return Actor(
+            state.actor_id,
+            state.asset_id,
+            state.actor_role,
+            state.location,
+            realtime,
+            state.rotation_degrees,
+        )
+
     def turn():
         pass
 
