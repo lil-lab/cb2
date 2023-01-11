@@ -21,6 +21,7 @@ from server.config.config import GlobalConfig
 from server.lobby_consts import LobbyType
 from server.map_provider import CachedMapRetrieval
 from server.messages.logs import GameInfo
+from server.messages.replay_messages import ReplayRequest
 from server.messages.rooms import (
     JoinResponse,
     LeaveRoomNotice,
@@ -31,6 +32,7 @@ from server.messages.rooms import (
     RoomResponseType,
     StatsResponse,
 )
+from server.messages.scenario import Scenario, ScenarioRequest
 from server.messages.tutorials import (
     RoleFromTutorialName,
     TutorialRequestType,
@@ -107,6 +109,7 @@ class Lobby(ABC):
         self._pending_room_management_responses = {}  # {ws: room_management_response}
         self._pending_tutorial_messages = {}  # {ws: tutorial_response}
         self._pending_replay_messages = {}  # {ws: replay_response}
+        self._pending_scenario_messages = {}  # {ws: scenario_response}
         self._matchmaking_exc = None
 
     @abstractmethod
@@ -143,9 +146,16 @@ class Lobby(ABC):
 
     @abstractmethod
     def handle_replay_request(
-        self, request: RoomManagementRequest, ws: web.WebSocketResponse
+        self, request: ReplayRequest, ws: web.WebSocketResponse
     ) -> None:
-        """Handles a request to join a replay room. In most lobbies, this should be ignored (except lobbies supporting replay)."""
+        """Handles a replay request from a player."""
+        ...
+
+    @abstractmethod
+    def handle_scenario_request(
+        self, request: ScenarioRequest, ws: web.WebSocketResponse
+    ) -> None:
+        """Handles a request to join a scenario room. In most lobbies, this should be ignored (except lobbies supporting scenario)."""
         ...
 
     @abstractmethod
@@ -563,7 +573,7 @@ class Lobby(ABC):
             await asyncio.sleep(5)
             self.delete_unused_rooms()
 
-    def create_tutorial(self, player, tutorial_name):
+    def create_tutorial(self, player: web.WebSocketResponse, tutorial_name):
         logger.info(f"Creating tutorial room for {player}.")
 
         # Setup room log directory.
@@ -599,7 +609,7 @@ class Lobby(ABC):
         game_info_log.close()
         return room
 
-    def create_replay(self, player, game_id):
+    def create_replay(self, player: web.WebSocketResponse, game_id):
         """Creates a replay room to view a replay of the provided game ID."""
         logger.info(f"Creating replay room for {player}.")
 
@@ -613,6 +623,25 @@ class Lobby(ABC):
         print("Creating new replay room " + room.name())
         player_id = room.add_player(player, Role.LEADER)
         self._remotes[player] = SocketInfo(room.id(), player_id, Role.LEADER)
+        return room
+
+    def create_scenario(self, player: web.WebSocketResponse, scenario: Scenario):
+        """Creates a scenario room to replay a given scenario as the follower."""
+        logger.info(f"Creating replay room for {player}.")
+
+        # Setup room log directory.
+
+        # Create room.
+        room = self.create_room(game_id, game_record, RoomType.REPLAY)
+        if room is None:
+            return None
+        print("Creating new replay room " + room.name())
+        player_id = room.add_player(player, Role.LEADER)
+        self._remotes[player] = SocketInfo(room.id(), player_id, Role.LEADER)
+
+        # Setup the provided scenario.
+        room.set_scenario(scenario)
+
         return room
 
     def handle_tutorial_request(self, tutorial_request, ws):
@@ -828,6 +857,8 @@ class Lobby(ABC):
             self.handle_tutorial_request(request.tutorial_request, ws)
         elif request.type == message_to_server.MessageType.REPLAY_REQUEST:
             self.handle_replay_request(request.replay_request, ws)
+        elif request.type == message_to_server.MessageType.SCENARIO_REQUEST:
+            self.handle_scenario_request(request.scenario_request, ws)
 
     def handle_room_request(
         self, request: RoomManagementRequest, ws: web.WebSocketResponse
@@ -890,6 +921,17 @@ class Lobby(ABC):
                     f"Drained replay response type {replay_response.type} for {ws}."
                 )
                 return message_from_server.ReplayResponseFromServer(replay_response)
+            except queue.Empty:
+                pass
+        if ws not in self._pending_scenario_messages:
+            self._pending_scenario_messages[ws] = Queue()
+        if not self._pending_scenario_messages[ws].empty():
+            try:
+                scenario_response = self._pending_scenario_messages[ws].get(False)
+                logger.info(
+                    f"Drained scenario response type {scenario_response.type} for {ws}."
+                )
+                return message_from_server.ScenarioResponseFromServer(scenario_response)
             except queue.Empty:
                 pass
 

@@ -18,6 +18,7 @@ from server.messages.logs import (
     LogEntryFromOutgoingMessage,
 )
 from server.messages.rooms import Role
+from server.messages.scenario import Scenario
 from server.messages.tutorials import RoleFromTutorialName
 from server.remote_table import GetRemote
 from server.replay_state import ReplayState
@@ -260,6 +261,9 @@ class Room(object):
             return
         self._messages_from_server_log.close()
         self._messages_to_server_log.close()
+
+    def set_scenario(self, scenario: Scenario):
+        self._state_machine_driver.state_machine().set_scenario(scenario)
 
     def done(self):
         if not self._initialized:

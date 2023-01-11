@@ -34,6 +34,7 @@ from server.messages.action import Action, ActionType, Color
 from server.messages.map_update import MapUpdate
 from server.messages.prop import Prop, PropUpdate
 from server.messages.rooms import Role
+from server.messages.scenario import Scenario
 from server.messages.state_sync import StateMachineTick
 from server.messages.turn_state import GameOverMessage, TurnState, TurnUpdate
 from server.schemas.event import Event, EventOrigin, EventType
@@ -287,6 +288,26 @@ class State(object):
         )
         return s, ""
 
+    def _set_scenario(
+        self,
+        scenario: Scenario,
+        realtime_actions: bool = True,
+    ):
+        props = scenario.prop_update.props
+        cards = [Card.FromProp(prop) for prop in props]
+        self._map_provider = MapProvider(MapType.PRESET, map, cards)
+        self._instructions = deque(scenario.objectives)
+        self._instruction_history = deque()
+        self._instructions_stale = {}
+        self._turn_complete_queue = deque()
+        self._instruction_complete_queue = deque()
+        self._live_feedback_queue = deque()
+        self._preloaded_actors = {}
+        for actor_state in scenario.actor_state:
+            new_actor = Actor.from_state(actor_state, realtime_actions)
+            self._preloaded_actors[new_actor.role()] = new_actor
+        self.send_turn_state(scenario.turn_state)
+
     def _init_from_data(
         self,
         map,
@@ -297,30 +318,14 @@ class State(object):
         realtime_actions: bool = False,
     ):
         self._game_recorder = GameRecorder(None, disabled=True)
-        cards = [Card.FromProp(prop) for prop in props]
-        self._map_provider = MapProvider(MapType.PRESET, map, cards)
-        self._instructions = deque(instructions)
-        self._instruction_history = deque()
-        self._instructions_stale = {}
-        self._turn_complete_queue = deque()
-        self._instruction_complete_queue = deque()
-        self._live_feedback_queue = deque()
-        self._preloaded_actors = {}
-        for actor in actors:
-            asset_id = (
-                AssetId.PLAYER if actor.role() == Role.LEADER else AssetId.FOLLOWER_BOT
-            )
-            spawn_point = actor.location()
-            new_actor = Actor(
-                self._map_provider.id_assigner().alloc(),
-                asset_id,
-                actor.role(),
-                spawn_point,
-                realtime_actions,
-                actor.heading_degrees(),
-            )
-            self._preloaded_actors[actor.role()] = new_actor
-        self.send_turn_state(turn_state)
+        scenario = Scenario(
+            map,
+            PropUpdate(props),
+            turn_state,
+            instructions,
+            [actor.state() for actor in actors],
+        )
+        self._set_scenario(scenario, realtime_actions)
 
     def __init__(
         self,

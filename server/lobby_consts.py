@@ -11,6 +11,7 @@ class LobbyType(IntEnum):
     GOOGLE = 3
     FOLLOWER_PILOT = 4
     REPLAY = 5
+    SCENARIO = 6
 
 
 def IsMturkLobby(lobby_type):
@@ -28,6 +29,8 @@ def LobbyTypeFromString(data):
         return LobbyType.FOLLOWER_PILOT
     if data == "LobbyType.REPLAY":
         return LobbyType.REPLAY
+    if data == "LobbyType.SCENARIO":
+        return LobbyType.SCENARIO
     return LobbyType.NONE
 
 

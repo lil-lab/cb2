@@ -1,4 +1,4 @@
-""" A Lobby that's used for replay games. """
+""" A Lobby that's used for FMRI scenarios. """
 import logging
 from queue import Queue
 from typing import Tuple
@@ -7,18 +7,19 @@ from aiohttp import web
 
 import server.lobby as lobby
 from server.lobby import LobbyType
-from server.messages.replay_messages import (
-    ReplayRequest,
-    ReplayRequestType,
-    ReplayResponse,
-    ReplayResponseType,
-)
+from server.messages.replay_messages import ReplayRequest
 from server.messages.rooms import RoomManagementRequest
+from server.messages.scenario import (
+    ScenarioRequest,
+    ScenarioRequestType,
+    ScenarioResponse,
+    ScenarioResponseType,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class ReplayLobby(lobby.Lobby):
+class ScenarioLobby(lobby.Lobby):
     """Used to manage game rooms."""
 
     def __init__(self, lobby_name, lobby_comment):
@@ -27,13 +28,13 @@ class ReplayLobby(lobby.Lobby):
 
     # OVERRIDES Lobby.lobby_type()
     def lobby_type(self) -> LobbyType:
-        return LobbyType.REPLAY
+        return LobbyType.SCENARIO
 
     # OVERRIDES Lobby.get_leader_follower_match().
     def get_leader_follower_match(
         self,
     ) -> Tuple[web.WebSocketResponse, web.WebSocketResponse, str]:
-        """Replay lobbies only have one player, so we just return that player."""
+        """Scenario lobbies only have one player, so we just return that player."""
         # If there's no general players, a match can't be made.
         if len(self._player_queue) < 1:
             return None, None, ""
@@ -48,31 +49,36 @@ class ReplayLobby(lobby.Lobby):
         """Handles a join request from a client."""
         ...
 
-    # Overrides Lobby.handle_replay_request()
+    # Overrides Lobby.handle_replay_request().
     def handle_replay_request(
         self, request: ReplayRequest, ws: web.WebSocketResponse
     ) -> None:
-        """Handles a request to join a replay room. In most lobbies, this should be ignored (except lobbies supporting replay)."""
-        if ws not in self._pending_replay_messages:
-            self._pending_replay_messages[ws] = Queue()
+        ...
 
-        if request.type == ReplayRequestType.START_REPLAY:
-            self.create_replay(ws, request.game_id)
-            self._pending_replay_messages[ws].put(
-                ReplayResponse(
-                    ReplayResponseType.REPLAY_STARTED,
+    # Overrides Lobby.handle_scenario_request()
+    def handle_scenario_request(
+        self, request: ScenarioRequest, ws: web.WebSocketResponse
+    ) -> None:
+        """Handles a request to join a replay room. In most lobbies, this should be ignored (except lobbies supporting replay)."""
+        if ws not in self._pending_scenario_messages:
+            self._pending_scenario_messages[ws] = Queue()
+
+        if request.type in [
+            ScenarioRequestType.OPEN_SCENARIO_WORLD,
+            ScenarioRequestType.LOAD_SCENARIO,
+        ]:
+            # If LOAD_SCENARIO, pass in the scenario state to create_scenario.
+            scenario = None
+            if request.type == ScenarioRequestType.LOAD_SCENARIO:
+                scenario = request.scenario_data
+            self.create_scenario(ws, request.game_id, scenario)
+            # Send a confirmation message.
+            self._pending_scenario_messages[ws].put(
+                ScenarioResponse(
+                    ScenarioResponseType.LOADED,
                 )
             )
         else:
             logger.warning(
-                f"Room manager received incorrect replay request type {request.type}."
+                f"Room manager received incorrect scenario request type {request.type}."
             )
-
-    # Overrides Lobby.handle_scenario_request()
-    def handle_scenario_request(self, request, ws: web.WebSocketResponse) -> None:
-        """Handles a request to join a scenario room. In most lobbies, this should be ignored (except lobbies supporting replay)."""
-        logger.warning(
-            f"Received replay request from {str(ws)} in non-replay lobby. Ignoring."
-        )
-        self.boot_from_queue(ws)
-        return

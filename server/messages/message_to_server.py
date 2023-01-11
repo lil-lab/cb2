@@ -33,6 +33,7 @@ class MessageType(Enum):
     GOOGLE_AUTH = 10
     USER_INFO = 11
     REPLAY_REQUEST = 12
+    SCENARIO_REQUEST = 13
 
 
 @dataclass(frozen=True)

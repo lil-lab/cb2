@@ -18,6 +18,7 @@ from server.messages.objective import ObjectiveMessage
 from server.messages.prop import Prop, PropUpdate
 from server.messages.replay_messages import ReplayResponse
 from server.messages.rooms import RoomManagementResponse
+from server.messages.scenario import ScenarioResponse
 from server.messages.state_sync import StateMachineTick, StateSync
 from server.messages.turn_state import TurnState
 from server.messages.tutorials import TutorialResponse
@@ -45,6 +46,8 @@ class MessageType(Enum):
     PROP_DESPAWN = 14
     # Used for starting/stopping replays, relaying replay state.
     REPLAY_RESPONSE = 15
+    # Used for starting/stopping/controlling scenario rooms.
+    SCENARIO_RESPONSE = 16
 
 
 def ActionsFromServer(actions):
@@ -299,6 +302,29 @@ def ReplayResponseFromServer(replay_response):
     )
 
 
+def ScenarioResponseFromServer(scenario_response):
+    return MessageFromServer(
+        datetime.utcnow(),
+        MessageType.SCENARIO_RESPONSE,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        scenario_response,
+    )
+
+
 def ExcludeIfNone(value):
     return value is None
 
@@ -334,5 +360,8 @@ class MessageFromServer(DataClassJSONMixin):
         default=None, metadata=config(exclude=ExcludeIfNone)
     )
     replay_response: Optional[ReplayResponse] = field(
+        default=None, metadata=config(exclude=ExcludeIfNone)
+    )
+    scenario_response: Optional[ScenarioResponse] = field(
         default=None, metadata=config(exclude=ExcludeIfNone)
     )
