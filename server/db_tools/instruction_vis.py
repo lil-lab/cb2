@@ -183,12 +183,8 @@ def main(
 
             cards_by_location = {card.location: card for card in initial_cards}
             card_events = game_events.where(
-                Event.type
-                << [
-                    EventType.CARD_SPAWN,
-                    EventType.CARD_SET,
-                    Event.server_time <= activation.server_time,
-                ]
+                Event.type << [EventType.CARD_SPAWN, EventType.CARD_SET],
+                Event.server_time <= activation.server_time,
             ).order_by(Event.server_time)
             for event in card_events:
                 if event.type == EventType.CARD_SPAWN:

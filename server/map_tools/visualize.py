@@ -611,30 +611,27 @@ class GameDisplay(object):
         )
 
     def visualize_markers(self):
-        if self._positive_markers is None or len(self._positive_markers) == 0:
-            return
-        for (hecs, orientation) in self._positive_markers:
-            (x, y) = self.transform_to_screen_coords(hecs.cartesian())
-            heading = orientation - 60
-            orientation_offset = 15
-            x_offset = orientation_offset * math.cos(math.radians(heading))
-            y_offset = orientation_offset * math.sin(math.radians(heading))
-            pygame.draw.circle(
-                self._screen, pygame.Color("green"), (x + x_offset, y + y_offset), 7
-            )
+        if self._positive_markers is not None and len(self._positive_markers) > 0:
+            for (hecs, orientation) in self._positive_markers:
+                (x, y) = self.transform_to_screen_coords(hecs.cartesian())
+                heading = orientation - 60
+                orientation_offset = 15
+                x_offset = orientation_offset * math.cos(math.radians(heading))
+                y_offset = orientation_offset * math.sin(math.radians(heading))
+                pygame.draw.circle(
+                    self._screen, pygame.Color("green"), (x + x_offset, y + y_offset), 7
+                )
 
-        if self._negative_markers is None or len(self._negative_markers) == 0:
-            return
-
-        for (hecs, orientation) in self._negative_markers:
-            (x, y) = self.transform_to_screen_coords(hecs.cartesian())
-            heading = orientation - 60
-            orientation_offset = 15
-            x_offset = orientation_offset * math.cos(math.radians(heading))
-            y_offset = orientation_offset * math.sin(math.radians(heading))
-            pygame.draw.circle(
-                self._screen, pygame.Color("red"), (x + x_offset, y + y_offset), 7
-            )
+        if self._negative_markers is not None and len(self._negative_markers) > 0:
+            for (hecs, orientation) in self._negative_markers:
+                (x, y) = self.transform_to_screen_coords(hecs.cartesian())
+                heading = orientation - 60
+                orientation_offset = 15
+                x_offset = orientation_offset * math.cos(math.radians(heading))
+                y_offset = orientation_offset * math.sin(math.radians(heading))
+                pygame.draw.circle(
+                    self._screen, pygame.Color("red"), (x + x_offset, y + y_offset), 7
+                )
 
     def visualize_follower_visibility(self):
         if self._config is None:
