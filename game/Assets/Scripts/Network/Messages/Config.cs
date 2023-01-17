@@ -8,7 +8,10 @@ namespace Network
         NONE = 0,
         MTURK,
         OPEN,
-        GOOGLE
+        GOOGLE,
+        FOLLOWER_PILOT,
+        REPLAY,
+        SCENARIO
     }
 
     [Serializable]

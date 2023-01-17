@@ -36,6 +36,7 @@ class RoomType(Enum):
     GAME = 2
     PRESET_GAME = 3  # Resuming from historical record.
     REPLAY = 4  # Serve game events live to the client for replay.
+    SCENARIO = 5  # Game type for scenario rooms
 
 
 class Room(object):
@@ -92,6 +93,11 @@ class Room(object):
                 return
         elif self._room_type == RoomType.REPLAY:
             game_state = ReplayState(self._id, self._game_record)
+        elif self._room_type == RoomType.SCENARIO:
+            self._game_record.type = f"{game_type_prefix}scenario"
+            game_state = ScenarioState(
+                self._id, self._game_record, realtime_actions=True
+            )
         else:
             game_state = None
             logger.error(f"Room started with invalid type {self._room_type}.")

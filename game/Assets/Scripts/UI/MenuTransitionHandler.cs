@@ -137,6 +137,12 @@ public class MenuTransitionHandler : MonoBehaviour
         DownloadJson("client_bug_report.json.log", bugReportJson);
     }
 
+    public void SaveScenarioState(ScenarioState scenario)
+    {
+        string scenarioJson = JsonUtility.ToJson(scenario, /*prettyPrint=*/true);
+        DownloadJson("scenario_state.json", scenarioJson);
+    }
+
     public void BackToMenu()
     {
         Network.NetworkManager.TaggedInstance().ReturnToMenu();

@@ -15,6 +15,7 @@ from server.messages.objective import ObjectiveCompleteMessage, ObjectiveMessage
 from server.messages.pong import Pong
 from server.messages.replay_messages import ReplayRequest
 from server.messages.rooms import RoomManagementRequest
+from server.messages.scenario import ScenarioRequest
 from server.messages.turn_state import TurnComplete
 from server.messages.tutorials import TutorialRequest
 
@@ -33,7 +34,10 @@ class MessageType(Enum):
     GOOGLE_AUTH = 10
     USER_INFO = 11
     REPLAY_REQUEST = 12
+    # Only good for scenario rooms. Enables control of scenarios.
     SCENARIO_REQUEST = 13
+    # Ok in any room. Asks the server to download current game state as a scenario.
+    SCENARIO_DOWNLOAD = 14
 
 
 @dataclass(frozen=True)
@@ -52,3 +56,4 @@ class MessageToServer(DataClassJSONMixin):
     live_feedback: Optional[LiveFeedback] = None
     google_auth: Optional[GoogleAuth] = None
     replay_request: Optional[ReplayRequest] = None
+    scenario_request: Optional[ScenarioRequest] = None

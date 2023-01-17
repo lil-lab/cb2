@@ -151,12 +151,3 @@ class GoogleLobby(lobby.Lobby):
         )
         self.boot_from_queue(ws)
         return
-
-    # Overrides Lobby.handle_scenario_request()
-    def handle_scenario_request(self, request, ws: web.WebSocketResponse) -> None:
-        """Handles a request to join a scenario room. In most lobbies, this should be ignored (except lobbies supporting replay)."""
-        logger.warning(
-            f"Received replay request from {str(ws)} in non-replay lobby. Ignoring."
-        )
-        self.boot_from_queue(ws)
-        return

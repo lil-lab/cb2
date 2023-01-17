@@ -317,6 +317,14 @@ namespace Network
             _client.TransmitMessage(toServer);
         }
 
+        public void TransmitScenarioDownloadRequest()
+        {
+            MessageToServer toServer = new MessageToServer();
+            toServer.transmit_time = DateTime.UtcNow.ToString("s");
+            toServer.type = MessageToServer.MessageType.SCENARIO_DOWNLOAD;
+            _client.TransmitMessage(toServer);
+        }
+
         public void Awake()
         {
             gameObject.tag = TAG;

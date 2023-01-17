@@ -1,6 +1,5 @@
 """ A Lobby that's used for FMRI scenarios. """
 import logging
-from queue import Queue
 from typing import Tuple
 
 from aiohttp import web
@@ -9,12 +8,6 @@ import server.lobby as lobby
 from server.lobby import LobbyType
 from server.messages.replay_messages import ReplayRequest
 from server.messages.rooms import RoomManagementRequest
-from server.messages.scenario import (
-    ScenarioRequest,
-    ScenarioRequestType,
-    ScenarioResponse,
-    ScenarioResponseType,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -54,31 +47,3 @@ class ScenarioLobby(lobby.Lobby):
         self, request: ReplayRequest, ws: web.WebSocketResponse
     ) -> None:
         ...
-
-    # Overrides Lobby.handle_scenario_request()
-    def handle_scenario_request(
-        self, request: ScenarioRequest, ws: web.WebSocketResponse
-    ) -> None:
-        """Handles a request to join a replay room. In most lobbies, this should be ignored (except lobbies supporting replay)."""
-        if ws not in self._pending_scenario_messages:
-            self._pending_scenario_messages[ws] = Queue()
-
-        if request.type in [
-            ScenarioRequestType.OPEN_SCENARIO_WORLD,
-            ScenarioRequestType.LOAD_SCENARIO,
-        ]:
-            # If LOAD_SCENARIO, pass in the scenario state to create_scenario.
-            scenario = None
-            if request.type == ScenarioRequestType.LOAD_SCENARIO:
-                scenario = request.scenario_data
-            self.create_scenario(ws, request.game_id, scenario)
-            # Send a confirmation message.
-            self._pending_scenario_messages[ws].put(
-                ScenarioResponse(
-                    ScenarioResponseType.LOADED,
-                )
-            )
-        else:
-            logger.warning(
-                f"Room manager received incorrect scenario request type {request.type}."
-            )

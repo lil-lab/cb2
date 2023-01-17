@@ -8,7 +8,6 @@ from aiohttp import web
 import server.lobby as lobby
 from server.lobby import LobbyType
 from server.messages.rooms import RoomManagementRequest
-from server.messages.scenario import ScenarioRequest
 from server.messages.user_info import UserType
 from server.remote_table import GetRemote, GetWorkerFromRemote
 from server.schemas.mturk import WorkerQualLevel
@@ -187,16 +186,6 @@ class FollowerPilotLobby(lobby.Lobby):
         self, request: RoomManagementRequest, ws: web.WebSocketResponse
     ) -> None:
         """Handles a request to join a replay room. In most lobbies, this should be ignored (except lobbies supporting replay)."""
-        logger.warning(
-            f"Received replay request from {str(ws)} in non-replay lobby. Ignoring."
-        )
-        self.boot_from_queue(ws)
-
-    # Overrides Lobby.handle_scenario_request()
-    def handle_scenario_request(
-        self, request: ScenarioRequest, ws: web.WebSocketResponse
-    ) -> None:
-        """Handles a request to join a scenario room. In most lobbies, this should be ignored (except lobbies supporting replay)."""
         logger.warning(
             f"Received replay request from {str(ws)} in non-replay lobby. Ignoring."
         )
