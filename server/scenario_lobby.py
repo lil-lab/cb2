@@ -33,14 +33,15 @@ class ScenarioLobby(lobby.Lobby):
             return None, None, ""
 
         (_, player, e_uuid) = self._player_queue.popleft()
-        return player, None, e_uuid
+        return None, player, e_uuid
 
     # OVERRIDES Lobby.handle_join_request().
     def handle_join_request(
         self, request: RoomManagementRequest, ws: web.WebSocketResponse
     ) -> None:
         """Handles a join request from a client."""
-        ...
+        logger.info(f"Received join request from {ws}.")
+        self.join_player_queue(ws, request)
 
     # Overrides Lobby.handle_replay_request().
     def handle_replay_request(

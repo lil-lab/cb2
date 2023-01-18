@@ -161,8 +161,9 @@ namespace Network
                     return;
                 }
 
-                _logger.Info("[" + DateTime.Now.ToString() + "]: Sending: " + JsonUtility.ToJson(toServer));
-                await _webSocket.SendText(JsonUtility.ToJson(toServer));
+                string serialized = JsonConvert.SerializeObject(toServer, Formatting.None, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+                _logger.Info("[" + DateTime.Now.ToString() + "]: Sending: " + serialized);
+                await _webSocket.SendText(serialized);
             }
         }
 

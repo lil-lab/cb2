@@ -7,8 +7,8 @@ namespace Network
     public class Scenario
     {
         public MapUpdate map;
-        public PropUpdate prop;
-        public TurnState turn;
+        public PropUpdate prop_update;
+        public TurnState turn_state;
         public List<ObjectiveMessage> objectives;
         public StateSync actor_state;
     }
@@ -16,12 +16,17 @@ namespace Network
     public enum ScenarioRequestType
     {
         NONE = 0,
+        LOAD_SCENARIO = 1,
+        END_SCENARIO = 2,
+        REGISTER_TRIGGER = 3,
+        UNREGISTER_TRIGGER = 4,
     }
 
     [Serializable]
     public class ScenarioRequest
     {
         public ScenarioRequestType type;
+        public Scenario scenario_data = null;
     }
 
     public enum ScenarioResponseType
@@ -36,6 +41,6 @@ namespace Network
     public class ScenarioResponse
     {
         public ScenarioResponseType type;
+        public Scenario scenario_download;
     }
-
 }

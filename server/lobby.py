@@ -275,6 +275,16 @@ class Lobby(ABC):
                         self._remotes[follower] = SocketInfo(
                             room.id(), follower_id, Role.FOLLOWER
                         )
+                        # Tell the follower they've joined a room!
+                        self._pending_room_management_responses[follower].put(
+                            RoomManagementResponse(
+                                RoomResponseType.JOIN_RESPONSE,
+                                None,
+                                JoinResponse(True, 0, Role.FOLLOWER),
+                                None,
+                                None,
+                            )
+                        )
                         continue
                     else:
                         # If the lobby type is not scenario, then we don't want to create a follower-only game.

@@ -28,6 +28,8 @@ namespace Network
             GOOGLE_AUTH,
             USER_INFO,
             REPLAY_REQUEST,
+            SCENARIO_REQUEST,
+            SCENARIO_DOWNLOAD,
         }
 
         // These fields are populated for every packet.
@@ -46,6 +48,7 @@ namespace Network
         public LiveFeedback live_feedback;
         public GoogleAuth google_auth;
         public ReplayRequest replay_request;
+        public ScenarioRequest scenario_request;
     }
 
 }  // namespace Network

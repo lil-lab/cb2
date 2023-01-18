@@ -4,7 +4,7 @@ mergeInto(LibraryManager.library, {
         function on_file_change(event) {
             // Pass the JWT back to Unity.
             const content = event.target.result;
-            SendMessage("ScenarioUploader", "OnFile", content);
+            SendMessage("UploadScenarioHandler", "OnFileReady", content);
         }
 
         var htmlForm = document.createElement('input');

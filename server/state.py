@@ -34,7 +34,7 @@ from server.messages.action import Action, ActionType, Color
 from server.messages.map_update import MapUpdate
 from server.messages.prop import Prop, PropUpdate
 from server.messages.rooms import Role
-from server.messages.scenario import Scenario
+from server.messages.scenario import Scenario, ScenarioResponse, ScenarioResponseType
 from server.messages.state_sync import StateMachineTick
 from server.messages.turn_state import GameOverMessage, TurnState, TurnUpdate
 from server.schemas.event import Event, EventOrigin, EventType
@@ -312,7 +312,7 @@ class State(object):
         props = [card.prop() for card in self._map_provider.cards()]
         states = [actor.state() for actor in self._actors.values()]
         state_sync_msg = state_sync.StateSync(
-            len(self._actors), states, player_id, self._actors[player_id].player_role()
+            len(self._actors), states, player_id, self._actors[player_id].role()
         )
         return Scenario(
             self._map_provider.map(),
@@ -547,7 +547,6 @@ class State(object):
         self._start_time = datetime.utcnow()
 
     def update(self):
-        logger.debug("update()")
         send_tick = False
 
         if not self._initialized:
@@ -584,9 +583,7 @@ class State(object):
             send_tick = True
 
         # Handle actor actions.
-        logger.debug(f"Actors: {len(self._actors)}")
         for actor_id in self._actors:
-            logger.debug("fActor: ()")
             actor = self._actors[actor_id]
             while actor.has_actions():
                 proposed_action = actor.peek()
@@ -1402,7 +1399,7 @@ class State(object):
         if player_id not in self._scenario_download:
             return None
         scenario_download = self._scenario_download[player_id]
-        self._scenario_download[player_id] = None
+        del self._scenario_download[player_id]
         return ScenarioResponse(
             ScenarioResponseType.SCENARIO_DOWNLOAD, None, scenario_download
         )

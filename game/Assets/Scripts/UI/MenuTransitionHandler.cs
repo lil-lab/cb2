@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using Newtonsoft.Json;
 
 public class MenuTransitionHandler : MonoBehaviour
 {
@@ -133,13 +134,13 @@ public class MenuTransitionHandler : MonoBehaviour
             Debug.Log("Module: " + module + " and log size: " + moduleLog.Log.Length);
         }
 
-        string bugReportJson = JsonUtility.ToJson(localBugReport, /*prettyPrint=*/true);
+        string bugReportJson = JsonConvert.SerializeObject(localBugReport, Formatting.Indented);
         DownloadJson("client_bug_report.json.log", bugReportJson);
     }
 
-    public void SaveScenarioState(ScenarioState scenario)
+    public void SaveScenario(Network.Scenario scenario)
     {
-        string scenarioJson = JsonUtility.ToJson(scenario, /*prettyPrint=*/true);
+        string scenarioJson = JsonConvert.SerializeObject(scenario, Formatting.Indented);
         DownloadJson("scenario_state.json", scenarioJson);
     }
 
@@ -548,6 +549,11 @@ public class MenuTransitionHandler : MonoBehaviour
     public void DisplayEndGameMenu(string reason="")
     {
         Canvas gameOverCanvas = FindCanvasWithTag(GAME_OVER_MENU);
+        if (gameOverCanvas == null)
+        {
+            Debug.Log("Unable to find end game menu.");
+            return;
+        }
         if (gameOverCanvas.enabled)
         {
             // Don't do anything if the end game menu is already displayed. Just log the reason.

@@ -91,6 +91,6 @@ class ScenarioResponse(DataClassJSONMixin):
     trigger_report: Optional[TriggerReport] = field(
         default=None, metadata=config(exclude=ExcludeIfNone)
     )
-    scenario_state: Optional[Scenario] = field(
+    scenario_download: Optional[Scenario] = field(
         default=None, metadata=config(exclude=ExcludeIfNone)
     )

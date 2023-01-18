@@ -22,6 +22,7 @@ from server.messages.scenario import Scenario
 from server.messages.tutorials import RoleFromTutorialName
 from server.remote_table import GetRemote
 from server.replay_state import ReplayState
+from server.scenario_state import ScenarioState
 from server.schemas.google_user import GetOrCreateGoogleUser
 from server.state import State
 from server.state_machine_driver import StateMachineDriver

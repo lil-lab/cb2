@@ -308,7 +308,7 @@ namespace Network
             _client.TransmitMessage(toServer);
         }
 
-        public void TransmitReplayMessage(ReplayRequest request)
+        public void TransmitReplayRequest(ReplayRequest request)
         {
             MessageToServer toServer = new MessageToServer();
             toServer.transmit_time = DateTime.UtcNow.ToString("s");
@@ -322,6 +322,15 @@ namespace Network
             MessageToServer toServer = new MessageToServer();
             toServer.transmit_time = DateTime.UtcNow.ToString("s");
             toServer.type = MessageToServer.MessageType.SCENARIO_DOWNLOAD;
+            _client.TransmitMessage(toServer);
+        }
+
+        public void TransmitScenarioRequest(ScenarioRequest request)
+        {
+            MessageToServer toServer = new MessageToServer();
+            toServer.transmit_time = DateTime.UtcNow.ToString("s");
+            toServer.type = MessageToServer.MessageType.SCENARIO_REQUEST;
+            toServer.scenario_request = request;
             _client.TransmitMessage(toServer);
         }
 
