@@ -849,7 +849,7 @@ class State(object):
                 actions = SetCompletionActions(card.id)
                 for action in actions:
                     self._announce_action(action)
-                    self._game_recorder._announce_action(
+                    self._game_recorder.record_action(
                         action, "select", card.location, card.rotation_degrees
                     )
                 self._map_provider.remove_card(card.id)
