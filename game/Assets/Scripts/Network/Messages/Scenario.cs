@@ -26,7 +26,7 @@ namespace Network
     public class ScenarioRequest
     {
         public ScenarioRequestType type;
-        public Scenario scenario_data = null;
+        public string scenario_data = null;
     }
 
     public enum ScenarioResponseType
@@ -41,6 +41,6 @@ namespace Network
     public class ScenarioResponse
     {
         public ScenarioResponseType type;
-        public Scenario scenario_download;
+        public string scenario_download;
     }
 }

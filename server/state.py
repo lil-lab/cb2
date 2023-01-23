@@ -39,7 +39,7 @@ from server.messages.state_sync import StateMachineTick
 from server.messages.turn_state import GameOverMessage, TurnState, TurnUpdate
 from server.schemas.event import Event, EventOrigin, EventType
 from server.schemas.util import InitialState
-from server.util import CountDownTimer
+from server.util import CountDownTimer, JsonSerialize
 
 LEADER_MOVES_PER_TURN = 5
 FOLLOWER_MOVES_PER_TURN = 10
@@ -293,20 +293,56 @@ class State(object):
         scenario: Scenario,
         realtime_actions: bool = True,
     ):
-        props = scenario.prop_update.props
-        cards = [Card.FromProp(prop) for prop in props]
-        self._map_provider = MapProvider(MapType.PRESET, map, cards)
-        self._instructions = deque(scenario.objectives)
+        # Clear existing states.
         self._instruction_history = deque()
-        self._instructions_stale = {}
         self._turn_complete_queue = deque()
         self._instruction_complete_queue = deque()
         self._live_feedback_queue = deque()
         self._preloaded_actors = {}
-        for actor_state in scenario.actor_state:
-            new_actor = Actor.from_state(actor_state, realtime_actions)
-            self._preloaded_actors[new_actor.role()] = new_actor
+        # Load in map & props.
+        props = scenario.prop_update.props
+        cards = [Card.FromProp(prop) for prop in props]
+        self._map_provider = MapProvider(MapType.PRESET, scenario.map, cards)
+        self._map_update = self._map_provider.map()
+        self._prop_update = self._map_provider.prop_update()
+        self._prop_update = map_utils.CensorCards(self._prop_update, None)
+        # Load in instructions.
+        self._instructions = deque(scenario.objectives)
+        # Load in actor states.
+        leader_id = None
+        follower_id = None
+        for actor_id, actor in self._actors.items():
+            if actor.role() == Role.LEADER:
+                leader_id = actor_id
+            elif actor.role() == Role.FOLLOWER:
+                follower_id = actor_id
+        for actor_state in scenario.actor_state.actors:
+            if actor_state.actor_role == Role.LEADER:
+                if leader_id is None:
+                    continue
+                actor_state = dataclasses.replace(actor_state, actor_id=leader_id)
+                self._actors[leader_id] = Actor.from_state(
+                    actor_state, realtime_actions
+                )
+                self._leader = self._actors[leader_id]
+            elif actor_state.actor_role == Role.FOLLOWER:
+                if follower_id is None:
+                    continue
+                actor_state = dataclasses.replace(actor_state, actor_id=follower_id)
+                self._actors[follower_id] = Actor.from_state(
+                    actor_state, realtime_actions
+                )
+                self._follower = self._actors[follower_id]
+        # Mark everything as stale.
+        for id in self._map_stale:
+            self._map_stale[id] = True
+        for id in self._prop_stale:
+            self._prop_stale[id] = True
+        self._mark_instructions_stale()
+        # Mark clients as desynced.
+        self.desync_all()
         self._send_turn_state(scenario.turn_state)
+        self._self_initialize()
 
     def _get_scenario(self, player_id: int) -> Scenario:
         props = [card.prop() for card in self._map_provider.cards()]
@@ -546,6 +582,19 @@ class State(object):
     def start(self):
         self._start_time = datetime.utcnow()
 
+    def _self_initialize(self):
+        """This exists for scenario_state and other "private" clients to skip the player join initializing process."""
+        self._game_recorder.record_initial_state(
+            self._iter,
+            self._map_provider.map(),
+            self._map_provider.prop_update(),
+            self._turn_state,
+            self._leader,
+            self._follower,
+        )
+        self._game_recorder.record_start_of_turn(self._turn_state, "StartOfGame")
+        self._initialized = True
+
     def update(self):
         send_tick = False
 
@@ -564,6 +613,7 @@ class State(object):
                 )
                 self._initialized = True
             else:
+                logger.debug(f"Waiting for players to join. Not Initialized.")
                 return
 
         # Have we received an instruction since the last iteration?
@@ -723,8 +773,10 @@ class State(object):
             self._update_turn(
                 force_role_switch=True, end_reason=self._follower_turn_end_reason
             )
+            logger.debug(
+                f"Follower Turn Ended. Reason: {self._follower_turn_end_reason}"
+            )
             self._follower_turn_end_reason = ""
-            logger.debug(f"Follower Turn Ended.")
             send_tick = True
 
         selected_cards = list(self._map_provider.selected_cards())
@@ -829,7 +881,8 @@ class State(object):
                 self._scenario_download_pending[actor_id] = False
             if self._scenario_download_pending[actor_id]:
                 self._scenario_download_pending[actor_id] = False
-                self._scenario_download[actor_id] = self._get_scenario(actor_id)
+                message = self._get_scenario(actor_id)
+                self._scenario_download[actor_id] = JsonSerialize(message)
 
         # If any state transitions occurred which prompt a tick, send one.
         if send_tick:
@@ -1203,11 +1256,11 @@ class State(object):
         for actor_id in self._actors:
             if not self.is_synced(actor_id):
                 return True
-            if len(self._action_history[actor_id]) > 0:
+            if len(self._action_history.get(actor_id, [])) > 0:
                 return True
-            if self._instructions_stale[actor_id]:
+            if self._instructions_stale.get(actor_id, False):
                 return True
-            if not self._turn_history[actor_id].empty():
+            if len(self._turn_history.get(actor_id, [])) > 0:
                 return True
         return False
 

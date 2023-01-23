@@ -8,24 +8,29 @@ using Newtonsoft.Json;
 
 public class UploadScenarioHandler : MonoBehaviour, IPointerUpHandler
 {
+    private Logger _logger;
+    public void Start()
+    {
+        _logger = Logger.GetOrCreateTrackedLogger("UploadScenarioHandler");
+    }
 
+    // Calls into javascript file picker plugin.
     [DllImport("__Internal")]
     private static extern void PromptUpload();
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        // Call into javascript file picker plugin.
-        PromptUpload();
+        // Callback handled in ScenarioUploadReceiver gameobject.
+        MenuTransitionHandler.TaggedInstance().AskForAFile(UploadScenarioHandler.OnFileReady);
     }
 
-    // On file ready callback from javascript plugin.
-    public void OnFileReady(string contents)
+    public static void OnFileReady(string contents)
     {
         // Attempt to parse the file as a JSON Scenario.
-        Network.Scenario scenario = JsonConvert.DeserializeObject<Network.Scenario>(contents);
+        Logger.GetOrCreateTrackedLogger("UploadScenarioHandler").Info("OnFileReady: Transmitting scenario file.");
         Network.ScenarioRequest request = new Network.ScenarioRequest();
         request.type = Network.ScenarioRequestType.LOAD_SCENARIO;
-        request.scenario_data = scenario;
+        request.scenario_data = contents;
         Network.NetworkManager.TaggedInstance().TransmitScenarioRequest(request);
-    }
+    }    
 }

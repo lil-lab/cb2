@@ -1295,6 +1295,7 @@ def InitPythonLogging():
     log_format = "[%(asctime)s] %(name)s %(levelname)s [%(module)s:%(funcName)s:%(lineno)d] %(message)s"
     logging.basicConfig(level=logging.DEBUG, format=log_format)
     logging.getLogger("asyncio").setLevel(logging.INFO)
+    logging.getLogger("peewee").setLevel(logging.INFO)
 
 
 def InitGameRecording(config):

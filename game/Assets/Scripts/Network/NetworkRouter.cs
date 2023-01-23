@@ -302,6 +302,7 @@ namespace Network
             }
             if (message.type == MessageFromServer.MessageType.SCENARIO_RESPONSE)
             {
+                _logger.Info("Received scenario response!");
                 ProcessScenarioResponse(message.scenario_response);
             }
         }
@@ -351,7 +352,7 @@ namespace Network
                 // We requested a scenario download from the server, and now
                 // it's ready. Send to MenuTransitionHandler to begin download
                 // of the JSON file.
-                MenuTransitionHandler.TaggedInstance().SaveScenario(response.scenario_download);
+                MenuTransitionHandler.TaggedInstance().SaveScenarioData(response.scenario_download);
             }
         }
 

@@ -138,10 +138,32 @@ public class MenuTransitionHandler : MonoBehaviour
         DownloadJson("client_bug_report.json.log", bugReportJson);
     }
 
-    public void SaveScenario(Network.Scenario scenario)
+    public delegate void UploadCallback(string contents);
+
+    private UploadCallback _uploadCallback;
+
+    [DllImport("__Internal")]
+    private static extern void PromptUpload();
+
+    public void AskForAFile(UploadCallback callback)
     {
-        string scenarioJson = JsonConvert.SerializeObject(scenario, Formatting.Indented);
-        DownloadJson("scenario_state.json", scenarioJson);
+        _uploadCallback = callback;
+        PromptUpload();
+    }
+
+    public void OnFileReady(string contents)
+    {
+        if (_uploadCallback == null)
+        {
+            Debug.LogError("No callback set for file upload.");
+            return;
+        }
+        _uploadCallback(contents);
+    }
+
+    public void SaveScenarioData(string scenario_data)
+    {
+        DownloadJson("scenario_state.json", scenario_data);
     }
 
     public void BackToMenu()

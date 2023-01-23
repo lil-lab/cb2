@@ -56,20 +56,20 @@ class Scenario(DataClassJSONMixin):
 class ScenarioRequestType(Enum):
     NONE = 0
     # Changes the current state of the game to load a scenario. Clears any loaded triggers.
-    LOAD_SCENARIO = 2
+    LOAD_SCENARIO = 1
     # Ends the current scenario game.
-    END_SCENARIO = 3
+    END_SCENARIO = 2
     # Registers a trigger. Scenarios are complete when a certain set of actions
     # has been completed. trigger must be populated in the scenario request.
-    REGISTER_TRIGGER = 4
+    REGISTER_TRIGGER = 3
     # Unregisters a trigger. trigger_uuid must be populated in the scenario request.
-    UNREGISTER_TRIGGER = 5
+    UNREGISTER_TRIGGER = 4
 
 
 @dataclass(frozen=True)
 class ScenarioRequest(DataClassJSONMixin):
     type: ScenarioRequestType
-    scenario_data: Optional[Scenario] = field(default=None)
+    scenario_data: Optional[str] = field(default=None)
     trigger: Optional[Trigger] = field(default=None)
     trigger_uuid: Optional[str] = field(default=None)
 
@@ -91,6 +91,6 @@ class ScenarioResponse(DataClassJSONMixin):
     trigger_report: Optional[TriggerReport] = field(
         default=None, metadata=config(exclude=ExcludeIfNone)
     )
-    scenario_download: Optional[Scenario] = field(
+    scenario_download: Optional[str] = field(
         default=None, metadata=config(exclude=ExcludeIfNone)
     )

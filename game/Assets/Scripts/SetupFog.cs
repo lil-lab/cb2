@@ -21,6 +21,16 @@ public class SetupFog : MonoBehaviour
             Network.Config cfg = Network.NetworkManager.TaggedInstance().ServerConfig();
             if (cfg != null)
             {
+                if (cfg.fog_start < 0)
+                {
+                    RenderSettings.fog = false;
+                    _logger.Info("Fog disabled");
+                }
+                else
+                {
+                    RenderSettings.fog = true;
+                    _logger.Info("Fog enabled");
+                }
                 RenderSettings.fogStartDistance = cfg.fog_start;
                 RenderSettings.fogEndDistance = cfg.fog_end;
                 _logger.Info("Fog initialized with start: " + cfg.fog_start + " and end: " + cfg.fog_end);

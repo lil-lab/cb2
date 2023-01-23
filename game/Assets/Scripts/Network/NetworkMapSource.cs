@@ -30,6 +30,7 @@ namespace Network
         }
         public void ReceiveMapUpdate(Network.MapUpdate mapInfo)
         {
+            _logger.Info("ReceiveMapUpdate()");
             _map = new List<HexGridManager.TileInformation>();
             _rows = mapInfo.rows;
             _cols = mapInfo.cols;
@@ -76,13 +77,6 @@ namespace Network
                 foreach (Network.Outpost outpost in mapInfo.metadata.outposts)
                 {
                     _logger.Info("r: " + outpost.r + ", c: " + outpost.c + ", connection_a: " + outpost.connection_a.ToString() + ", connection_b: " + outpost.connection_b.ToString());
-                }
-
-                _logger.Info("Partitions: ");
-                foreach (HecsCoord location in mapInfo.metadata.partition_locations)
-                {
-                    // Print each locations' offset coordinates using ToOffsetCoordinates.
-                    _logger.Info("(r, c): " + location.ToOffsetCoordinates().ToString());
                 }
 
                 // Print the size of each partition on one line:
