@@ -146,9 +146,13 @@ class ReplayState(object):
             # current time. This is so that the "Time left in turn" window
             # renders correctly.
             time_remaining = turn_state.turn_end - event.server_time
-            turn_state = dataclasses.replace(
-                turn_state, turn_end=datetime.utcnow() + time_remaining
-            )
+            try:
+                turn_state = dataclasses.replace(
+                    turn_state, turn_end=datetime.utcnow() + time_remaining
+                )
+            except OverflowError:
+                # Skip this turn if the time remaining is too large.
+                turn_state = dataclasses.replace(turn_state, turn_end=datetime.utcnow())
             return message_from_server.GameStateFromServer(turn_state)
         elif event.type == EventType.START_OF_TURN:
             turn_state = TurnState.from_json(event.data)

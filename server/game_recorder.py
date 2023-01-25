@@ -42,12 +42,14 @@ def EventFromMapUpdate(game, tick: int, map_update):
 
 def EventFromInitialState(game, tick: int, leader, follower):
     initial_state = InitialState(
-        leader_id=leader.actor_id(),
-        follower_id=follower.actor_id(),
-        leader_position=leader.location(),
-        leader_rotation_degrees=leader.heading_degrees(),
-        follower_position=follower.location(),
-        follower_rotation_degrees=follower.heading_degrees(),
+        leader_id=leader.actor_id() if leader else -1,
+        follower_id=follower.actor_id() if follower else -1,
+        leader_position=leader.location() if leader else HecsCoord(a=-1, r=-1, c=-1),
+        leader_rotation_degrees=leader.heading_degrees() if leader else -1,
+        follower_position=follower.location()
+        if follower
+        else HecsCoord(a=-1, r=-1, c=-1),
+        follower_rotation_degrees=follower.heading_degrees() if follower else -1,
     )
     return Event(
         game=game,
@@ -317,7 +319,7 @@ class GameRecorder(object):
         self._game_record.number_cards = len(prop_update.props)
         self._game_record.save()
 
-        if leader is None or follower is None:
+        if leader is None and follower is None:
             logger.warn(
                 f"Unable to log initial state for game {self._game_record.id}. Leader or follower None."
             )

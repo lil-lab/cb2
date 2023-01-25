@@ -11,6 +11,7 @@ import requests
 
 import server.messages as messages
 from py_client.client_messages import (
+    AttachToScenarioMessage,
     JoinFollowerQueueMessage,
     JoinLeaderQueueMessage,
     JoinQueueMessage,
@@ -197,6 +198,27 @@ class RemoteClient(object):
         if not in_queue:
             return None, f"Failed to join queue: {reason}"
 
+        game_joined, reason = self._wait_for_game(timeout)
+        if not game_joined:
+            return None, f"Failed to join game: {reason}"
+
+        return self.game, ""
+
+    def AttachToScenario(self, scenario_id, timeout=timedelta(minutes=6)):
+        """Attaches to an already-existing scenario of the provided ID.
+
+            If none exists, returns failure.
+
+        Args:
+            scenario_id: The ID of the scenario to attach to.
+        """
+        if self.init_state not in [
+            RemoteClient.State.CONNECTED,
+            RemoteClient.State.GAME_OVER,
+        ]:
+            return False, f"Not ready to join game. State: {str(self.init_state)}"
+        self._send_message(AttachToScenarioMessage(scenario_id))
+        self.init_state = RemoteClient.State.IN_QUEUE
         game_joined, reason = self._wait_for_game(timeout)
         if not game_joined:
             return None, f"Failed to join game: {reason}"

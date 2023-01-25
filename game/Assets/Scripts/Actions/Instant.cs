@@ -12,7 +12,7 @@ public class Instant : ActionQueue.IAction
             Displacement = HecsCoord.ORIGIN,
             Rotation = 0,
             DurationS = durationS,
-            Expiration = DateTime.Now.AddSeconds(10),
+            Expiration = DateTime.UtcNow.AddSeconds(10),
         });
     }
 

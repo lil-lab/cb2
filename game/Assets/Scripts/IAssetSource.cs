@@ -61,6 +61,8 @@ public interface IAssetSource
         // Used for indicating a location on the ground (in tutorials).
         GROUND_PULSE_INDICATOR_YELLOW,
         TUTORIAL_INDICATOR,
+        NONE = 101,
+        MAX,
     }
 
     public enum MaterialId

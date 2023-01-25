@@ -5,6 +5,7 @@ import server.messages.message_to_server as message_to_server
 from server.messages import live_feedback, turn_state
 from server.messages.objective import ObjectiveCompleteMessage, ObjectiveMessage
 from server.messages.rooms import Role, RoomManagementRequest, RoomRequestType
+from server.messages.scenario import ScenarioRequest, ScenarioRequestType
 from server.messages.tutorials import TutorialRequest, TutorialRequestType
 
 
@@ -132,6 +133,30 @@ def TutorialNextStepMessage():
         tutorial_request=TutorialRequest(
             type=TutorialRequestType.REQUEST_NEXT_STEP,
             tutorial_name="",
+        ),
+    )
+    return message
+
+
+def AttachToScenarioMessage(scenario_id):
+    message = message_to_server.MessageToServer(
+        transmit_time=datetime.utcnow(),
+        type=message_to_server.MessageType.SCENARIO_REQUEST,
+        scenario_request=ScenarioRequest(
+            type=ScenarioRequestType.ATTACH_TO_SCENARIO,
+            scenario_id=scenario_id,
+        ),
+    )
+    return message
+
+
+def LoadScenarioMessage(scenario_data: str):
+    message = message_to_server.MessageToServer(
+        transmit_time=datetime.utcnow(),
+        type=message_to_server.MessageType.SCENARIO_REQUEST,
+        scenario_request=ScenarioRequest(
+            type=ScenarioRequestType.LOAD_SCENARIO,
+            scenario_data=scenario_data,
         ),
     )
     return message

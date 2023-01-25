@@ -12,7 +12,7 @@ public class Rotate : ActionQueue.IAction
                 Displacement = HecsCoord.ORIGIN,
                 Rotation = rotation,
                 DurationS = durationS,
-                Expiration = DateTime.Now.AddSeconds(10),
+                Expiration = DateTime.UtcNow.AddSeconds(10),
             }
         );
     }

@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from queue import Queue
 from typing import List
 
+import humanhash
 import orjson
 
 import server.config.config as config
@@ -39,6 +40,7 @@ from server.messages.state_sync import StateMachineTick
 from server.messages.turn_state import GameOverMessage, TurnState, TurnUpdate
 from server.schemas.event import Event, EventOrigin, EventType
 from server.schemas.util import InitialState
+from server.username_word_list import USERNAME_WORDLIST
 from server.util import CountDownTimer, JsonSerialize
 
 LEADER_MOVES_PER_TURN = 5
@@ -334,23 +336,30 @@ class State(object):
                 )
                 self._follower = self._actors[follower_id]
         # Mark everything as stale.
-        for id in self._map_stale:
-            self._map_stale[id] = True
-        for id in self._prop_stale:
-            self._prop_stale[id] = True
+        self._mark_map_stale()
+        self._mark_prop_stale()
         self._mark_instructions_stale()
         # Mark clients as desynced.
         self.desync_all()
         self._send_turn_state(scenario.turn_state)
         self._self_initialize()
 
-    def _get_scenario(self, player_id: int) -> Scenario:
+    def _mark_map_stale(self):
+        for id in self._map_stale:
+            self._map_stale[id] = True
+
+    def _mark_prop_stale(self):
+        for id in self._prop_stale:
+            self._prop_stale[id] = True
+
+    def _get_scenario(self, player_id: int, scenario_id: str) -> Scenario:
         props = [card.prop() for card in self._map_provider.cards()]
         states = [actor.state() for actor in self._actors.values()]
         state_sync_msg = state_sync.StateSync(
             len(self._actors), states, player_id, self._actors[player_id].role()
         )
         return Scenario(
+            scenario_id,
             self._map_provider.map(),
             PropUpdate(props),
             self._turn_state,
@@ -559,7 +568,7 @@ class State(object):
         kvals = self._game_recorder.kvals()
         if "disconnected" in kvals:
             logger.warning(f"Player {kvals['disconnected']} already disconnected.")
-            kvals["disconnected"].push(role.name)
+            kvals["disconnected"].append(role.name)
         kvals["disconnected"] = [role.name]
         logging.info(f"Setting kvals: {kvals}")
         self._game_recorder.set_kvals(kvals)
@@ -584,6 +593,7 @@ class State(object):
 
     def _self_initialize(self):
         """This exists for scenario_state and other "private" clients to skip the player join initializing process."""
+        logger.info(f"Initializing game with {self._leader} and {self._follower}")
         self._game_recorder.record_initial_state(
             self._iter,
             self._map_provider.map(),
@@ -594,6 +604,7 @@ class State(object):
         )
         self._game_recorder.record_start_of_turn(self._turn_state, "StartOfGame")
         self._initialized = True
+        logger.info(f"Game initialized.")
 
     def update(self):
         send_tick = False
@@ -881,8 +892,12 @@ class State(object):
                 self._scenario_download_pending[actor_id] = False
             if self._scenario_download_pending[actor_id]:
                 self._scenario_download_pending[actor_id] = False
-                message = self._get_scenario(actor_id)
-                self._scenario_download[actor_id] = JsonSerialize(message)
+                hasher = humanhash.HumanHasher(wordlist=USERNAME_WORDLIST)
+                unique_id = str(uuid.uuid4().hex)
+                scenario_id = hasher.humanize(unique_id, words=2)
+                scenario_obj = self._get_scenario(actor_id, scenario_id)
+                # Give the scenario a unique ID.
+                self._scenario_download[actor_id] = JsonSerialize(scenario_obj)
 
         # If any state transitions occurred which prompt a tick, send one.
         if send_tick:
@@ -919,6 +934,10 @@ class State(object):
         in unit tests or local self play with non-random agents).
         """
         return self._iter
+
+    def scenario_id() -> str:
+        """Boilerplate. Only implemented in scenario_state.py."""
+        return ""
 
     def on_game_over(self):
         logger.info(f"Game {self._room_id} is over.")
@@ -1188,7 +1207,11 @@ class State(object):
         spawn_point = (
             self._spawn_points.pop() if self._spawn_points else HecsCoord(0, 0, 0)
         )
-        asset_id = AssetId.PLAYER if role == Role.LEADER else AssetId.FOLLOWER_BOT
+        asset_id = AssetId.NONE
+        if role == Role.LEADER:
+            asset_id = AssetId.PLAYER
+        elif role == Role.FOLLOWER:
+            asset_id = AssetId.FOLLOWER_BOT
         actor = Actor(
             self._id_assigner.alloc(),
             asset_id,
@@ -1260,7 +1283,7 @@ class State(object):
                 return True
             if self._instructions_stale.get(actor_id, False):
                 return True
-            if len(self._turn_history.get(actor_id, [])) > 0:
+            if not self._turn_history.get(actor_id, Queue()).empty():
                 return True
         return False
 
@@ -1454,7 +1477,7 @@ class State(object):
         scenario_download = self._scenario_download[player_id]
         del self._scenario_download[player_id]
         return ScenarioResponse(
-            ScenarioResponseType.SCENARIO_DOWNLOAD, None, scenario_download
+            ScenarioResponseType.SCENARIO_DOWNLOAD, scenario_download
         )
 
     # Returns the current state of the game.

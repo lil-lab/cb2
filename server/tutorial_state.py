@@ -146,6 +146,9 @@ class TutorialGameState(object):
     def player_ids(self):
         return self._actors.keys()
 
+    def scenario_id(self) -> str:
+        return ""
+
     def turn_duration(self, role):
         return timedelta(days=1) if role == Role.LEADER else timedelta(days=1)
 

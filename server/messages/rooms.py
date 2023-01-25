@@ -20,9 +20,8 @@ class Role(Enum):
     NONE = 0
     FOLLOWER = 1
     LEADER = 2
-    SCENARIO_MONITOR = (
-        3  # Used for scenario rooms to load scenarios and trigger events.
-    )
+    # Used for scenario rooms to load scenarios and observe game state.
+    SPECTATOR = 3
     MAX = 10
 
 
@@ -99,8 +98,8 @@ class RoomManagementResponse(DataClassJSONMixin):
     type: RoomResponseType
 
     # Depending on the type above, the below are optionally populated.
-    stats: Optional[StatsResponse]
-    join_response: Optional[JoinResponse]
-    leave_notice: Optional[LeaveRoomNotice]
+    stats: Optional[StatsResponse] = None
+    join_response: Optional[JoinResponse] = None
+    leave_notice: Optional[LeaveRoomNotice] = None
     map_update: Optional[MapUpdate] = None
     error: str = ""

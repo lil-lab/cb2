@@ -16,7 +16,7 @@ public class Outline : ActionQueue.IAction
                 BorderRadius = radius,
                 BorderColor = borderColor,
                 DurationS = durationS,
-                Expiration = DateTime.Now.AddSeconds(10),
+                Expiration = DateTime.UtcNow.AddSeconds(10),
                 BorderColorFollowerPov = borderColorFollowerPov,
             }
         );
@@ -32,7 +32,7 @@ public class Outline : ActionQueue.IAction
                 BorderRadius = radius,
                 BorderColor = Network.Color.Blue,
                 DurationS = durationS,
-                Expiration = DateTime.Now.AddSeconds(10),
+                Expiration = DateTime.UtcNow.AddSeconds(10),
                 BorderColorFollowerPov = Network.Color.Blue,
             }
         );
@@ -49,7 +49,7 @@ public class Outline : ActionQueue.IAction
                 BorderRadius = 0,
                 BorderColor = Network.Color.Blue,
                 DurationS = durationS,
-                Expiration = DateTime.Now.AddSeconds(10),
+                Expiration = DateTime.UtcNow.AddSeconds(10),
                 BorderColorFollowerPov = Network.Color.Blue,
             }
         );

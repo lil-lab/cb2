@@ -3,7 +3,6 @@ import random
 from dataclasses import dataclass
 
 from dataclasses_json import LetterCase, dataclass_json
-from dateutil import tz
 
 import server.messages.action as action
 import server.messages.prop as prop
@@ -69,10 +68,9 @@ def CardSelectAction(
     duration_s=0.2,
     follower_border_color=action.Color(0, 0, 1, 1),
 ):
-    NYC = tz.gettz("America/New_York")
     action_type = ActionType.OUTLINE
     radius = OUTLINE_RADIUS if selected else 0
-    expiration = datetime.datetime.now(NYC) + datetime.timedelta(seconds=10)
+    expiration = datetime.datetime.utcnow() + datetime.timedelta(seconds=10)
     return Action(
         card_id,
         action_type,

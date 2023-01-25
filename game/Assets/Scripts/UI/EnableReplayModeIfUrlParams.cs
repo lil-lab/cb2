@@ -21,22 +21,4 @@ public class EnableReplayModeIfUrlParams : MonoBehaviour
             }
         }
     }
-
-    void Update()
-    {
-        if (Input.GetKey(KeyCode.X) && Input.GetKey(KeyCode.R))
-        {
-            if (_start == DateTime.MinValue)
-            {
-                _start = DateTime.Now;
-            }
-            if (DateTime.Now - _start > TimeSpan.FromSeconds(1))
-            {
-                SceneManager.LoadScene("replay_scene");
-            }
-        } else {
-            _start = DateTime.MinValue;
-        }
-
-    }
 }

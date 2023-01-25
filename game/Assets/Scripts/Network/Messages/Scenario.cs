@@ -6,6 +6,7 @@ namespace Network
     [Serializable]
     public class Scenario
     {
+        public string scenario_id; // Unique identifier for the scenario. Used to attach to a scenario.
         public MapUpdate map;
         public PropUpdate prop_update;
         public TurnState turn_state;
@@ -18,8 +19,7 @@ namespace Network
         NONE = 0,
         LOAD_SCENARIO = 1,
         END_SCENARIO = 2,
-        REGISTER_TRIGGER = 3,
-        UNREGISTER_TRIGGER = 4,
+        ATTACH_TO_SCENARIO = 5,
     }
 
     [Serializable]
@@ -33,7 +33,6 @@ namespace Network
     {
         NONE = 0,
         LOADED = 1,
-        TRIGGER_REPORT = 2,
         SCENARIO_DOWNLOAD = 3,
     }
 

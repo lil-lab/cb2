@@ -7,6 +7,7 @@ from server.hex import HecsCoord
 from server.map_provider import MapProvider, MapType
 from server.map_utils import GroundTile, LayerToHeight
 from server.messages import message_from_server, message_to_server
+from server.messages.action import Init
 from server.messages.map_update import MapMetadata, MapUpdate
 from server.messages.rooms import Role
 from server.messages.scenario import (
@@ -15,7 +16,6 @@ from server.messages.scenario import (
     ScenarioRequestType,
     ScenarioResponse,
     ScenarioResponseType,
-    TriggerReport,
 )
 from server.state import State
 
@@ -62,6 +62,7 @@ class ScenarioState(object):
         realtime_actions: bool = False,
     ):
         self._room_id = room_id
+        self._scenario_id = ""
         self._state = State(
             room_id,
             game_record,
@@ -81,11 +82,6 @@ class ScenarioState(object):
             self._state._map_provider.prop_update()
         )  # pylint: disable=protected-access
 
-        # Triggers can be registered using a ScenarioRequest, and result in a
-        # ScenarioResponse TriggerReport being sent when certain conditions are
-        # met.
-        self._triggers = {}  # {uuid: [trigger]}
-
         # Scenario messages that are queued for transmission. Per player.
         self._scenario_messages = {}  # {id: [message]}
 
@@ -95,8 +91,14 @@ class ScenarioState(object):
     def end_game(self):
         self._state.end_game()
 
+    def scenario_id(self):
+        return self._scenario_id
+
     def mark_player_disconnected(self, id):
         self._state.mark_player_disconnected(id)
+
+    def player_role(self, player_id):
+        return self._state.player_role(player_id)
 
     def start(self):
         self._state.start()
@@ -113,23 +115,11 @@ class ScenarioState(object):
     def update(self):
         self._state.update()
 
-        # Check for any triggers that should be reported.
-        for trigger in self._triggers.values():
-            if self._check_trigger(trigger):
-                for monitor_id in self._scenario_messages.items():
-                    self._scenario_messages[monitor_id].append(
-                        ScenarioResponse(
-                            type=ScenarioResponseType.TRIGGER_REPORT,
-                            trigger_report=TriggerReport(
-                                trigger=trigger,
-                                triggered_at=self._state.game_time(),
-                            ),
-                        )
-                    )
-
-    def _check_trigger(trigger):
-        # TODO: Implement this.
-        return False
+    def _find_player_of_role(self, role: Role):
+        for player_id in self._state.player_ids():
+            if self._state.player_role(player_id) == role:
+                return player_id
+        return None
 
     def on_game_over(self):
         self._state.on_game_over()
@@ -152,6 +142,7 @@ class ScenarioState(object):
             self._scenario_messages[id] = []
         if scenario_request.type == ScenarioRequestType.LOAD_SCENARIO:
             parsed_scenario = Scenario.from_json(scenario_request.scenario_data)
+            self._scenario_id = parsed_scenario.scenario_id
             # Modify turn_state turn_end time to be never...
             updated_turn_state = dataclasses.replace(
                 parsed_scenario.turn_state, turn_end=datetime.max
@@ -162,38 +153,38 @@ class ScenarioState(object):
             self._state._set_scenario(
                 parsed_scenario
             )  # pylint: disable=protected-access
-            self._triggers = {}
             for monitor_id, _ in self._scenario_messages.items():
                 self._scenario_messages[monitor_id].append(
                     ScenarioResponse(
                         type=ScenarioResponseType.LOADED,
                     )
                 )
-        elif scenario_request.type == ScenarioRequestType.REGISTER_TRIGGER:
-            self._triggers[scenario_request.trigger.uuid] = scenario_request.trigger
         elif scenario_request.type == ScenarioRequestType.END_SCENARIO:
             self._state.end_game()
-        elif scenario_request.type == ScenarioRequestType.UNREGISTER_TRIGGER:
-            if scenario_request.trigger.uuid in self._triggers:
-                del self._triggers[scenario_request.trigger.uuid]
         else:
             logger.error(f"Unknown scenario request type: {scenario_request.type}")
 
     def create_actor(self, role):
-        if role == Role.SCENARIO_MONITOR:
-            # Grab an ID from the _state member ID allocator. This is a bit of a
-            # hack, but it works.
-            monitor_id = (
-                self._state._id_assigner.alloc()
-            )  # pylint: disable=protected-access
-            self._scenario_messages[monitor_id] = []
-            return monitor_id
-        return self._state.create_actor(role)
+        created_id = self._state.create_actor(role)
+
+        if role == Role.SPECTATOR:
+            logger.info(f"Creating monitor with id {created_id}")
+            self._scenario_messages[created_id] = []
+            return created_id
+
+        actor = self._state._actors[created_id]  # pylint: disable=protected-access
+        actor.add_action(
+            Init(created_id, HecsCoord.from_offset(MAP_HEIGHT // 2, MAP_WIDTH // 2), 0)
+        )
+        actor.step()
+        # log the actor location.
+        self.desync_all()
+        return created_id
 
     def free_actor(self, actor_id):
         if actor_id in self._scenario_messages:
             del self._scenario_messages[actor_id]
-            return
+
         self._state.free_actor(actor_id)
 
     def desync(self, actor_id):

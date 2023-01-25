@@ -2,6 +2,7 @@
 intended to be used for developers creating interactive bots that play CB2.
 """
 import asyncio
+import dataclasses
 import logging
 import random
 import sys
@@ -20,6 +21,7 @@ from py_client.client_messages import (
     InstructionMessage,
     InterruptMessage,
     LeaveMessage,
+    LoadScenarioMessage,
     NegativeFeedbackMessage,
     PongMessage,
     PositiveFeedbackMessage,
@@ -34,8 +36,9 @@ from py_client.game_socket import GameSocket
 from server.config.config import Config
 from server.main import HEARTBEAT_TIMEOUT_S
 from server.map_tools.visualize import GameDisplay
-from server.messages import action, message_from_server
-from server.messages.action import Action
+from server.messages import action as action_module
+from server.messages import message_from_server
+from server.messages.action import Action, ActionType
 from server.messages.prop import PropType
 from server.messages.rooms import Role
 
@@ -50,9 +53,12 @@ Role = Role
 
 def pygame_handle_events():
     """Checks if a key has been pressed and then exits the program."""
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            sys.exit(0)
+    try:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit(0)
+    except pygame.error as e:
+        pass
 
 
 async def pygame_event_handler():
@@ -86,6 +92,7 @@ class Action(object):
         POSITIVE_FEEDBACK = 9
         NEGATIVE_FEEDBACK = 10
         TUTORIAL_NEXT_STEP = 11
+        LOAD_SCENARIO = 12
         MAX = 12
 
     # Helper initialization functions.
@@ -134,6 +141,10 @@ class Action(object):
         return Action(Action.ActionCode.TUTORIAL_NEXT_STEP)
 
     @staticmethod
+    def LoadScenario(scenario_data: str):
+        return Action(Action.ActionCode.LOAD_SCENARIO, scenario_data=scenario_data)
+
+    @staticmethod
     def NoopAction():
         return Action(Action.ActionCode.NONE)
 
@@ -174,6 +185,14 @@ class Action(object):
         )
 
     @staticmethod
+    def SpectatorActions():
+        return set(
+            [
+                Action.ActionCode.LOAD_SCENARIO,
+            ]
+        )
+
+    @staticmethod
     def MovementActions():
         return set(
             [
@@ -210,6 +229,8 @@ class Action(object):
             actions = set(Action.LeaderActions())
         elif actor.role() == Role.FOLLOWER:
             actions = set(Action.FollowerActions())
+        elif actor.role() == Role.SPECTATOR:
+            actions = set(Action.SpectatorActions())
         else:
             raise ValueError("Invalid role: {}".format(actor.role))
         # Test forward collision.
@@ -232,7 +253,7 @@ class Action(object):
             mask[action.value] = True
         return mask
 
-    def __init__(self, action_code, instruction=None, i_uuid=None):
+    def __init__(self, action_code, instruction=None, i_uuid=None, scenario_data=None):
         if action_code == Action.ActionCode.SEND_INSTRUCTION:
             assert (
                 instruction != None
@@ -246,6 +267,14 @@ class Action(object):
             if type(i_uuid) not in [str, bytes]:
                 raise TypeError("i_uuid must be a string or bytes")
             self.action = (action_code, i_uuid)
+            return
+        if action_code == Action.ActionCode.LOAD_SCENARIO:
+            assert (
+                scenario_data != None
+            ), "scenario_data must be provided for LOAD_SCENARIO"
+            if type(scenario_data) not in [str, bytes]:
+                raise TypeError("scenario_data must be a string or bytes")
+            self.action = (action_code, scenario_data)
             return
         self.action = (action_code, None)
 
@@ -288,6 +317,8 @@ class Action(object):
             return "NEGATIVE_FEEDBACK"
         elif action_code == Action.ActionCode.TUTORIAL_NEXT_STEP:
             return "TUTORIAL_NEXT_STEP"
+        elif action_code == Action.ActionCode.LOAD_SCENARIO:
+            return "LOAD_SCENARIO"
         elif action_code == Action.ActionCode.NONE:
             return "NONE"
         else:
@@ -321,6 +352,8 @@ class Action(object):
             return NegativeFeedbackMessage(), ""
         elif action_code == Action.ActionCode.POSITIVE_FEEDBACK:
             return PositiveFeedbackMessage(), ""
+        elif action_code == Action.ActionCode.LOAD_SCENARIO:
+            return LoadScenarioMessage(self.action[1]), ""
         else:
             return None, "Invalid lead action"
         assert action != None, "Invalid lead action"
@@ -439,6 +472,7 @@ class GameEndpoint(object):
         #   Wait for tick
         #   Process messages
         # Return
+        valid_actions = set([])
         if self._player_role == Role.FOLLOWER:
             valid_actions = Action.FollowerActions()
             # noop is always valid
@@ -451,8 +485,10 @@ class GameEndpoint(object):
             )
             # noop is always valid
             valid_actions.add(Action.ActionCode.NONE)
-        else:
-            valid_actions = set()
+        elif self._player_role == Role.SPECTATOR:
+            # Spectators can only send a noop or load a scenario.
+            valid_actions = Action.SpectatorActions()
+        valid_actions.add(Action.ActionCode.NONE)
         for action_code in Action.TutorialActions():
             valid_actions.add(action_code)
         if action.action_code() not in valid_actions:
@@ -511,6 +547,9 @@ class GameEndpoint(object):
         if (self.player_role() == Role.LEADER) and self.config.live_feedback_enabled:
             # Check if the follower position has changed since the last tick.
             return self._follower_moved
+
+        if self.player_role() == Role.SPECTATOR:
+            return True
 
         return False
 
@@ -574,7 +613,11 @@ class GameEndpoint(object):
             logger.warning(f"One of leader/follower missing!")
         map_update = self.map_update
         props = self.cards.values()
-        actors = [leader, follower]
+        actors = []
+        if leader is not None:
+            actors.append(leader)
+        if follower is not None:
+            actors.append(follower)
         if self.player_role() == Role.FOLLOWER:
             map_update = CensorFollowerMap(map_update, follower, self.config)
             props = CensorFollowerProps(props, follower, self.config)
@@ -629,7 +672,7 @@ class GameEndpoint(object):
                     )
                     self.actors[net_actor.actor_id] = added_actor
                     added_actor.add_action(
-                        action.Init(
+                        action_module.Init(
                             net_actor.actor_id,
                             net_actor.location,
                             net_actor.rotation_degrees,
@@ -708,7 +751,7 @@ class GameEndpoint(object):
             while actor.has_actions():
                 actor.drop()
             actor.add_action(
-                action.Init(
+                action_module.Init(
                     net_actor.actor_id, net_actor.location, net_actor.rotation_degrees
                 )
             )
@@ -719,18 +762,46 @@ class GameEndpoint(object):
             )
 
     def _handle_message(self, message):
+        logger.info(
+            f"Received message type {message_from_server.MessageType(message.type)} from server"
+        )
         if message.type == message_from_server.MessageType.ACTIONS:
             for action in message.actions:
-                if action.id not in self.actors:
-                    if action.id not in self.cards:
-                        logger.error(f"Received action for unknown actor: {action.id}")
-                    return
-                actor = self.actors[action.id]
-                if actor.role() == Role.FOLLOWER:
-                    self._follower_moved = True
-                actor.add_action(action)
-                while actor.has_actions():
-                    actor.step()
+                if action.id in self.actors:
+                    actor = self.actors[action.id]
+                    if actor.role() == Role.FOLLOWER:
+                        self._follower_moved = True
+                    actor.add_action(action)
+                    while actor.has_actions():
+                        actor.step()
+                elif action.id in self.cards:
+                    if action.action_type not in [ActionType.OUTLINE]:
+                        logger.error(f"Received action for unknown prop: {action.id}")
+                        continue
+                    if action.border_radius <= 0.01:
+                        prop_info = self.cards[action.id].prop_info
+                        prop_info = dataclasses.replace(prop_info, border_radius=0)
+                        card_info = self.cards[action.id].card_init
+                        card_info = dataclasses.replace(card_info, selected=False)
+                        self.cards[action.id] = dataclasses.replace(
+                            self.cards[action.id],
+                            prop_info=prop_info,
+                            card_init=card_info,
+                        )
+                    else:
+                        prop_info = self.cards[action.id].prop_info
+                        prop_info = dataclasses.replace(
+                            prop_info, border_radius=action.border_radius
+                        )
+                        card_info = self.cards[action.id].card_init
+                        card_info = dataclasses.replace(card_info, selected=True)
+                        self.cards[action.id] = dataclasses.replace(
+                            self.cards[action.id],
+                            prop_info=prop_info,
+                            card_init=card_info,
+                        )
+                else:
+                    logger.error(f"Received action for unknown actor: {action.id}")
         elif message.type == message_from_server.MessageType.STATE_SYNC:
             self._handle_state_sync(message.state)
         elif message.type == message_from_server.MessageType.GAME_STATE:
@@ -747,6 +818,7 @@ class GameEndpoint(object):
         elif message.type == message_from_server.MessageType.LIVE_FEEDBACK:
             self.live_feedback = message.live_feedback.signal
         elif message.type == message_from_server.MessageType.PROP_UPDATE:
+            logger.info(f"PROP UPDATE.")
             self._handle_prop_update(message.prop_update)
         elif message.type == message_from_server.MessageType.STATE_MACHINE_TICK:
             return

@@ -34,19 +34,11 @@ public class Actor
         _debuggingEnabled = false;
     }
 
-    public void SetWalkSpeed(float speed)
-    {
-        _prop.SetWalkSpeed(speed);
-    }
+    public void SetWalkSpeed(float speed) { _prop.SetWalkSpeed(speed); }
 
-    public void SetScale(float scale)
-    {
-        _prop.SetScale(scale);
-    }
+    public void SetScale(float scale) { _prop.SetScale(scale); }
 
-    public GameObject Find(string path){
-        return _prop.Find(path);
-    }
+    public GameObject Find(string path){ return _prop.Find(path); }
 
     // Returns true if the actor is in the middle of an action.
     public bool IsBusy() { return _prop.IsBusy(); }

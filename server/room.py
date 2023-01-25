@@ -228,6 +228,9 @@ class Room(object):
     def player_endpoints(self):
         return self._player_endpoints
 
+    def player_role(self, player_id):
+        return self._state_machine_driver.state_machine().player_role(player_id)
+
     def number_of_players(self):
         return len(self._players)
 
@@ -249,6 +252,9 @@ class Room(object):
 
         self._update_loop = asyncio.create_task(self._state_machine_driver.run())
         logging.info(f"Room {self.id()} started game.")
+
+    def scenario_id(self) -> str:
+        return self._state_machine_driver.state_machine().scenario_id()
 
     def has_exception(self):
         return self._state_machine_driver.exception() is not None

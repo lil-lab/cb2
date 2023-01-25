@@ -77,6 +77,8 @@ public class UnityAssetSource : IAssetSource
         "Prefab/Cards/Materials/card_outline",
     };
 
+    private static Logger _logger = Logger.GetOrCreateTrackedLogger("UnityAssetSource");
+
     // Maps IAssetSource.UiId to resource paths in Unity.
     // Must be kept in order with the enum definitions in IAssetSource.
     private static readonly string[] uiPaths = new string[] {
@@ -89,10 +91,15 @@ public class UnityAssetSource : IAssetSource
     public GameObject Load(IAssetSource.AssetId assetId)
     {
         int assetIndex = (int)assetId;
+        if (assetIndex >= assetPaths.Length)
+        {
+            _logger.Info("Asset index out of range: " + assetIndex);
+            return null;
+        }
         GameObject obj = Resources.Load<GameObject>(assetPaths[assetIndex]);
         if (obj == null)
         {
-            Debug.Log("Null: " + assetPaths[assetIndex]);
+            _logger.Info("Null: " + assetPaths[assetIndex]);
         }
         return obj;
     }
@@ -100,20 +107,30 @@ public class UnityAssetSource : IAssetSource
     public Material LoadMat(IAssetSource.MaterialId materialId)
     {
         int materialIndex = (int)materialId;
+        if (materialIndex >= materialPaths.Length)
+        {
+            _logger.Info("Material index out of range: " + materialIndex);
+            return null;
+        }
         Material mat = Resources.Load<Material>(materialPaths[materialIndex]);
         if (mat == null)
         {
-            Debug.Log("Null: " + materialPaths[materialIndex]);
+            _logger.Info("Null: " + materialPaths[materialIndex]);
         }
         return mat;
     }
     public GameObject LoadUi(IAssetSource.UiId uiId)
     {
         int uiIndex = (int)uiId;
+        if (uiIndex >= uiPaths.Length)
+        {
+            _logger.Info("UI index out of range: " + uiIndex);
+            return null;
+        }
         GameObject obj = Resources.Load<GameObject>(uiPaths[uiIndex]);
         if (obj == null)
         {
-            Debug.Log("Null: " + assetPaths[uiIndex]);
+            _logger.Info("Null: " + assetPaths[uiIndex]);
         }
         return obj;
     }

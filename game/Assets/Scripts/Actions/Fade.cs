@@ -14,7 +14,7 @@ public class Fade : ActionQueue.IAction
                 BorderRadius = 0,
                 Opacity = 1,
                 DurationS = durationS,
-                Expiration = DateTime.Now.AddSeconds(10),
+                Expiration = DateTime.UtcNow.AddSeconds(10),
             }
         ); ;
     }
@@ -30,7 +30,7 @@ public class Fade : ActionQueue.IAction
                 BorderRadius = 0,
                 Opacity = 0,
                 DurationS = durationS,
-                Expiration = DateTime.Now.AddSeconds(10),
+                Expiration = DateTime.UtcNow.AddSeconds(10),
             }
         ); ;
     }

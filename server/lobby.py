@@ -32,6 +32,11 @@ from server.messages.rooms import (
     RoomResponseType,
     StatsResponse,
 )
+from server.messages.scenario import (
+    ScenarioRequestType,
+    ScenarioResponse,
+    ScenarioResponseType,
+)
 from server.messages.tutorials import (
     RoleFromTutorialName,
     TutorialRequestType,
@@ -108,6 +113,7 @@ class Lobby(ABC):
         self._pending_room_management_responses = {}  # {ws: room_management_response}
         self._pending_tutorial_messages = {}  # {ws: tutorial_response}
         self._pending_replay_messages = {}  # {ws: replay_response}
+        self._pending_scenario_messages = {}  # {ws: scenario_response}
         self._matchmaking_exc = None
 
     @abstractmethod
@@ -193,12 +199,18 @@ class Lobby(ABC):
             logging.info("Socket not found in self._remotes!")
             return
         room_id, player_id, _ = self._remotes[ws].as_tuple()
+        del self._remotes[ws]
         if not room_id in self._rooms:
             # The room was already terminated by the other player.
-            del self._remotes[ws]
             return
+        removed_role = self._rooms[room_id].player_role(player_id)
+        logger.info(f"disconnect_socket() removed role: {removed_role}")
         self._rooms[room_id].remove_player(player_id, ws, disconnected=True)
-        # If a player leaves, the game ends for everyone in the room. Send them leave notices and end the game.
+        # If a player leaves, the game ends for everyone in the room. Send them
+        # leave notices and end the game. Unless it's a spectator. In
+        # that case, just remove them.
+        if (removed_role == Role.SPECTATOR) and not self._rooms[room_id].is_empty():
+            return
         for socket in self._rooms[room_id].player_endpoints():
             if not socket.closed:
                 leave_notice = LeaveRoomNotice(
@@ -211,7 +223,6 @@ class Lobby(ABC):
                 )
                 del self._remotes[socket]
         self._rooms[room_id].stop()
-        del self._remotes[ws]
         del self._rooms[room_id]
 
     async def matchmake(self):
@@ -226,7 +237,10 @@ class Lobby(ABC):
                     if datetime.now() - ts > timedelta(minutes=5):
                         self._follower_queue.popleft()
                         # Queue a room management response to notify the follower that they've been removed from the queue.
-                        self.boot_from_queue(follower)
+                        self.boot_from_queue(
+                            follower,
+                            "You've been removed from the queue for waiting too long.",
+                        )
 
                 # If a general player has been waiting alone for 5m, remove them from the queue.
                 if len(self._player_queue) > 0:
@@ -234,7 +248,10 @@ class Lobby(ABC):
                     if datetime.now() - ts > timedelta(minutes=5):
                         self._player_queue.popleft()
                         # Queue a room management response to notify the player that they've been removed from the queue.
-                        self.boot_from_queue(player)
+                        self.boot_from_queue(
+                            player,
+                            "You've been removed from the queue for waiting too long.",
+                        )
 
                 # If a leader has been waiting alone for 5m, remove them from the queue.
                 if len(self._leader_queue) > 0:
@@ -242,7 +259,10 @@ class Lobby(ABC):
                     if datetime.now() - ts > timedelta(minutes=5):
                         self._leader_queue.popleft()
                         # Queue a room management response to notify the leader that they've been removed from the queue.
-                        self.boot_from_queue(leader)
+                        self.boot_from_queue(
+                            leader,
+                            "You've been removed from the queue for waiting too long.",
+                        )
 
                 leader, follower, event_uuid = self.get_leader_follower_match()
 
@@ -269,7 +289,7 @@ class Lobby(ABC):
                         if (room is None) or (not room.initialized()):
                             logger.warn(f"Error creating room.")
                             # Boot the follower from the queue.
-                            self.boot_from_queue(follower)
+                            self.boot_from_queue(follower, "Error creating room.")
 
                         follower_id = room.add_player(follower, Role.FOLLOWER)
                         self._remotes[follower] = SocketInfo(
@@ -308,8 +328,8 @@ class Lobby(ABC):
                     if (room is None) or (not room.initialized()):
                         logger.warning(f"Error creating room from UUID {event_uuid}")
                         # Boot the leader & follower from the queue.
-                        self.boot_from_queue(leader)
-                        self.boot_from_queue(follower)
+                        self.boot_from_queue(leader, "Error creating room.")
+                        self.boot_from_queue(follower, "Error creating room.")
                         continue
 
                     logger.info(f"Creating new game from event {room.name()}")
@@ -359,8 +379,8 @@ class Lobby(ABC):
                 if room is None or not room.initialized():
                     logger.warn(f"Error creating room")
                     # Boot the leader & follower from the queue.
-                    self.boot_from_queue(leader)
-                    self.boot_from_queue(follower)
+                    self.boot_from_queue(leader, "Error creating room.")
+                    self.boot_from_queue(follower, "Error creating room.")
                     continue
                 print("Creating new game " + room.name())
                 leader_id = room.add_player(leader, Role.LEADER)
@@ -613,6 +633,47 @@ class Lobby(ABC):
                 f"Room manager received incorrect tutorial request type {tutorial_request.type}."
             )
 
+    def handle_scenario_request(self, scenario_request, ws):
+        # If this isn't a scenario lobby, ignore.
+        if self.lobby_type() != LobbyType.SCENARIO:
+            logger.info("Scenario request received from non-scenario lobby. Ignoring.")
+            return
+
+        if ws not in self._pending_scenario_messages:
+            self._pending_scenario_messages[ws] = Queue()
+
+        if scenario_request.type == ScenarioRequestType.ATTACH_TO_SCENARIO:
+            room_id = None
+            for id, room in self._rooms.items():
+                logger.info(f"room {id} has scenario {room.scenario_id()}")
+                if room.scenario_id() == scenario_request.scenario_id:
+                    room_id = id
+                    break
+            if room_id is None:
+                logger.info(
+                    f"Scenario {scenario_request.scenario_id} does not exist. Cannot attach."
+                )
+                self.boot_from_queue(ws, "Scenario does not exist. Could not attach.")
+                return
+            room = self._rooms[room_id]
+            player_id = room.add_player(ws, Role.SPECTATOR)
+            self._remotes[ws] = SocketInfo(room_id, player_id, Role.SPECTATOR)
+            self._pending_scenario_messages[ws].put(
+                ScenarioResponse(
+                    ScenarioResponseType.LOADED,
+                    None,
+                )
+            )
+            self._pending_room_management_responses[ws].put(
+                RoomManagementResponse(
+                    RoomResponseType.JOIN_RESPONSE,
+                    None,
+                    JoinResponse(True, -1, Role.SPECTATOR),
+                    None,
+                    None,
+                )
+            )
+
     def join_player_queue(self, ws, request: RoomManagementRequest):
         if ws in self._player_queue:
             logger.info(
@@ -700,12 +761,12 @@ class Lobby(ABC):
             )
         )
 
-    def boot_from_queue(self, ws):
+    def boot_from_queue(self, ws, reason=""):
         self._pending_room_management_responses[ws].put(
             RoomManagementResponse(
                 RoomResponseType.JOIN_RESPONSE,
                 None,
-                JoinResponse(False, -1, Role.NONE, True),
+                JoinResponse(False, -1, Role.NONE, True, reason),
                 None,
                 None,
             )
@@ -808,6 +869,8 @@ class Lobby(ABC):
             self.handle_tutorial_request(request.tutorial_request, ws)
         elif request.type == message_to_server.MessageType.REPLAY_REQUEST:
             self.handle_replay_request(request.replay_request, ws)
+        elif request.type == message_to_server.MessageType.SCENARIO_REQUEST:
+            self.handle_scenario_request(request.scenario_request, ws)
 
     def handle_room_request(
         self, request: RoomManagementRequest, ws: web.WebSocketResponse
@@ -870,6 +933,17 @@ class Lobby(ABC):
                     f"Drained replay response type {replay_response.type} for {ws}."
                 )
                 return message_from_server.ReplayResponseFromServer(replay_response)
+            except queue.Empty:
+                pass
+        if ws not in self._pending_scenario_messages:
+            self._pending_scenario_messages[ws] = Queue()
+        if not self._pending_scenario_messages[ws].empty():
+            try:
+                scenario_response = self._pending_scenario_messages[ws].get(False)
+                logger.info(
+                    f"Drained scenario response type {scenario_response.type} for {ws}."
+                )
+                return message_from_server.ScenarioResponseFromServer(scenario_response)
             except queue.Empty:
                 pass
 

@@ -93,7 +93,7 @@ class Actor(object):
 
     def peek_action_done(self):
         return (
-            datetime.now() - self._action_start_timestamp
+            datetime.utcnow() - self._action_start_timestamp
         ).total_seconds() >= self.peek().duration_s
 
     def ProjectedLocation(self):
@@ -147,16 +147,16 @@ class Actor(object):
             self._location = action.displacement
             self._heading_degrees = action.rotation
             self._heading_degrees %= 360
-            self._action_start_timestamp = datetime.now()
+            self._action_start_timestamp = datetime.utcnow()
             return
         self._location = HecsCoord.add(self._location, action.displacement)
         self._heading_degrees += action.rotation
         self._heading_degrees %= 360
-        self._action_start_timestamp = datetime.now()
+        self._action_start_timestamp = datetime.utcnow()
 
     def drop(self):
         """Drops an action instead of acting upon it."""
         if not self.has_actions():
             return
         _ = self._actions.get()
-        self._action_start_timestamp = datetime.now()
+        self._action_start_timestamp = datetime.utcnow()

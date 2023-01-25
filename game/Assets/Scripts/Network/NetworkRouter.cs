@@ -340,13 +340,10 @@ namespace Network
 
         private void ProcessScenarioResponse(ScenarioResponse response)
         {
-            _logger.Info("Received scenario response!");
+            _logger.Info("ProcessScenarioResponse()");
             if (response.type == Network.ScenarioResponseType.LOADED)
             {
                 _logger.Info("Received scenario loaded response!");
-            } else if (response.type == Network.ScenarioResponseType.TRIGGER_REPORT)
-            {
-                _logger.Info("Received scenario trigger report response!");
             } else if (response.type == Network.ScenarioResponseType.SCENARIO_DOWNLOAD)
             {
                 // We requested a scenario download from the server, and now
@@ -358,6 +355,7 @@ namespace Network
 
         private bool ApplyStateSyncToPlayer(StateSync stateSync)
         {
+            _logger.Info("ApplyStateSyncToPlayer()");
             if (_player == null) return false;
             _player.SetPlayerId(stateSync.player_id);
             _player.FlushActionQueue();
@@ -377,6 +375,7 @@ namespace Network
 
         private bool ApplyStateSyncToEntityManager(StateSync stateSync)
         {
+            _logger.Info("ApplyStateSyncToEntityManager()");
             if (_entityManager == null) return false;
             _entityManager.DestroyActors();
             foreach (Network.StateSync.Actor netActor in stateSync.actors)
@@ -391,6 +390,7 @@ namespace Network
 
         private void RegisterProp(Network.Prop netProp)
         {
+            _logger.Info("RegisterProp()");
             if (netProp.prop_type == PropType.CARD)
             {
                 _logger.Info("Registering card " + netProp.id);

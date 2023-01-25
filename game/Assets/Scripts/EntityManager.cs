@@ -123,6 +123,8 @@ public class EntityManager : MonoBehaviour
         foreach (var kvPair in _actors)
         {
             int actorId = kvPair.Key;
+            if (!_actors.ContainsKey(actorId))
+                continue;
             _actors[actorId].Destroy();
         }
 
@@ -136,6 +138,8 @@ public class EntityManager : MonoBehaviour
         foreach (var kvPair in _props)
         {
             int propId = kvPair.Key;
+            if (!_props.ContainsKey(propId))
+                continue;
             _props[propId].Destroy();
         }
 
@@ -149,6 +153,8 @@ public class EntityManager : MonoBehaviour
         foreach (var kvPair in _props)
         {
             int propId = kvPair.Key;
+            if (!_props.ContainsKey(propId))
+                continue;
             Prop prop = _props[propId];
             prop.AddAction(Death.DieImmediately());
             _graveyard.Add(prop);
@@ -159,14 +165,13 @@ public class EntityManager : MonoBehaviour
 
     public void QueueDestroyProp(int id)
     {
-        if (_props.ContainsKey(id))
-        {
-            Prop prop = _props[id];
-            prop.AddAction(Death.DieImmediately());
-            _graveyard.Add(prop);
-            _props.Remove(id);
+        if (!_props.ContainsKey(id))
             return;
-        }
+        Prop prop = _props[id];
+        prop.AddAction(Death.DieImmediately());
+        _graveyard.Add(prop);
+        _props.Remove(id);
+        return;
     }
 
     public void Update()

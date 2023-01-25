@@ -42,6 +42,12 @@ public class Prop
         _logger = Logger.GetOrCreateTrackedLogger("Prop");
         _actionQueue = new ActionQueue("Prop (" + assetId.ToString() + ")");
         _assetId = assetId;
+        // If the GameObject we've been provided with is null, don't create an asset.
+        if (obj == null)
+        {
+            _asset = null;
+            return;
+        }
         // If the GameObject we've been provided with is a prefab,
         // instantiate it in the game world.
         if (obj.scene.name == null)
@@ -56,11 +62,13 @@ public class Prop
 
     public void SetScale(float scale)
     {
+        if (_asset == null) return;
         _asset.transform.localScale = new Vector3(scale, scale, scale);
     }
 
     public GameObject Find(string path)
     {
+        if (_asset == null) return null;
         Transform transform = _asset.transform.Find(path);
         if (transform == null) return null;
         return transform.gameObject;
@@ -104,7 +112,10 @@ public class Prop
     public HecsCoord Location() { return _actionQueue.TargetState().Coord; }
     
     // Returns the actor's worldspace coordinates.
-    public Vector3 Position() { return _asset.transform.position; }
+    public Vector3 Position() { 
+        if (_asset == null) return new Vector3(0, 0, 0); 
+        return _asset.transform.position;
+    }
 
     // Returns the actor's current heading (or destination, if rotating).
     public float HeadingDegrees() { return _actionQueue.TargetState().HeadingDegrees; }
@@ -117,11 +128,13 @@ public class Prop
 
     public void SetParent(GameObject parent)
     {
+        if (_asset == null) return;
         _asset.transform.SetParent(parent.transform, false);
     }
 
     public void SetTag(string tag)
     {
+        if (_asset == null) return;
         _asset.tag = tag;
     }
 
@@ -141,8 +154,10 @@ public class Prop
         State.Continuous state = _actionQueue.ContinuousState();
         _lastState = state;
         // Update current location, orientation, and animation based on action queue.
-        _asset.transform.position = Scale() * state.Position;
-        _asset.transform.rotation = Quaternion.AngleAxis(state.HeadingDegrees, new Vector3(0, 1, 0));
+        if (_asset != null) {
+            _asset.transform.position = Scale() * state.Position;
+            _asset.transform.rotation = Quaternion.AngleAxis(state.HeadingDegrees, new Vector3(0, 1, 0));
+        }
 
         // If the object has an outline geometry, conditionally scale and draw it.
         if (_outline != null) {
@@ -178,9 +193,11 @@ public class Prop
             }
         }
 
-        Animation animation = _asset.GetComponentInChildren<Animation>();
-        if (animation == null)
-            return;
+        Animation animation = null;
+        if (_asset != null) {
+            animation = _asset.GetComponentInChildren<Animation>();
+        }
+        if (animation == null) return;
         if (_assetId == IAssetSource.AssetId.FOLLOWER_BOT)
         {
             // The follower bot animation is always default set to hover. Don't
@@ -214,8 +231,11 @@ public class Prop
     // Flushes actions and deallocates the assets for this object.
     public void Destroy()
     {
-        GameObject.Destroy(_asset);
-        _asset = null;
+        if (_asset != null)
+        {
+            GameObject.Destroy(_asset);
+            _asset = null;
+        }
         if (_outline != null)
         {
             GameObject.Destroy(_outline);

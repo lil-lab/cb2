@@ -253,7 +253,7 @@ public class HexGridManager
             return;
         }
 
-        DateTime mapLoadStart = DateTime.Now;
+        DateTime mapLoadStart = DateTime.UtcNow;
         _logger.Info("Map available, performing update!");
 
         if (_grid != null)
@@ -294,7 +294,7 @@ public class HexGridManager
             if (t == null) continue;
             UpdateCellEdges(t.Cell);
         }
-        DateTime mapLoadEnd = DateTime.Now;
+        DateTime mapLoadEnd = DateTime.UtcNow;
         _logger.Info("Map update took: " + (mapLoadEnd - mapLoadStart).TotalMilliseconds + "ms");
     }
 }

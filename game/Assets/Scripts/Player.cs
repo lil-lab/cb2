@@ -118,7 +118,7 @@ public class Player : MonoBehaviour
             OverheadCamera.GetComponent<Camera>().enabled = false;
             AngledOverheadCamera.GetComponent<Camera>().enabled = true;
         }
-        _lastCameraToggle = DateTime.Now;
+        _lastCameraToggle = DateTime.UtcNow;
     }
 
     void Start()
@@ -167,7 +167,7 @@ public class Player : MonoBehaviour
     {
             if ((_network.Role() != Network.Role.LEADER)
                 || (OverheadCamera == null)
-                || ((DateTime.Now - _lastCameraToggle).TotalMilliseconds <= 500))
+                || ((DateTime.UtcNow - _lastCameraToggle).TotalMilliseconds <= 500))
                 return;
             if (OverheadCamera.GetComponent<Camera>().enabled)
             {
@@ -180,7 +180,7 @@ public class Player : MonoBehaviour
                 AngledOverheadCamera.GetComponent<Camera>().enabled = false;
             }
             
-            _lastCameraToggle = DateTime.Now;
+            _lastCameraToggle = DateTime.UtcNow;
 
             // In the tutorial, this hooks camera events to the tutorial manager.
             if (TutorialManager.TaggedInstance() != null)

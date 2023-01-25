@@ -57,9 +57,9 @@ public class SkipToScene : MonoBehaviour
             {
                 if (_sceneKeysHeldTime[sceneKey] == DateTime.MinValue)
                 {
-                    _sceneKeysHeldTime[sceneKey] = DateTime.Now;
+                    _sceneKeysHeldTime[sceneKey] = DateTime.UtcNow;
                 }
-                if (DateTime.Now - _sceneKeysHeldTime[sceneKey] > TimeSpan.FromSeconds(1))
+                if (DateTime.UtcNow - _sceneKeysHeldTime[sceneKey] > TimeSpan.FromSeconds(1))
                 {
                     Action action = _sceneMap[sceneKey];
                     if (action.type == ActionType.SKIP_TO_SCENE)

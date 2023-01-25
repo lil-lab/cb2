@@ -235,7 +235,7 @@ namespace Network
 
         public bool TransmitAction(ActionQueue.IAction action)
         {
-            if (_waitingForTick && DateTime.Now > _tickWaitDeadline)
+            if (_waitingForTick && DateTime.UtcNow > _tickWaitDeadline)
             {
                 _logger.Warn("Timed out waiting for tick.");
                 _waitingForTick = false;
@@ -250,7 +250,7 @@ namespace Network
             if (transmitted)
             {
                 _waitingForTick = true;
-                _tickWaitDeadline = DateTime.Now.AddSeconds(TICK_WAIT_TIMEOUT_S);
+                _tickWaitDeadline = DateTime.UtcNow.AddSeconds(TICK_WAIT_TIMEOUT_S);
             }
             return transmitted;
         }
@@ -554,9 +554,9 @@ namespace Network
             // Subscribe to new scene changes.
             SceneManager.sceneLoaded += OnSceneLoaded;
 
-            _lastStatsPoll = DateTime.Now;
+            _lastStatsPoll = DateTime.UtcNow;
 
-            _lastServerConfigPoll = DateTime.Now;
+            _lastServerConfigPoll = DateTime.UtcNow;
             _serverConfigPollInProgress = true;
             StartCoroutine(FetchConfig());
         }
@@ -569,7 +569,7 @@ namespace Network
             if (scene.name == "menu_scene") {
                 _router.SetMode(NetworkRouter.Mode.NETWORK);
                 // Refetch config on menu scene. Then return.
-                _lastServerConfigPoll = DateTime.Now;
+                _lastServerConfigPoll = DateTime.UtcNow;
                 _serverConfigPollInProgress = true;
                 _user_info_requested = false;
                 // When reloading the menu scene, we need to re-authenticate.
@@ -707,10 +707,10 @@ namespace Network
                 StartCoroutine(FetchConfig());
             }
             GameObject statsObj = GameObject.FindGameObjectWithTag("Stats");
-            if (((DateTime.Now - _lastStatsPoll).Seconds > 3) && (statsObj != null) && (statsObj.activeInHierarchy))
+            if (((DateTime.UtcNow - _lastStatsPoll).Seconds > 3) && (statsObj != null) && (statsObj.activeInHierarchy))
             {
                 _logger.Debug("Requesting stats..");
-                _lastStatsPoll = DateTime.Now;
+                _lastStatsPoll = DateTime.UtcNow;
                 MessageToServer msg = new MessageToServer();
                 msg.transmit_time = DateTime.UtcNow.ToString("s");
                 msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;

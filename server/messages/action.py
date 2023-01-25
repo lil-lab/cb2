@@ -84,7 +84,6 @@ class Action(DataClassJSONMixin):
 
 
 def Delay(id, duration):
-    NYC = tz.gettz("America/New_York")
     return Action(
         id=id,
         action_type=ActionType.INSTANT,
@@ -94,12 +93,11 @@ def Delay(id, duration):
         border_radius=0,
         border_color=Color(0, 0, 0, 0),
         duration_s=duration,
-        expiration=datetime.now(NYC) + timedelta(seconds=10),
+        expiration=datetime.utcnow() + timedelta(seconds=10),
     )
 
 
 def Init(id, location, orientation):
-    NYC = tz.gettz("America/New_York")
     return Action(
         id=id,
         action_type=ActionType.INIT,
@@ -109,12 +107,11 @@ def Init(id, location, orientation):
         border_radius=0,
         border_color=Color(0, 0, 0, 0),
         duration_s=0.01,
-        expiration=datetime.now(NYC) + timedelta(seconds=10),
+        expiration=datetime.utcnow() + timedelta(seconds=10),
     )
 
 
 def Turn(id, angle, duration=DEFAULT_TURN_TIME_S):
-    NYC = tz.gettz("America/New_York")
     return Action(
         id=id,
         action_type=ActionType.ROTATE,
@@ -124,12 +121,11 @@ def Turn(id, angle, duration=DEFAULT_TURN_TIME_S):
         border_radius=0,
         border_color=Color(0, 0, 0, 0),
         duration_s=duration,
-        expiration=datetime.now(NYC) + timedelta(seconds=10),
+        expiration=datetime.utcnow() + timedelta(seconds=10),
     )
 
 
 def Walk(id, displacement, duration=DEFAULT_WALK_TIME_S):
-    NYC = tz.gettz("America/New_York")
     return Action(
         id=id,
         action_type=ActionType.TRANSLATE,
@@ -139,5 +135,5 @@ def Walk(id, displacement, duration=DEFAULT_WALK_TIME_S):
         border_radius=0,
         border_color=Color(0, 0, 0, 0),
         duration_s=duration,
-        expiration=datetime.now(NYC) + timedelta(seconds=10),
+        expiration=datetime.utcnow() + timedelta(seconds=10),
     )

@@ -76,7 +76,7 @@ public class ActionQueue
     {
         _actionQueue = new Queue<IAction>();
         _actionInProgress = false;
-        _actionStarted = DateTime.Now;
+        _actionStarted = DateTime.UtcNow;
         _state = new State.Discrete();
         _targetState = new State.Discrete();
         _name = name;
@@ -153,22 +153,22 @@ public class ActionQueue
     {
         lock(_animationLock) {
             // If there's no animation in progress, begin the next animation in the queue.
-            if (_actionQueue.Count > 0 && !_actionInProgress)
+            if ((_actionQueue.Count > 0) && !_actionInProgress)
             {
                 _logger.Debug(_name + " Q Start: " + _actionQueue.Peek());
                 _progress = 0.0f;
-                _actionStarted = DateTime.Now;
+                _actionStarted = DateTime.UtcNow;
                 _actionInProgress = true;
                 return;
             }
 
-            TimeSpan delta = DateTime.Now - _actionStarted;
+            TimeSpan delta = DateTime.UtcNow - _actionStarted;
 
             // Immediately skip any expired animations. Once triggered, this will
             // continue to fast-forward until the queue is empty or an unexpired
-            if (_actionInProgress && (DateTime.Now > _actionQueue.Peek().Expiration()))
+            if (_actionInProgress && (DateTime.UtcNow > _actionQueue.Peek().Expiration()))
             {
-                while (_actionQueue.Count > 0 && (DateTime.Now > _actionQueue.Peek().Expiration()))
+                while ((_actionQueue.Count > 0) && (DateTime.UtcNow > _actionQueue.Peek().Expiration()))
                 {
                     _logger.Debug(_name + " Q Fast-forwarding expired action of duration " 
                                     + _actionQueue.Peek().DurationS() + "s. Duration: "
@@ -187,7 +187,6 @@ public class ActionQueue
                             (_actionQueue.Peek().DurationS() * 1000.0f);
             }
 
-            // End the current action when progress >= 1.0.
             if (_actionInProgress &&
                 (delta.TotalMilliseconds > (_actionQueue.Peek().DurationS() * 1000.0f)))
             {

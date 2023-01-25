@@ -1293,7 +1293,7 @@ def InitPythonLogging():
     - Misc other server logs (calls to logger.info()).
     - Exception stack traces."""
     log_format = "[%(asctime)s] %(name)s %(levelname)s [%(module)s:%(funcName)s:%(lineno)d] %(message)s"
-    logging.basicConfig(level=logging.DEBUG, format=log_format)
+    logging.basicConfig(level=logging.INFO, format=log_format)
     logging.getLogger("asyncio").setLevel(logging.INFO)
     logging.getLogger("peewee").setLevel(logging.INFO)
 

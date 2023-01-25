@@ -14,7 +14,7 @@ public class Death : ActionQueue.IAction
                 Type = ActionQueue.AnimationType.IDLE,
                 Displacement = new HecsCoord(0, 0, 0),
                 Rotation = 0,
-                Expiration = DateTime.Now.AddSeconds(10),
+                Expiration = DateTime.UtcNow.AddSeconds(10),
                 DurationS = 0.01f,
             }
         );

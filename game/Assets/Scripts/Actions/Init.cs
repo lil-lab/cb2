@@ -13,7 +13,7 @@ public class Init : ActionQueue.IAction
                 Type = ActionQueue.AnimationType.IDLE,
                 Displacement = loc,
                 Rotation = headingDegrees,
-                Expiration = DateTime.Now.AddSeconds(10),
+                Expiration = DateTime.UtcNow.AddSeconds(10),
                 DurationS = 0.01f,
             }
         );
