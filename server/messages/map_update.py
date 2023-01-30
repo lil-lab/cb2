@@ -83,8 +83,10 @@ class MapUpdate(DataClassJSONMixin):
     rows: int
     cols: int
     tiles: List[Tile]
-    metadata: MapMetadata = field(default_factory=MapMetadata)
+    metadata: Optional[MapMetadata] = field(default_factory=MapMetadata)
     props: Optional[List[Prop]] = field(default_factory=list)
+    fog_start: Optional[int] = None
+    fog_end: Optional[int] = None
 
     @staticmethod
     def from_gym_state(observation):

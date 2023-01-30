@@ -98,5 +98,8 @@ namespace Network
         public Tile[] tiles;
 
         public MapMetadata metadata;
+
+        public Nullable<int> fog_start;
+        public Nullable<int> fog_end;
     }
 }  // namespace Network

@@ -16,6 +16,7 @@ from dataclasses_json import dataclass_json
 import server.card as card
 import server.tutorial_map_data as tutorial_map_data
 from server.assets import AssetId, is_snowy
+from server.config.config import GlobalConfig
 from server.hex import HecsCoord
 from server.map_utils import *
 from server.messages.map_update import (
@@ -851,19 +852,24 @@ class MapType(Enum):
 
 
 class MapProvider(object):
-    def _init_from_map_and_cards(self, map, cards):
+    def _init_from_map_and_cards(self, map_update, cards):
         """ """
-        self._tiles = map.tiles
+        self._tiles = map_update.tiles
         # TODO(sharf): Need to advance id assigner to latest ID (max of tiles, cards, players)
         self._id_assigner = IdAssigner()
         self._tiles_by_location = {}
         for i, tile in enumerate(self._tiles):
             self._tiles_by_location[tile.cell.coord] = i
-        self._rows = map.rows
-        self._cols = map.cols
+        self._rows = map_update.rows
+        self._cols = map_update.cols
         self._cards = cards
         self._selected_cards = {}
         self._card_generator = CardGenerator(self._id_assigner)
+
+        # Get fog from server config.
+        self._fog_start = map_update.fog_start
+        self._fog_end = map_update.fog_end
+
         self.add_map_boundaries()
         self.add_layer_boundaries()
         # Choose spawn tiles for future cards.
@@ -875,7 +881,7 @@ class MapProvider(object):
             if card.selected:
                 self._selected_cards[card.id] = card
         # Only spawn cards in the largest contiguous region.
-        self._map_metadata = map.metadata
+        self._map_metadata = map_update.metadata
         self._potential_spawn_tiles = sorted_spaces[0]
         # Filter it down to tiles that are ok for spawning cards/players on.
         self._potential_spawn_tiles = [
@@ -900,29 +906,36 @@ class MapProvider(object):
             and (tile.cell.coord not in self._cards_by_location)
         ]
 
-    def __init__(self, map_type, map: MapUpdate = None, cards: List[card.Card] = None):
+    def __init__(
+        self, map_type, map_update: MapUpdate = None, cards: List[card.Card] = None
+    ):
         if map_type == MapType.RANDOM:
-            map = RandomMap()
-            self._map_metadata = map.metadata
+            map_update = RandomMap()
+            self._map_metadata = map_update.metadata
         elif map_type == MapType.HARDCODED:
-            map = tutorial_map_data.HardcodedMap()
+            map_update = tutorial_map_data.HardcodedMap()
             self._map_metadata = None
         elif map_type == MapType.PRESET:
-            self._init_from_map_and_cards(map, cards)
+            self._init_from_map_and_cards(map_update, cards)
             return
         else:
             raise ValueError("Invalid map type NONE specified.")
 
         self._id_assigner = IdAssigner()
-        self._tiles = map.tiles
+        self._tiles = map_update.tiles
         self._tiles_by_location = {}
         for i, tile in enumerate(self._tiles):
             self._tiles_by_location[tile.cell.coord] = i
-        self._rows = map.rows
-        self._cols = map.cols
+        self._rows = map_update.rows
+        self._cols = map_update.cols
         self._cards = []
         self._selected_cards = {}
         self._card_generator = CardGenerator(self._id_assigner)
+
+        # Initialize fog from server config.
+        self._fog_start = GlobalConfig().fog_start
+        self._fog_end = GlobalConfig().fog_end
+
         self.add_map_boundaries()
         self.add_layer_boundaries()
         if map_type == MapType.HARDCODED:
@@ -1149,9 +1162,25 @@ class MapProvider(object):
 
     def map(self):
         if self._map_metadata:
-            return MapUpdate(self._rows, self._cols, self._tiles, self._map_metadata)
+            return MapUpdate(
+                self._rows,
+                self._cols,
+                self._tiles,
+                self._map_metadata,
+                [],
+                self._fog_start,
+                self._fog_end,
+            )
         else:
-            return MapUpdate(self._rows, self._cols, self._tiles)
+            return MapUpdate(
+                self._rows,
+                self._cols,
+                self._tiles,
+                None,
+                [],
+                self._fog_start,
+                self._fog_end,
+            )
 
     def prop_update(self):
         return PropUpdate([card.prop() for card in self._cards])

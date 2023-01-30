@@ -24,6 +24,11 @@ def InitGlobalConfig(config_path):
     g_config = ReadConfigOrDie(config_path)
 
 
+def SetGlobalConfig(config):
+    global g_config
+    g_config = config
+
+
 def ValidateConfig(config):
     """Checks whether or not the provided configuration is valid. Doubles as documentation for how configs should be specified.
 

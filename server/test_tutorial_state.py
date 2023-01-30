@@ -17,7 +17,7 @@ import time_machine
 
 from py_client.game_endpoint import Action
 from py_client.local_game_coordinator import LocalGameCoordinator
-from server.config.config import Config
+from server.config.config import Config, SetGlobalConfig
 from server.messages.rooms import Role
 from server.messages.tutorials import TutorialResponseType
 from server.schemas.base import (
@@ -59,6 +59,7 @@ class TutorialTest(unittest.TestCase):
             comment="Tutorial Unit Test Config",
             live_feedback_enabled=True,
         )
+        SetGlobalConfig(self.config)
         # In-memory db for test validation.
         SetDatabaseForTesting()
         ConnectDatabase()

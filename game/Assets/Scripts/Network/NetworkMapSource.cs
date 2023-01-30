@@ -28,6 +28,7 @@ namespace Network
             _cols = 0;
             _map = null;
         }
+
         public void ReceiveMapUpdate(Network.MapUpdate mapInfo)
         {
             _logger.Info("ReceiveMapUpdate()");
@@ -83,6 +84,28 @@ namespace Network
                 _logger.Info("Partition sizes: " + string.Join(", ", mapInfo.metadata.partition_sizes));
             }
 
+            // If the map has fog, set the fog distance.
+            if ((mapInfo.fog_start.HasValue) && (mapInfo.fog_end.HasValue))
+            {
+                if (mapInfo.fog_start.Value < 0)
+                {
+                    RenderSettings.fog = false;
+                    _logger.Error("Fog start distance is negative: " + mapInfo.fog_start.Value);
+                } else {
+                    RenderSettings.fog = true;
+                    RenderSettings.fogStartDistance = mapInfo.fog_start.Value;
+                    RenderSettings.fogEndDistance = mapInfo.fog_end.Value;
+                    _logger.Info("Fog enabled. Start: " + mapInfo.fog_start.Value + ", End: " + mapInfo.fog_end.Value);
+                }
+            } else {
+                // No fog info provided. Check server config.
+                if (!ConfigureSystemFog())
+                {
+                    _logger.Warn("Fog info not provided and server config not found. Fog disabled.");
+                    RenderSettings.fog = false;
+                }
+            }
+
             _networkMapReady = true;
             _lastMapReceived = mapInfo;
         }
@@ -118,6 +141,28 @@ namespace Network
                 return null;
             }
             return _lastMapReceived;
+        }
+
+        private bool ConfigureSystemFog()
+        {
+            Logger logger = Logger.GetOrCreateTrackedLogger("FogUtils");
+            Network.Config cfg = global::Network.NetworkManager.TaggedInstance().ServerConfig();
+            if (cfg == null) return false;
+            if (cfg.fog_start < 0)
+            {
+                RenderSettings.fog = false;
+                logger.Info("Fog disabled");
+                return true;
+            }
+            else
+            {
+                RenderSettings.fog = true;
+                logger.Info("Fog enabled");
+            }
+            RenderSettings.fogStartDistance = cfg.fog_start;
+            RenderSettings.fogEndDistance = cfg.fog_end;
+            logger.Info("Fog initialized with start: " + cfg.fog_start + " and end: " + cfg.fog_end);
+            return true;
         }
     }
 }  // namespace Network
