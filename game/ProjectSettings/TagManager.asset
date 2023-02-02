@@ -76,6 +76,7 @@ TagManager:
   - UploadScenarioState
   - DisplayCoordinates
   - DYNAMIC_BUTTONS
+  - DisplayCoordinates
   layers:
   - Default
   - TransparentFX
