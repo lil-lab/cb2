@@ -3,7 +3,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from mashumaro.mixins.json import DataClassJSONMixin
 
@@ -101,7 +101,7 @@ def RoleFromTutorialName(tutorial_name):
 @dataclass(frozen=True)
 class TutorialRequest(DataClassJSONMixin):
     type: TutorialRequestType
-    tutorial_name: str
+    tutorial_name: Optional[str] = None
 
 
 @dataclass(frozen=True)

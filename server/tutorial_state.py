@@ -251,6 +251,9 @@ class TutorialGameState(object):
     def done(self):
         return self._done
 
+    def player_role(self, player_id):
+        return self._actors[player_id].role()
+
     def has_instructions_todo(self):
         for objective in self._objectives:
             if not objective.completed:
@@ -1055,3 +1058,6 @@ class TutorialGameState(object):
         # Make sure to mark the game's end time.
         self._tutorial_record.end_time = datetime.now()
         self._tutorial_record.save()
+
+    def mark_player_disconnected(self, player_id):
+        pass
