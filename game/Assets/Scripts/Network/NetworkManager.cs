@@ -357,6 +357,17 @@ namespace Network
             _client.TransmitMessage(msg);
         }
 
+        public void JoinAsLeader()
+        {
+            MessageToServer msg = new MessageToServer();
+            msg.transmit_time = DateTime.UtcNow.ToString("s");
+            msg.type = MessageToServer.MessageType.ROOM_MANAGEMENT;
+            msg.room_request = new RoomManagementRequest();
+            msg.room_request.type = RoomRequestType.JOIN_LEADER_ONLY;
+            _logger.Info("Joining game as follower ...");
+            _client.TransmitMessage(msg);
+        }
+
         public void JoinAsFollower()
         {
             MessageToServer msg = new MessageToServer();

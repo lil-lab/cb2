@@ -3,7 +3,6 @@ using System.Collections.Generic;
 
 namespace Network
 {
-
     [Serializable]
     public class MessageFromServer
     {
@@ -26,6 +25,7 @@ namespace Network
             PROP_DESPAWN,
             REPLAY_RESPONSE,
             SCENARIO_RESPONSE,
+            MENU_OPTIONS,
         }
 
         // These fields are always provided with any packet.
@@ -51,5 +51,6 @@ namespace Network
         public List<Prop> prop_despawn;
         public ReplayResponse replay_response;
         public ScenarioResponse scenario_response;
+        public MenuOptions menu_options;
     }
 }  // namespace Network
