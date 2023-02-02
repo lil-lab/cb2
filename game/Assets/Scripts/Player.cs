@@ -160,6 +160,16 @@ public class Player : MonoBehaviour
         return _actor.Position();
     }
 
+    public HecsCoord Coordinate()
+    {
+        return _actor.Location();
+    }
+
+    public float HeadingDegrees()
+    {
+        return _actor.HeadingDegrees();
+    }
+
     public void SetPlayerId(int playerId) { _playerId = playerId; }
     public int PlayerId() { return _playerId; }
 

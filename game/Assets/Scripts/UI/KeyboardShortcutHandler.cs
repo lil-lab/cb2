@@ -117,5 +117,14 @@ public class KeyboardShortcutHandler : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.B) || Input.GetKeyDown(KeyCode.Alpha0)) {
             SendNegativeFeedback();
         }
+
+        if (Input.GetKeyDown(KeyCode.P))
+        {
+            DisplayCoordinates instance = DisplayCoordinates.GetInstance();
+            if (instance != null)
+            {
+                instance.ToggleDisplay();
+            }
+        }
     }
 }

@@ -176,6 +176,7 @@ public struct HecsCoord
 
     public override string ToString()
     {
-        return base.ToString() + ": " + "a: " + a + ", r: " + r + ", c: " + c;
+        // Return a fixed-length string of the format (a, r, c). Two digits for each coordinate.
+        return "(" + a.ToString("D2") + ", " + r.ToString("D2") + ", " + c.ToString("D2") + ")";
     }
 }
