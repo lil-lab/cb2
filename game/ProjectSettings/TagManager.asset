@@ -77,6 +77,7 @@ TagManager:
   - DisplayCoordinates
   - DYNAMIC_BUTTONS
   - DisplayCoordinates
+  - DYNAMIC_BUTTONS
   layers:
   - Default
   - TransparentFX
