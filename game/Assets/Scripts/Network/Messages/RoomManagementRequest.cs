@@ -11,6 +11,7 @@ namespace Network
         LEAVE,
         MAP_SAMPLE,
         JOIN_FOLLOWER_ONLY,
+        JOIN_LEADER_ONLY,
     }
 
     [Serializable]

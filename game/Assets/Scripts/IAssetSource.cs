@@ -86,6 +86,7 @@ public interface IAssetSource
         OBJECTIVE_COMPLETE,
         OBJECTIVE_PENDING,
         OBJECTIVE_CANCELLED,
+        MENU_BUTTON,
     }
 
     // Returns a prefab of the requested asset.

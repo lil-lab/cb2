@@ -55,6 +55,9 @@ public class MenuTransitionHandler : MonoBehaviour
     private static readonly string LOGIN_STATUS_PANEL = "LOGIN_STATUS_PANEL";
     private static readonly string LOGIN_STATUS_TEXT = "LOGIN_STATUS_TEXT";
 
+    private static readonly string DYNAMIC_MENU_BUTTONS = "DYNAMIC_BUTTONS";
+
+    private static readonly string INFO_BULLETIN = "BULLETIN_TEXT";
 
     public static MenuTransitionHandler Instance;
     private Logger _logger;
@@ -641,6 +644,42 @@ public class MenuTransitionHandler : MonoBehaviour
     public void TurnComplete()
     {
         Network.NetworkManager.TaggedInstance().TransmitTurnComplete();
+    }
+
+    public void DisplayMenu(MenuOptions m)
+    {
+        Scene scene = SceneManager.GetActiveScene();
+        if (scene.name != "menu_scene") {
+            _logger.Warn("Attempted to set menu in non-menu scene.");
+            return;
+        }
+
+        // Set the information bulletin.
+        Text bulletin = FindTextWithTag(BULLETIN_TAG);
+        bulletin.text = m.bulletin_message;
+
+        // Remove dynamic menu children.
+        GameObject dynamic_menu = GameObject.FindWithTag(DYNAMIC_MENU_BUTTONS);
+        foreach (Transform child in dynamic_menu.transform) {
+            Destroy(child.gameObject);
+        }
+
+        // Add new menu buttons from prefab 
+        UnityAssetSource assetSource = new UnityAssetSource();
+        GameObject prefab = assetSource.LoadUi(IAssetSource.UiId.MENU_BUTTON);
+        if (prefab == null)
+        {
+            _logger.Warn("Unable to load menu button prefab.");
+            return;
+        }
+        foreach (Network.ButtonDescriptor button in m.menu_buttons)
+        {
+            GameObject ui_button = Instantiate(prefab, dynamic_menu.transform);
+            ui_button.GetComponent<Text>().text = button.text;
+            ui_button.GetComponent<Button>().onClick.AddListener(() => {
+                ButtonUtils.HandleAction(button.code); 
+            });
+        }
     }
 
     // Update is called once per frame

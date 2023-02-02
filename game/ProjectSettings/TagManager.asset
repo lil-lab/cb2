@@ -75,6 +75,7 @@ TagManager:
   - NEGATIVE_FEEDBACK
   - UploadScenarioState
   - DisplayCoordinates
+  - DYNAMIC_BUTTONS
   layers:
   - Default
   - TransparentFX
