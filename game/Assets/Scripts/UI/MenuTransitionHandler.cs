@@ -648,23 +648,27 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public void DisplayMenu(MenuOptions m)
     {
+        _logger.Info("Displaying menu.");
         Scene scene = SceneManager.GetActiveScene();
         if (scene.name != "menu_scene") {
             _logger.Warn("Attempted to set menu in non-menu scene.");
             return;
         }
 
+        _logger.Info("Bulletin");
         // Set the information bulletin.
-        Text bulletin = FindTextWithTag(BULLETIN_TAG);
+        Text bulletin = FindTextWithTag(INFO_BULLETIN);
         bulletin.text = m.bulletin_message;
 
         // Remove dynamic menu children.
+        _logger.Info("Clearing dynamic menu.");
         GameObject dynamic_menu = GameObject.FindWithTag(DYNAMIC_MENU_BUTTONS);
         foreach (Transform child in dynamic_menu.transform) {
             Destroy(child.gameObject);
         }
 
         // Add new menu buttons from prefab 
+        _logger.Info("Adding new dynamic buttons.");
         UnityAssetSource assetSource = new UnityAssetSource();
         GameObject prefab = assetSource.LoadUi(IAssetSource.UiId.MENU_BUTTON);
         if (prefab == null)
@@ -674,7 +678,8 @@ public class MenuTransitionHandler : MonoBehaviour
         }
         foreach (Network.ButtonDescriptor button in m.menu_buttons)
         {
-            GameObject ui_button = Instantiate(prefab, dynamic_menu.transform);
+            GameObject ui_button = Instantiate(prefab);
+            ui_button.transform.SetParent(dynamic_menu.transform, false);
             ui_button.GetComponent<Text>().text = button.text;
             ui_button.GetComponent<Button>().onClick.AddListener(() => {
                 ButtonUtils.HandleAction(button.code); 

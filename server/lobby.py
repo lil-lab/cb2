@@ -21,6 +21,7 @@ from server.config.config import GlobalConfig
 from server.lobby_consts import LobbyType
 from server.map_provider import CachedMapRetrieval
 from server.messages.logs import GameInfo
+from server.messages.menu_options import ButtonCode, ButtonDescriptor, MenuOptions
 from server.messages.replay_messages import ReplayRequest
 from server.messages.rooms import (
     JoinResponse,
@@ -159,6 +160,18 @@ class Lobby(ABC):
     def lobby_type(self) -> "LobbyType":  # Lazy type annotations.
         """Returns the lobby type."""
         ...
+
+    def menu_options(self, ws: web.WebSocketResponse):
+        return MenuOptions(
+            [
+                ButtonDescriptor(
+                    ButtonCode.JOIN_QUEUE,
+                    "Join Queue",
+                    "Joins the queue for this lobby",
+                ),
+            ],
+            "",
+        )
 
     def lobby_name(self):
         return self._lobby_name

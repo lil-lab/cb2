@@ -27,7 +27,13 @@ class GoogleUser(BaseModel):
     hashed_google_id = TextField()  # Use sha256 hash of google id.
     qual_level = IntegerField(default=0)
     experience = ForeignKeyField(WorkerExperience, backref="google_user", null=True)
-    kv_store = TextField(default="{}")
+    # JSON string of key value pairs. Used for storing user data.
+    # Known key/val pairs:
+    # "leader_tutorial": bool
+    # "follower_tutorial": bool
+    kv_store = TextField(
+        default='{"leader_tutorial": false, "follower_tutorial": false}'
+    )
 
 
 def GetOrCreateGoogleUser(hashed_user_id):

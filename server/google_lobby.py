@@ -1,4 +1,6 @@
 """ A Lobby that's open to players signed in with Google SSO. """
+import hashlib
+import json
 import logging
 from datetime import datetime, timedelta
 from typing import Tuple
@@ -7,8 +9,10 @@ from aiohttp import web
 
 import server.lobby as lobby
 from server.lobby import LobbyType
+from server.messages.menu_options import ButtonCode, ButtonDescriptor, MenuOptions
 from server.messages.rooms import RoomManagementRequest
 from server.remote_table import GetRemote
+from server.schemas.google_user import GoogleUser
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +27,65 @@ class GoogleLobby(lobby.Lobby):
     def __init__(self, lobby_name, lobby_comment):
         # Call the superconstructor.
         super().__init__(lobby_name=lobby_name, lobby_comment=lobby_comment)
+
+    def menu_options(self, ws: web.WebSocketResponse):
+        no_login_menu = MenuOptions(
+            [
+                ButtonDescriptor(ButtonCode.NONE, "Please Sign In...", ""),
+            ],
+            "You're not logged in. If you just went through the Google login flow, you may need to wait a bit. If you're still not logged in after 10 seconds, please refresh the page.",
+        )
+        remote = GetRemote(ws)
+        if remote is None:
+            return no_login_menu
+        # Lookup the google user in the database.
+        if remote.google_id is None:
+            return no_login_menu
+        hashed_user_id = hashlib.sha256(remote.google_id.encode("utf-8")).hexdigest()
+        g_user = (
+            GoogleUser.select()
+            .where(GoogleUser.hashed_google_id == hashed_user_id)
+            .get()
+        )
+        kvals_parsed = json.loads(g_user.kv_store)
+        if g_user is None:
+            return no_login_menu
+
+        # Check the user kvals. If they've completed both the tutorials, then they can play.
+        if kvals_parsed.get("leader_tutorial", False) and kvals_parsed.get(
+            "follower_tutorial", False
+        ):
+            return MenuOptions(
+                [
+                    ButtonDescriptor(ButtonCode.JOIN_QUEUE, "Play Game", ""),
+                ],
+                "Welcome to the lobby!",
+            )
+
+        # Otherwise, they need to do the tutorials.
+        if not kvals_parsed.get("leader_tutorial", False) and kvals_parsed.get(
+            "follower_tutorial", False
+        ):
+            return MenuOptions(
+                [
+                    ButtonDescriptor(
+                        ButtonCode.JOIN_FOLLOWER_QUEUE, "Player as Follower", ""
+                    ),
+                    ButtonDescriptor(
+                        ButtonCode.START_LEADER_TUTORIAL, "Leader Tutorial", ""
+                    ),
+                ],
+                "Welcome to the lobby! You have completed the follower tutorial. You can either play as a follower, or you can do the leader tutorial to unlock the leader role.",
+            )
+
+        return MenuOptions(
+            [
+                ButtonDescriptor(
+                    ButtonCode.START_FOLLOWER_TUTORIAL, "Follower Tutorial", ""
+                ),
+            ],
+            "Welcome to the lobby! You have not completed the tutorials. Complete the follower tutorial to unlock gameplay.",
+        )
 
     def accept_player(self, ws: web.WebSocketResponse) -> bool:
         remote = GetRemote(ws)

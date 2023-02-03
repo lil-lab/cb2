@@ -1008,6 +1008,7 @@ async def stream_game_state(request, ws, lobby):
     remote = GetRemote(ws)
     remote.last_ping = datetime.now(timezone.utc)
     last_loop = time.time()
+    menu_options_updated = False  # Whether the menu options have been transmitted.
     while not ws.closed:
         await asyncio.sleep(0)
         poll_period = time.time() - last_loop
@@ -1021,9 +1022,17 @@ async def stream_game_state(request, ws, lobby):
         if message is not None:
             await transmit_bytes(ws, orjson.dumps(message, option=orjson.OPT_NAIVE_UTC))
 
+        # If the menu options have been updated, send them to the client.
+        if not menu_options_updated:
+            menu_options_updated = True
+            message = message_from_server.MenuOptionsFromServer(lobby.menu_options(ws))
+            await transmit_bytes(ws, orjson.dumps(message, option=orjson.OPT_NAIVE_UTC))
+
         # Handle any authentication confirmations.
         confirmations = google_authenticator.fill_auth_confirmations(ws)
         if len(confirmations) > 0:
+            # If a user recently authenticated, the menu options may have changed.
+            menu_options_updated = False
             for confirmation in confirmations:
                 message = message_from_server.GoogleAuthConfirmationFromServer(
                     confirmation

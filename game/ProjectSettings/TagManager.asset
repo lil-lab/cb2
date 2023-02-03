@@ -78,6 +78,7 @@ TagManager:
   - DYNAMIC_BUTTONS
   - DisplayCoordinates
   - DYNAMIC_BUTTONS
+  - BULLETIN_TEXT
   layers:
   - Default
   - TransparentFX

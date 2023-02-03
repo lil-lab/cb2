@@ -305,11 +305,6 @@ namespace Network
                 _logger.Info("Received scenario response!");
                 ProcessScenarioResponse(message.scenario_response);
             }
-            if (message.type == MessageFromServer.MessageType.MENU_OPTIONS)
-            {
-                _logger.Info("Received menu options!");
-                MenuTransitionHandler.TaggedInstance().DisplayMenu(message.menu_options);
-            }
         }
 
         // For messages which don't require in-game UI to be rendered.
@@ -339,6 +334,11 @@ namespace Network
             if (message.type == MessageFromServer.MessageType.USER_INFO)
             {
                 _networkManager.SetUserInfo(message.user_info);
+            }
+            if (message.type == MessageFromServer.MessageType.MENU_OPTIONS)
+            {
+                _logger.Info("Received menu options!");
+                MenuTransitionHandler.TaggedInstance().DisplayMenu(message.menu_options);
             }
             return false;
         }

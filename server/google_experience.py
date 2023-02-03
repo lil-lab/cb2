@@ -98,3 +98,8 @@ def UpdateGoogleUserExperienceTable(game_record):
     UpdateLeaderExperience(game_record)
     logger.info(f"Updating follower experience...")
     UpdateFollowerExperience(game_record)
+
+
+def MarkTutorialCompleted(google_user, role):
+    """Marks the tutorial as completed for the given user and role."""
+    ...

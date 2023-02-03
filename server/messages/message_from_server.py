@@ -14,6 +14,7 @@ from server.messages.action import Action
 from server.messages.google_auth import GoogleAuthConfirmation
 from server.messages.live_feedback import LiveFeedback
 from server.messages.map_update import MapUpdate
+from server.messages.menu_options import MenuOptions
 from server.messages.objective import ObjectiveMessage
 from server.messages.prop import Prop, PropUpdate
 from server.messages.replay_messages import ReplayResponse
@@ -48,6 +49,8 @@ class MessageType(Enum):
     REPLAY_RESPONSE = 15
     # Used for starting/stopping/controlling scenario rooms.
     SCENARIO_RESPONSE = 16
+    # Used for configuring a dynamic part of the main menu.
+    MENU_OPTIONS = 17
 
 
 def ActionsFromServer(actions):
@@ -325,6 +328,30 @@ def ScenarioResponseFromServer(scenario_response):
     )
 
 
+def MenuOptionsFromServer(menu_options):
+    return MessageFromServer(
+        datetime.utcnow(),
+        MessageType.MENU_OPTIONS,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        menu_options,
+    )
+
+
 def ExcludeIfNone(value):
     return value is None
 
@@ -363,5 +390,8 @@ class MessageFromServer(DataClassJSONMixin):
         default=None, metadata=config(exclude=ExcludeIfNone)
     )
     scenario_response: Optional[ScenarioResponse] = field(
+        default=None, metadata=config(exclude=ExcludeIfNone)
+    )
+    menu_options: Optional[MenuOptions] = field(
         default=None, metadata=config(exclude=ExcludeIfNone)
     )

@@ -15,13 +15,14 @@ class ButtonCode(Enum):
     START_FOLLOWER_TUTORIAL = 6
 
 
-@dataclass
+@dataclass(frozen=True)
 class ButtonDescriptor(DataClassJSONMixin):
     code: ButtonCode
     text: str
     tooltip: str
 
 
+@dataclass(frozen=True)
 class MenuOptions(DataClassJSONMixin):
     buttons: List[ButtonDescriptor] = field(default_factory=list)
-    bulletin_message: str
+    bulletin_message: str = ""

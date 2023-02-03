@@ -8,6 +8,7 @@ from queue import Queue
 from typing import List
 
 import server.config.config as config
+import server.google_experience as google_experience
 import server.map_utils as map_utils
 import server.schemas.cards as cards_db
 import server.schemas.game as game_db
@@ -723,6 +724,13 @@ class TutorialGameState(object):
             self._tutorial_record.end_time = datetime.now()
             self._tutorial_record.save()
             self._tutorial_responses.put(TutorialCompletedResponse(self._tutorial_name))
+            tutorial_role = RoleFromTutorialName(self._tutorial_name)
+            worker = (
+                self._tutorial_record.leader
+                if tutorial_role == Role.LEADER
+                else self._tutorial_record.follower
+            )
+            google_experience.MarkTutorialCompleted(worker, tutorial_role)
             self.end_game()
             return
         self.record_turn_state(self._turn_state)
