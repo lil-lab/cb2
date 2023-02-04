@@ -1,4 +1,5 @@
 """ Code for updating the Google user experience table. """
+import json
 import logging
 
 import peewee
@@ -6,6 +7,7 @@ import peewee
 import server.schemas.google_user as google_db
 from server.experience import InitExperience, update_follower_stats, update_leader_stats
 from server.lobby_consts import LobbyType
+from server.messages.rooms import Role
 from server.schemas.mturk import WorkerExperience
 
 logger = logging.getLogger()
@@ -102,4 +104,14 @@ def UpdateGoogleUserExperienceTable(game_record):
 
 def MarkTutorialCompleted(google_user, role):
     """Marks the tutorial as completed for the given user and role."""
-    ...
+    if google_user is None:
+        logger.warning("No google user found. Not marking tutorial as completed.")
+        return
+    kvals = json.loads(google_user.kv_store)
+    if role == Role.LEADER:
+        kvals["leader_tutorial"] = True
+    elif role == Role.FOLLOWER:
+        kvals["follower_tutorial"] = True
+    google_user.kv_store = json.dumps(kvals)
+    google_user.save()
+    return

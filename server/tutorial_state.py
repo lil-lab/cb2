@@ -726,9 +726,9 @@ class TutorialGameState(object):
             self._tutorial_responses.put(TutorialCompletedResponse(self._tutorial_name))
             tutorial_role = RoleFromTutorialName(self._tutorial_name)
             worker = (
-                self._tutorial_record.leader
+                self._tutorial_record.google_leader
                 if tutorial_role == Role.LEADER
-                else self._tutorial_record.follower
+                else self._tutorial_record.google_follower
             )
             google_experience.MarkTutorialCompleted(worker, tutorial_role)
             self.end_game()

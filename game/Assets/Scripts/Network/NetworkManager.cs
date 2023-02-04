@@ -115,7 +115,9 @@ namespace Network
             // We can figure out the server's address based on Unity's API.
             if (Application.absoluteURL == "")
             {
-                return new Dictionary<string, string>();
+                // Include the default parameter "lobby_name=open" so that the
+                // unity client knows to use the open lobby.
+                return new Dictionary<string, string>() {{"lobby_name", "open"}};
             }
             Uri servedUrl = new Uri(Application.absoluteURL);
             string query = servedUrl.Query;
@@ -535,7 +537,7 @@ namespace Network
 
             string url = "";
             if (Application.absoluteURL == "") {
-                url = "ws://" + URL + "player_endpoint";
+                url = "ws://" + URL + "player_endpoint?lobby_name=open";
             } else {
                 // We can figure out the server's address based on Unity's API.
                 Uri servedUrl = new Uri(Application.absoluteURL);

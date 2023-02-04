@@ -27,7 +27,7 @@ public class ButtonDescriptor
 [Serializable]
 public class MenuOptions
 {
-    public List<ButtonDescriptor> menu_buttons;
+    public List<ButtonDescriptor> buttons;
     public string bulletin_message;
 }
 

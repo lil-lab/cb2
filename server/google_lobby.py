@@ -57,7 +57,7 @@ class GoogleLobby(lobby.Lobby):
         ):
             return MenuOptions(
                 [
-                    ButtonDescriptor(ButtonCode.JOIN_QUEUE, "Play Game", ""),
+                    ButtonDescriptor(ButtonCode.JOIN_QUEUE, "Join Game", ""),
                 ],
                 "Welcome to the lobby!",
             )

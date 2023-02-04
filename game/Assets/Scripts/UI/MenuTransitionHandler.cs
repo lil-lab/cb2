@@ -59,6 +59,9 @@ public class MenuTransitionHandler : MonoBehaviour
 
     private static readonly string INFO_BULLETIN = "BULLETIN_TEXT";
 
+    private static readonly string MAIN_MENU = "MAIN_MENU";
+    private static readonly string WAIT_QUEUE_MENU = "WAIT_QUEUE_MENU";
+
     public static MenuTransitionHandler Instance;
     private Logger _logger;
 
@@ -676,7 +679,7 @@ public class MenuTransitionHandler : MonoBehaviour
             _logger.Warn("Unable to load menu button prefab.");
             return;
         }
-        foreach (Network.ButtonDescriptor button in m.menu_buttons)
+        foreach (Network.ButtonDescriptor button in m.buttons)
         {
             GameObject ui_button = Instantiate(prefab);
             ui_button.transform.SetParent(dynamic_menu.transform, false);
@@ -685,6 +688,76 @@ public class MenuTransitionHandler : MonoBehaviour
                 ButtonUtils.HandleAction(button.code); 
             });
         }
+    }
+
+    public static void ShowWaitQueue()
+    {
+        // Make the main menu canvasgroup invisible. Make the wait queue menu canvasgroup visible.
+        GameObject main_obj = GameObject.FindWithTag(MAIN_MENU);
+        GameObject wait_obj = GameObject.FindWithTag(WAIT_QUEUE_MENU);
+        if (main_obj == null)
+        {
+            Debug.Log("Unable to find main menu.");
+            return;
+        }
+        if (wait_obj == null)
+        {
+            Debug.Log("Unable to find wait queue menu.");
+            return;
+        }
+        CanvasGroup main_cg = main_obj.GetComponent<CanvasGroup>();
+        CanvasGroup wait_cg = wait_obj.GetComponent<CanvasGroup>();
+        if (main_cg == null)
+        {
+            Debug.Log("Unable to find main menu canvasgroup.");
+            return;
+        }
+        if (wait_cg == null)
+        {
+            Debug.Log("Unable to find wait queue menu canvasgroup.");
+            return;
+        }
+        main_cg.alpha = 0;
+        main_cg.interactable = false;
+        main_cg.blocksRaycasts = false;
+        wait_cg.alpha = 1;
+        wait_cg.interactable = true;
+        wait_cg.blocksRaycasts = true;
+    }
+
+    public static void ShowMainMenu()
+    {
+        // Make the main menu canvasgroup invisible. Make the wait queue menu canvasgroup visible.
+        GameObject main_obj = GameObject.FindWithTag(MAIN_MENU);
+        GameObject wait_obj = GameObject.FindWithTag(WAIT_QUEUE_MENU);
+        if (main_obj == null)
+        {
+            Debug.Log("Unable to find main menu.");
+            return;
+        }
+        if (wait_obj == null)
+        {
+            Debug.Log("Unable to find wait queue menu.");
+            return;
+        }
+        CanvasGroup main_cg = main_obj.GetComponent<CanvasGroup>();
+        CanvasGroup wait_cg = wait_obj.GetComponent<CanvasGroup>();
+        if (main_cg == null)
+        {
+            Debug.Log("Unable to find main menu canvasgroup.");
+            return;
+        }
+        if (wait_cg == null)
+        {
+            Debug.Log("Unable to find wait queue menu canvasgroup.");
+            return;
+        }
+        main_cg.alpha = 1;
+        main_cg.interactable = true;
+        main_cg.blocksRaycasts = true;
+        wait_cg.alpha = 0;
+        wait_cg.interactable = false;
+        wait_cg.blocksRaycasts = false;
     }
 
     // Update is called once per frame

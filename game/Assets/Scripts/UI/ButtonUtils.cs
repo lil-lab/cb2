@@ -36,17 +36,23 @@ public class ButtonUtils
 
         switch (action)
         {
+            case Network.ButtonCode.NONE:
+                break;
             case Network.ButtonCode.JOIN_QUEUE:
                 networkManager.JoinGame();
+                MenuTransitionHandler.ShowWaitQueue();
                 break;
             case Network.ButtonCode.LEAVE_QUEUE:
                 networkManager.CancelGameQueue();
+                MenuTransitionHandler.ShowMainMenu();
                 break;
             case Network.ButtonCode.JOIN_FOLLOWER_QUEUE:
                 networkManager.JoinAsFollower();
+                MenuTransitionHandler.ShowWaitQueue();
                 break;
             case Network.ButtonCode.JOIN_LEADER_QUEUE:
                 networkManager.JoinAsLeader();
+                MenuTransitionHandler.ShowWaitQueue();
                 break;
             case Network.ButtonCode.START_LEADER_TUTORIAL:
                 networkManager.StartLeaderTutorial();

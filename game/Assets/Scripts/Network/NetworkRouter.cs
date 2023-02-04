@@ -450,8 +450,8 @@ namespace Network
 
         private ActionQueue.IAction ActionFromNetwork(Network.Action networkAction)
         {
-            DateTime expiration = DateTime.Parse(networkAction.expiration, null,
-                System.Globalization.DateTimeStyles.RoundtripKind);
+            DateTime expiration = Datetime.SpecifyKind(DateTime.Parse(networkAction.expiration, null,
+                System.Globalization.DateTimeStyles.RoundtripKind), DateTimeKind.Utc);
             ActionQueue.ActionInfo info = new ActionQueue.ActionInfo()
             {
                 Type = (ActionQueue.AnimationType)networkAction.animation_type,

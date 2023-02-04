@@ -166,7 +166,7 @@ class Lobby(ABC):
             [
                 ButtonDescriptor(
                     ButtonCode.JOIN_QUEUE,
-                    "Join Queue",
+                    "Join Game",
                     "Joins the queue for this lobby",
                 ),
             ],

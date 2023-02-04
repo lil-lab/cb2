@@ -79,6 +79,8 @@ TagManager:
   - DisplayCoordinates
   - DYNAMIC_BUTTONS
   - BULLETIN_TEXT
+  - MAIN_MENU
+  - WAIT_QUEUE_MENU
   layers:
   - Default
   - TransparentFX
