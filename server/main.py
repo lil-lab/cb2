@@ -98,6 +98,11 @@ async def transmit_bytes(ws, message):
 
 @routes.get("/")
 async def Index(request):
+    return web.FileResponse("server/www/index.html")
+
+
+@routes.get("/play")
+async def GamePage(request):
     return web.FileResponse("server/www/WebGL/index.html")
 
 
