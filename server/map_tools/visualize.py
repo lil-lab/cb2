@@ -3,6 +3,7 @@ import math
 import pathlib
 import random
 import sys
+from typing import List, Tuple
 
 import pygame
 import pygame.font
@@ -13,7 +14,7 @@ from server.assets import AssetId
 from server.card import Color, Shape
 from server.hex import Edges
 from server.messages.bug_report import BugReport
-from server.messages.prop import PropType
+from server.messages.prop import Prop, PropType
 from server.messages.rooms import Role
 
 pygame.freetype.init()
@@ -395,6 +396,48 @@ def draw_shape(screen, x, y, shape, color):
         pygame.draw.polygon(screen, color, vertices, 0)
 
 
+def draw_tile(
+    screen,
+    tile,
+    coordinate: Tuple[float, float] = (0, 0),
+    width: int = 50,
+    height: int = 50,
+):
+    # Get the tile color.
+    asset_id = tile.asset_id
+    color = asset_id_to_color(asset_id)
+
+    # Get the center of the hexagonal cell.
+    cell = tile.cell
+    (center_x, center_y) = coordinate
+
+    # Get the boundary of the cell.
+    boundary = cell.boundary
+
+    # Draw the cell.
+    draw_hexagon(
+        screen,
+        center_x,
+        center_y,
+        width,
+        height,
+        color,
+        tile.rotation_degrees,
+        boundary,
+    )
+
+    asset_icon = asset_id_to_icon(asset_id)
+    if not pathlib.Path(asset_icon).is_file():
+        return
+    # Draw the asset label.
+    icon = pygame.image.load(asset_icon)
+    icon.convert()
+    icon_width = int(width * 0.8)
+    icon_height = int(height * 0.8)
+    icon = pygame.transform.scale(icon, (icon_width, icon_height))
+    screen.blit(icon, (center_x - icon_width / 2, center_y - icon_height / 2))
+
+
 def draw_map_and_wait(map_update):
     display = GameDisplay(SCREEN_SIZE)
 
@@ -419,6 +462,11 @@ class GameDisplay(object):
         self._positive_markers = None
         self._negative_markers = None
         self._instructions = None
+        self._selected_tile = None
+        self._selected_color = pygame.Color("purple")
+
+        # Used for interactive applications to select mouse tiles.
+        self._map_global_coordinates = {}
 
         # This is used s.t. a user can initialize a GameDisplay without
         # necessarily involving pygame. Pygame doesn't play nicely on background
@@ -426,6 +474,9 @@ class GameDisplay(object):
         # background thread and have draw() get called later in the main thread.
         # As such, pygame initialization is only called when draw() is called.
         self._pygame_initialized = False
+
+    def tile_coordinates_map(self):
+        return self._map_global_coordinates
 
     # This is the CB2 server config. Includes fog distance, and some other stuff relevant to game display (card covers, etc.)
     def set_config(self, config):
@@ -448,7 +499,7 @@ class GameDisplay(object):
         if hasattr(map, "props") and map.props:
             self._props = map.props
 
-    def set_props(self, props):
+    def set_props(self, props: List[Prop]):
         self._props = props
 
     def set_trajectory(self, trajectory):
@@ -462,6 +513,10 @@ class GameDisplay(object):
 
     def set_state_sync(self, state_sync):
         self._state_sync = state_sync
+
+    def set_selected_tile(self, tile, color):
+        self._selected_tile = tile
+        self._selected_color = color
 
     def transform_to_screen_coords(self, coords):
         """Transforms the given map x, y coordinates to screen coordinates.
@@ -492,6 +547,7 @@ class GameDisplay(object):
             (center_x, center_y) = self.transform_to_screen_coords(
                 cell.coord.cartesian()
             )
+            self._map_global_coordinates[(center_x, center_y)] = tile
 
             # Get the boundary of the cell.
             boundary = cell.boundary
@@ -722,19 +778,42 @@ class GameDisplay(object):
             text += instruction.text + "|"
         draw_wrapped(self, text)
 
+    def visualize_selected_tile(self):
+        if not self._selected_tile:
+            return
+        x, y = self.transform_to_screen_coords(
+            self._selected_tile.cell.coord.cartesian()
+        )
+        # Draw a border around the selected tile. Make two hexagons, one slightly larger than the other. Draw the larger one first, then the smaller one.
+        # The inner hexagon will be transparent, so the larger hexagon will be visible as a border.
+        draw_hexagon(
+            self._screen,
+            x,
+            y,
+            self._cell_width,
+            self._cell_height,
+            self._selected_color,
+            0,
+            self._selected_tile.cell.boundary,
+        )
+
+    def init_pygame(self, screen_size_override=None):
+        if self._pygame_initialized:
+            return
+        screen_size = self._screen_size
+        if screen_size_override is not None:
+            screen_size = screen_size_override
+        # Initialize pygame.
+        pygame.init()
+        # Create the screen
+        self._screen = pygame.display.set_mode((screen_size, screen_size))
+        self._screen = pygame.display.set_mode((screen_size, screen_size))
+        pygame.display.set_caption("Game Visualizer")
+        self._pygame_initialized = True
+
     def draw(self):
         if not self._pygame_initialized:
-            # Initialize pygame.
-            pygame.init()
-            # Create the screen
-            self._screen = pygame.display.set_mode(
-                (self._screen_size, self._screen_size)
-            )
-            self._screen = pygame.display.set_mode(
-                (self._screen_size, self._screen_size)
-            )
-            pygame.display.set_caption("Game Visualizer")
-            self._pygame_initialized = True
+            self.init_pygame()
         # Fill the screen with white
         self._screen.fill((255, 255, 255))
         # Draw map elements.
@@ -745,6 +824,7 @@ class GameDisplay(object):
         self.visualize_markers()
         self.visualize_follower_visibility()
         self.visualize_instructions()
+        self.visualize_selected_tile()
 
 
 def main():
