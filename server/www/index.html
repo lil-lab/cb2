@@ -10,9 +10,231 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Card Bandits</title>
+
+    <style type="text/css">
+        .banner-background {
+            position: relative;
+            top: 0; left: 0;
+            width: 100%;
+            background: linear-gradient(180deg, #c9e6ff 30%, #fff 100%);
+            opacity: 1;
+            z-index: -1;
+        }
+
+        .banner-background {
+            bottom: 0;
+            left: 0;
+            padding-top: 50px;
+            right: 0;
+            top: 0;
+            z-index: -1;
+        }
+
+        .banner-background .x1 {
+            opacity: 60%;
+        }
+
+        .banner-background .x2 {
+            opacity: 40%;
+        }
+
+        .banner-background .x3 {
+            opacity: 20%;
+        }
+
+        .banner-background .x4 {
+            opacity: 10%;
+        }
+
+        .banner-background .x5 {
+            opacity: 5%;
+        }
+
+        .banner-background .x6 {
+            opacity: 2%;
+        }
+
+        /* KEYFRAMES */
+
+        @-webkit-keyframes animateCloud {
+            0% {
+                margin-left: -1000px;
+            }
+            100% {
+                margin-left: 100%;
+            }
+        }
+
+        @-moz-keyframes animateCloud {
+            0% {
+                margin-left: -1000px;
+            }
+            100% {
+                margin-left: 100%;
+            }
+        }
+
+        @keyframes animateCloud {
+            0% {
+                margin-left: -1000px;
+            }
+            100% {
+                margin-left: 100%;
+            }
+        }
+
+        /* ANIMATIONS */
+
+        .x1 {
+            -webkit-animation: animateCloud 70s linear infinite;
+            -moz-animation: animateCloud 70s linear infinite;
+            animation: animateCloud 70s linear infinite;
+
+            -webkit-transform: scale(0.65);
+            -moz-transform: scale(0.65);
+            transform: scale(0.65);
+        }
+
+        .x2 {
+            -webkit-animation: animateCloud 45s linear infinite;
+            -moz-animation: animateCloud 45s linear infinite;
+            animation: animateCloud 45s linear infinite;
+
+            -webkit-transform: scale(0.3);
+            -moz-transform: scale(0.3);
+            transform: scale(0.3);
+        }
+
+        .x3 {
+            -webkit-animation: animateCloud 55s linear infinite;
+            -moz-animation: animateCloud 55s linear infinite;
+            animation: animateCloud 55s linear infinite;
+
+            -webkit-transform: scale(0.5);
+            -moz-transform: scale(0.5);
+            transform: scale(0.5);
+        }
+
+        .x4 {
+            -webkit-animation: animateCloud 43s linear infinite;
+            -moz-animation: animateCloud 43s linear infinite;
+            animation: animateCloud 43s linear infinite;
+
+            -webkit-transform: scale(0.4);
+            -moz-transform: scale(0.4);
+            transform: scale(0.4);
+        }
+
+        .x5 {
+            -webkit-animation: animateCloud 50s linear infinite;
+            -moz-animation: animateCloud 50s linear infinite;
+            animation: animateCloud 50s linear infinite;
+
+            -webkit-transform: scale(0.55);
+            -moz-transform: scale(0.55);
+            transform: scale(0.55);
+        }
+
+        /* OBJECTS */
+
+        .cloud {
+            background: #fff;
+            background: -moz-linear-gradient(top,  #fff 5%, #f1f1f1 100%);
+            background: -webkit-gradient(linear, left top, left bottom, color-stop(5%,#fff), color-stop(100%,#f1f1f1));
+            background: -webkit-linear-gradient(top,  #fff 5%,#f1f1f1 100%);
+            background: -o-linear-gradient(top,  #fff 5%,#f1f1f1 100%);
+            background: -ms-linear-gradient(top,  #fff 5%,#f1f1f1 100%);
+            background: linear-gradient(top,  #fff 5%,#f1f1f1 100%);
+            filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#fff', endColorstr='#f1f1f1',GradientType=0 );
+
+            -webkit-border-radius: 100px;
+            -moz-border-radius: 100px;
+            border-radius: 100px;
+
+            -webkit-box-shadow: 0 8px 5px rgba(0, 0, 0, 0.1);
+            -moz-box-shadow: 0 8px 5px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 5px rgba(0, 0, 0, 0.1);
+
+            height: 120px;
+            position: relative;
+            width: 350px;
+        }
+
+        .cloud:after, .cloud:before {
+            background: #fff;
+            content: '';
+            position: absolute;
+            z-indeX: -1;
+        }
+
+        .cloud:after {
+            -webkit-border-radius: 100px;
+            -moz-border-radius: 100px;
+            border-radius: 100px;
+
+            height: 100px;
+            left: 50px;
+            top: -50px;
+            width: 100px;
+        }
+
+        .cloud:before {
+            -webkit-border-radius: 200px;
+            -moz-border-radius: 200px;
+            border-radius: 200px;
+
+            width: 180px;
+            height: 180px;
+            right: 50px;
+            top: -90px;
+        }
+    </style>
+    <script type="text/javascript">
+        window.addEventListener('load', function() {
+            var banner = document.querySelector('.banner-background');
+
+            // Resize the banner to cover just the header.
+            function resize_banner() {
+                // Width is window size.
+                banner.style.width = window.innerWidth + 'px';
+                banner.style.height = document.querySelector('header').clientHeight * 1.5 + 'px';
+
+                // Make the banner have a negative bottom margin to cover the header.
+                banner.style.marginBottom = -document.querySelector('.banner-background').clientHeight + 'px';
+            }
+
+            // Resize the banner on window resize.
+            window.addEventListener('resize', resize_banner);
+
+            // Resize the banner on page load.
+            resize_banner();
+        });
+    </script>
 </head>
 
 <body>
+    <div class="banner-background">
+        <div style="height: 10%;"></div>
+        <div class="x1">
+            <div class="cloud"></div>
+        </div>
+
+        <div class="x2">
+            <div class="cloud"></div>
+        </div>
+
+        <div class="x3">
+            <div class="cloud"></div>
+        </div>
+
+        <div class="x4">
+            <div class="cloud"></div>
+        </div>
+
+        <div class="x5">
+            <div class="cloud"></div>
+        </div>
+    </div>
     <header style="margin-bottom: 0; padding-bottom: 24px;">
         <nav>
             <a href="/"><img alt="Logo" src="images/icon.png" height="70"></a>
@@ -24,8 +246,9 @@
         </nav>
         <h1>Card Bandits 2: a <i>collaborative, multiplayer</i> online videogame.</h1>
         <p>An NLP research experiment and data collection platform.</p>
-        <br>
         <p><a href="https://lil.nlp.cornell.edu/cerealbar/"><i>See Previous Work</i></a><a href="/play"><b>Play The Game &rarr;</b></a></p>
+    </header>
+    <main style="margin-top: 0; padding-top: 24px;">
         <section>
             <header>
                 <h2>About the Research Platform</h2>
@@ -60,8 +283,6 @@
                 <p>Custom maps and scenarios can be crafted to support any research needs.</p>
             </aside>
         </section>
-    </header>
-    <main style="margin-top: 0; padding-top: 24px;">
         <hr>
         <section>
             <header>
@@ -97,6 +318,8 @@
                 <figure>
                     <img src="images/ui-graphics.png" alt="UI Graphics">
                     <figcaption>Our UI is the product of several rounds of iteration incorporating feedback from playtesters. All actions have keyboard shortcuts for accessibility and ease of use.</figcaption>
+                    <img src="images/assets.png" alt="assets">
+                    <figcaption>High quality, modular art assets.</figcaption>
                 </figure>
             </article>
         </section>
