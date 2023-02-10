@@ -812,12 +812,12 @@ namespace Network
         {
             // Start the connection to the server. If the lobby is a Google lobby, wait until receiving an Oauth token.
             Dictionary<string, string> urlParameters = UrlParameters();
-            LobbyType type = LobbyType.GOOGLE;
+            LobbyType type = _serverConfig.LobbyTypeFromName("default");
             if (urlParameters.ContainsKey("lobby_name")) {
                 type = _serverConfig.LobbyTypeFromName(urlParameters["lobby_name"]);
             }
 
-            return type == LobbyType.GOOGLE;
+            return (type == LobbyType.GOOGLE) || (type == LobbyType.GOOGLE_LEADER);
         }
     }
 }

@@ -11,7 +11,8 @@ namespace Network
         GOOGLE,
         FOLLOWER_PILOT,
         REPLAY,
-        SCENARIO
+        SCENARIO,
+        GOOGLE_LEADER
     }
 
     [Serializable]

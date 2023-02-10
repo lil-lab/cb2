@@ -154,6 +154,11 @@ class Config(DataClassJSONMixin):
             LobbyInfo(
                 "scenario-lobby", LobbyType.SCENARIO, "Lobby for scenario experiments."
             ),
+            LobbyInfo(
+                "google-leader-lobby",
+                LobbyType.GOOGLE_LEADER,
+                "Lobby for human-bot games. Humans authenticated by google.",
+            ),
         ]
     )
 

@@ -11,7 +11,7 @@ import time_machine
 import server.messages.message_from_server as message_from_server
 import server.messages.message_to_server as message_to_server
 import server.schemas.mturk
-from server.follower_pilot_lobby import FollowerPilotLobby
+from server.lobbies.follower_pilot_lobby import FollowerPilotLobby
 from server.messages.rooms import (
     RoomManagementRequest,
     RoomRequestType,
