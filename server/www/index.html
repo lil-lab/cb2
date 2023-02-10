@@ -190,25 +190,45 @@
         }
     </style>
     <script type="text/javascript">
+        // Resize the banner to cover just the header.
+        function resize_banner() {
+            var banner = document.querySelector('.banner-background');
+
+            // If the banner hasn't loaded yet, return.
+            if (banner === null) {
+                return;
+            }
+
+            // Width is window size.
+            banner.style.width = window.innerWidth + 'px';
+            banner.style.height = document.querySelector('header').clientHeight * 1.5 + 'px';
+
+            // Make the banner have a negative bottom margin to cover the header.
+            banner.style.marginBottom = -document.querySelector('.banner-background').clientHeight + 'px';
+        }
+
         window.addEventListener('load', function() {
             var banner = document.querySelector('.banner-background');
 
-            // Resize the banner to cover just the header.
-            function resize_banner() {
-                // Width is window size.
-                banner.style.width = window.innerWidth + 'px';
-                banner.style.height = document.querySelector('header').clientHeight * 1.5 + 'px';
-
-                // Make the banner have a negative bottom margin to cover the header.
-                banner.style.marginBottom = -document.querySelector('.banner-background').clientHeight + 'px';
-            }
-
             // Resize the banner on window resize.
             window.addEventListener('resize', resize_banner);
-
             // Resize the banner on page load.
             resize_banner();
         });
+
+        var header = document.querySelector('header');
+        var banner = document.querySelector('.banner-background');
+        // When the header has loaded, set the banner to be the same height as the header.
+        if (banner != null) {
+            banner.addEventListener('load', function() {
+                resize_banner();
+            });
+        }
+        if (header != null) {
+            header.addEventListener('load', function() {
+                resize_banner();
+            });
+        }
     </script>
 </head>
 
