@@ -42,3 +42,5 @@ class LobbyInfo(DataClassJSONMixin):
     name: str
     type: LobbyType
     comment: str = ""
+    # The maximum number of games that can be created in this lobby.
+    game_capacity: int = 40

@@ -139,25 +139,34 @@ class Config(DataClassJSONMixin):
     # Names of lobbies and lobby types.
     lobbies: List[LobbyInfo] = field(
         default_factory=lambda: [
-            LobbyInfo("default", LobbyType.GOOGLE, "The default lobby."),
-            LobbyInfo("open", LobbyType.OPEN, "Lobby open to anyone. -- No user info."),
-            LobbyInfo("bot-sandbox", LobbyType.OPEN, "Open lobby intended for bots."),
-            LobbyInfo("mturk-lobby", LobbyType.MTURK, "Lobby for MTurk workers."),
+            LobbyInfo("default", LobbyType.GOOGLE, "The default lobby.", 40),
+            LobbyInfo(
+                "open", LobbyType.OPEN, "Lobby open to anyone. -- No user info.", 40
+            ),
+            LobbyInfo(
+                "bot-sandbox", LobbyType.OPEN, "Open lobby intended for bots.", 40
+            ),
+            LobbyInfo("mturk-lobby", LobbyType.MTURK, "Lobby for MTurk workers.", 40),
             LobbyInfo(
                 "follower-pilot-lobby",
                 LobbyType.FOLLOWER_PILOT,
                 "Lobby for MTurk follower pilot workers.",
+                40,
             ),
             LobbyInfo(
-                "replay-lobby", LobbyType.REPLAY, "Lobby for displaying replays."
+                "replay-lobby", LobbyType.REPLAY, "Lobby for displaying replays.", 40
             ),
             LobbyInfo(
-                "scenario-lobby", LobbyType.SCENARIO, "Lobby for scenario experiments."
+                "scenario-lobby",
+                LobbyType.SCENARIO,
+                "Lobby for scenario experiments.",
+                40,
             ),
             LobbyInfo(
                 "google-leader-lobby",
                 LobbyType.GOOGLE_LEADER,
                 "Lobby for human-bot games. Humans authenticated by google.",
+                40,
             ),
         ]
     )

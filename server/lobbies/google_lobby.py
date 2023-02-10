@@ -24,9 +24,9 @@ TESTING_CLIENT_ID = (
 class GoogleLobby(lobby.Lobby):
     """Used to manage Google account authenticated rooms."""
 
-    def __init__(self, lobby_name, lobby_comment):
+    def __init__(self, lobby_info):
         # Call the superconstructor.
-        super().__init__(lobby_name=lobby_name, lobby_comment=lobby_comment)
+        super().__init__(lobby_info)
 
     def menu_options(self, ws: web.WebSocketResponse):
         no_login_menu = MenuOptions(

@@ -12,6 +12,7 @@ import server.messages.message_from_server as message_from_server
 import server.messages.message_to_server as message_to_server
 import server.schemas.mturk
 from server.lobbies.follower_pilot_lobby import FollowerPilotLobby
+from server.lobby_utils import LobbyInfo
 from server.messages.rooms import (
     RoomManagementRequest,
     RoomRequestType,
@@ -47,7 +48,9 @@ class FollowerPilotLobbyTest(unittest.TestCase):
         ConnectDatabase()
         CreateTablesIfNotExists(ListDefaultTables())
 
-        self.lobby = FollowerPilotLobby(TEST_LOBBY_NAME, TEST_LOBBY_COMMENT)
+        self.lobby = FollowerPilotLobby(
+            LobbyInfo(TEST_LOBBY_NAME, TEST_LOBBY_COMMENT, 1)
+        )
 
     # We use the below unique_*_id() functions as substitutes for the websocket
     # object in calls to the remote table. The remote table uses the websocket

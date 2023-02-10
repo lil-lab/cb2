@@ -18,7 +18,7 @@ import server.messages.message_from_server as message_from_server
 import server.messages.message_to_server as message_to_server
 import server.schemas.game as game_db
 from server.config.config import GlobalConfig
-from server.lobby_consts import LobbyType
+from server.lobby_consts import LobbyInfo, LobbyType
 from server.map_provider import CachedMapRetrieval
 from server.messages.logs import GameInfo
 from server.messages.menu_options import ButtonCode, ButtonDescriptor, MenuOptions
@@ -98,10 +98,11 @@ class SocketInfo:
 
 class Lobby(ABC):
     @abstractmethod
-    def __init__(self, lobby_name, lobby_comment):
+    def __init__(self, lobby_info: LobbyInfo):
         """This class is abstract. Must call super().__init__() in subclasses."""
-        self._lobby_name = lobby_name
-        self._lobby_comment = lobby_comment
+        self._lobby_name = lobby_info.name
+        self._lobby_comment = lobby_info.comment
+        self._game_capacity = lobby_info.game_capacity
         self._rooms = {}
         self._room_id_assigner = IdAssigner()
         self._remotes = {}  # {ws: SocketInfo}
@@ -276,6 +277,13 @@ class Lobby(ABC):
                             leader,
                             "You've been removed from the queue for waiting too long.",
                         )
+
+                # If the lobby is full, return early.
+                if len(self._rooms) >= self._game_capacity:
+                    logger.info(
+                        f"Lobby {self._lobby_name} is full. Refusing to matchmake until rooms are cleaned up."
+                    )
+                    continue
 
                 leader, follower, event_uuid = self.get_leader_follower_match()
 

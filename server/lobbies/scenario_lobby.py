@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 class ScenarioLobby(lobby.Lobby):
     """Used to manage game rooms."""
 
-    def __init__(self, lobby_name, lobby_comment):
+    def __init__(self, lobby_info):
         # Call the superconstructor.
-        super().__init__(lobby_name=lobby_name, lobby_comment=lobby_comment)
+        super().__init__(lobby_info)
 
     # OVERRIDES Lobby.lobby_type()
     def lobby_type(self) -> LobbyType:

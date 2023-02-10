@@ -20,6 +20,7 @@ namespace Network
     {
         public string name;
         public LobbyType type;
+        public int game_capacity;
     }
 
     // Server configuration, settings & options. Retrieve the latest config from NetworkManager.

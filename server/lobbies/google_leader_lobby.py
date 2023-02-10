@@ -25,9 +25,9 @@ TESTING_CLIENT_ID = (
 class GoogleLeaderLobby(lobby.Lobby):
     """Used to manage Google account authenticated rooms where humans are always leaders and bots are always followers. This is coordinated by only displaying JOIN_LEADER_QUEUE menu options (to humans)."""
 
-    def __init__(self, lobby_name, lobby_comment):
+    def __init__(self, lobby_info):
         # Call the superconstructor.
-        super().__init__(lobby_name=lobby_name, lobby_comment=lobby_comment)
+        super().__init__(lobby_info)
 
     def menu_options(self, ws: web.WebSocketResponse):
         no_login_menu = MenuOptions(
