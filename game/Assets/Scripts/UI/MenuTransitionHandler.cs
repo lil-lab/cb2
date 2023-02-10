@@ -393,7 +393,7 @@ public class MenuTransitionHandler : MonoBehaviour
         if (auth.success)
         {
             TMP_Text login_status = FindTmpTextWithTag(LOGIN_STATUS_TEXT);
-            login_status.text = "Login successful. Hit Play to start!";
+            login_status.text = "Login successful.";
             logger.Info("Login successful.");
         }
         else

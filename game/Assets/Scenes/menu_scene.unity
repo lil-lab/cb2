@@ -8042,16 +8042,17 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_text: 'You have been booted from the queue. If it has been a while, no one is
-    available to play right now. Try again later.
+    available to play right now or our servers are at maximum capacity. Try again
+    later.
 
 
-    If this happens immediately,
-    it means your account wasn''t recognized or had an authentication error.
+    If this happens immediately, it means your account wasn''t recognized
+    or had an authentication error.
 
 
-    Mturkers,
-    if you encounter this error, please email lillabcornell@gmail.com with your mturk
-    ID to fix this. Feel free to submit this assignment as done.'
+    Mturkers, if you encounter this error,
+    please email lillabcornell@gmail.com with your mturk ID to fix this. Feel free
+    to submit this assignment as done.'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 18fba4d35f94e4df883441a4b875eae7, type: 2}
   m_sharedMaterial: {fileID: 4114669361348728566, guid: 18fba4d35f94e4df883441a4b875eae7, type: 2}
