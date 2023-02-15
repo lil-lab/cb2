@@ -1,5 +1,7 @@
+import dataclasses
 import logging
 import math
+import random
 import tkinter
 from tkinter.filedialog import askopenfilename, asksaveasfilename
 from typing import Tuple
@@ -8,6 +10,8 @@ import pygame
 import pygame.font
 import pygame.freetype
 
+import server.hex as hex
+from server.assets import AssetId
 from server.card import Card
 from server.card_enums import Color, Shape
 from server.map_tools.visualize import (
@@ -91,8 +95,32 @@ tile_generators = [
 ]
 
 
+def LayerToHeight(layer):
+    """Converts a layer to a height."""
+    layer_to_height = {
+        0: 0.05,
+        1: 0.275,
+        2: 0.355,
+    }
+    if layer not in layer_to_height:
+        return layer_to_height[0]
+
+    return layer_to_height[layer]
+
+
 def distance(x: Tuple[float, float], y: Tuple[float, float]):
     return math.sqrt((x[0] - y[0]) ** 2 + (x[1] - y[1]) ** 2)
+
+
+def add_map_boundaries(rows, cols, tiles):
+    """Adds boundaries to the hex map edges."""
+    for i, t in enumerate(tiles):
+        loc = t.cell.coord
+        for n in loc.neighbors():
+            (nr, nc) = n.to_offset_coordinates()
+            # If the neighbor cell is outside the map, add an edge to this cell's boundary.
+            if not (0 < nr < rows and 0 < nc < cols):
+                tiles[i].cell.boundary.set_edge_between(loc, n)
 
 
 def edit_scenario(scenario: Scenario) -> Scenario:
@@ -101,7 +129,50 @@ def edit_scenario(scenario: Scenario) -> Scenario:
     display.init_pygame(screen_size_override=SCREEN_SIZE + 200)
     pygame.display.set_caption("Map Editor")
 
-    # We now have a map in the region (0, 0, SCREEN_SIZE, SCREEN_SIZE). We want to draw a tool window on the right and a tool panel on the bottom. And an exit button in the top right.
+    # Prune the map of all tiles with coordinates that are outside the map size.
+    pruned_tiles = []
+    for tile in scenario.map.tiles:
+        (r, c) = tile.cell.coord.to_offset_coordinates()
+        if 0 < r < scenario.map.rows and 0 < c < scenario.map.cols:
+            pruned_tiles.append(tile)
+    scenario.map.tiles = pruned_tiles
+
+    # Add layer boundaries.
+    add_map_boundaries(scenario.map.rows, scenario.map.cols, scenario.map.tiles)
+
+    # Prune the map of all props with coordinates that are outside the map size.
+    pruned_props = []
+    for prop in scenario.prop_update.props:
+        (r, c) = prop.prop_info.location.to_offset_coordinates()
+        if 0 < r < scenario.map.rows and 0 < c < scenario.map.cols:
+            pruned_props.append(prop)
+    pruned_prop_update = dataclasses.replace(scenario.prop_update, props=pruned_props)
+    scenario = dataclasses.replace(scenario, prop_update=pruned_prop_update)
+
+    # Now move all actors outside the map to the center of the map.
+    pruned_actors = []
+    for actor in scenario.actor_state.actors:
+        (r, c) = actor.location.to_offset_coordinates()
+        if 0 < r < scenario.map.rows and 0 < c < scenario.map.cols:
+            pruned_actors.append(actor)
+        else:
+            # Choose a random location in the map.
+            (r, c) = (
+                random.randint(0, scenario.map.rows),
+                random.randint(0, scenario.map.cols),
+            )
+            logger.info(
+                f"Moving actor {actor.actor_id} to random location {(r,c)} in map."
+            )
+            pruned_actors.append(
+                dataclasses.replace(actor, location=HecsCoord.from_offset(r, c))
+            )
+    pruned_actor_state = dataclasses.replace(scenario.actor_state, actors=pruned_actors)
+    scenario = dataclasses.replace(scenario, actor_state=pruned_actor_state)
+
+    # We now have a map in the region (0, 0, SCREEN_SIZE, SCREEN_SIZE). We want
+    # to draw a tool window on the right and a tool panel on the bottom. And an
+    # exit button in the top right.
 
     # Draw the tool window.
     tool_window = pygame.Surface((120, SCREEN_SIZE + 20))
@@ -171,11 +242,18 @@ def edit_scenario(scenario: Scenario) -> Scenario:
     # Draw the save button.
     save_button = pygame.Surface((50, 50))
     save_button.fill((0, 255, 0))
-    save_button_rect = save_button.get_rect()
+    save_button_rect = pygame.rect.Rect(SCREEN_SIZE + 0, SCREEN_SIZE + 50, 50, 50)
     # Draw the text save on the button.
-    text, text_rect = FONT.render("Save", True, (0, 0, 0))
-    save_button.blit(text, text_rect)
-    save_button_rect.center = (SCREEN_SIZE + 100, 25)
+    text, _ = FONT.render("Save", True, (0, 0, 0))
+    save_button.blit(text, save_button_rect.center)
+
+    # Draw a clear all button.
+    clear_button = pygame.Surface((50, 50))
+    clear_button.fill((255, 0, 0))
+    clear_button_rect = pygame.rect.Rect(SCREEN_SIZE + 50, SCREEN_SIZE + 50, 50, 50)
+    # Draw the text clear on the button.
+    text, _ = FONT.render("Clear", True, (0, 0, 0))
+    clear_button.blit(text, clear_button_rect.center)
 
     id_assigner = IdAssigner()
     # Make sure we don't reassign IDs which are already in use.
@@ -229,6 +307,8 @@ def edit_scenario(scenario: Scenario) -> Scenario:
         display._screen.blit(
             card_panel, (50, SCREEN_SIZE - 200)
         )  # pylint: disable=protected-access
+        display._screen.blit(save_button, save_button_rect)
+        display._screen.blit(clear_button, clear_button_rect)
 
         # Display which card parameters are selected, and draw the card around the mouse.
         if active_card is not None:
@@ -288,6 +368,17 @@ def edit_scenario(scenario: Scenario) -> Scenario:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if save_button_rect.collidepoint(event.pos):
                     return scenario
+                if clear_button_rect.collidepoint(event.pos):
+                    logger.info(f"Clearing tile {i}")
+                    for i, tile in enumerate(scenario.map.tiles):
+                        tile.cell.boundary = hex.HexBoundary(0)
+                        tile.cell.layer = 0
+                        tile.cell.height = LayerToHeight(tile.cell.layer)
+                        scenario.map.tiles[i] = dataclasses.replace(
+                            tile,
+                            asset_id=AssetId.GROUND_TILE,
+                        )
+                    continue
 
                 # Check for tile tooltip clicks.
                 found_tool = False

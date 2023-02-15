@@ -168,6 +168,66 @@ class Config(DataClassJSONMixin):
                 "Lobby for human-bot games. Humans authenticated by google.",
                 40,
             ),
+            LobbyInfo(
+                "demo-lobby-1",
+                LobbyType.OPEN,
+                "DEMO LOBBY FOR STUDENTS",
+                10,
+            ),
+            LobbyInfo(
+                "demo-lobby-2",
+                LobbyType.OPEN,
+                "DEMO LOBBY FOR STUDENTS",
+                10,
+            ),
+            LobbyInfo(
+                "demo-lobby-3",
+                LobbyType.OPEN,
+                "DEMO LOBBY FOR STUDENTS",
+                10,
+            ),
+            LobbyInfo(
+                "demo-lobby-4",
+                LobbyType.OPEN,
+                "DEMO LOBBY FOR STUDENTS",
+                10,
+            ),
+            LobbyInfo(
+                "demo-lobby-5",
+                LobbyType.OPEN,
+                "DEMO LOBBY FOR STUDENTS",
+                10,
+            ),
+            LobbyInfo(
+                "demo-lobby-6",
+                LobbyType.OPEN,
+                "DEMO LOBBY FOR STUDENTS",
+                10,
+            ),
+            LobbyInfo(
+                "demo-lobby-7",
+                LobbyType.OPEN,
+                "DEMO LOBBY FOR STUDENTS",
+                10,
+            ),
+            LobbyInfo(
+                "demo-lobby-8",
+                LobbyType.OPEN,
+                "DEMO LOBBY FOR STUDENTS",
+                10,
+            ),
+            LobbyInfo(
+                "demo-lobby-9",
+                LobbyType.OPEN,
+                "DEMO LOBBY FOR STUDENTS",
+                10,
+            ),
+            LobbyInfo(
+                "demo-lobby-10",
+                LobbyType.OPEN,
+                "DEMO LOBBY FOR STUDENTS",
+                10,
+            ),
         ]
     )
 

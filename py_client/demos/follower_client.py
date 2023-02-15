@@ -4,7 +4,7 @@ from time import sleep
 
 import fire
 
-from py_client.game_endpoint import Action, Role
+from py_client.game_endpoint import Action
 from py_client.remote_client import RemoteClient
 
 logger = logging.getLogger(__name__)
@@ -40,6 +40,21 @@ def get_active_instruction(instructions):
     return None
 
 
+def get_actors(game_state):
+    (
+        _,
+        _,
+        _,
+        _,
+        actors,
+        _,
+    ) = game_state
+    if len(actors) == 1:
+        return (None, actors[0])
+    else:
+        return actors
+
+
 class NaiveFollower(object):
     def __init__(self, game_endpoint, pause_per_turn):
         self.instructions_processed = set()
@@ -50,66 +65,23 @@ class NaiveFollower(object):
 
     def run(self):
         try:
-            (
-                map,
-                cards,
-                turn_state,
-                instructions,
-                actors,
-                live_feedback,
-            ) = self.game.initial_state()
-            logger.info(f"Initial instructions: {instructions}")
-            if len(actors) == 1:
-                follower = actors[0]
-            else:
-                (leader, follower) = actors
-            if turn_state.turn != Role.FOLLOWER:
-                action = Action.NoopAction()
-            else:
-                action = self.get_action(
-                    self.game,
-                    map,
-                    cards,
-                    turn_state,
-                    instructions,
-                    actors,
-                    live_feedback,
-                )
-            logger.info(f"step({str(action)})")
-            (
-                map,
-                cards,
-                turn_state,
-                instructions,
-                actors,
-                live_feedback,
-            ) = self.game.step(action)
-
+            game_state = self.game.initial_state()
+            (_, _, turn_state, _, _, _) = game_state
+            # It's always the leader's turn first. Wait for follower turn by executing a noop.
+            action = Action.NoopAction()
+            game_state = self.game.step(action)
             while not self.game.over():
                 sleep(self.pause_per_turn)
-                action = self.get_action(
-                    self.game,
-                    map,
-                    cards,
-                    turn_state,
-                    instructions,
-                    (None, follower),
-                    live_feedback,
-                )
+                action = self.get_action(game_state)
                 logger.info(f"step({action})")
-                (
-                    map,
-                    cards,
-                    turn_state,
-                    instructions,
-                    actors,
-                    live_feedback,
-                ) = self.game.step(action)
+                game_state = self.game.step(action)
+                (_, _, turn_state, _, _, _) = game_state
             print(f"Game over. Score: {turn_state.score}")
         except Exception as e:
             self.exc = e
 
-    def get_action(self, game, map, cards, turn_state, instructions, actors, feedback):
+    def get_action(self, game_state):
+        (map, cards, turn_state, instructions, actors, feedback) = game_state
         if len(self.actions) == 0:
             active_instruction = get_active_instruction(instructions)
             actions = []
@@ -138,20 +110,20 @@ class NaiveFollower(object):
             raise self.exc
 
 
-def main(host, render=False, e_uuid: str = "", lobby="bot-sandbox", pause_per_turn=0):
-    logging.basicConfig(level=logging.INFO)
+def main(host, render=False, lobby="bot-sandbox", pause_per_turn=0):
+    # Create client and connect to server.
     client = RemoteClient(host, render, lobby_name=lobby)
     connected, reason = client.Connect()
     assert connected, f"Unable to connect: {reason}"
-    e_uuid = e_uuid.strip()
-    logger.info(f"UUID: {e_uuid}")
 
+    # Wait in the queue for a game to start.
     game, reason = client.JoinGame(
         timeout=timedelta(minutes=5),
         queue_type=RemoteClient.QueueType.FOLLOWER_ONLY,
-        e_uuid=e_uuid.strip(),
     )
     assert game is not None, f"Unable to join game: {reason}"
+
+    # Handles game logic.
     follower = NaiveFollower(game, pause_per_turn)
     follower.run()
 
