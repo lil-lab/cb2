@@ -15,7 +15,7 @@
 
 function WriteReplayLink(link_id, game_id) {
     var link = document.getElementById(link_id);
-    var url = new URL('/?lobby_name=replay-lobby&replay_game=true&game_id=' + game_id, window.location.origin);
+    var url = new URL('play?lobby_name=replay-lobby&replay_game=true&game_id=' + game_id, window.location.origin);
     link.href = url;
 }
 
