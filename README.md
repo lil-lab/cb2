@@ -12,6 +12,10 @@ Cereal Bar V2
     - [Client](#client)
     - [Deploying the server to a new machine.](#deploying-the-server-to-a-new-machine)
     - [Client API.](#client-api)
+    - [Scenario Rooms](#scenario-rooms)
+      - [Creating a scenario.](#creating-a-scenario)
+      - [Launching a scenario.](#launching-a-scenario)
+      - [Scenario (Map) Editor.](#scenario-map-editor)
   - [Deploying a WebGL Client](#deploying-a-webgl-client)
   - [Server Endpoints](#server-endpoints)
   - [Resources](#resources)
@@ -111,6 +115,66 @@ more.
 ### Client API.
 
 This repository contains a client API for writing agents which can interact with CB2. The client API is contained in directory `py_client/`, which contains a README with further information.
+
+### Scenario Rooms
+CB2 contains a scenario room to allow for research that wants to investigate custom scenarios in a controlled manner. Scenario rooms are single player (follower role only, currently), and allow for a script to attach via the Python API and monitor the game state. The script can at any time load a new map, or send instructions/feedback just as the leader would. We provide an in-game UI to turn an existing game into a scenario for later inspection.
+
+#### Creating a scenario.
+You can create a scenario from inside of a game by hitting escape and then "Save
+Scenario State". You must be in the `open` lobby to do this.
+
+Access the open lobby via endpoint `/play?lobby_name=open`.
+
+The scenario file itself is a JSON file that you can download. The JSON follows
+the schema of the `Scenario` dataclass defined in `server/messages/scenario.py`.
+
+Scenarios are currently follower-only. If it wasn't the followers turn when you
+created the scenario, then the follower will be unable to move. Make sure to
+edit the scenario file, specifically the `turn` field of the `turn_state` entry,
+to equal to the value `1` (follower). You may also want to give the follower a
+large number of moves, so that they can move freely about the scenario.
+
+#### Launching a scenario.
+You can launch a scenario by entering a room in the scenario lobby. Scenario rooms are 1 player, and you play as the follower.
+
+Access the scenario lobby via endpoint `/play?lobby_name=scenario-lobby`
+
+Then hit "Join Game". You'll immediately join an empty scenario. Load a scenario
+file by hitting esc and clicking on `Upload Scenario State`. If this item
+doesn't appear in the escape menu, reload the page and retry (this sometimes happens).
+
+The scenario should then load. If the file is invalid, then the server will end
+the game immediately.
+
+#### Scenario (Map) Editor.
+
+CB2 contains a map editor, which you can use to craft custom maps. These maps
+can be explored in a custom scenario. Launch the map editor with the command:
+
+```
+# Must be in python virtual env first!
+python3 -m server.map_tools.map_editor
+```
+
+No further command line parameters are needed. The editor will pop-up a GUI
+asking you for a scenario file. We recommend starting with the template map, a
+10x10 environment included in this repository at
+`server/map_tools/maps/template.json`.
+
+Upon closing the editor, it pops up another GUI to save the
+modified scenario -- Make sure to do this, or your changes will be lost. Hitting
+Q, Esc, or tab will close the editor, so be careful!
+
+There's currently no undo. If you made a change you want to undo, close the
+editor without saving, and then reload the scenario file.
+
+The green button in the UI is to save & quit.
+The red button in the UI clears the screen and replaces all tiles with green
+tiles.
+
+You can resize a scenario map by editing the "rows" and "cols" fields respectively
+of the scenario file with a text editor.
+
 
 Deploying a WebGL Client
 ------------------------
