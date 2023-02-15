@@ -445,7 +445,7 @@ def edit_scenario(scenario: Scenario) -> Scenario:
                 # Check for map clicks.
                 found_map_tile = False
                 for coordinate, tile in display.tile_coordinates_map().items():
-                    if distance(coordinate, event.pos) < 15:
+                    if distance(coordinate, event.pos) < 20:
                         # We clicked on a map tile. Set the tile to the active tool.
                         if active_tool is not None:
                             for i, map_tile in enumerate(scenario.map.tiles):

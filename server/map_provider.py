@@ -1054,7 +1054,7 @@ class MapProvider(object):
             for n in loc.neighbors():
                 (nr, nc) = n.to_offset_coordinates()
                 # If the neighbor cell is outside the map, add an edge to this cell's boundary.
-                if not (0 < nr < self._rows and 0 < nc < self._cols):
+                if not (0 <= nr < self._rows and 0 <= nc < self._cols):
                     self._tiles[i].cell.boundary.set_edge_between(loc, n)
 
     def add_layer_boundaries(self):
