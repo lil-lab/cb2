@@ -11,6 +11,7 @@ import server.leaderboard as leaderboard
 import server.schemas.defaults as defaults_db
 from server.db_tools import db_utils
 from server.schemas import base
+from server.schemas.google_user import GoogleUser
 from server.schemas.leaderboard import Username
 from server.schemas.mturk import Worker, WorkerExperience, WorkerQualLevel
 
@@ -55,7 +56,20 @@ def PrintUsage():
     print(
         "  ldrbrd qual --role=expert|leader|follower|none|noop --workers_file=<filepath>"
     )
+    print("  ldrbrd list_google")
     print("  ldrbrd help")
+
+
+def PrintGoogleAccounts(tutorial_progress: bool):
+    """Prints all google accounts."""
+    google_users = GoogleUser.select()
+    for google_user in google_users:
+        if tutorial_progress:
+            print(
+                f"email: {google_user.hashed_google_id}, tutorial_progress: {google_user.kv_store}"
+            )
+        else:
+            print(f"email: {google_user.hashed_google_id}")
 
 
 def ReverseHash(worker_hash, workers_file):
@@ -367,6 +381,8 @@ def main(
         PrintGoodFollowers(nosparklines, threshold)
     elif command == "qual":
         SetUserQualifications(role, workers_file)
+    elif command == "list_google":
+        PrintGoogleAccounts(tutorial_progress=True)
     else:
         PrintUsage()
 
