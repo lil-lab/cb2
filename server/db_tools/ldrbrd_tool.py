@@ -66,7 +66,7 @@ def PrintGoogleAccounts(tutorial_progress: bool):
     for google_user in google_users:
         if tutorial_progress:
             print(
-                f"email: {google_user.hashed_google_id}, tutorial_progress: {google_user.kv_store}"
+                f"id: {google_user.id} id_hash: {google_user.hashed_google_id}, tutorial_progress: {google_user.kv_store}"
             )
         else:
             print(f"email: {google_user.hashed_google_id}")
