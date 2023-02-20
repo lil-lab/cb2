@@ -3,8 +3,10 @@ import functools
 import hashlib
 import logging
 
+import cachecontrol
+import google.auth.transport.requests
+import requests
 from aiohttp import web
-from google.auth.transport import requests
 from google.oauth2 import id_token
 
 import server.schemas.google_user
@@ -21,6 +23,8 @@ logger = logging.getLogger(__name__)
 class GoogleAuthenticator:
     def __init__(self):
         self._auth_confirmations = {}  # ws: GoogleAuthConfirmation
+        self._session = requests.session()
+        self._cached_session = cachecontrol.CacheControl(self._session)
 
     def fill_auth_confirmations(self, ws: web.WebSocketResponse):
         if ws in self._auth_confirmations:
@@ -34,7 +38,9 @@ class GoogleAuthenticator:
         config = GlobalConfig()
         logger.info(f"Verifying Google auth token: {auth.token}")
         try:
-            request = requests.Request()
+            request = google.auth.transport.requests.Request(
+                session=self._cached_session
+            )
             request_with_timeout = functools.partial(request, timeout=2)
             # Run the following in a separate executor.
             idinfo = await to_thread(
