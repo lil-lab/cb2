@@ -68,7 +68,7 @@ class StateMachineDriver(object):
             while not self._state_machine.done():
                 self.step()
                 poll_period = time.time() - last_loop
-                if (poll_period) > 0.2:
+                if (poll_period) > 0.001:
                     logging.warn(
                         f"Game {self._room_id} slow poll period of {poll_period}s"
                     )
