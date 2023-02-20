@@ -45,7 +45,7 @@ from server.messages.tutorials import (
     TutorialResponseType,
 )
 from server.room import Room, RoomType
-from server.util import GetCommitHash, IdAssigner
+from server.util import GetCommitHash, IdAssigner, LatencyMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +117,7 @@ class Lobby(ABC):
         self._pending_replay_messages = {}  # {ws: replay_response}
         self._pending_scenario_messages = {}  # {ws: scenario_response}
         self._matchmaking_exc = None
+        self._latency_monitor = LatencyMonitor()
 
     @abstractmethod
     def get_leader_follower_match(
@@ -179,6 +180,9 @@ class Lobby(ABC):
 
     def lobby_comment(self):
         return self._lobby_comment
+
+    def latency_monitor(self):
+        return self._latency_monitor
 
     def register_game_logging_directory(self, dir) -> None:
         """Each lobby has its own log directory. Game logs are written to this directory."""

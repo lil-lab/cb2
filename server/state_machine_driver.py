@@ -14,13 +14,15 @@ class StateMachineDriver(object):
     StateMachineDriver is a class that is responsible for managing the game state machine
     """
 
-    def __init__(self, state_machine, room_id):
+    def __init__(self, state_machine, room_id, lobby=None):
         """
         Initializes the state machine driver.
         """
         self._state_machine = state_machine
 
         self._room_id = room_id
+
+        self._lobby = lobby
 
         # Message output. Each iteration loop, messages are serialized into per-player queues for sending.
         self._messages_out = {}  # Player ID -> Queue() of messages
@@ -61,14 +63,17 @@ class StateMachineDriver(object):
     async def run(self):
         try:
             last_loop = time.time()
+            latency_monitor = self._lobby.latency_monitor() if self._lobby else None
             self._state_machine.start()  # Initialize the state machine.
             while not self._state_machine.done():
                 self.step()
                 poll_period = time.time() - last_loop
-                if (poll_period) > 0.1:
+                if (poll_period) > 0.2:
                     logging.warn(
                         f"Game {self._room_id} slow poll period of {poll_period}s"
                     )
+                    if latency_monitor:
+                        latency_monitor.accumulate_latency(poll_period)
                 last_loop = time.time()
                 await asyncio.sleep(0)
             self._state_machine.on_game_over()

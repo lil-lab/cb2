@@ -119,6 +119,8 @@ class CountDownTimer(object):
 # Btw, everything in class LatencyMonitor (including the class and method
 # docstring comments) was written by ChatGPT. It took about 10-15 minutes of
 # interactive code review between me and ChatGPT to get to this point. Amazing!
+# ChatGPT also wrote the unit tests, however some extensive handholding and
+# human editing was needed there.
 class LatencyMonitor(object):
     """
     A class for monitoring and aggregating latency data.

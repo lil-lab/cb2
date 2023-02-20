@@ -103,7 +103,9 @@ class Room(object):
             game_state = None
             logger.error(f"Room started with invalid type {self._room_type}.")
             return
-        self._state_machine_driver = StateMachineDriver(game_state, self._id)
+        self._state_machine_driver = StateMachineDriver(
+            game_state, self._id, self._lobby
+        )
         if self._room_type not in [RoomType.PRESET_GAME, RoomType.REPLAY]:
             self._game_record.save()
         self._update_loop = None

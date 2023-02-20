@@ -236,6 +236,7 @@ def LobbyStatus(player_lobby):
         for ws in remotes
     ]
 
+    latency_monitor = player_lobby.latency_monitor()
     return {
         "type": repr(player_lobby.lobby_type()),
         "comment": player_lobby.lobby_comment(),
@@ -253,6 +254,8 @@ def LobbyStatus(player_lobby):
             player_lobby.get_room(room_id).debug_status()
             for room_id in player_lobby.room_ids()
         ],
+        "bucket_latencies": latency_monitor.bucket_latencies(),
+        "bucket_timestamps": latency_monitor.bucket_timestamps(),
     }
 
 
