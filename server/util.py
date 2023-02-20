@@ -9,6 +9,7 @@ import time
 import traceback
 from asyncio import events
 from datetime import datetime, timedelta
+from typing import List
 
 import orjson
 
@@ -113,6 +114,51 @@ class CountDownTimer(object):
         if self._end_time is None:
             return False
         return time.time() > self._end_time
+
+
+# Btw, everything in class LatencyMonitor (including the class and method
+# docstring comments) was written by ChatGPT. It took about 10-15 minutes of
+# interactive code review between me and ChatGPT to get to this point. Amazing!
+class LatencyMonitor(object):
+    """
+    A class for monitoring and aggregating latency data.
+
+    Latency data is accumulated into buckets of fixed duration. The total latency for each
+    bucket is recorded and can be retrieved as a time series.
+    """
+
+    def __init__(self, bucket_size_s: float = 60.0):
+        self.bucket_size_s = bucket_size_s
+        self.buckets = []
+        self.current_bucket = 0.0
+        self.last_bucket_time = time.time()
+
+    def accumulate_latency(self, latency_s: float):
+        """
+        Adds the specified latency (in seconds) to the current bucket. If the current bucket
+        duration has been exceeded, save it to history and start accumulating in a new bucket.
+        """
+        current_time = time.time()
+        elapsed_time = current_time - self.last_bucket_time
+
+        if elapsed_time >= self.bucket_size_s:
+            self.buckets.append((self.current_bucket, self.last_bucket_time))
+            self.current_bucket = 0.0
+            self.last_bucket_time = current_time
+
+        self.current_bucket += latency_s
+
+    def bucket_latencies(self) -> List[float]:
+        """
+        Returns a list of the total latency (in seconds) for each bucket.
+        """
+        return [bucket[0] for bucket in self.buckets]
+
+    def bucket_timestamps(self) -> List[float]:
+        """
+        Returns a list of the timestamps (in seconds since the epoch) for each bucket.
+        """
+        return [bucket[1] for bucket in self.buckets]
 
 
 # Asyncio.to_thread is a feature of python 3.9, however, we are using python 3.8

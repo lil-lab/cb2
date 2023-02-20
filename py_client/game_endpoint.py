@@ -762,7 +762,7 @@ class GameEndpoint(object):
             )
 
     def _handle_message(self, message):
-        logger.info(
+        logger.debug(
             f"Received message type {message_from_server.MessageType(message.type)} from server"
         )
         if message.type == message_from_server.MessageType.ACTIONS:
@@ -818,7 +818,6 @@ class GameEndpoint(object):
         elif message.type == message_from_server.MessageType.LIVE_FEEDBACK:
             self.live_feedback = message.live_feedback.signal
         elif message.type == message_from_server.MessageType.PROP_UPDATE:
-            logger.info(f"PROP UPDATE.")
             self._handle_prop_update(message.prop_update)
         elif message.type == message_from_server.MessageType.STATE_MACHINE_TICK:
             return
