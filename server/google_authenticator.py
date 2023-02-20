@@ -68,12 +68,16 @@ class GoogleAuthenticator:
             self._queue_auth_success(ws)
             # Register the user in the database if they don't exist.
             hashed_user_id = hashlib.sha256(idinfo["sub"].encode("utf-8")).hexdigest()
-            google_user = server.schemas.google_user.GoogleUser.get_or_create(
-                hashed_google_id=hashed_user_id,
-                qual_level=0,  # Unused for now.
-                experience=None,
-                kv_store="{}",
+            google_user_query = server.schemas.google_user.GoogleUser.select().where(
+                server.schemas.google_user.GoogleUser.hashed_google_id == hashed_user_id
             )
+            if not google_user_query.exists():
+                server.schemas.google_user.GoogleUser.create(
+                    hashed_google_id=hashed_user_id,
+                    qual_level=0,  # Unused for now.
+                    experience=None,
+                    kv_store="{}",
+                )
             if UsernameFromHashedGoogleUserId(hashed_user_id) is None:
                 SetDefaultGoogleUsername(hashed_user_id)
         except ValueError:

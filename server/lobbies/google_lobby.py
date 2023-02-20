@@ -42,14 +42,13 @@ class GoogleLobby(lobby.Lobby):
         if remote.google_id is None:
             return no_login_menu
         hashed_user_id = hashlib.sha256(remote.google_id.encode("utf-8")).hexdigest()
-        g_user = (
-            GoogleUser.select()
-            .where(GoogleUser.hashed_google_id == hashed_user_id)
-            .get()
+        g_user_query = GoogleUser.select().where(
+            GoogleUser.hashed_google_id == hashed_user_id
         )
-        kvals_parsed = json.loads(g_user.kv_store)
-        if g_user is None:
+        if not g_user_query.exists():
             return no_login_menu
+        g_user = g_user_query.get()
+        kvals_parsed = json.loads(g_user.kv_store)
 
         # Check the user kvals. If they've completed both the tutorials, then they can play.
         if kvals_parsed.get("leader_tutorial", False) and kvals_parsed.get(

@@ -47,4 +47,4 @@ repos:
       pass_filenames: false
       args: ["discover"]
 default_language_version:
-  python: python3.10.8
+  python: python3.10.9
