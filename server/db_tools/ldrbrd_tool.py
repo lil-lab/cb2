@@ -1,4 +1,5 @@
 import hashlib
+import json
 import pathlib
 import sys
 
@@ -31,6 +32,10 @@ COMMANDS = [
     "hopeless_leaders",  # Prints workers who have played > 10 lead games but have a low lead score. (bottom 30%)
     "prodigious_leaders",  # Prints workers who haven't played much (< 3 lead games), but have a high lead score. (top 30%)
     "good_followers",  # Prints workers who have played >= N follower games with average >= N points (threshold).
+    "qual",  # Prints workers who have a given qual level.
+    "list_google",  # List all google accounts.
+    "merge_google",  # Merge google accounts with the same ID hash.
+    "find_dups_google",  # Find google accounts with the same ID hash.
 ]
 
 
@@ -57,6 +62,8 @@ def PrintUsage():
         "  ldrbrd qual --role=expert|leader|follower|none|noop --workers_file=<filepath>"
     )
     print("  ldrbrd list_google")
+    print("  ldrbrd find_dups_google")
+    print("  ldrbrd merge_google")
     print("  ldrbrd help")
 
 
@@ -70,6 +77,73 @@ def PrintGoogleAccounts(tutorial_progress: bool):
             )
         else:
             print(f"email: {google_user.hashed_google_id}")
+
+
+def MergeGoogleHash(hashed_google_id: str):
+    """Takes the tutorial progress from all entries with the same hashed_google_id and merges them into one entry.
+
+    Deletes the duplicates.
+
+    The kv_store member of the GoogleUser class is a JSON string. It contains a
+    dictionary with the following keys:
+
+    "leader_tutorial": bool,
+    "follower_tutorial": bool
+    """
+    query = GoogleUser.select().where(GoogleUser.hashed_google_id == hashed_google_id)
+    if query.count() == 0:
+        print(f"Google account with id {hashed_google_id} not found.")
+        return
+    if query.count() == 1:
+        print(f"Google account with id {hashed_google_id} has no duplicates.")
+        return
+
+    leader_tutorial = False
+    follower_tutorial = False
+    for google_user in query:
+        kv_store = json.loads(google_user.kv_store)
+        leader_tutorial = leader_tutorial or kv_store.get("leader_tutorial", False)
+        follower_tutorial = follower_tutorial or kv_store.get(
+            "follower_tutorial", False
+        )
+        google_user.delete_instance()
+
+    GoogleUser.create(
+        hashed_google_id=hashed_google_id,
+        kv_store=json.dumps(
+            {"leader_tutorial": leader_tutorial, "follower_tutorial": follower_tutorial}
+        ),
+    )
+    print(f"Google account with id {hashed_google_id} merged.")
+
+
+def MergeGoogleAccounts():
+    """Merges all google accounts with the same hashed_google_id."""
+    google_users = GoogleUser.select()
+    # List of all unique hashes.
+    unique_hashes = set()
+    for google_user in google_users:
+        unique_hashes.add(google_user.hashed_google_id)
+    for hashed_google_id in unique_hashes:
+        MergeGoogleHash(hashed_google_id)
+
+
+def PrintDuplicateGoogleAccounts():
+    """Prints all google accounts with the same hashed_google_id."""
+    google_users = GoogleUser.select()
+    # List of all unique hashes.
+    unique_hashes = set()
+    for google_user in google_users:
+        unique_hashes.add(google_user.hashed_google_id)
+    for hashed_google_id in unique_hashes:
+        query = GoogleUser.select().where(
+            GoogleUser.hashed_google_id == hashed_google_id
+        )
+        if query.count() > 1:
+            print(f"Duplicate google account with id {hashed_google_id}:")
+            for google_user in query:
+                print(f"  id: {google_user.id} id_hash: {google_user.hashed_google_id}")
+    print("Done.")
 
 
 def ReverseHash(worker_hash, workers_file):
@@ -383,6 +457,10 @@ def main(
         SetUserQualifications(role, workers_file)
     elif command == "list_google":
         PrintGoogleAccounts(tutorial_progress=True)
+    elif command == "merge_google":
+        MergeGoogleAccounts()
+    elif command == "find_dups_google":
+        PrintDuplicateGoogleAccounts()
     else:
         PrintUsage()
 
