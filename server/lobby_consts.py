@@ -19,6 +19,10 @@ def IsMturkLobby(lobby_type):
     return lobby_type in [LobbyType.MTURK, LobbyType.FOLLOWER_PILOT]
 
 
+def IsGoogleLobby(lobby_type):
+    return lobby_type in [LobbyType.GOOGLE, LobbyType.GOOGLE_LEADER]
+
+
 def LobbyTypeFromString(data):
     if data == "LobbyType.MTURK":
         return LobbyType.MTURK

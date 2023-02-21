@@ -12,7 +12,7 @@ import peewee
 import server.schemas.clients as clients_db
 import server.schemas.mturk as mturk_db
 from server.config.config import GlobalConfig
-from server.lobby_consts import IsMturkLobby, LobbyType
+from server.lobby_consts import IsGoogleLobby, IsMturkLobby
 from server.messages.logs import (
     LogEntryFromIncomingMessage,
     LogEntryFromOutgoingMessage,
@@ -166,6 +166,7 @@ class Room(object):
         if remote != None and self._room_type != RoomType.PRESET_GAME:
             # If mturk..
             is_mturk = IsMturkLobby(self._lobby.lobby_type())
+            is_google = IsGoogleLobby(self._lobby.lobby_type())
             if is_mturk:
                 remote_record = (
                     clients_db.Remote.select()
@@ -194,7 +195,7 @@ class Room(object):
                     ) and remote_record.assignment is not None:
                         self._game_record.follow_assignment = remote_record.assignment
                         self._game_record.follower = remote_record.worker
-            elif self._lobby.lobby_type() == LobbyType.GOOGLE:
+            elif is_google:
                 google_id = remote.google_id
                 # SHA256 hash of the google id.
                 hashed_google_id = hashlib.sha256(google_id.encode("utf-8")).hexdigest()

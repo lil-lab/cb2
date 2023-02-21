@@ -6,7 +6,7 @@ import peewee
 
 import server.schemas.google_user as google_db
 from server.experience import InitExperience, update_follower_stats, update_leader_stats
-from server.lobby_consts import LobbyType
+from server.lobby_consts import IsGoogleLobby, LobbyType
 from server.messages.rooms import Role
 from server.schemas.mturk import WorkerExperience
 
@@ -92,7 +92,7 @@ def UpdateGoogleUserExperienceTable(game_record):
         return
     (lobby_name, lobby_type_string, game_type) = game_type_components
     lobby_type = LobbyType(int(lobby_type_string))
-    if lobby_type != LobbyType.GOOGLE:
+    if not IsGoogleLobby(lobby_type):
         # Only update the leader & follower experience table for google lobbies.
         logger.info(f"Game type {game_record.type} is not a google lobby game type.")
         return

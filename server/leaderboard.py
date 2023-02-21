@@ -69,6 +69,11 @@ def UpdateLeaderboard(game_record):
         follower_name = "<Bot>"
         if game_record.follower is not None:
             follower_name = LookupUsernameFromMd5sum(game_record.follower.hashed_id)
+    elif lobby_type == LobbyType.GOOGLE_LEADER:
+        leader_name = UsernameFromHashedGoogleUserId(
+            game_record.google_leader.hashed_google_id
+        )
+        follower_name = "<Bot>"
     else:
         leader_name = ""
         follower_name = ""
@@ -199,13 +204,11 @@ def SetGoogleUsername(user_id_shasum, username):
         leaderboard_db.Username.user == google_user
     )
     if google_account_select.count() == 0:
-        username_entry = leaderboard_db.Username.create(
-            username=username, user=google_user
-        )
-        username_entry.save()
+        leaderboard_db.Username.create(username=username, user=google_user)
     else:
-        google_account_select.get().username = username
-        google_account_select.get().save()
+        google_account = google_account_select.get()
+        google_account.username = username
+        google_account.save()
 
 
 def SetDefaultUsername(worker):
