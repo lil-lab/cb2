@@ -12,8 +12,9 @@ import server.leaderboard as leaderboard
 import server.schemas.defaults as defaults_db
 from server.db_tools import db_utils
 from server.schemas import base
+from server.schemas.game import Game
 from server.schemas.google_user import GoogleUser
-from server.schemas.leaderboard import Username
+from server.schemas.leaderboard import Leaderboard, Username
 from server.schemas.mturk import Worker, WorkerExperience, WorkerQualLevel
 
 COMMANDS = [
@@ -97,23 +98,80 @@ def MergeGoogleHash(hashed_google_id: str):
     if query.count() == 1:
         print(f"Google account with id {hashed_google_id} has no duplicates.")
         return
+    # Serialize the query before creating a new account, so we don't iterate over the new account.
+    users_list = list(query)
+
+    # Create a new GoogleUser with the merged tutorial progress.
+    merged_user = GoogleUser.create(
+        hashed_google_id=hashed_google_id,
+        kv_store=json.dumps({"leader_tutorial": False, "follower_tutorial": False}),
+    )
 
     leader_tutorial = False
     follower_tutorial = False
-    for google_user in query:
+    for google_user in users_list:
+        print(
+            f"Deleting {google_user.id} {google_user.hashed_google_id} {google_user.kv_store}"
+        )
         kv_store = json.loads(google_user.kv_store)
         leader_tutorial = leader_tutorial or kv_store.get("leader_tutorial", False)
         follower_tutorial = follower_tutorial or kv_store.get(
             "follower_tutorial", False
         )
-        google_user.delete_instance()
+        # Find all games this user played in, as either google_leader or
+        # google_follower. Point to the new record.
+        google_leader_games = Game.select().where(
+            Game.google_leader == google_user.hashed_google_id
+        )
+        google_follower_games = Game.select().where(
+            Game.google_follower == google_user.hashed_google_id
+        )
+        for game in google_leader_games:
+            print(
+                f"Updating game {game.id} {game.google_leader} {game.google_follower}"
+            )
+            game.google_leader_id = merged_user.id
+            game.save()
+        for game in google_follower_games:
+            print(
+                f"Updating game {game.id} {game.google_leader} {game.google_follower}"
+            )
+            game.google_follower_id = merged_user.id
+            game.save()
 
-    GoogleUser.create(
-        hashed_google_id=hashed_google_id,
-        kv_store=json.dumps(
-            {"leader_tutorial": leader_tutorial, "follower_tutorial": follower_tutorial}
-        ),
+        # Move all leaderboard entries for this user.
+        leaderboard_leader_entries = Leaderboard.select().where(
+            Leaderboard.google_leader_id == google_user.id,
+        )
+        leaderboard_follower_entries = Leaderboard.select().where(
+            Leaderboard.google_follower_id == google_user.id,
+        )
+        for leaderboard_entry in leaderboard_leader_entries:
+            print(
+                f"Updating leaderboard entry {leaderboard_entry.id} {leaderboard_entry.google_leader_id} {leaderboard_entry.google_follower_id}"
+            )
+            leaderboard_entry.google_leader_id = merged_user.id
+            leaderboard_entry.save()
+        for leaderboard_entry in leaderboard_follower_entries:
+            print(
+                f"Updating leaderboard entry {leaderboard_entry.id} {leaderboard_entry.google_leader_id} {leaderboard_entry.google_follower_id}"
+            )
+            leaderboard_entry.google_follower_id = merged_user.id
+            leaderboard_entry.save()
+
+        # Delete the username reference.
+        username_records = Username.select().where(Username.user_id == google_user.id)
+        for username_record in username_records:
+            username_record.delete_instance()
+
+        google_user.delete_instance(recursive=True)
+
+    # Update the merged user.
+    merged_user.kv_store = json.dumps(
+        {"leader_tutorial": leader_tutorial, "follower_tutorial": follower_tutorial}
     )
+    merged_user.save()
+
     print(f"Google account with id {hashed_google_id} merged.")
 
 
