@@ -572,6 +572,11 @@ class Lobby(ABC):
         self._rooms[id].stop()
         player_endpoints = list(self._rooms[id].player_endpoints())
         for ws in player_endpoints:
+            if ws not in self._remotes:
+                logger.warning(
+                    f"Player {ws} not found in remotes. Cannot remove from room."
+                )
+                continue
             room_id, player_id, _ = self._remotes[ws].as_tuple()
             self._rooms[id].remove_player(player_id, ws, disconnected=False)
             del self._remotes[ws]

@@ -20,6 +20,7 @@ from server.messages.logs import (
 from server.messages.rooms import Role
 from server.messages.scenario import Scenario
 from server.messages.tutorials import RoleFromTutorialName
+from server.messages.user_info import UserType
 from server.remote_table import GetRemote
 from server.replay_state import ReplayState
 from server.scenario_state import ScenarioState
@@ -195,7 +196,7 @@ class Room(object):
                     ) and remote_record.assignment is not None:
                         self._game_record.follow_assignment = remote_record.assignment
                         self._game_record.follower = remote_record.worker
-            elif is_google:
+            elif is_google and remote.user_type == UserType.GOOGLE:
                 google_id = remote.google_id
                 # SHA256 hash of the google id.
                 hashed_google_id = hashlib.sha256(google_id.encode("utf-8")).hexdigest()
