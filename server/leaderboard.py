@@ -180,17 +180,29 @@ def SetGoogleUsername(user_id_shasum, username):
     google_user = (
         GoogleUser.select().where(GoogleUser.hashed_google_id == user_id_shasum).get()
     )
+
+    # Check if the username is already taken.
     username_select = leaderboard_db.Username.select().where(
+        leaderboard_db.Username.username == username
+    )
+
+    if username_select.count() > 0:
+        # If it is, overwrite the "user" member to point to this google account.
+        username_select.get().user = google_user
+        username_select.get().save()
+        return
+
+    google_account_select = leaderboard_db.Username.select().where(
         leaderboard_db.Username.user == google_user
     )
-    if username_select.count() == 0:
+    if google_account_select.count() == 0:
         username_entry = leaderboard_db.Username.create(
             username=username, user=google_user
         )
         username_entry.save()
     else:
-        username_select.get().username = username
-        username_select.get().save()
+        google_account_select.get().username = username
+        google_account_select.get().save()
 
 
 def SetDefaultUsername(worker):

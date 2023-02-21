@@ -37,6 +37,7 @@ COMMANDS = [
     "list_google",  # List all google accounts.
     "merge_google",  # Merge google accounts with the same ID hash.
     "find_dups_google",  # Find google accounts with the same ID hash.
+    "delete_google",  # Delete a google account.
 ]
 
 
@@ -65,6 +66,7 @@ def PrintUsage():
     print("  ldrbrd list_google")
     print("  ldrbrd find_dups_google")
     print("  ldrbrd merge_google")
+    print("  ldrbrd delete_google --id=<google_id> --name=<google_name>")
     print("  ldrbrd help")
 
 
@@ -78,6 +80,60 @@ def PrintGoogleAccounts(tutorial_progress: bool):
             )
         else:
             print(f"email: {google_user.hashed_google_id}")
+
+
+def DeleteGoogleAccount(account_id, replacement_id=None):
+    """Deletes a google account."""
+    entry_query = GoogleUser.select().where(GoogleUser.id == account_id)
+    if entry_query.count() == 0:
+        print(f"Google account with id {account_id} not found.")
+        return
+    entry = entry_query.get()
+    # Find all games this user played in, as either google_leader or
+    # google_follower. Point to the new record.
+    google_leader_games = Game.select().where(
+        Game.google_leader == entry.hashed_google_id
+    )
+    google_follower_games = Game.select().where(
+        Game.google_follower == entry.hashed_google_id
+    )
+    for game in google_leader_games:
+        print(f"Updating game {game.id} {game.google_leader} {game.google_follower}")
+        game.google_leader_id = replacement_id
+        game.save()
+    for game in google_follower_games:
+        print(f"Updating game {game.id} {game.google_leader} {game.google_follower}")
+        game.google_follower_id = replacement_id
+        game.save()
+
+    # Move all leaderboard entries for this user.
+    leaderboard_leader_entries = Leaderboard.select().where(
+        Leaderboard.google_leader_id == entry.hashed_google_id
+    )
+    leaderboard_follower_entries = Leaderboard.select().where(
+        Leaderboard.google_follower_id == entry.hashed_google_id
+    )
+    for leaderboard_entry in leaderboard_leader_entries:
+        print(
+            f"Updating leaderboard entry {leaderboard_entry.id} {leaderboard_entry.google_leader_id} {leaderboard_entry.google_follower_id}"
+        )
+        leaderboard_entry.google_leader_id = replacement_id
+        leaderboard_entry.save()
+    for leaderboard_entry in leaderboard_follower_entries:
+        print(
+            f"Updating leaderboard entry {leaderboard_entry.id} {leaderboard_entry.google_leader_id} {leaderboard_entry.google_follower_id}"
+        )
+        leaderboard_entry.google_follower_id = replacement_id
+        leaderboard_entry.save()
+
+    # Delete the username reference.
+    username_records = list(
+        Username.select().where(Username.user_id == entry.hashed_google_id)
+    )
+    for username_record in username_records:
+        username_record.delete_instance(recursive=True)
+
+    entry.delete_instance(recursive=True)
 
 
 def MergeGoogleHash(hashed_google_id: str):
@@ -118,53 +174,7 @@ def MergeGoogleHash(hashed_google_id: str):
         follower_tutorial = follower_tutorial or kv_store.get(
             "follower_tutorial", False
         )
-        # Find all games this user played in, as either google_leader or
-        # google_follower. Point to the new record.
-        google_leader_games = Game.select().where(
-            Game.google_leader == google_user.hashed_google_id
-        )
-        google_follower_games = Game.select().where(
-            Game.google_follower == google_user.hashed_google_id
-        )
-        for game in google_leader_games:
-            print(
-                f"Updating game {game.id} {game.google_leader} {game.google_follower}"
-            )
-            game.google_leader_id = merged_user.id
-            game.save()
-        for game in google_follower_games:
-            print(
-                f"Updating game {game.id} {game.google_leader} {game.google_follower}"
-            )
-            game.google_follower_id = merged_user.id
-            game.save()
-
-        # Move all leaderboard entries for this user.
-        leaderboard_leader_entries = Leaderboard.select().where(
-            Leaderboard.google_leader_id == google_user.id,
-        )
-        leaderboard_follower_entries = Leaderboard.select().where(
-            Leaderboard.google_follower_id == google_user.id,
-        )
-        for leaderboard_entry in leaderboard_leader_entries:
-            print(
-                f"Updating leaderboard entry {leaderboard_entry.id} {leaderboard_entry.google_leader_id} {leaderboard_entry.google_follower_id}"
-            )
-            leaderboard_entry.google_leader_id = merged_user.id
-            leaderboard_entry.save()
-        for leaderboard_entry in leaderboard_follower_entries:
-            print(
-                f"Updating leaderboard entry {leaderboard_entry.id} {leaderboard_entry.google_leader_id} {leaderboard_entry.google_follower_id}"
-            )
-            leaderboard_entry.google_follower_id = merged_user.id
-            leaderboard_entry.save()
-
-        # Delete the username reference.
-        username_records = Username.select().where(Username.user_id == google_user.id)
-        for username_record in username_records:
-            username_record.delete_instance()
-
-        google_user.delete_instance(recursive=True)
+        DeleteGoogleAccount(google_user.id, merged_user.id)
 
     # Update the merged user.
     merged_user.kv_store = json.dumps(
@@ -519,6 +529,23 @@ def main(
         MergeGoogleAccounts()
     elif command == "find_dups_google":
         PrintDuplicateGoogleAccounts()
+    elif command == "delete_google":
+        # Delete all google accounts. Either via ID or name.
+        if id:
+            DeleteGoogleAccount(id)
+        elif name:
+            username_entry = Username.select().where(Username.username == name)
+            if username_entry.count() == 0:
+                print(f"Username {name} not found.")
+                return
+            username_entry = username_entry.get()
+            googler = GoogleUser.select().where(GoogleUser.id == username_entry.user)
+            if googler.count() == 0:
+                print(f"Google user {name} not found.")
+                return
+            googler = googler.get()
+            DeleteGoogleAccount(googler.id)
+            print(f"Deleted {name} with ID {googler.id}.")
     else:
         PrintUsage()
 
