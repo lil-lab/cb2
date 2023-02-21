@@ -28,6 +28,7 @@ class UserInfoFetcher:
         elif user_type == UserType.GOOGLE:
             hashed_id = hashlib.sha256(remote.google_id.encode("utf-8")).hexdigest()
             user_name = UsernameFromHashedGoogleUserId(hashed_id)
+            logger.info(f"RETURNING USERINFO FOR GOOGLE USER {user_name}")
         elif user_type == UserType.MTURK:
             # md5sum for mturkers.
             hashed_id = hashlib.md5(remote.mturk_id.encode("utf-8")).hexdigest()

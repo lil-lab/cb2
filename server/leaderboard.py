@@ -185,11 +185,14 @@ def SetGoogleUsername(user_id_shasum, username):
     username_select = leaderboard_db.Username.select().where(
         leaderboard_db.Username.username == username
     )
-
     if username_select.count() > 0:
         # If it is, overwrite the "user" member to point to this google account.
-        username_select.get().user = google_user
-        username_select.get().save()
+        username_entry = username_select.get()
+        logger.info(
+            f"Username {username} already taken. entry: {username_entry}, overwriting."
+        )
+        username_entry.user = google_user
+        username_entry.save()
         return
 
     google_account_select = leaderboard_db.Username.select().where(

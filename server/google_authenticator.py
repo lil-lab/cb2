@@ -79,6 +79,7 @@ class GoogleAuthenticator:
                     kv_store="{}",
                 )
             if UsernameFromHashedGoogleUserId(hashed_user_id) is None:
+                logger.info(f"Setting default username for {hashed_user_id}")
                 SetDefaultGoogleUsername(hashed_user_id)
         except ValueError:
             # Invalid token

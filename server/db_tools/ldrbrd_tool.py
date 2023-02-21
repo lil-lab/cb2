@@ -38,6 +38,7 @@ COMMANDS = [
     "merge_google",  # Merge google accounts with the same ID hash.
     "find_dups_google",  # Find google accounts with the same ID hash.
     "delete_google",  # Delete a google account.
+    "regen_google_usernames",  # Regenerate google usernames.
 ]
 
 
@@ -67,6 +68,7 @@ def PrintUsage():
     print("  ldrbrd find_dups_google")
     print("  ldrbrd merge_google")
     print("  ldrbrd delete_google --id=<google_id> --name=<google_name>")
+    print("  ldrbrd regen_google_usernames")
     print("  ldrbrd help")
 
 
@@ -80,6 +82,14 @@ def PrintGoogleAccounts(tutorial_progress: bool):
             )
         else:
             print(f"email: {google_user.hashed_google_id}")
+
+
+def RegenerateGoogleUsernames():
+    """Regenerates all google usernames."""
+    google_users = GoogleUser.select()
+    for google_user in google_users:
+        print(f"Regenerating username for {google_user.hashed_google_id}")
+        leaderboard.SetDefaultGoogleUsername(google_user.hashed_google_id)
 
 
 def DeleteGoogleAccount(account_id, replacement_id=None):
@@ -130,8 +140,13 @@ def DeleteGoogleAccount(account_id, replacement_id=None):
     username_records = list(
         Username.select().where(Username.user_id == entry.hashed_google_id)
     )
+    usernames = []
     for username_record in username_records:
+        usernames.append(username_record.username)
         username_record.delete_instance(recursive=True)
+    username_select = Username.select().where(Username.username << usernames)
+    if username_select.count() > 0:
+        print(f"Warning: {username_select.count()} usernames still exist.")
 
     entry.delete_instance(recursive=True)
 
@@ -181,6 +196,7 @@ def MergeGoogleHash(hashed_google_id: str):
         {"leader_tutorial": leader_tutorial, "follower_tutorial": follower_tutorial}
     )
     merged_user.save()
+    leaderboard.SetDefaultGoogleUsername(merged_user.hashed_google_id)
 
     print(f"Google account with id {hashed_google_id} merged.")
 
