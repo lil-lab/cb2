@@ -15,7 +15,7 @@ Cereal Bar V2
     - [Scenario Rooms](#scenario-rooms)
       - [Creating a scenario.](#creating-a-scenario)
       - [Launching a scenario.](#launching-a-scenario)
-      - [Scenario (Map) Editor- Cereal Bar V2](#scenario-map-editor--cereal-bar-v2)
+      - [Scenario (Map) Editor](#scenario-map-editor)
   - [Deploying a WebGL Client](#deploying-a-webgl-client)
   - [Server Endpoints](#server-endpoints)
   - [Resources](#resources)
@@ -149,25 +149,7 @@ doesn't appear in the escape menu, reload the page and retry (this sometimes hap
 The scenario should then load. If the file is invalid, then the server will end
 the game immediately.
 
-#### Scenario (Map) Editor- [Cereal Bar V2](#cereal-bar-v2)
-- [Cereal Bar V2](#cereal-bar-v2)
-  - [Intro](#intro)
-  - [Setup](#setup)
-    - [Cloning the repository.](#cloning-the-repository)
-    - [Download Submodules](#download-submodules)
-    - [Python Dependencies](#python-dependencies)
-    - [Pre-commit hooks.](#pre-commit-hooks)
-    - [Server](#server)
-    - [Client](#client)
-    - [Deploying the server to a new machine.](#deploying-the-server-to-a-new-machine)
-    - [Client API.](#client-api)
-    - [Scenario Rooms](#scenario-rooms)
-      - [Creating a scenario.](#creating-a-scenario)
-      - [Launching a scenario.](#launching-a-scenario)
-      - [Scenario (Map) Editor- Cereal Bar V2](#scenario-map-editor--cereal-bar-v2)
-  - [Deploying a WebGL Client](#deploying-a-webgl-client)
-  - [Server Endpoints](#server-endpoints)
-  - [Resources](#resources)
+#### Scenario (Map) Editor
 
 CB2 contains a map editor, which you can use to craft custom maps. These maps
 can be explored in a custom scenario. Launch the map editor with the command:
