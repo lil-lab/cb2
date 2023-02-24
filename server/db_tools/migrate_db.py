@@ -1,7 +1,6 @@
 # Adapted from merge_db.py.
 # Migrates the old database schema to the new one.
 
-
 import bisect
 import copy
 import logging
@@ -14,6 +13,7 @@ import peewee
 
 import server.card as card
 import server.messages.live_feedback as live_feedback_msg
+import server.messages.prop as prop_msg
 import server.messages.turn_state as turn_msg
 import server.schemas.defaults as defaults
 import server.schemas.util as schema_util
@@ -21,7 +21,6 @@ from server.messages.objective import ObjectiveMessage
 from server.messages.rooms import Role
 from server.schemas import base
 from server.schemas.cards import Card, CardSelections, CardSets
-from server.schemas.clients import Remote
 from server.schemas.event import Event, EventOrigin, EventType
 from server.schemas.game import (
     Game,
@@ -32,7 +31,6 @@ from server.schemas.game import (
     Turn,
 )
 from server.schemas.google_user import GoogleUser
-from server.schemas.leaderboard import Leaderboard, Username
 from server.schemas.map import MapUpdate
 from server.schemas.mturk import Assignment, Worker, WorkerExperience
 from server.schemas.prop import PropUpdate
@@ -119,6 +117,7 @@ def migrate_to_new_game(
         new_game.save(force_insert=True)
 
         map_updates = sorted(map_updates, key=lambda m: m.time)
+        game_turns = sorted(turn_states, key=lambda t: t.time)
         map_event = Event(
             game=new_game,
             type=EventType.MAP_UPDATE,
@@ -131,18 +130,44 @@ def migrate_to_new_game(
         map_event.save(force_insert=True)
 
         prop_updates = sorted(prop_updates, key=lambda p: p.time)
-        prop_event = Event(
-            game=new_game,
-            type=EventType.PROP_UPDATE,
-            server_time=prop_updates[0].time,
-            turn_number=0,
-            origin=EventOrigin.SERVER,
-            data=JsonSerialize(prop_updates[0].prop_data),
-            tick=-1,
-        )
-        prop_event.save(force_insert=True)
+        prop_data_in_map_update = False
+        if len(prop_updates) > 0:
+            prop_event = Event(
+                game=new_game,
+                type=EventType.PROP_UPDATE,
+                server_time=prop_updates[0].time,
+                turn_number=0,
+                origin=EventOrigin.SERVER,
+                data=JsonSerialize(prop_updates[0].prop_data),
+                tick=-1,
+            )
+            prop_event.save(force_insert=True)
+        else:
+            # Create prop updates from map data.
+            prop_data_in_map_update = True
+            for map_update in map_updates:
+                map_data = map_update.map_data
+                props = map_data.props
+                prop_update = prop_msg.PropUpdate(props=props)
+                # To determine the turn_number, get the most recent turn_state and
+                # use its turn_number.
+                turn_number = 0
+                for turn_state in game_turns:
+                    if turn_state.time < map_update.time:
+                        turn_number = turn_state.turn_number
+                    else:
+                        break
+                prop_event = Event(
+                    game=new_game,
+                    type=EventType.PROP_UPDATE,
+                    server_time=map_update.time,
+                    turn_number=turn_number,
+                    origin=EventOrigin.SERVER,
+                    data=JsonSerialize(prop_update),
+                    tick=-1,
+                )
+                prop_event.save(force_insert=True)
 
-        game_turns = sorted(turn_states, key=lambda t: t.time)
         card_sets = sorted(card_sets, key=lambda c: c.move.server_time)
         final_turn = game_turns[-1] if game_turns else None
         last_turn = None
@@ -152,9 +177,8 @@ def migrate_to_new_game(
             if not last_turn or (last_turn.role != turn_state.role):
                 event_type = EventType.START_OF_TURN
             moves_remaining = 10 if turn_state.role == Role.LEADER else 5
-            last_score_i = bisect.bisect(
-                card_sets, turn_state.time, key=lambda c: c.move.server_time
-            )
+            move_times = [c.move.server_time for c in card_sets]
+            last_score_i = bisect.bisect(move_times, turn_state.time)
             last_score = 0
             if last_score_i > 0:
                 last_score = card_sets[last_score_i - 1].score
@@ -239,25 +263,52 @@ def migrate_to_new_game(
             last_turn = turn_state
 
         initial_states = sorted(initial_states, key=lambda i: i.time)
-        initial_state = initial_states[0]
-        initial_state_obj = schema_util.InitialState(
-            leader_id=initial_state.leader_id,
-            follower_id=initial_state.follower_id,
-            leader_position=initial_state.leader_position,
-            leader_rotation_degrees=initial_state.leader_rotation_degrees,
-            follower_position=initial_state.follower_position,
-            follower_rotation_degrees=initial_state.follower_rotation_degrees,
-        )
-        initial_state_event = Event(
-            game=new_game,
-            type=EventType.INITIAL_STATE,
-            server_time=initial_state.time,
-            turn_number=0,
-            origin=EventOrigin.SERVER,
-            data=JsonSerialize(initial_state_obj),
-            tick=-1,
-        )
-        initial_state_event.save(force_insert=True)
+        initial_state_obj = None
+        initial_state_time = datetime.min
+        if len(initial_states) == 0:
+            # Get it from the position_before and orientation_before fields of the first actions for each role.
+            leader_move = [
+                move for move in game_moves if move.character_role == Role.LEADER
+            ]
+            follower_move = [
+                move for move in game_moves if move.character_role == Role.FOLLOWER
+            ]
+            if len(leader_move) == 0 or len(follower_move) == 0:
+                logger.warn(f"Unable to recover initial state for game {old_game.id}")
+            else:
+                first_leader_move = leader_move[0]
+                first_follower_move = follower_move[0]
+                initial_state_time = old_game.start_time
+                initial_state = schema_util.InitialState(
+                    leader_id=first_leader_move.action.id,
+                    follower_id=first_follower_move.action.id,
+                    leader_position=first_leader_move.position_before,
+                    leader_rotation=first_leader_move.orientation_before,
+                    follower_position=first_follower_move.position_before,
+                    follower_rotation=first_follower_move.orientation_before,
+                )
+        else:
+            initial_state = initial_states[0]
+            initial_state_obj = schema_util.InitialState(
+                leader_id=initial_state.leader_id,
+                follower_id=initial_state.follower_id,
+                leader_position=initial_state.leader_position,
+                leader_rotation_degrees=initial_state.leader_rotation_degrees,
+                follower_position=initial_state.follower_position,
+                follower_rotation_degrees=initial_state.follower_rotation_degrees,
+            )
+            initial_state_time = old_game.start_time
+        if initial_state_obj:
+            initial_state_event = Event(
+                game=new_game,
+                type=EventType.INITIAL_STATE,
+                server_time=initial_state_time,
+                turn_number=0,
+                origin=EventOrigin.SERVER,
+                data=JsonSerialize(initial_state_obj),
+                tick=-1,
+            )
+            initial_state_event.save(force_insert=True)
 
         game_instructions = sorted(instructions, key=lambda i: i.time)
         game_moves = sorted(game_moves, key=lambda m: m.server_time)
@@ -438,9 +489,8 @@ def migrate_to_new_game(
             #     .order_by(Turn.time.desc())
             #     .first()
             # )
-            last_turn_state_i = bisect.bisect(
-                game_turns, prop_update.time, key=lambda t: t.time
-            )
+            turn_times = [t.time for t in game_turns]
+            last_turn_state_i = bisect.bisect(turn_times, prop_update.time)
             last_turn_state = None
             if last_turn_state_i > 0:
                 last_turn_state = game_turns[last_turn_state_i - 1]
@@ -491,25 +541,48 @@ def migrate_to_new_game(
             # Then we find the card's ID from the prop update.
 
             # Find the next prop update with a timestamp less than selection.game_time.
-            prop_update_index = bisect.bisect(
-                prop_updates, selection.game_time, key=lambda p: p.time
-            )
-            if prop_update_index < 0:
+            prop_update = None
+            if not prop_data_in_map_update:
                 # Search previous prop updates.
-                logger.info(
-                    f"Couldn't find prop update for selection {selection} at time {selection.game_time}. Quitting."
+                prop_update_times = [p.time for p in prop_updates]
+                prop_update_index = bisect.bisect(
+                    prop_update_times, selection.game_time
                 )
-                import sys
+                if prop_update_index < 0:
+                    logger.info(
+                        f"Couldn't find prop update for selection {selection} at time {selection.game_time}. Quitting."
+                    )
+                    import sys
 
-                sys.exit(1)
-            if prop_update_index == len(prop_updates):
-                # Use the previous prop update.
-                prop_update_index -= 1
-            prop_update = prop_updates[prop_update_index]
+                    sys.exit(1)
+                if prop_update_index == len(prop_updates):
+                    # Use the previous prop update.
+                    prop_update_index -= 1
+                prop_update = prop_updates[prop_update_index]
+            else:
+                # Search previous map updates for prop data.
+                map_update_times = [m.time for m in map_updates]
+                map_update_index = bisect.bisect(map_update_times, selection.game_time)
+                if map_update_index < 0:
+                    logger.info(
+                        f"Couldn't find map update for selection {selection} at time {selection.game_time}. Quitting."
+                    )
+                    import sys
+
+                    sys.exit(1)
+                if map_update_index == len(map_updates):
+                    # Use the previous map update.
+                    map_update_index -= 1
+                map_update = map_updates[map_update_index]
+                prop_update = prop_msg.PropUpdate(map_update.map_data.props)
 
             # Find the matching card based on location, count, shape, and color.
             matching_card = None
-            for prop in prop_update.prop_data.props:
+            if not prop_data_in_map_update:
+                list_of_props = prop_update.prop_data.props
+            else:
+                list_of_props = prop_update.props
+            for prop in list_of_props:
                 card_obj = card.Card.FromProp(prop)
                 if (
                     card_obj.location == selection.card.location
@@ -521,8 +594,17 @@ def migrate_to_new_game(
                     break
             if matching_card is None:
                 # Use the previous prop update.
-                prop_update = prop_updates[prop_update_index - 1]
-                for prop in prop_update.prop_data.props:
+                if prop_data_in_map_update:
+                    prop_update = prop_msg.PropUpdate(
+                        map_updates[map_update_index - 1].map_data.props
+                    )
+                    # Named this prop_list to avoid shadowing list_of_props.
+                    prop_list = prop_update.props
+                else:
+                    prop_update = prop_updates[prop_update_index - 1]
+                    # Named this prop_list to avoid shadowing list_of_props.
+                    prop_list = prop_update.prop_data.props
+                for prop in prop_list:
                     card_obj = card.Card.FromProp(prop)
                     if (
                         card_obj.location == selection.card.location
@@ -558,7 +640,7 @@ def migrate_to_new_game(
             event.save(force_insert=True)
 
         game_card_sets = sorted(card_sets, key=lambda s: s.move.server_time)
-        for card_set in game_card_sets:
+        for i, card_set in enumerate(game_card_sets):
             origin = (
                 EventOrigin.LEADER
                 if card_set.move.character_role == "Role.LEADER"
@@ -587,26 +669,72 @@ def migrate_to_new_game(
             # Then we find the card's ID from the prop update.
 
             # Search for the most recent prop update with a timestamp less than card_set.move.server_time.
-            prop_update_index = bisect.bisect(
-                prop_updates, card_set.move.server_time, key=lambda p: p.time
-            )
-            prop_update = prop_updates[prop_update_index - 1]
+            if not prop_data_in_map_update:
+                prop_update_times = [p.time for p in prop_updates]
+                prop_update_index = bisect.bisect(
+                    prop_update_times, card_set.move.server_time
+                )
+                prop_update = prop_updates[prop_update_index - 1]
+                current_list_of_props = prop_update.prop_data.props
+            else:
+                map_update_times = [m.time for m in map_updates]
+                map_update_index = bisect.bisect(
+                    map_update_times, card_set.move.server_time
+                )
+                prop_update = prop_msg.PropUpdate(
+                    map_updates[map_update_index - 1].map_data.props
+                )
+                current_list_of_props = prop_update.props
             set_card_locations = []
             # Compare the next and previous prop updates to find the card that was gathered (removed) in the set.
-            for prop in prop_update.prop_data.props:
+            for prop in current_list_of_props:
                 card_obj = card.Card.FromProp(prop)
                 set_card_locations.append(card_obj.location)
 
             # Remove cards from the next prop update.
-            next_prop_update = prop_updates[prop_update_index]
-            for prop in next_prop_update.prop_data.props:
+            if not prop_data_in_map_update:
+                next_prop_update = prop_updates[prop_update_index]
+                next_prop_list = next_prop_update.prop_data.props
+            else:
+                if map_update_index == len(map_updates):
+                    print(
+                        f"At last map update. Time: {map_updates[map_update_index - 1].time}"
+                    )
+                    print(f"Card set time: {card_set.move.server_time}")
+                    print(f"Using card selections to determine cards instead.")
+                    # Let's use card selection times. Get all card selections since
+                    card_selections = [
+                        card
+                        for card in game_card_selections
+                        if card.move.server_time
+                        > game_card_sets[i - 1].move.server_time
+                    ]
+                    set_card_locations = []
+                    for card_selection in card_selections:
+                        location = card_selection.card.location
+                        if card_selection.type == "select":
+                            set_card_locations.append(location)
+                        else:
+                            set_card_locations.remove(location)
+                    # Don't iterate over next_prop_list. We already populated set_card_locations.
+                    next_prop_list = []
+                    assert (
+                        len(set_card_locations) == 3
+                    ), f"Expected 3 cards at set completion, got {len(set_card_locations)}. game: {new_game.id}"
+                else:
+                    next_map_update = map_updates[map_update_index]
+                    next_prop_update = prop_msg.PropUpdate(
+                        next_map_update.map_data.props
+                    )
+                    next_prop_list = next_prop_update.props
+            for prop in next_prop_list:
                 card_obj = card.Card.FromProp(prop)
                 if card_obj.location in set_card_locations:
                     set_card_locations.remove(card_obj.location)
 
             # Get the cards that were gathered in the set.
             set_cards = []
-            for prop in prop_update.prop_data.props:
+            for prop in current_list_of_props:
                 card_obj = card.Card.FromProp(prop)
                 if card_obj.location in set_card_locations:
                     set_cards.append(card_obj)
@@ -651,10 +779,11 @@ def main(old_db_path, new_db_path):
     SwitchToDatabase(old_db_path)
     old_db = base.GetDatabase()
 
+    min_game_id = 2000
+
     old_assignments = []
     old_workers = []
     old_google_users = []
-    old_remotes = []
     old_games = []
     old_turns = {}
     old_instructions = {}
@@ -665,11 +794,11 @@ def main(old_db_path, new_db_path):
     old_card_sets = {}
     old_card_selections = {}
     old_initial_states = {}
-    old_usernames = []
-    old_leaderboards = []
 
+    print(f"Loading data from {old_db_path}...")
     with old_db.connection_context():
         # Query all games.
+        print(f"Querying all games...")
         old_games = list(
             Game.select()
             .join(
@@ -685,17 +814,25 @@ def main(old_db_path, new_db_path):
                 ),
                 join_type=peewee.JOIN.LEFT_OUTER,
             )
+            .where(Game.id > min_game_id)
             .order_by(Game.id)
         )
 
-        for instruction in Instruction.select():
+        print(f"Querying all instructions...")
+        for instruction in Instruction.select().where(
+            Instruction.game_id > min_game_id
+        ):
             if instruction.game_id not in old_instructions:
                 old_instructions[instruction.game_id] = []
             old_instructions[instruction.game_id].append(instruction)
 
         # Query all moves.
+        print(f"Querying all moves...")
         for move in (
-            Move.select().join(Instruction, join_type=peewee.JOIN.LEFT_OUTER).select()
+            Move.select()
+            .where(Move.game_id > min_game_id)
+            .join(Instruction, join_type=peewee.JOIN.LEFT_OUTER)
+            .select()
         ):
             if move.game_id not in old_moves:
                 old_moves[move.game_id] = []
@@ -704,8 +841,11 @@ def main(old_db_path, new_db_path):
             old_moves[move.game_id].append(move)
 
         # Query all live feedback.
-        for live_feedback in LiveFeedback.select().join(
-            Instruction, join_type=peewee.JOIN.LEFT_OUTER
+        print(f"Querying all live feedback...")
+        for live_feedback in (
+            LiveFeedback.select()
+            .join(Instruction, join_type=peewee.JOIN.LEFT_OUTER)
+            .where(LiveFeedback.game_id > min_game_id)
         ):
             if live_feedback.game_id not in old_live_feedback:
                 old_live_feedback[live_feedback.game_id] = []
@@ -713,21 +853,39 @@ def main(old_db_path, new_db_path):
             old_live_feedback[live_feedback.game_id].append(live_feedback)
 
         # Query all maps.
-        for map_update in MapUpdate.select().join(Game).select():
+        print(f"Querying all maps...")
+        for map_update in (
+            MapUpdate.select()
+            .where(MapUpdate.game_id > min_game_id)
+            .join(Game)
+            .select()
+        ):
             if map_update.game_id not in old_maps:
                 old_maps[map_update.game_id] = []
             map_update.game = map_update.game
             old_maps[map_update.game_id].append(map_update)
 
-        for prop_update in PropUpdate.select().join(Game).select():
+        print(f"Querying all prop updates...")
+        for prop_update in (
+            PropUpdate.select()
+            .join(Game)
+            .select()
+            .where(PropUpdate.game_id > min_game_id)
+        ):
             if prop_update.game_id not in old_props:
                 old_props[prop_update.game_id] = []
             prop_update.game = prop_update.game
             old_props[prop_update.game_id].append(prop_update)
 
         # Query all card selections.
+        print(f"Querying all card selections...")
         for card_selection in (
-            CardSelections.select().join(Move).switch(CardSelections).join(Card)
+            CardSelections.select()
+            .join(Move)
+            .switch(CardSelections)
+            .join(Card)
+            .select()
+            .where(CardSelections.game_id > min_game_id)
         ):
             if card_selection.game_id not in old_card_selections:
                 old_card_selections[card_selection.game_id] = []
@@ -735,13 +893,20 @@ def main(old_db_path, new_db_path):
             card_selection.card = card_selection.card
             old_card_selections[card_selection.game_id].append(card_selection)
 
-        for turn in Turn.select().join(Game).select():
+        print(f"Querying all turns...")
+        for turn in Turn.select().join(Game).select().where(Turn.game_id > min_game_id):
             if turn.game_id not in old_turns:
                 old_turns[turn.game_id] = []
             turn.game = turn.game
             old_turns[turn.game_id].append(turn)
 
-        for init_state in InitialState.select().join(Game).select():
+        print(f"Querying all initial states...")
+        for init_state in (
+            InitialState.select()
+            .join(Game)
+            .select()
+            .where(InitialState.game_id > min_game_id)
+        ):
             if init_state.game_id not in old_initial_states:
                 old_initial_states[init_state.game_id] = []
             init_state.game = init_state.game
@@ -749,30 +914,35 @@ def main(old_db_path, new_db_path):
 
         # Query all card sets.
         set([])
-        for card_set in CardSets.select().join(Move).select():
+        print(f"Querying all cardsets...")
+        for card_set in (
+            CardSets.select().join(Move).select().where(CardSets.game_id > min_game_id)
+        ):
             if card_set.game_id not in old_card_sets:
                 old_card_sets[card_set.game_id] = []
             card_set.move = card_set.move
             old_card_sets[card_set.game_id].append(card_set)
 
+        print(f"Querying assignments...")
         old_assignments = Assignment.select()
+        print(f"Querying workers...")
         old_workers = Worker.select()
-        old_worker_experience = WorkerExperience.select()
-        old_google_users = GoogleUser.select()
-        old_remotes = Remote.select()
-        old_usernames = Username.select()
-        old_leaderboards = Leaderboard.select()
+        print(f"Querying worker experience...")
+        old_worker_experience = list(WorkerExperience.select())
+        print(f"Querying google users...")
+        old_google_users = list(GoogleUser.select())
 
-    non_tutorial_games = [game for game in old_games if "tutorial" not in game.type]
-    logger.info(f"Non tutorial games: {len(non_tutorial_games)}")
+    # Filter out tutorial games.
+    valid_old_games = [game for game in old_games if game.type]
+    non_tutorial_old_games = [
+        game for game in valid_old_games if "tutorial" not in game.type
+    ]
+    logger.info(f"Non tutorial games: {len(non_tutorial_old_games)}")
 
     # We've queried all tables. Print the size of each table.
     logger.info(f"Assignments: {len(old_assignments)}")
     logger.info(f"Workers: {len(old_workers)}")
     logger.info(f"Google Users: {len(old_google_users)}")
-    logger.info(f"Remotes: {len(old_remotes)}")
-    logger.info(f"Usernames: {len(old_usernames)}")
-    logger.info(f"Leaderboards: {len(old_leaderboards)}")
     logger.info(f"Worker Experience: {len(old_worker_experience)}")
     logger.info(f"Games: {len(old_games)}")
     logger.info(f"Turns: {len(old_turns)}")
@@ -784,22 +954,19 @@ def main(old_db_path, new_db_path):
     logger.info(f"Card Selections: {len(old_card_selections)}")
     logger.info(f"Initial States: {len(old_initial_states)}")
 
-    if 824 not in old_card_sets:
-        logger.info("No card sets for game 824 before DB switch. Quitting...")
-        logger.info(f"")
-        sys.exit(1)
-
     # Log each game on its own line and confirm that we should continue the
     # merge. Print the number of games too.
     logger.info(f"Found {len(old_games)} games in {old_db}")
     if input("Continue? (y/n)") != "y":
         sys.exit(1)
 
+    print(f"Creating new database at {new_db_path}...")
     SwitchToDatabase(new_db_path)
     new_db = base.GetDatabase()
     base.CreateTablesIfNotExists(defaults.ListDefaultTables())
 
-    # Migrate all the workers, assignments, google users and remotes.
+    # Migrate all the workers, assignments, google users.
+    print(f"Creating misc tables...")
     for worker_experience in old_worker_experience:
         worker_experience.save(force_insert=True)
 
@@ -812,21 +979,11 @@ def main(old_db_path, new_db_path):
     for google_user in old_google_users:
         google_user.save(force_insert=True)
 
-    for remote in old_remotes:
-        remote.save(force_insert=True)
-
-    for username in old_usernames:
-        username.save(force_insert=True)
-
-    for leaderboard in old_leaderboards:
-        leaderboard.id = None
-        leaderboard.save(force_insert=True)
-
     # Migrate all the games.
-    for game in old_games:
-        assert game.id in old_maps, f"Game {game.id} has no map!"
-        if "tutorial" in game.type:
-            logger.info(f"Skipping tutorial game {game.id} type: {game.type}...")
+    for game in non_tutorial_old_games:
+        if game.id not in old_maps:
+            print(f"Game {game.id} has no map! type: {game.type} score: {game.score}")
+            assert game.score == 0
             continue
         print(f"Migrating game {game.id}/{len(old_games)}...")
         migrate_to_new_game(

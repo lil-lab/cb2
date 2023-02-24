@@ -9,6 +9,14 @@ from mashumaro.mixins.json import DataClassJSONMixin
 
 logger = logging.getLogger()
 
+
+class LegacyHecsCoord(DataClassJSONMixin):
+    __slots__ = ("A", "R", "C")
+    A: int
+    R: int
+    C: int
+
+
 # HECS-style coordinate class.
 # https://en.wikipedia.org/wiki/Hexagonal_Efficient_Coordinate_System
 @dataclass
@@ -17,6 +25,10 @@ class HecsCoord(DataClassJSONMixin):
     a: int
     r: int
     c: int
+
+    @staticmethod
+    def from_legacy(legacy):
+        return HecsCoord(legacy.A, legacy.R, legacy.C)
 
     def origin():
         return HecsCoord(0, 0, 0)

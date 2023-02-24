@@ -4,7 +4,7 @@ import orjson
 from mashumaro.mixins.json import DataClassJSONMixin
 from peewee import TextField
 
-from server.hex import HecsCoord
+from server.hex import HecsCoord, LegacyHecsCoord
 
 
 class HecsCoordField(TextField):
@@ -19,7 +19,13 @@ class HecsCoordField(TextField):
     def python_value(self, db_val):
         if db_val is None:
             return None
-        return HecsCoord.from_json(db_val)
+        try:
+            return HecsCoord.from_json(db_val)
+        except Exception:
+            try:
+                return HecsCoord.from_legacy(LegacyHecsCoord.from_json(db_val))
+            except Exception:
+                return None
 
 
 @dataclass(frozen=True)
