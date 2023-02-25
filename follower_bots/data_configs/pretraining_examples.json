@@ -1,0 +1,21 @@
+{
+    "name": "Demonstration training config",
+    "comment": "This is a data analysis config. It contains the games used for training the model.",
+    "data_prefix": "./follower_bots/pretraining_data",
+    "analysis_game_id_ranges": [[2134, 2137], [2139, 2139], [2141, 2141], [2144, 2144], [2153, 2155], [2157, 2157], [2159, 2160], [2163, 2166], [2168, 2168], [2170, 2170], [2172, 2173], [2175, 2175], [2177, 2183], [2185, 2193], [2195, 2199], [2218, 2222], [2224, 2234], [2237, 2257], [2259, 2283], [2286, 2292], [2294, 2308], [2310, 2310], [2312, 2312], [2314, 2319], [2321, 2324], [2326, 2345], [2347, 2350], [2352, 2358], [2360, 2372], [2374, 2375]],
+    "map_cache_size": 0,
+    "card_covers": true,
+    "fog_start": 13,
+    "fog_end": 20,
+    "fps_limit": 30,
+    "live_feedback_enabled": true,
+    "sqlite_pragmas": [
+        ['cache_size', -1048576], # 1MB cache size. Negative implies kibibyte units.
+        ['journal_mode', 'wal'],  # Use WAL-mode
+        ['synchronous', 'off'],  # Use normal sync mode.
+        ['temp_store', 'memory'],  # Use memory for temp storage.
+        ['mmap_size', '30000000000'], # 30GB mmap size.
+        ['foreign_keys', 1],
+    ],
+    "google_oauth_client_id": "787231947800-ee2g4lptmfa0av2qb26n1qu60hf5j2fd.apps.googleusercontent.com"
+}
