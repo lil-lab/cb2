@@ -90,46 +90,6 @@ def get_args():
     return args
 
 
-def perform_step(game, action, game_action, past_actors, raw_instruction):
-    # Perform checks to avoid an action being dropped when the turn times out
-    while True:
-        map, cards, turn_state, instructions, actors, feedback = game.step(game_action)
-
-        # Check if the game state changed as a result of the step
-        if game.over():
-            return map, cards, turn_state, instructions, actors, feedback
-        instruction_over = raw_instruction.uuid != get_active_uuid(instructions)
-        if instruction_over:
-            return map, cards, turn_state, instructions, actors, feedback
-
-        # Edge Case 1: Follower takes a non-DONE action but doesn't move due to timeout
-        if action != ActionEnums["DONE"].value:
-            old_follower_agent = [
-                actor for actor in past_actors if actor.role().name == "FOLLOWER"
-            ][0]
-            old_follower_loc = old_follower_agent.location().to_offset_coordinates()[
-                ::-1
-            ]
-            old_follower_rot = old_follower_agent.heading_degrees() % 360
-
-            new_follower_agent = [
-                actor for actor in actors if actor.role().name == "FOLLOWER"
-            ][0]
-            new_follower_loc = new_follower_agent.location().to_offset_coordinates()[
-                ::-1
-            ]
-            new_follower_rot = new_follower_agent.heading_degrees() % 360
-
-            # Return if the follower has changed state. Otherwise, try again
-            if (
-                old_follower_loc != new_follower_loc
-                or old_follower_rot != new_follower_rot
-            ):
-                return map, cards, turn_state, instructions, actors, feedbacks
-
-        # Edge Case 2: Implicitly covered: DONE action performed but the instruction didn't change
-
-
 def main():
     args = get_args()
 
@@ -192,9 +152,7 @@ def main():
         game_action = follower_idx_to_game_action(action, raw_instruction.uuid)
 
         inference_time = time() - start_time
-        map, cards, turn_state, instructions, actors, feedback = perform_step(
-            game, action, game_action, actors, raw_instruction
-        )
+        map, cards, turn_state, instructions, actors, feedback = game.step(game_action)
         total_timesteps += 1
 
         # Reset states if instruction terminated or done

@@ -118,7 +118,7 @@ def load_follower_model_for_corpora_eval_ensembled(args):
     model_dirs = []
     for run_num, exp_name in enumerate(args.ensemble_model_names):
         # Add the argument directory
-        args_dir = os.path.join(arg.experiments_folder, exp_name, "logging")
+        args_dir = os.path.join(args.experiments_folder, exp_name, "logging")
         args_dirs.append(args_dir)
 
         # Add the model directory
