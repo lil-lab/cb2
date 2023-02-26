@@ -210,7 +210,7 @@ Demonstration Model
 We trained and deployed a baseline demonstration model that is publicly
 available online.  You can play against the model on our website, at
 [cb2.ai/][2]. For more information on the model, including a link to download
-the weights, see the readme at `server/follower_bots/README.md`.
+the weights, see the readme at `follower_bots/README.md`.
 
 Dataset
 -------
