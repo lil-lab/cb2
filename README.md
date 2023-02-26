@@ -18,6 +18,8 @@ Cereal Bar V2
       - [Scenario (Map) Editor](#scenario-map-editor)
   - [Deploying a WebGL Client](#deploying-a-webgl-client)
   - [Server Endpoints](#server-endpoints)
+  - [Demonstration Model](#demonstration-model)
+  - [Dataset](#dataset)
   - [Resources](#resources)
 
 Intro
@@ -192,9 +194,6 @@ This launches a headless version of Unity which builds a WebGL client and moves 
 
 Upon completion of this command, one may launch the server and access the client via ```0.0.0.0:8080/WebGL/index.html```. The old build of the client is preserved at  `server/www/OLD_WebGL`.
 
-[0]: https://github.com/lil-lab/cerealbar
-[1]: https://git-lfs.github.com
-
 Server Endpoints
 ----------------
 
@@ -205,9 +204,36 @@ Server Endpoints
 | `/player_endpoint`   | Websocket endpoint for communication with clients.    |
 | `/assets/{asset_id}` | Currently unused mechanism to obscurely serve assets. |
 
+Demonstration Model
+-------------------
+
+We trained and deployed a baseline demonstration model that is publicly
+available online.  You can play against the model on our website, at
+[cb2.ai/][2]. For more information on the model, including a link to download
+the weights, see the readme at server/follower_bots/README.md.
+
+Dataset
+-------
+
+We are releasing a dataset of 560 games collected on Amazon mechanical turk. These are in 3 sections:
+
+185 human-human games used to train the demonstration model
+187 human-human games collected deploying the demo model on AWS mech turk.
+188 human-model games collected deploying the demo model on AWS mech turk.
+
+The dataset is [available for download here][3]. For data format documentation,
+see our well-documentated schema definition at server/schemas/event.py. JSON files
+are serialized from the Sqlite database, and contain the same schema.
+
 Resources
 ---------
 
 `resources.txt`: Links to resources that were useful in development of this game.
 
 `guidelines.txt`: Guiding thoughts on style, code review, and source code management. Always up for generous interpretation and change.
+
+
+[0]: https://github.com/lil-lab/cerealbar
+[1]: https://git-lfs.github.com
+[2]: https://cb2.ai/
+[3]: https://lil.nlp.cornell.edu/resources/cb2-base/cb2-base-data.tar.bz2

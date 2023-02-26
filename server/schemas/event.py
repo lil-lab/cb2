@@ -1,4 +1,5 @@
-""" This file defines the schema for CB2 games in the database.
+""" This file defines the Event schema, which is used to store game events in
+    the database.
 
     It also serves as documentation of our data format. All JSON data files
     contain serialized Event objects generated via server/db_tools/db_to_json.py
