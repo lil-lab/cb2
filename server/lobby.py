@@ -634,6 +634,7 @@ class Lobby(ABC):
         logger.info(f"Creating replay room for {player}.")
 
         # Setup room log directory.
+        game_db.Game.select()
         game_record = game_db.Game.select().where(game_db.Game.id == game_id).get()
 
         # Create room.
