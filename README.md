@@ -217,9 +217,11 @@ Dataset
 
 We are releasing a dataset of 560 games collected on Amazon mechanical turk. These are in 3 sections:
 
+```
 185 human-human games used to train the demonstration model
 187 human-human games collected deploying the demo model on AWS mech turk.
 188 human-model games collected deploying the demo model on AWS mech turk.
+```
 
 The dataset is [available for download here][3]. For data format documentation,
 see our well-documentated schema definition at server/schemas/event.py. JSON files
