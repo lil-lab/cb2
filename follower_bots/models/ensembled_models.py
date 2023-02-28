@@ -39,16 +39,10 @@ def load_follower_model(args, args_dir, model_dir, load_best=True):
 
 @ray.remote
 class FollowerModelWrapper:
-    def __init__(self, args, args_dir, model_dir, model_name=None):
-        if model_name is None:
-            self.follower, _, _ = load_follower_model(
-                args, args_dir, model_dir, load_best=True
-            )
-        else:
-            base_path = os.path.join('follower_bots', 'experiments', 'pretraining',
-                                     'deployment_models', f'follower_{models_name}.pt')
-            self.follower = torch.load(base_path).to(TORCH_DEVICE)
-            self.follower.device = TORCH_DEVICE
+    def __init__(self, args, args_dir, model_dir):
+        self.follower, _, _ = load_follower_model(
+            args, args_dir, model_dir, load_best=True
+        )
 
     def forward(
         self,
@@ -114,16 +108,11 @@ class FollowerModelWrapper:
 
 
 class FollowerEnsemble:
-    def __init__(self, args, args_dirs, model_dirs, models_to_use=None):
-        if models_to_use is None:
-            self.followers = [
-                FollowerModelWrapper.remote(args, args_dirs[i], model_dirs[i])
-                for i in range(len(args_dirs))
-            ]
-        else:
-            self.followers = [FollowerModelWrapper.remote(args, None, None, model_name=model_name) for model_name in models_to_use]
-
-            
+    def __init__(self, args, args_dirs, model_dirs):
+        self.followers = [
+            FollowerModelWrapper.remote(args, args_dirs[i], model_dirs[i])
+            for i in range(len(args_dirs))
+        ]            
         self.ensembling_strat = args.ensembling_strat
 
     # Forward pass with ensembled models

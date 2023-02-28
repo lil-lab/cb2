@@ -142,24 +142,8 @@ def load_follower_model_for_corpora_eval_standard(args):
     follower, _, _ = load_follower_model(args, args_dir, model_dir, load_best=True)
     return follower
 
-
-def load_follower_model_from_binaries(args, models_to_use):
-    if len(models_to_use) == 1:
-        base_path = os.path.join('follower_bots', 'experiments', 'pretraining',
-                                 'deployment_models', f'follower_{models_to_use[0]}.pt')
-        follower = torch.load(base_path).to(TORCH_DEVICE)
-        follower.device = TORCH_DEVICE
-        return follower
-    elif len(models_to_use) > 1:
-        follower = FollowerEnsemble(args, None, None, deployment_models=models_to_use)
-    else:
-        print("Expected to be given at least one model to use")
-        assert(False)
-
 def load_follower_model_for_corpora_eval(args):
     "ensembled" if args.use_ensembling else "normal"
-    if args.use_deployment_models:
-        return load_follower_model_from_binaries(args, args.deployment_models_to_use)
     if args.use_ensembling:
         return load_follower_model_for_corpora_eval_ensembled(args)
     else:

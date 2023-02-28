@@ -72,12 +72,6 @@ def get_args():
         help="What ensembling strategy to use for ensembling",
     )
 
-    # Demonstration model arguments
-    parser.add_argument('--use_deployment_models', action='store_true',
-                        help="If set, will load the models used in deployment")
-    parser.add_argument('--deployment_models_to_use', type=str, nargs="*",
-                        help="Expects a list of strings of the form model_{model_number}")
-
     # Demo arguments
     parser.add_argument(
         "--e_uuid",
