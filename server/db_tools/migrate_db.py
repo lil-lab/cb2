@@ -54,6 +54,9 @@ def SwitchToDatabase(db):
     base.ConnectDatabase()
 
 
+TICK_TIME_DELTA = timedelta(milliseconds=5)
+
+
 def FindMatchingCardProp(prop_update: PropUpdate, candidate: Card):
     # Find the matching card based on location, count, shape, and color.
     matching_card = None
@@ -353,7 +356,7 @@ def migrate_to_new_game(
                 type=EventType.INSTRUCTION_ACTIVATED,
                 server_time=event_first_move.server_time
                 if event_first_move
-                else instr_sent_event.server_time,
+                else instr_sent_event.server_time + TICK_TIME_DELTA,
                 turn_number=event_first_move.turn_number
                 if event_first_move
                 else instr_sent_event.turn_number,
@@ -366,13 +369,14 @@ def migrate_to_new_game(
             instr_activated_event.save(force_insert=True)
             if instruction.turn_completed != -1:
                 time_done = datetime.max
-                if instruction.turn_completed in time_per_turn:
-                    time_done = time_per_turn[instruction.turn_completed]
-                if event_last_move and event_last_move.server_time > time_done:
+                # NOTES: First, default to event_last_move. Then, if none exists, use
+                # time_per_turn, but use the start of the turn, not the end
+                # since other instructions might have happened that turn.
+                if event_last_move:
                     time_done = event_last_move.server_time
-                if time_done == datetime.max:
-                    time_done = instr_sent_event.server_time
-                # Use Action DONE for newer games
+                else:
+                    time_done = instr_activated_event.server_time + TICK_TIME_DELTA
+                # Use event INSTRUCTION_DONE for newer games
                 instr_done_event = Event(
                     game=new_game,
                     type=EventType.INSTRUCTION_DONE,
@@ -389,12 +393,10 @@ def migrate_to_new_game(
                 instr_done_event.save(force_insert=True)
             elif instruction.turn_cancelled != -1:
                 time_cancelled = datetime.max
-                if instruction.turn_completed in time_per_turn:
-                    time_cancelled = time_per_turn
-                if event_last_move and event_last_move.server_time > time_cancelled:
+                if event_last_move:
                     time_cancelled = event_last_move.server_time
-                if time_cancelled == datetime.max:
-                    time_cancelled = instr_sent_event.server_time
+                else:
+                    time_cancelled = instr_activated_event.server_time + TICK_TIME_DELTA
                 instr_cancelled_event = Event(
                     game=new_game,
                     type=EventType.INSTRUCTION_CANCELLED,
@@ -767,7 +769,7 @@ def migrate_to_new_game(
         ):
             if (
                 event.server_time - last_event_time
-            ).total_seconds() > 0.005 and last_event_time != datetime.min:
+            ) >= TICK_TIME_DELTA and last_event_time != datetime.min:
                 tick += 1
             event.tick = tick
             event.save()
