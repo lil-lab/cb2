@@ -933,8 +933,12 @@ class MapProvider(object):
         self._card_generator = CardGenerator(self._id_assigner)
 
         # Initialize fog from server config.
-        self._fog_start = GlobalConfig().fog_start
-        self._fog_end = GlobalConfig().fog_end
+        if GlobalConfig():
+            self._fog_start = GlobalConfig().fog_start
+            self._fog_end = GlobalConfig().fog_end
+        else:
+            self._fog_start = -1
+            self._fog_end = -1
 
         self.add_map_boundaries()
         self.add_layer_boundaries()

@@ -76,9 +76,9 @@ class NaiveFollower(threading.Thread):
             return Action.RandomMovementAction()
 
 
-def PlayGame(coordinator, i_uuid="", log_to_db: bool = True, slow: bool = False):
-    if len(i_uuid) > 0:
-        game_name = coordinator.CreateGameFromDatabase(i_uuid)
+def PlayGame(coordinator, e_uuid="", log_to_db: bool = True, slow: bool = False):
+    if len(e_uuid) > 0:
+        game_name = coordinator.CreateGameFromDatabase(e_uuid)
     else:
         game_name = coordinator.CreateGame(log_to_db=log_to_db)
     endpoint_pair = EndpointPair(coordinator, game_name)
@@ -138,10 +138,11 @@ def PlayGame(coordinator, i_uuid="", log_to_db: bool = True, slow: bool = False)
 
 def main(
     config_filepath="server/config/local-covers-config.yaml",
-    instruction_uuid="",
+    event_uuid="",
     profile=False,
     num_games=10,
     slow: bool = False,
+    log_to_db: bool = False,
 ):
     nest_asyncio.apply()
     # Disabling most logs improves performance by about 50ms per game.
@@ -156,7 +157,7 @@ def main(
     # If profile=True, play only 1 game, but import viztracer and save the trace to cb2-local.prof.
     if profile:
         with VizTracer(output_file="cb2-local-prof.json", tracer_entries=10000000):
-            score, duration = PlayGame(coordinator, instruction_uuid)
+            score, duration = PlayGame(coordinator, event_uuid)
         logger.info(f"Game over. Score: {score}, Duration: {duration}")
         return
 
@@ -164,7 +165,9 @@ def main(
         logger.info(
             f"========================== STARTING GAME {i} =========================="
         )
-        score, duration = PlayGame(coordinator, instruction_uuid, slow=slow)
+        score, duration = PlayGame(
+            coordinator, event_uuid, slow=slow, log_to_db=log_to_db
+        )
         logger.info(f"Game over. Score: {score}, Duration: {duration}")
         scores.append(score)
         durations.append(duration)
