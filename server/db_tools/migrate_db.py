@@ -5,7 +5,7 @@ import bisect
 import copy
 import logging
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import fire
 import orjson
@@ -315,6 +315,8 @@ def migrate_to_new_game(
 
         game_instructions = sorted(instructions, key=lambda i: i.time)
         game_moves = sorted(game_moves, key=lambda m: m.server_time)
+        game_card_selections = sorted(card_selections, key=lambda s: s.game_time)
+        game_card_sets = sorted(card_sets, key=lambda s: s.move.server_time)
         event_per_i_uuid = {}
 
         # Traverse instructions backwards. Propagate cancellations back to instructions that were marked as neither DONE nor CANCELLED.
@@ -374,6 +376,44 @@ def migrate_to_new_game(
                 # since other instructions might have happened that turn.
                 if event_last_move:
                     time_done = event_last_move.server_time
+
+                    # Check if a card selection or set event occurred after the last move and before next move
+                    moves_after_last = [
+                        move
+                        for move in game_moves
+                        if move.server_time > event_last_move.server_time
+                    ]
+                    move_after_last = (
+                        moves_after_last[0] if len(moves_after_last) != 0 else None
+                    )
+
+                    next_selection = [
+                        sel
+                        for sel in game_card_selections
+                        if sel.game_time >= event_last_move.server_time
+                    ]
+                    if move_after_last is not None:
+                        next_selection = [
+                            sel
+                            for sel in next_selection
+                            if sel.game_time < move_after_last.server_time
+                        ]
+                    if len(next_selection) != 0:
+                        time_done = max(time_done, next_selection[0].game_time)
+
+                    next_set = [
+                        s
+                        for s in game_card_sets
+                        if s.move.server_time >= event_last_move.server_time
+                    ]
+                    if move_after_last is not None:
+                        next_set = [
+                            s
+                            for s in next_set
+                            if s.move.server_time < move_after_last.server_time
+                        ]
+                    if len(next_set) != 0:
+                        time_done = max(time_done, next_set[0].move.server_time)
                 else:
                     time_done = instr_activated_event.server_time + TICK_TIME_DELTA
                 # Use event INSTRUCTION_DONE for newer games
@@ -519,7 +559,6 @@ def migrate_to_new_game(
                 )
                 prop_event.save(force_insert=True)
 
-        game_card_selections = sorted(card_selections, key=lambda s: s.game_time)
         for selection in game_card_selections:
             origin = (
                 EventOrigin.LEADER
@@ -641,7 +680,6 @@ def migrate_to_new_game(
             )
             event.save(force_insert=True)
 
-        game_card_sets = sorted(card_sets, key=lambda s: s.move.server_time)
         for i, card_set in enumerate(game_card_sets):
             origin = (
                 EventOrigin.LEADER

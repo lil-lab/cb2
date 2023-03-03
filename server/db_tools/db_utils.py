@@ -168,22 +168,38 @@ def high_percent_instructions_incomplete(game_events):
 
 
 def high_percent_cancelled_instructions(game_events):
-    # Compute the number of times the leader cancelled an active instruction.
-    # Cancellations that occurred on the same tick count as one cancellation.
-    instructions_activated = game_events.where(
-        Event.type == EventType.INSTRUCTION_ACTIVATED
-    )
-    instructions_cancelled = game_events.where(
-        Event.type == EventType.INSTRUCTION_CANCELLED
-    )
-    cancellation_ticks = set([instr.tick for instr in instructions_cancelled])
-    cancelled_instructions = len(cancellation_ticks)
-    total_active_instructions = len(instructions_activated)
+    # Compute the number of times the leader cancelled an active instruction
+    # where the follower also took an action
+    total_active_instructions = 0
+    cancelled_instructions = 0
+    all_instructions = game_events.where(Event.type == EventType.INSTRUCTION_SENT)
+    all_instructions = all_instructions.order_by(Event.server_time)
+
+    for instruction in all_instructions:        
+        # Check if the instruction was activated
+        activation_query = instruction.children.where(Event.type == EventType.INSTRUCTION_ACTIVATED)
+        if not activation_query.exists():
+            continue
+
+        # Check if the instruction has actions associated with it
+        actions = instruction.children.where(Event.type == EventType.ACTION,
+                                             Event.role == "Role.FOLLOWER")
+        if actions.count() == 0:
+            continue
+        total_active_instructions += 1
+
+        # Check if the instruction was cancelled
+        cancellation_query = instruction.children.where(Event.type == EventType.INSTRUCTION_CANCELLED)
+        if not cancellation_query.exists():
+            continue
+        cancelled_instructions += 1
+
     high_percent_instructions_cancelled = (
         cancelled_instructions / total_active_instructions >= 0.2
         if total_active_instructions > 0
         else True
     )
+
     return high_percent_instructions_cancelled
 
 
@@ -192,7 +208,8 @@ def follower_got_lost(game_events):
     game_instructions = game_events.where(Event.type == EventType.INSTRUCTION_SENT)
     follower_got_lost = False
     for instruction in game_instructions:
-        moves = game_events.where(Event.parent_event == instruction.id)
+        moves = game_events.where(Event.parent_event == instruction.id,
+                                  Event.type == EventType.ACTION)
         if moves.count() >= 25:
             follower_got_lost = True
             break
