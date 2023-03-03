@@ -66,6 +66,7 @@ class StateMachineDriver(object):
             latency_monitor = self._lobby.latency_monitor() if self._lobby else None
             self._state_machine.start()  # Initialize the state machine.
             while not self._state_machine.done():
+                # Run one iteration of the game loop.
                 self.step()
                 poll_period = time.time() - last_loop
                 if (poll_period) > 0.2:

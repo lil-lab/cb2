@@ -27,52 +27,26 @@ from server.messages import (
     live_feedback,
     message_from_server,
     message_to_server,
-    objective,
     state_sync,
 )
 from server.messages.action import ActionType, Color
-from server.messages.map_update import MapUpdate
-from server.messages.prop import Prop, PropUpdate
+from server.messages.prop import PropUpdate
 from server.messages.rooms import Role
 from server.messages.scenario import Scenario, ScenarioResponse, ScenarioResponseType
 from server.messages.state_sync import StateMachineTick
-from server.messages.turn_state import GameOverMessage, TurnState, TurnUpdate
+from server.messages.turn_state import GameOverMessage, TurnUpdate
+from server.state_utils import (
+    FOLLOWER_MOVES_PER_TURN,
+    FOLLOWER_SECONDS_PER_TURN,
+    FOLLOWER_TURN_END_DELAY_SECONDS,
+    LEADER_MOVES_PER_TURN,
+    LEADER_SECONDS_PER_TURN,
+    turn_reward,
+)
 from server.username_word_list import USERNAME_WORDLIST
 from server.util import CountDownTimer, JsonSerialize
 
-LEADER_MOVES_PER_TURN = 5
-FOLLOWER_MOVES_PER_TURN = 10
-
-LEADER_SECONDS_PER_TURN = 50
-FOLLOWER_SECONDS_PER_TURN = 15
-
-FOLLOWER_TURN_END_DELAY_SECONDS = 1
-
 logger = logging.getLogger(__name__)
-
-
-def turn_reward(score):
-    """Calculates the turn reward (# of turns added) for a given score."""
-    if score == 0:
-        return 5
-    elif score in [1, 2]:
-        return 4
-    elif score in [3, 4]:
-        return 3
-    elif score in [5, 6]:
-        return 2
-    elif score in [7, 8]:
-        return 1
-    else:
-        return 0
-
-
-def cumulative_turns_added(score):
-    """Calculates the cumulative extra turns added since the start of the game for a given score."""
-    turns = 0
-    for i in range(score):
-        turns += turn_reward(i)
-    return turns
 
 
 # The Cerealbar2 State Machine. This is the state machine that is used to drive the game.
@@ -90,144 +64,44 @@ class State(object):
     ):
         """Initialize the game from a given event.
 
+        This is used by the pyclient to launch a reconstructed game (training)
+        from a given event UUID in the database. This is used locally for
+        training. See py_client/local_game_coordinator.py for usage.
+
         Returns: (state_machine: State, failure_reason: str = "")
 
         If return value state_machine is none, the reason for failure is in failure_reason.
         """
         scenario = scenario_util.ReconstructScenarioFromEvent(event_uuid)
-        leader = None
-        follower = None
-        for actor_state in scenario.actor_state.actors:
-            if actor_state.actor_role == Role.LEADER:
-                leader = Actor.from_state(actor_state, realtime_actions)
-            elif actor_state.actor_role == Role.FOLLOWER:
-                follower = Actor.from_state(actor_state, realtime_actions)
-        if leader is None or follower is None:
-            return None, "Failed to find leader or follower in game."
         s = State(
             room_id,
             None,
             True,
-            scenario.map,
-            scenario.prop_update.props,
-            scenario.turn_state,
-            scenario.objectives,
-            [leader, follower],
+            scenario,
             realtime_actions=realtime_actions,
             log_to_db=False,
         )
         return s, ""
-
-    def _set_scenario(
-        self,
-        scenario: Scenario,
-        realtime_actions: bool = True,
-    ):
-        # Clear existing states.
-        self._instruction_history = deque()
-        self._turn_complete_queue = deque()
-        self._instruction_complete_queue = deque()
-        self._live_feedback_queue = deque()
-        self._preloaded_actors = {}
-        # Load in map & props.
-        props = scenario.prop_update.props
-        cards = [Card.FromProp(prop) for prop in props]
-        self._map_provider = MapProvider(MapType.PRESET, scenario.map, cards)
-        self._map_update = self._map_provider.map()
-        self._prop_update = self._map_provider.prop_update()
-        self._prop_update = map_utils.CensorCards(self._prop_update, None)
-        # Load in instructions.
-        self._instructions = deque(scenario.objectives)
-        # Load in actor states.
-        leader_id = None
-        follower_id = None
-        for actor_id, actor in self._actors.items():
-            if actor.role() == Role.LEADER:
-                leader_id = actor_id
-            elif actor.role() == Role.FOLLOWER:
-                follower_id = actor_id
-        for actor_state in scenario.actor_state:
-            if actor_state.actor_role == Role.LEADER:
-                if leader_id is None:
-                    continue
-                actor_state = dataclasses.replace(actor_state, actor_id=leader_id)
-                self._actors[leader_id] = Actor.from_state(
-                    actor_state, realtime_actions
-                )
-                self._leader = self._actors[leader_id]
-            elif actor_state.actor_role == Role.FOLLOWER:
-                if follower_id is None:
-                    continue
-                actor_state = dataclasses.replace(actor_state, actor_id=follower_id)
-                self._actors[follower_id] = Actor.from_state(
-                    actor_state, realtime_actions
-                )
-                self._follower = self._actors[follower_id]
-        # Mark everything as stale.
-        self._mark_map_stale()
-        self._mark_prop_stale()
-        self._mark_instructions_stale()
-        # Mark clients as desynced.
-        self.desync_all()
-        self._send_turn_state(scenario.turn_state)
-        self._self_initialize()
-
-    def _mark_map_stale(self):
-        for id in self._map_stale:
-            self._map_stale[id] = True
-
-    def _mark_prop_stale(self):
-        for id in self._prop_stale:
-            self._prop_stale[id] = True
-
-    def _get_scenario(self, player_id: int, scenario_id: str) -> Scenario:
-        props = [card.prop() for card in self._map_provider.cards()]
-        states = [actor.state() for actor in self._actors.values()]
-        state_sync_msg = state_sync.StateSync(
-            len(self._actors), states, player_id, self._actors[player_id].role()
-        )
-        return Scenario(
-            scenario_id,
-            self._map_provider.map(),
-            PropUpdate(props),
-            self._turn_state,
-            list(self._instructions),
-            state_sync_msg,
-        )
-
-    def _init_from_data(
-        self,
-        map,
-        props,
-        turn_state,
-        instructions,
-        actors,
-        realtime_actions: bool = False,
-    ):
-        self._game_recorder = GameRecorder(None, disabled=True)
-        scenario = Scenario(
-            "",
-            map,
-            PropUpdate(props),
-            turn_state,
-            instructions,
-            [actor.state() for actor in actors],
-        )
-        self._set_scenario(scenario, realtime_actions)
 
     def __init__(
         self,
         room_id,
         game_record,
         use_preset_data: bool = False,
-        map: MapUpdate = None,
-        props: List[Prop] = [],
-        turn_state: TurnState = None,
-        instructions: List[objective.ObjectiveMessage] = [],
-        actors: List[Actor] = [],
+        scenario: Scenario = None,
         log_to_db: bool = True,
         realtime_actions: bool = False,
     ):
+        """Initialize the game state.
+
+        Args:
+            room_id (str): Room id for this game. Unique string used in status page.
+            game_record (GameRecorder): Object to record game events to the database.
+            use_preset_data (bool): If true, init from provided preset data.
+            scenario (Scenario): Preset data. See server/messages/scenario.py.
+            log_to_db (bool): If true, log game events to the database.
+            realtime_actions (bool): Enables realtime actions. See server/actor.py.
+        """
         self._start_time = datetime.utcnow()
         self._room_id = room_id
 
@@ -296,9 +170,8 @@ class State(object):
         self._follower_turn_end_reason = ""
 
         if use_preset_data:
-            self._init_from_data(
-                map, props, turn_state, instructions, actors, realtime_actions
-            )
+            self._game_recorder = GameRecorder(None, disabled=True)
+            self._set_scenario(scenario, realtime_actions)
         else:
             # Records everything that happens in a game.
             self._game_recorder = (
@@ -1394,3 +1267,87 @@ class State(object):
             self._game_recorder.record_instruction_activated(self._instructions[0])
         for actor_id in self._actors:
             self._instructions_stale[actor_id] = True
+
+    def _set_scenario(
+        self,
+        scenario: Scenario,
+        realtime_actions: bool = True,
+    ):
+        """Modify current game state to match the given scenario. Wipes existing game state."""
+        # Clear existing states.
+        self._instruction_history = deque()
+        self._turn_complete_queue = deque()
+        self._instruction_complete_queue = deque()
+        self._live_feedback_queue = deque()
+        self._preloaded_actors = {}
+        # Load in map & props.
+        props = scenario.prop_update.props
+        cards = [Card.FromProp(prop) for prop in props]
+        self._map_provider = MapProvider(MapType.PRESET, scenario.map, cards)
+        self._map_update = self._map_provider.map()
+        self._prop_update = self._map_provider.prop_update()
+        self._prop_update = map_utils.CensorCards(self._prop_update, None)
+        # Load in instructions.
+        self._instructions = deque(scenario.objectives)
+        # Load in actor states.
+        leader_id = None
+        follower_id = None
+        for actor_id, actor in self._actors.items():
+            if actor.role() == Role.LEADER:
+                leader_id = actor_id
+            elif actor.role() == Role.FOLLOWER:
+                follower_id = actor_id
+        # If leader and follower are still None, then we need to create them.
+        if leader_id is None:
+            leader_id = self.create_actor(Role.LEADER)
+        if follower_id is None:
+            follower_id = self.create_actor(Role.FOLLOWER)
+        for actor_state in scenario.actor_state:
+            if actor_state.actor_role == Role.LEADER:
+                actor_state = dataclasses.replace(actor_state, actor_id=leader_id)
+                self._actors[leader_id] = Actor.from_state(
+                    actor_state, realtime_actions
+                )
+                self._leader = self._actors[leader_id]
+            elif actor_state.actor_role == Role.FOLLOWER:
+                actor_state = dataclasses.replace(actor_state, actor_id=follower_id)
+                self._actors[follower_id] = Actor.from_state(
+                    actor_state, realtime_actions
+                )
+                self._follower = self._actors[follower_id]
+        if self._leader is None:
+            logger.warn("Warning, scenario did not contain leader")
+        if self._follower is None:
+            logger.warn("Warning, scenario did not contain follower")
+        # Mark everything as stale.
+        self._mark_map_stale()
+        self._mark_prop_stale()
+        self._mark_instructions_stale()
+        # Mark clients as desynced.
+        self.desync_all()
+        self._send_turn_state(scenario.turn_state)
+        self._self_initialize()
+
+    def _get_scenario(self, player_id: int, scenario_id: str) -> Scenario:
+        """Convert the current game state into a scenario object, that can be saved to a file or passed to _set_scenario(...)."""
+        props = [card.prop() for card in self._map_provider.cards()]
+        states = [actor.state() for actor in self._actors.values()]
+        state_sync_msg = state_sync.StateSync(
+            len(self._actors), states, player_id, self._actors[player_id].role()
+        )
+        return Scenario(
+            scenario_id,
+            self._map_provider.map(),
+            PropUpdate(props),
+            self._turn_state,
+            list(self._instructions),
+            state_sync_msg,
+        )
+
+    def _mark_map_stale(self):
+        for id in self._map_stale:
+            self._map_stale[id] = True
+
+    def _mark_prop_stale(self):
+        for id in self._prop_stale:
+            self._prop_stale[id] = True
