@@ -59,6 +59,11 @@ public class HexGridManager
         Tile corner_2 = _grid[a, r, c];
         Tile corner_3 = _grid[a, r, 0];
         Tile corner_4 = _grid[0, 0, c];
+        if ((corner_1 == null) || (corner_2 == null) || (corner_3 == null) || (corner_4 == null))
+        {
+            _logger.Info("HexGrid not yet initialized. Returning vector3.zero");
+            return Vector3.zero;
+        }
         Vector3 center = 0.25f * (
             corner_1.Cell.Center() +
             corner_2.Cell.Center() +
@@ -82,6 +87,11 @@ public class HexGridManager
             return Vector3.zero;
         }
         Tile tile = _grid[hecs.a, hecs.r, hecs.c];
+        if (tile == null)
+        {
+            _logger.Warn("Tile not yet initialized. Returning (0, 0, 0). (" + i + ", " + j + ")");
+            return Vector3.zero;
+        }
         return tile.Cell.Center();
     }
 
