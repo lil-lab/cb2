@@ -48,6 +48,10 @@ public class HexCell
     private float Scale()
     {
         GameObject obj = GameObject.FindWithTag(HexGrid.TAG);
+        if (obj == null)
+        {
+            return 1.0f;
+        }
         HexGrid grid = obj.GetComponent<HexGrid>();
         return grid.Scale;
     }
