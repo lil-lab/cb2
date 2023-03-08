@@ -54,6 +54,8 @@ git submodule update
 
 ### Python Dependencies
 
+CB2 requires `Python 3.9` or higher.
+
 We recommend you setup a virtual environment for the python dependencies. Here's a quick intro:
 
 * Create the venv with: `python3 -m venv <env_name>` (run once).

@@ -331,7 +331,7 @@ def migrate_to_new_game(
                     ):
                         prev_instruction.turn_cancelled = instruction.turn_cancelled
 
-        for instruction in game_instructions:
+        for instr_index, instruction in enumerate(game_instructions):
             instr_sent_event = Event(
                 game=new_game,
                 type=EventType.INSTRUCTION_SENT,
@@ -348,74 +348,118 @@ def migrate_to_new_game(
             instr_sent_event.save(force_insert=True)
             event_per_i_uuid[instruction.uuid] = instr_sent_event
             event_moves = sorted(
-                [move for move in game_moves if move.instruction == instruction],
-                key=lambda m: m.server_time,
+                [
+                    (i, move)
+                    for i, move in enumerate(game_moves)
+                    if move.instruction == instruction
+                ],
+                key=lambda m: m[1].server_time,
             )
-            event_first_move = event_moves[0] if len(event_moves) > 0 else None
-            event_last_move = event_moves[-1] if len(event_moves) > 0 else None
-            instr_activated_event = Event(
-                game=new_game.id,
-                type=EventType.INSTRUCTION_ACTIVATED,
-                server_time=event_first_move.server_time
-                if event_first_move
-                else instr_sent_event.server_time + TICK_TIME_DELTA,
-                turn_number=event_first_move.turn_number
-                if event_first_move
-                else instr_sent_event.turn_number,
-                origin=EventOrigin.SERVER,
-                role="Role.FOLLOWER",
-                parent_event=instr_sent_event.id,
-                short_code=instruction.uuid,
-                tick=-1,
-            )
-            instr_activated_event.save(force_insert=True)
-            if instruction.turn_completed != -1:
-                time_done = datetime.max
-                # NOTES: First, default to event_last_move. Then, if none exists, use
-                # time_per_turn, but use the start of the turn, not the end
-                # since other instructions might have happened that turn.
-                if event_last_move:
-                    time_done = event_last_move.server_time
+            if len(event_moves) > 0:
+                (_, event_first_move) = event_moves[0]
+                (last_move_index, event_last_move) = event_moves[-1]
+            else:
+                (_, event_first_move) = -1, None
+                (last_move_index, event_last_move) = -1, None
 
-                    # Check if a card selection or set event occurred after the last move and before next move
-                    moves_after_last = [
-                        move
-                        for move in game_moves
-                        if move.server_time > event_last_move.server_time
-                    ]
-                    move_after_last = (
-                        moves_after_last[0] if len(moves_after_last) != 0 else None
+            # We need to recreate the instruction activation timestamp here,
+            # since the old database didn't store it accurately.
+            #
+            # To determine when an instruction is activated, we take the maximum of:
+            # - When the previous instruction was completed or cancelled.
+            # - When the current instruction was sent.
+            #
+            # We also check if the instruction was activated. It will always be except in these two cases:
+            # 1. The instruction was cancelled before it was activated. This can be detected by checking if the instruction was cancelled
+            #    within TIME_TICK_DELTA of the previous instruction.
+            # 2. The instruction was unactivated at the end of the game. This can be detected by checking if the previous instruction was
+            #    cancelled or completed, implying that this was activated.
+            time_activated = instr_sent_event.server_time + TICK_TIME_DELTA
+            instruction_activated = True  # Assume it was activated.
+            activation_event = None
+            if instr_index > 1:
+                previous_instruction = game_instructions[instr_index - 1]
+                last_instr_finished_query = Event.select().where(
+                    Event.short_code == previous_instruction.uuid,
+                    Event.type
+                    << [EventType.INSTRUCTION_DONE, EventType.INSTRUCTION_CANCELLED],
+                )
+                if last_instr_finished_query.exists():
+                    activation_event = last_instr_finished_query.get()
+                    time_activated = max(
+                        time_activated, activation_event.server_time + TICK_TIME_DELTA
                     )
+                    # If this and the previous instruction were cancelled in the same turn, then this instruction was never activated.
+                    if (
+                        previous_instruction.turn_cancelled
+                        == instruction.turn_cancelled
+                    ) and (previous_instruction.turn_cancelled != -1):
+                        instruction_activated = False
+                else:
+                    instruction_activated = False
+            if instruction_activated:
+                instr_activated_event = Event(
+                    game=new_game.id,
+                    type=EventType.INSTRUCTION_ACTIVATED,
+                    server_time=time_activated,
+                    turn_number=event_first_move.turn_number
+                    if event_first_move
+                    else instr_sent_event.turn_number,
+                    origin=EventOrigin.SERVER,
+                    role="Role.FOLLOWER",
+                    parent_event=instr_sent_event.id,
+                    short_code=instruction.uuid,
+                    tick=-1,
+                )
+                instr_activated_event.save(force_insert=True)
+            if instruction.turn_completed != -1:
+                # We need to recreate the instruction DONE timestamp here, since
+                # the old database didn't store it accurately.
+                #
+                # To determine when an instruction is complete, we take the maximum of:
+                # - When the instruction was activated (worst-case minimum bound)
+                # - The last move of the instruction.
+                # - Card selections immediately following that move, if available.
+                # - Card sets immediately following that move, if available.
+                #
+                # Immediate means that they follow after the move, but before
+                # any subsequent moves.
+                if not instruction_activated:  # Quick assertion.
+                    # It was found that some instructions were marked as completed
+                    # but not activated. This is an error. Fortunately it didn't
+                    # happen in any trial games, must just be debug data.
+                    # Mark game as invalid and return.
+                    new_game.valid = False
+                    new_game.save()
+                    return
+                time_done = instr_activated_event.server_time + TICK_TIME_DELTA
+                if event_last_move:
+                    time_done = max(time_done, event_last_move.server_time)
 
-                    next_selection = [
-                        sel
-                        for sel in game_card_selections
-                        if sel.game_time >= event_last_move.server_time
+                    last_move_time = event_last_move.server_time
+                    next_move_time = datetime.max
+                    if len(game_moves) > last_move_index + 1:
+                        next_move_time = game_moves[last_move_index + 1].server_time
+
+                    immediate_following_selections = [
+                        selection
+                        for selection in game_card_selections
+                        if last_move_time <= selection.game_time < next_move_time
                     ]
-                    if move_after_last is not None:
-                        next_selection = [
-                            sel
-                            for sel in next_selection
-                            if sel.game_time < move_after_last.server_time
-                        ]
-                    if len(next_selection) != 0:
-                        time_done = max(time_done, next_selection[0].game_time)
+                    if len(immediate_following_selections) != 0:
+                        time_done = max(
+                            time_done, immediate_following_selections[0].game_time
+                        )
 
-                    next_set = [
+                    immediate_following_sets = [
                         s
                         for s in game_card_sets
-                        if s.move.server_time >= event_last_move.server_time
+                        if last_move_time <= s.move.server_time < next_move_time
                     ]
-                    if move_after_last is not None:
-                        next_set = [
-                            s
-                            for s in next_set
-                            if s.move.server_time < move_after_last.server_time
-                        ]
-                    if len(next_set) != 0:
-                        time_done = max(time_done, next_set[0].move.server_time)
-                else:
-                    time_done = instr_activated_event.server_time + TICK_TIME_DELTA
+                    if len(immediate_following_sets) != 0:
+                        time_done = max(
+                            time_done, immediate_following_sets[0].move.server_time
+                        )
                 # Use event INSTRUCTION_DONE for newer games
                 instr_done_event = Event(
                     game=new_game,
@@ -432,11 +476,36 @@ def migrate_to_new_game(
                 )
                 instr_done_event.save(force_insert=True)
             elif instruction.turn_cancelled != -1:
-                time_cancelled = datetime.max
-                if event_last_move:
-                    time_cancelled = event_last_move.server_time
-                else:
+                # We need to recreate the instruction CANCELLED timestamp here, since
+                # the old database didn't store it accurately.
+                #
+                # To determine when an instruction is cancelled, we take the maximum of:
+                # - When the instruction was activated (worst-case minimum bound)
+                # - If the instruction was not activated, then when the previous instruction was cancelled.
+                # - The last move of the instruction.
+                if instruction_activated:
                     time_cancelled = instr_activated_event.server_time + TICK_TIME_DELTA
+                else:
+                    assert (
+                        instr_index > 0
+                    ), "The first instruction is always activated instantly. Somehow this instruction was not activated."
+                    previous_instruction = game_instructions[instr_index - 1]
+                    # Get when the previous instruction was cancelled.
+                    previous_instr_cancelled_query = Event.select().where(
+                        Event.short_code == previous_instruction.uuid,
+                        Event.type == EventType.INSTRUCTION_CANCELLED,
+                    )
+                    assert (
+                        previous_instr_cancelled_query.exists()
+                    ), "The previous instruction was not cancelled. How did this instruction get cancelled?"
+                    previous_instr_cancelled_event = (
+                        previous_instr_cancelled_query.get()
+                    )
+                    time_cancelled = (
+                        previous_instr_cancelled_event.server_time + TICK_TIME_DELTA
+                    )
+                if event_last_move:
+                    time_cancelled = max(time_cancelled, event_last_move.server_time)
                 instr_cancelled_event = Event(
                     game=new_game,
                     type=EventType.INSTRUCTION_CANCELLED,
@@ -814,12 +883,10 @@ def migrate_to_new_game(
             last_event_time = event.server_time
 
 
-def main(old_db_path, new_db_path):
+def main(old_db_path, new_db_path, min_game_id=2000):
     logging.basicConfig(level=logging.INFO)
     SwitchToDatabase(old_db_path)
     old_db = base.GetDatabase()
-
-    min_game_id = 2000
 
     old_assignments = []
     old_workers = []
@@ -836,6 +903,10 @@ def main(old_db_path, new_db_path):
     old_initial_states = {}
 
     print(f"Loading data from {old_db_path}...")
+    if min_game_id != -1:
+        print(
+            f"//////////////// WARNING: Only migrating games with id > {min_game_id} ////////////////"
+        )
     with old_db.connection_context():
         # Query all games.
         print(f"Querying all games...")
