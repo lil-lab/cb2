@@ -20,7 +20,7 @@ import server.schemas.game
 from follower_bots.constants import EDGE_WIDTH, ACT_DIM
 from follower_bots.utils import mkdir
 
-from server.messages.prop import PropUpdate
+from server.messages.prop import PropUpdate, PropType
 from server.messages.action import Action
 from server.actor import Actor
 from server.card import Card
@@ -48,7 +48,7 @@ def get_args():
 def get_tr_val_games(cfg):
     # Get valid games from config, shuffle them
     # and do a 90/10 train/val split
-    games = db_utils.ListAnalysisGames(cfg)  # TODO: Alter this based on the new config
+    games = db_utils.ListAnalysisGames(cfg)
     random.seed(42)
     random.shuffle(games)
 
@@ -86,7 +86,7 @@ def preprocess_games(args, games, output_dir, split_name):
         # Iterate over each active instruction
         instructions = game_events.where(Event.type == EventType.INSTRUCTION_SENT)
         instructions = instructions.order_by(Event.server_time)
-        for instruction in instructions:
+        for inst_count, instruction in enumerate(instructions):
             # First extract the instruction text
             instruction_activation = get_instruction_activation(instruction)
             if instruction_activation is None:
@@ -119,6 +119,7 @@ def preprocess_games(args, games, output_dir, split_name):
                     change_grid,
                     special_cards,
                     action_masks,
+                    inst_count
                 )
             )
 
@@ -238,7 +239,7 @@ def get_done_dynamic_map(game_events, instruction):
     leader_location, leader_orientation = get_agent_coords(game_events, instruction_done, 'LEADER')
 
     # Get the cards on the map immediately before the follower moves
-    cards = get_cards_before(game_events, instruction, instruction_done)
+    cards = get_cards_before(game_events, instruction, instruction_done, done=True)
 
     dynamic_map = data_cls.DynamicMap(
         cards,
@@ -283,11 +284,13 @@ def get_leader_coords(game_events, instruction, move):
     return leader_location, leader_orientation
 
 def get_agent_coords(game_events, instruction_done, agent_type):
+    # Only called for done actions
+
     # Get all moves before the current move
     moves = game_events.select().where(
         Event.type == EventType.ACTION,
         Event.role == f"Role.{agent_type}",
-        Event.server_time < instruction_done.server_time,
+        Event.server_time <= instruction_done.server_time,
     )
     moves = moves.order_by(Event.server_time)
 
@@ -318,34 +321,37 @@ def get_agent_coords(game_events, instruction_done, agent_type):
 
     return location, orientation
 
-def get_cards_before(game_events, instruction, move):
-    # Get the initial card props
-    prop_updates = game_events.select().where(Event.type == EventType.PROP_UPDATE).order_by(Event.server_time)
-    prop_update = PropUpdate.from_json(prop_updates[0].data)
-    props = [prop for prop in prop_update.props if prop.prop_type.value == 2]
+def get_cards_before(game_events, instruction, move, done=False):
+    # Get all card events
+    card_types = [EventType.CARD_SPAWN, EventType.CARD_SELECT,
+                  EventType.CARD_SET, EventType.PROP_UPDATE]
+    if done:
+        card_events = game_events.where(Event.type << card_types,
+                                        Event.server_time <= move.server_time)        
+    else:
+        card_events = game_events.where(Event.type << card_types,
+                                        Event.server_time < move.server_time)
+    card_events = card_events.order_by(Event.server_time)
 
-    # Get all card events occurring before the move
-    card_types = [EventType.CARD_SPAWN, EventType.CARD_SELECT, EventType.CARD_SET]
-    prior_card_events = game_events.select().where(
-        Event.type << card_types, Event.server_time < move.server_time
-    )
-    prior_card_events = prior_card_events.order_by(Event.server_time)
-
-    # Iterate over each card event and get the most up to data set of cards
-    for event in prior_card_events:
-        if event.type == EventType.CARD_SELECT:
-            card = Card.from_json(event.data)
-            for prop in props:
-                prop.card_init.selected = card.selected
-                prop.prop_info.border_color = card.border_color
-                break
-        elif event.type == EventType.CARD_SPAWN:
-            card = Card.from_json(event.data)
-            props.append(card.prop())
-        else:
+    # Iterate over each card event
+    props = []
+    for event in card_events:
+        if event.type == EventType.CARD_SET:
             data = json.loads(event.data)
             cards_ids = set([int(card_dict["id"]) for card_dict in data["cards"]])
             props = [prop for prop in props if prop.id not in cards_ids]
+        elif event.type == EventType.CARD_SPAWN:
+            card = Card.from_json(event.data)
+            props.append(card.prop())
+        elif event.type == EventType.CARD_SELECT:
+            card = Card.from_json(event.data)
+            for prop in props:
+                if prop.id == card.id:
+                    prop.card_init.selected = card.selected
+                    break
+        else:
+            prop_update = PropUpdate.from_json(event.data)
+            props = [prop for prop in prop_update.props if prop.prop_type == PropType.CARD]
 
     return props
 
@@ -519,7 +525,7 @@ def main():
     mkdir(args.output_dir)
 
     # Read the database config
-    cfg = config.ReadConfigOrDie(args.config_filepath)  # TODO
+    cfg = config.ReadConfigOrDie(args.config_filepath)
     print(f"Reading database from {cfg.database_path()}")
     base.SetDatabase(cfg)
     base.ConnectDatabase()
