@@ -153,7 +153,7 @@ class SQLDataset(Dataset):
 
         # Process the states of each instruction individually
         max_property_size = self.get_max_property_size(trajectories)
-        for _, static_map, dynamic_map, _, _, _, _, _, _, _ in trajectories:
+        for _, static_map, dynamic_map, _, _, _, _, _, _, _, _ in trajectories:
             property_tensors = self.get_property_tensor(
                 static_map, dynamic_map, max_property_size
             )
@@ -173,7 +173,7 @@ class SQLDataset(Dataset):
 
     def get_max_property_size(self, trajectories):
         max_size = 0
-        for _, static_map, dynamic_map, _, _, _, _, _, _, _ in trajectories:
+        for _, static_map, dynamic_map, _, _, _, _, _, _, _, _ in trajectories:
             static_properties = self.extract_static_props(static_map)
             all_dynamic_properties = self.extract_dynamic_props(dynamic_map)
 
@@ -259,7 +259,7 @@ class SQLDataset(Dataset):
 
     def tokenize_instructions(self, trajectories, tokenizer):
         tokenized = []
-        for text, _, _, _, _, _, _, _, _, _ in trajectories:
+        for text, _, _, _, _, _, _, _, _, _, _ in trajectories:
             proc_text = text.lower().strip().replace(",", "")
             token_ids = tokenizer(proc_text)["input_ids"]
 
@@ -292,7 +292,8 @@ class SQLDataset(Dataset):
             final_pos,
             change_grid,
             special_cards,
-            action_masks
+            action_masks,
+            _
         ) in trajectories:
 
             proc_action = torch.LongTensor([action.value for action in actions])
