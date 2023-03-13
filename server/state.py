@@ -1306,9 +1306,9 @@ class State(object):
                     self._follower = self._actors[follower_id]
                 else:
                     self._preloaded_actors[Role.FOLLOWER] = actor
-        if self._leader is None:
+        if (self._leader is None) or (Role.LEADER not in self._preloaded_actors):
             logger.warn("Warning, scenario did not contain leader")
-        if self._follower is None:
+        if (self._follower is None) or (Role.FOLLOWER not in self._preloaded_actors):
             logger.warn("Warning, scenario did not contain follower")
         # Mark everything as stale.
         self._mark_map_stale()
