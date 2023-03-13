@@ -35,8 +35,12 @@ def TurnDuration(role):
 
 
 def ReconstructScenarioFromEvent(event_uuid: str) -> Scenario:
-    """Looks up a given event in the database. Returns a Scenario object with
-    the game state at that point in time."""
+    """Looks up a given event in the database.
+
+    Returns:
+        A tuple of (Scenario, None) if the scenario was found, or (None, error_message) if not.
+
+    """
     # Get the event matching this UUID, make sure it's unique.
     event_query = (
         Event.select().join(game_db.Game).where(Event.id == event_uuid).limit(1)
@@ -230,11 +234,14 @@ def ReconstructScenarioFromEvent(event_uuid: str) -> Scenario:
         else:
             return None, f"Unknown event origin: {move.origin}"
     state_sync_msg = StateSync(2, [leader.state(), follower.state()], -1, Role.NONE)
-    return Scenario(
-        "",
-        map_update,
-        PropUpdate(props=[card.prop() for card in cards]),
-        turn_state,
-        instruction_list,
-        state_sync_msg,
+    return (
+        Scenario(
+            "",
+            map_update,
+            PropUpdate(props=[card.prop() for card in cards]),
+            turn_state,
+            instruction_list,
+            state_sync_msg,
+        ),
+        None,
     )

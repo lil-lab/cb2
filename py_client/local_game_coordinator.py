@@ -284,6 +284,7 @@ class LocalGameCoordinator:
         # If the game has one player, join as leader. Else, follow.
         role = Role.LEADER if number_players == 0 else Role.FOLLOWER
         actor_id = state_machine.create_actor(role)
+        assert actor_id is not None, "Actor ID should not be None."
         render = self._render_leader if role == Role.LEADER else self._render_follower
         game_endpoint = GameEndpoint(
             LocalSocket(self, game_name, actor_id), self._config, render

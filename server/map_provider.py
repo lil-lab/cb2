@@ -1141,6 +1141,15 @@ class MapProvider(object):
     def spawn_points(self):
         return self._spawn_points
 
+    def consume_spawn_point(self) -> HecsCoord:
+        # Return a random spawn point.
+        if len(self._spawn_points) == 0:
+            return None
+        return self._spawn_points.pop(np.random.randint(len(self._spawn_points)))
+
+    def release_spawn_point(self, coord: HecsCoord):
+        self._spawn_points.append(coord)
+
     def selected_cards(self):
         return self._selected_cards.values()
 

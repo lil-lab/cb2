@@ -2,7 +2,6 @@ import dataclasses
 import logging
 import math
 import queue
-import random
 import uuid
 from collections import deque
 from datetime import datetime, timedelta
@@ -72,7 +71,8 @@ class State(object):
 
         If return value state_machine is none, the reason for failure is in failure_reason.
         """
-        scenario = scenario_util.ReconstructScenarioFromEvent(event_uuid)
+        scenario, err = scenario_util.ReconstructScenarioFromEvent(event_uuid)
+        assert scenario is not None, f"Failed to reconstruct scenario: {err}"
         s = State(
             room_id,
             None,
@@ -93,6 +93,9 @@ class State(object):
         realtime_actions: bool = False,
     ):
         """Initialize the game state.
+
+        Note that if you initialize this class, it will NOT contain actors until you call create_actor().
+        The actor state information is stored in _preloaded_actors.
 
         Args:
             room_id (str): Room id for this game. Unique string used in status page.
@@ -171,7 +174,8 @@ class State(object):
 
         if use_preset_data:
             self._game_recorder = GameRecorder(None, disabled=True)
-            self._set_scenario(scenario, realtime_actions)
+            # Delayed means that the actor state will be loaded when players join.
+            self._set_scenario(scenario, realtime_actions, delayed_actor_load=True)
         else:
             # Records everything that happens in a game.
             self._game_recorder = (
@@ -194,10 +198,6 @@ class State(object):
             )
             self._send_turn_state(initial_turn)
 
-        self._id_assigner = (
-            self._map_provider.id_assigner()
-        )  # Map and state props share the same ID space.
-
         self._map_update = self._map_provider.map()
         # Maps from player_id -> list of props to update.
         self._prop_update = self._map_provider.prop_update()
@@ -206,8 +206,6 @@ class State(object):
         # pending. Otherwise live_feedback.FeedbackType.None.
         self._live_feedback = {}
 
-        self._spawn_points = self._map_provider.spawn_points()
-        random.shuffle(self._spawn_points)
         self._done = False
 
         self._current_set_invalid = self._map_provider.selected_cards_collide()
@@ -225,31 +223,6 @@ class State(object):
             if role == Role.LEADER
             else timedelta(seconds=FOLLOWER_SECONDS_PER_TURN)
         )
-
-    def _send_turn_state(self, turn_state, reason=""):
-        # Avoid unnecessary database writes.
-        if self._turn_state == turn_state:
-            return
-        self._turn_state = turn_state
-        for actor_id in self._actors:
-            if not actor_id in self._turn_history:
-                self._turn_history[actor_id] = Queue()
-            self._turn_history[actor_id].put(dataclasses.replace(turn_state))
-
-    def _resend_turn_state(self):
-        for actor_id in self._actors:
-            if not actor_id in self._turn_history:
-                self._turn_history[actor_id] = Queue()
-            self._turn_history[actor_id].put(dataclasses.replace(self._turn_state))
-
-    def _next_turn_state(self, actor_id):
-        if not actor_id in self._turn_history:
-            self._turn_history[actor_id] = Queue()
-        try:
-            turn = self._turn_history[actor_id].get_nowait()
-            return turn
-        except queue.Empty:
-            return None
 
     def end_game(self):
         logger.debug("Game ending.")
@@ -906,16 +879,16 @@ class State(object):
             # Mark clients as desynced.
             self.desync_all()
             return actor.actor_id()
-        spawn_point = (
-            self._spawn_points.pop() if self._spawn_points else HecsCoord(0, 0, 0)
-        )
+        spawn_point = self._map_provider.consume_spawn_point()
+        if spawn_point is None:
+            spawn_point = HecsCoord(0, 0, 0)
         asset_id = AssetId.NONE
         if role == Role.LEADER:
             asset_id = AssetId.PLAYER
         elif role == Role.FOLLOWER:
             asset_id = AssetId.FOLLOWER_BOT
         actor = Actor(
-            self._id_assigner.alloc(),
+            self._map_provider.id_assigner().alloc(),
             asset_id,
             role,
             spawn_point,
@@ -952,7 +925,7 @@ class State(object):
         # We don't free actor IDs. We'll never run out, and
         # keeping them from being re-used makes saving a history of which ID was
         # which role easier. Hence following line is commented:
-        # self._id_assigner.free(actor_id)
+        # self._map_provider.id_assigner().free(actor_id)
         #
         # Mark clients as desynced.
         self.desync_all()
@@ -1272,8 +1245,16 @@ class State(object):
         self,
         scenario: Scenario,
         realtime_actions: bool = True,
+        delayed_actor_load: bool = False,
     ):
-        """Modify current game state to match the given scenario. Wipes existing game state."""
+        """Modify current game state to match the given scenario. Wipes existing game state.
+
+        Args:
+            scenario: The scenario to load.
+            realtime_actions: Whether to enable realtime actions.
+            delayed_actor_load: If actor loading is delayed, then actor
+                state is preloaded and later players will init with their state.
+        """
         # Clear existing states.
         self._instruction_history = deque()
         self._turn_complete_queue = deque()
@@ -1299,22 +1280,32 @@ class State(object):
                 follower_id = actor_id
         # If leader and follower are still None, then we need to create them.
         if leader_id is None:
-            leader_id = self.create_actor(Role.LEADER)
+            if delayed_actor_load:
+                leader_id = self._map_provider.id_assigner().alloc()
+            else:
+                leader_id = self.create_actor(Role.LEADER)
         if follower_id is None:
-            follower_id = self.create_actor(Role.FOLLOWER)
-        for actor_state in scenario.actor_state:
+            if delayed_actor_load:
+                follower_id = self._map_provider.id_assigner().alloc()
+            else:
+                follower_id = self.create_actor(Role.FOLLOWER)
+        for actor_state in scenario.actor_state.actors:
             if actor_state.actor_role == Role.LEADER:
                 actor_state = dataclasses.replace(actor_state, actor_id=leader_id)
-                self._actors[leader_id] = Actor.from_state(
-                    actor_state, realtime_actions
-                )
-                self._leader = self._actors[leader_id]
+                actor = Actor.from_state(actor_state, realtime_actions)
+                if not delayed_actor_load:
+                    self._actors[leader_id] = actor
+                    self._leader = actor
+                else:
+                    self._preloaded_actors[Role.LEADER] = actor
             elif actor_state.actor_role == Role.FOLLOWER:
                 actor_state = dataclasses.replace(actor_state, actor_id=follower_id)
-                self._actors[follower_id] = Actor.from_state(
-                    actor_state, realtime_actions
-                )
-                self._follower = self._actors[follower_id]
+                actor = Actor.from_state(actor_state, realtime_actions)
+                if not delayed_actor_load:
+                    self._actors[follower_id] = actor
+                    self._follower = self._actors[follower_id]
+                else:
+                    self._preloaded_actors[Role.FOLLOWER] = actor
         if self._leader is None:
             logger.warn("Warning, scenario did not contain leader")
         if self._follower is None:
@@ -1351,3 +1342,30 @@ class State(object):
     def _mark_prop_stale(self):
         for id in self._prop_stale:
             self._prop_stale[id] = True
+
+    def _send_turn_state(self, turn_state, reason=""):
+        # Avoid unnecessary database writes.
+        if self._turn_state == turn_state:
+            return
+        self._turn_state = turn_state
+        for actor_id in self._actors:
+            if not actor_id in self._turn_history:
+                self._turn_history[actor_id] = Queue()
+            self._turn_history[actor_id].put(dataclasses.replace(turn_state))
+
+    def _resend_turn_state(self):
+        if self._turn_state is None:
+            return
+        for actor_id in self._actors:
+            if not actor_id in self._turn_history:
+                self._turn_history[actor_id] = Queue()
+            self._turn_history[actor_id].put(dataclasses.replace(self._turn_state))
+
+    def _next_turn_state(self, actor_id):
+        if not actor_id in self._turn_history:
+            self._turn_history[actor_id] = Queue()
+        try:
+            turn = self._turn_history[actor_id].get_nowait()
+            return turn
+        except queue.Empty:
+            return None
