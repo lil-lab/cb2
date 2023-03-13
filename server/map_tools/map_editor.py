@@ -362,8 +362,10 @@ def edit_scenario(scenario: Scenario) -> Scenario:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return scenario
+            # If Q or ESC is pressed, quit.
             if event.type == pygame.KEYDOWN:
-                return scenario
+                if event.key == pygame.K_q or event.key == pygame.K_ESCAPE:
+                    return scenario
             # On click, set the active tool.
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if save_button_rect.collidepoint(event.pos):

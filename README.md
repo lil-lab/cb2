@@ -16,6 +16,8 @@ Cereal Bar V2
       - [Creating a scenario.](#creating-a-scenario)
       - [Launching a scenario.](#launching-a-scenario)
       - [Scenario (Map) Editor](#scenario-map-editor)
+        - [Requirements](#requirements)
+        - [Running the map editor](#running-the-map-editor)
   - [Deploying a WebGL Client](#deploying-a-webgl-client)
   - [Server Endpoints](#server-endpoints)
   - [Demonstration Model](#demonstration-model)
@@ -124,7 +126,12 @@ more.
 This repository contains a client API for writing agents which can interact with CB2. The client API is contained in directory `py_client/`, which contains a README with further information.
 
 ### Scenario Rooms
-CB2 contains a scenario room to allow for research that wants to investigate custom scenarios in a controlled manner. Scenario rooms are single player (follower role only, currently), and allow for a script to attach via the Python API and monitor the game state. The script can at any time load a new map, or send instructions/feedback just as the leader would. We provide an in-game UI to turn an existing game into a scenario for later inspection.
+CB2 contains a scenario room to allow for research that wants to investigate
+custom scenarios in a controlled manner. Scenario rooms are single player
+(follower role only, currently), and allow for a script to attach via the Python
+API and monitor the game state. The script can at any time load a new map, or
+send instructions/feedback just as the leader would. We provide an in-game UI to
+turn an existing game into a scenario for later inspection.
 
 #### Creating a scenario.
 You can create a scenario from inside of a game by hitting escape and then "Save
@@ -142,7 +149,8 @@ to equal to the value `1` (follower). You may also want to give the follower a
 large number of moves, so that they can move freely about the scenario.
 
 #### Launching a scenario.
-You can launch a scenario by entering a room in the scenario lobby. Scenario rooms are 1 player, and you play as the follower.
+You can launch a scenario by entering a room in the scenario lobby. Scenario
+rooms are 1 player, and you play as the follower.
 
 Access the scenario lobby via endpoint `/play?lobby_name=scenario-lobby`
 
@@ -156,7 +164,27 @@ the game immediately.
 #### Scenario (Map) Editor
 
 CB2 contains a map editor, which you can use to craft custom maps. These maps
-can be explored in a custom scenario. Launch the map editor with the command:
+can be explored in a custom scenario.
+
+##### Requirements
+The map editor requires that tkinter is installed on your system. If you didn't
+do this prior to setting up your virtual environment, you'll need to install
+tkinter, and then re-create your venv (should only take a few minutes --
+deleting venv/ is a relatively safe operation)
+
+OSX
+```
+brew install python-tk
+```
+
+Ubuntu
+```
+sudo apt-get install python-tk python3-tk tk-dev
+```
+
+##### Running the map editor
+
+Launch the map editor with the command:
 
 ```
 # Must be in python virtual env first!
@@ -170,7 +198,7 @@ asking you for a scenario file. We recommend starting with the template map, a
 
 Upon closing the editor, it pops up another GUI to save the
 modified scenario -- Make sure to do this, or your changes will be lost. Hitting
-Q, Esc, or tab will close the editor, so be careful!
+Q or Escape will close the editor, so be careful!
 
 There's currently no undo. If you made a change you want to undo, close the
 editor without saving, and then reload the scenario file.
