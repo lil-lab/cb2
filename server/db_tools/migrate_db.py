@@ -377,7 +377,7 @@ def migrate_to_new_game(
             time_activated = instr_sent_event.server_time + TICK_TIME_DELTA
             instruction_activated = True  # Assume it was activated.
             activation_event = None
-            if instr_index > 1:
+            if instr_index >= 1:
                 previous_instruction = game_instructions[instr_index - 1]
                 last_instr_finished_query = Event.select().where(
                     Event.short_code == previous_instruction.uuid,
