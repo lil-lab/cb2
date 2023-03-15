@@ -140,21 +140,6 @@ def ReconstructScenarioFromEvent(event_uuid: str) -> Scenario:
             EventType.INSTRUCTION_DONE,
         ]
     ).order_by(Event.server_time)
-    instr_list_debug = []
-    for event in instruction_events:
-        if event.type == EventType.INSTRUCTION_SENT:
-            instr_list_debug.append(event.short_code[0:5])
-        if event.type == EventType.INSTRUCTION_DONE:
-            # Delete the instruction from the list.
-            if len(instr_list_debug) > 0:
-                instr_list_debug = instr_list_debug[1:]
-        if event.type == EventType.INSTRUCTION_CANCELLED:
-            # Delete the instruction from the list.
-            if len(instr_list_debug) > 0:
-                instr_list_debug = instr_list_debug[1:]
-        logger.info(
-            f"{EventType(event.type).name}: UUID: {event.id.hex[0:5]} instr UUID: {event.short_code[0:5]} instrs list: {instr_list_debug}"
-        )
     instruction_list = []
     for event in instruction_events:
         if event.type == EventType.INSTRUCTION_SENT:
@@ -259,9 +244,7 @@ def ReconstructScenarioFromEvent(event_uuid: str) -> Scenario:
         else:
             return None, f"Unknown event origin: {move.origin}"
     state_sync_msg = StateSync(2, [leader.state(), follower.state()], -1, Role.NONE)
-    import sys
 
-    sys.exit()
     return (
         Scenario(
             "",
