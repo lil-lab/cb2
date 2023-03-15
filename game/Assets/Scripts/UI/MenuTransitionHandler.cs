@@ -661,11 +661,21 @@ public class MenuTransitionHandler : MonoBehaviour
         _logger.Info("Bulletin");
         // Set the information bulletin.
         Text bulletin = FindTextWithTag(INFO_BULLETIN);
+        if (bulletin == null)
+        {
+            _logger.Warn("Unable to find info bulletin.");
+            return;
+        }
         bulletin.text = m.bulletin_message;
 
         // Remove dynamic menu children.
         _logger.Info("Clearing dynamic menu.");
         GameObject dynamic_menu = GameObject.FindWithTag(DYNAMIC_MENU_BUTTONS);
+        if (dynamic_menu == null)
+        {
+            _logger.Warn("Unable to find dynamic menu.");
+            return;
+        }
         foreach (Transform child in dynamic_menu.transform) {
             Destroy(child.gameObject);
         }
@@ -682,6 +692,11 @@ public class MenuTransitionHandler : MonoBehaviour
         foreach (Network.ButtonDescriptor button in m.buttons)
         {
             GameObject ui_button = Instantiate(prefab);
+            if (ui_button == null)
+            {
+                _logger.Warn("Unable to instantiate menu button.");
+                return;
+            }
             ui_button.transform.SetParent(dynamic_menu.transform, false);
             ui_button.GetComponent<Text>().text = button.text;
             ui_button.GetComponent<Button>().onClick.AddListener(() => {
