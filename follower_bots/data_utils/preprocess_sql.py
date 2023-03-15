@@ -86,7 +86,7 @@ def preprocess_games(args, games, output_dir, split_name):
         # Iterate over each active instruction
         instructions = game_events.where(Event.type == EventType.INSTRUCTION_SENT)
         instructions = instructions.order_by(Event.server_time)
-        for inst_count, instruction in enumerate(instructions):
+        for instruction in instructions:
             # First extract the instruction text
             instruction_activation = get_instruction_activation(instruction)
             if instruction_activation is None:
@@ -118,8 +118,7 @@ def preprocess_games(args, games, output_dir, split_name):
                     final_follower_pos,
                     change_grid,
                     special_cards,
-                    action_masks,
-                    inst_count
+                    action_masks
                 )
             )
 

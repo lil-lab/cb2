@@ -56,4 +56,3 @@ SEED = -1
 TORCH_DEVICE = (
     torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 )
-UUID_TO_CARD_SELECTIONS_PATH = "pretraining_data/val_uuid_to_card_selections.pkl"

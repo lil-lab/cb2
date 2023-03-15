@@ -80,9 +80,9 @@ def get_args():
     # Dataset arguments
     parser.add_argument("--batch_size", type=int, default=const.BATCH_SIZE)
     parser.add_argument("--num_workers", type=int, default=const.NUM_WORKERS)
-    parser.add_argument("--pretrain_dset_path", default="./pretraining_data")
+    parser.add_argument("--pretrain_dset_path", default="./follower_bots/pretraining_data")
     parser.add_argument(
-        "--config_filepath", default="./data_configs/pretraining_examples.json"
+        "--config_filepath", default="./follower_bots/data_configs/pretraining_examples.json"
     )
 
     args = parser.parse_args()
@@ -135,7 +135,7 @@ def standard_evaluation(
     # Save to more easily repeat reporting
     save_list = [
         (average_accuracy, std_accuracy),
-        (swsd_accuracy, std_swsd),
+        (average_swsd, std_swsd),
         (avg_dist, avg_dist_when_correct, avg_dist_when_incorrect),
         (avg_recall, avg_precision),
     ]
