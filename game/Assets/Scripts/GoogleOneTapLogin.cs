@@ -20,6 +20,7 @@ public class GoogleOneTapLogin : MonoBehaviour
     private static readonly string TESTING_CLIENT_ID = "787231947800-ee2g4lptmfa0av2qb26n1qu60hf5j2fd.apps.googleusercontent.com";
     private static readonly string REAL_CLIENT_ID = "787231947800-ee2g4lptmfa0av2qb26n1qu60hf5j2fd.apps.googleusercontent.com";
 
+    // This button is now disabled. Searches for it will return null.
     private static readonly string LOGOUT_BUTTON_TAG = "GOOGLE_LOGOUT";
 
     private Logger _logger;
