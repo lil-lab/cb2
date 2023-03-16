@@ -120,6 +120,7 @@ public class GoogleOneTapLogin : MonoBehaviour
         _logger.Info("LogOut() called.");
         LogOutGoogleOneTap();
         _loggedIn = false;
+        _loginDisplayed = false;
         // Hide the logout button.
         GameObject logoutButton = GameObject.FindGameObjectWithTag(LOGOUT_BUTTON_TAG);
         if (logoutButton != null)
@@ -128,5 +129,6 @@ public class GoogleOneTapLogin : MonoBehaviour
         }
         // End the current websocket connection, since it's authenticated.
         Network.NetworkManager.TaggedInstance().RestartConnection();
+        ShowLoginUI();
     }
 }
