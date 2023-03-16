@@ -32,7 +32,7 @@ import server.schemas.defaults as defaults
 import server.schemas.event as event_db
 import server.schemas.game as game_db
 import server.schemas.mturk as mturk
-from server.config.config import Config, GlobalConfig, InitGlobalConfig
+from server.config.config import GlobalConfig, InitGlobalConfig
 from server.google_authenticator import GoogleAuthenticator
 from server.lobby_consts import IsMturkLobby, LobbyType
 from server.lobby_utils import GetLobbies, GetLobby, InitializeLobbies
@@ -1345,14 +1345,6 @@ def InitGameRecording(config):
     base.SetDatabase(config)
     base.ConnectDatabase()
     base.CreateTablesIfNotExists(defaults.ListDefaultTables())
-
-
-# Attempts to parse the config file. If there's any parsing or file errors,
-# doesn't handle the exceptions.
-def ReadConfigOrDie(config_path):
-    with open(config_path, "r") as cfg_file:
-        config = Config.from_json(cfg_file.read())
-        return config
 
 
 def CreateDataDirectory(config):

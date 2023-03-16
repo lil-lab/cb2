@@ -4,6 +4,7 @@ import pathlib
 from dataclasses import dataclass, field
 from typing import List
 
+import appdirs
 import yaml
 from mashumaro.mixins.json import DataClassJSONMixin
 
@@ -41,7 +42,11 @@ def ValidateConfig(config):
         return False, "Name is empty"
     # Check if data prefix exists as a directory.
     if not config.data_directory().is_dir():
-        return False, f"Data prefix {config.data_directory()} is not a directory"
+        # Create the directory if it doesn't exist. Print a message to notify the user of this.
+        config.data_directory().mkdir(parents=True, exist_ok=True)
+        logger.info(
+            f"//////////////// Created data directory {config.data_directory()} ////////////////"
+        )
     # Check if the data prefix contains a game_data.db file. Log a warning if it doesn't.
     if not config.database_path().is_file():
         logger.warning(
@@ -79,8 +84,9 @@ def ReadConfigOrDie(config_path):
 class Config(DataClassJSONMixin):
     name: str = ""  # The name of the config.
 
-    # Data filepath configurations.
-    data_prefix: str = "./"  # Prefix added to the below data directories. Can be used to store data on a different fs.
+    # Data filepath configurations. All of these are relative to return value of user_data_dir() from appdirs.
+    # If you leave data_prefix empty, then a folder under the appdirs user data directory will be used by default.
+    data_prefix: str = ""  # Prefix added to the below data directories. Can be used to store data on a different fs.
     record_directory_suffix: str = "game_records/"  # Where to store game recordings.
     assets_directory_suffix: str = (
         "assets/"  # Where to store asset resources. Currently unused.
@@ -238,19 +244,30 @@ class Config(DataClassJSONMixin):
 
     # Data path accessors that add the requisite data_prefix.
     def data_directory(self):
+        # If data_prefix is None or empty string, use appdirs. Else use the prefix.
+        if self.data_prefix is None or len(self.data_prefix) == 0:
+            return pathlib.Path(appdirs.user_data_dir("cb2-game-dev")).expanduser()
         return pathlib.Path(self.data_prefix).expanduser()
 
     def record_directory(self):
-        return pathlib.Path(self.data_prefix, self.record_directory_suffix).expanduser()
+        return pathlib.Path(
+            self.data_directory(), self.record_directory_suffix
+        ).expanduser()
 
     def assets_directory(self):
-        return pathlib.Path(self.data_prefix, self.assets_directory_suffix).expanduser()
+        return pathlib.Path(
+            self.data_directory(), self.assets_directory_suffix
+        ).expanduser()
 
     def database_path(self):
-        return pathlib.Path(self.data_prefix, self.database_path_suffix).expanduser()
+        return pathlib.Path(
+            self.data_directory(), self.database_path_suffix
+        ).expanduser()
 
     def backup_database_path(self):
-        return pathlib.Path(self.data_prefix, self.backup_db_path_suffix).expanduser()
+        return pathlib.Path(
+            self.data_directory(), self.backup_db_path_suffix
+        ).expanduser()
 
     def exception_directory(self):
-        return pathlib.Path(self.data_prefix, self.exception_prefix).expanduser()
+        return pathlib.Path(self.data_directory(), self.exception_prefix).expanduser()
