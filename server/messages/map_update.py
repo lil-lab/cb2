@@ -84,7 +84,7 @@ class MapUpdate(DataClassJSONMixin):
     cols: int
     tiles: List[Tile]
     metadata: Optional[MapMetadata] = field(default_factory=MapMetadata)
-    props: Optional[List[Prop]] = field(default_factory=list)
+    props: Optional[List[Prop]] = field(default_factory=list)  # deprecated.
     fog_start: Optional[int] = None
     fog_end: Optional[int] = None
 
