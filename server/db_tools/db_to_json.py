@@ -11,6 +11,7 @@ import logging
 import fire
 
 from server.schemas import base
+from server.schemas.event import Event
 from server.schemas.game import Game
 from server.util import JsonSerialize
 
@@ -65,13 +66,14 @@ def ConvertGameToDict(game: Game):
     completed
     events: List[Event]
     """
+    game_events = list(Event.select().where(Event.game == game.id))
     return {
         "id": game.id,
         "type": game.type,
         "score": game.score,
         "start_time": game.start_time,
         "end_time": game.end_time,
-        "events": [ConvertEventToDict(event) for event in game.events],
+        "events": [ConvertEventToDict(event) for event in game_events],
     }
 
 
