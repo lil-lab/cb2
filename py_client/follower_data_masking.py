@@ -24,11 +24,6 @@ UNITY_COORDINATES_SCALE = 3.46
 
 def VisibleCoordinates(follower_actor, config):
     """Given an actor, returns all HecsCoords that are visible to that actor."""
-    config.fog_end / UNITY_COORDINATES_SCALE
-    # There's something wrong with orientation... I have to put - 60 everywhere
-    # Actor.heading_degrees() (actor.py) is used.
-    follower_actor.heading_degrees() - 60
-
     visible_coords = []
 
     # Get the two neighboring cells to the left and right. Special case them.
@@ -46,7 +41,7 @@ def VisibleCoordinates(follower_actor, config):
         if coord in visible_coords:
             continue
         if (coord != follower_actor.location()) and (
-            not CoordinateInViewingDistance(coord, follower_actor, config)
+            not CoordinateInViewingDistance(coord, follower_actor, config.fog_end)
             or not CoordinateInFov(coord, follower_actor, config)
         ):
             continue
@@ -57,9 +52,9 @@ def VisibleCoordinates(follower_actor, config):
     return visible_coords
 
 
-def CoordinateInViewingDistance(coord, follower_actor, config):
+def CoordinateInViewingDistance(coord, follower_actor, fog_end):
     """Returns true if the given coordinate should be visible to the given follower with the given config."""
-    view_depth = config.fog_end / UNITY_COORDINATES_SCALE
+    view_depth = fog_end / UNITY_COORDINATES_SCALE
     # Check distance.
     distance = coord.distance_to(follower_actor.location())
     # Add 0.5 to round up to the next hex cell.
@@ -93,13 +88,13 @@ def CoordinateNeighborCells(follower_actor):
     ]
 
 
-def CoordinateIsVisible(coord, follower_actor, config):
+def CoordinateIsVisible(coord, follower_actor, fog_end):
     # Get the two neighboring cells to the left and right. Special case them.
     if coord in CoordinateNeighborCells(follower_actor):
         return True
 
     """  Returns true if the given coordinate should be visible to the given follower with the given config. """
-    view_depth = config.fog_end / UNITY_COORDINATES_SCALE
+    view_depth = fog_end / UNITY_COORDINATES_SCALE
     # There's something wrong with orientation... I have to put - 60 everywhere
     # Actor.heading_degrees() (actor.py) is used.
     follower_orientation = follower_actor.heading_degrees() - 60
@@ -167,7 +162,7 @@ def CensorFollowerProps(props, follower_actor, config):
     """
     new_props = []
     for prop in props:
-        if CoordinateIsVisible(prop.prop_info.location, follower_actor, config):
+        if CoordinateIsVisible(prop.prop_info.location, follower_actor, config.fog_end):
             new_props.append(dataclasses.replace(prop))
     return new_props
 
@@ -185,7 +180,7 @@ def CensorActors(actors, follower_actor, config):
     """
     new_actors = []
     for actor in actors:
-        if CoordinateIsVisible(actor.location(), follower_actor, config):
+        if CoordinateIsVisible(actor.location(), follower_actor, config.fog_end):
             new_actors.append(
                 Actor(
                     actor.actor_id(),
