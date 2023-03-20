@@ -70,7 +70,9 @@ class CliFollower(object):
                 (mapu, props, turn_state, instrs, actors, feedback) = game_state
                 prop_update = PropUpdate(props)
                 (leader, follower) = get_actors(game_state)
-                description = DescribeMap(mapu, prop_update, instrs, follower, leader)
+                description = DescribeMap(
+                    mapu, prop_update, instrs, turn_state, follower, leader
+                )
                 print("===============================")
                 print(description)
                 # Prompt for input.
