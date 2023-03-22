@@ -47,6 +47,8 @@ logger = logging.getLogger(__name__)
 # If render=True in the constructor for Game, this controls the resulting window size.
 SCREEN_SIZE = 800
 
+BLOCKING_ZERO_TIME = 0.000001
+
 # I dont' think I need this anymore. This is an attempt to export the Role symbol so that users of this package can access it.
 Role = Role
 
@@ -384,6 +386,7 @@ class GameEndpoint(object):
         self.socket = game_socket
         self.config = config
         self.render = render
+        self._timeout_observed = False
         self._reset()
 
     def _reset(self):
@@ -404,6 +407,7 @@ class GameEndpoint(object):
         self._follower_moved = False
         self.live_feedback = None
         self.pygame_task = None
+        self._timeout_observed = False
         self._tutorial_messages = []
         # Always create the display, even if render == None.
         # This lets the user access the the display object manually if they need.
@@ -444,6 +448,10 @@ class GameEndpoint(object):
     def initialized(self):
         return self._initial_state_retrieved or self._initial_state_ready
 
+    def timeout_occurred(self) -> bool:
+        """Returns true if the game timed out in the last step()."""
+        return self._timeout_observed
+
     def step(self, action, wait_for_turn=True):
         """Executes one action and blocks until the environment is ready for another action.
 
@@ -466,12 +474,19 @@ class GameEndpoint(object):
             )
 
         # Step() pseudocode:
+        # Consume any pending actions. If the game state changes during any of these, return False rejecting the action.
         # Send action.
         # Send queued messages (like automated ping responses)
         # While it isn't our turn to move:
         #   Wait for tick
         #   Process messages
-        # Return
+        # Return true
+        #
+        # Process any pending messages...
+        self._timeout_observed = False
+        if (not action.is_noop()) and not self._process_pending_messages():
+            self._timeout_observed = True
+            return self._state()
         valid_actions = set([])
         if self._player_role == Role.FOLLOWER:
             valid_actions = Action.FollowerActions()
@@ -497,8 +512,10 @@ class GameEndpoint(object):
             )
         message, reason = action.message_to_server(self.player_actor)
         if message != None:
+            logger.info(f"Sending action: {message.type}")
             self.socket.send_message(message)
         for message in self.queued_messages:
+            logger.info(f"Sending action: {message.type}")
             self.socket.send_message(message)
         self.queued_messages = []
         # Reset this variable. We want to see if while waiting for ticks, the
@@ -552,6 +569,22 @@ class GameEndpoint(object):
             return True
 
         return False
+
+    def _process_pending_messages(self) -> bool:
+        """Process any pending messages from the server. Returns false if a turn change occurred. True if our turn never ended."""
+        turn_change = False
+        current_turn = self.turn_state.turn
+        message, reason = self.socket.receive_message(
+            timedelta(seconds=BLOCKING_ZERO_TIME)
+        )
+        while message:
+            self._handle_message(message)
+            if self.turn_state.turn != current_turn:
+                turn_change = True
+            message, reason = self.socket.receive_message(
+                timedelta(seconds=BLOCKING_ZERO_TIME)
+            )
+        return not turn_change
 
     def _wait_for_tick(self, timeout=timedelta(seconds=60)):
         """Waits for a tick"""

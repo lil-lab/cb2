@@ -65,8 +65,9 @@ class LocalSocket(GameSocket):
         """This is a local socket. We don't need to worry about timeouts. No blocking operations."""
         # Give the state machine a chance to run.
         end_time = datetime.utcnow() + timeout
-        # Wait until we have at least one message to return.
-        while datetime.utcnow() < end_time:
+        ran_once = False
+        # Wait until we have at least one message to return. Run at least once.
+        while datetime.utcnow() < end_time or not ran_once:
             self.local_coordinator.StepGame(self.game_name)
             state_machine_driver = self.local_coordinator._state_machine_driver(
                 self.game_name
@@ -74,6 +75,7 @@ class LocalSocket(GameSocket):
             state_machine_driver.fill_messages(self.actor_id, self.received_messages)
             if len(self.received_messages) > 0:
                 return self.received_messages.popleft(), ""
+            ran_once = True
         return None, "No messages available."
 
 

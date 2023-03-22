@@ -60,7 +60,7 @@ class RemoteSocket(GameSocket):
         self, timeout: timedelta
     ) -> message_from_server.MessageFromServer:
         """Blocks until a message is received or the timeout is reached."""
-        return self.client._receive_message(timeout)
+        return self.client._receive_message(timeout)  # pylint: disable=protected-access
 
 
 # Client which manages connection state and shuffling of messages to Game
@@ -334,9 +334,12 @@ class RemoteClient(object):
         return False, "Disconnected"
 
     def _receive_message(self, timeout=timedelta(minutes=1)):
-        message = self.event_loop.run_until_complete(
-            self.ws.receive(timeout=timeout.total_seconds())
-        )
+        try:
+            message = self.event_loop.run_until_complete(
+                self.ws.receive(timeout=timeout.total_seconds())
+            )
+        except asyncio.TimeoutError:
+            return None, "Timeout waiting for message."
         if message is None:
             return None, "None received from websocket.receive()"
         if message.type == aiohttp.WSMsgType.ERROR:

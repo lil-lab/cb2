@@ -71,10 +71,12 @@ class NaiveFollower(object):
             action = Action.NoopAction()
             game_state = self.game.step(action)
             while not self.game.over():
-                sleep(self.pause_per_turn)
                 action = self.get_action(game_state)
                 logger.info(f"step({action})")
                 game_state = self.game.step(action)
+                if self.game.timeout_occurred():
+                    logger.warn("/// Timeout occurred ///")
+                sleep(self.pause_per_turn)
                 (_, _, turn_state, _, _, _) = game_state
             print(f"Game over. Score: {turn_state.score}")
         except Exception as e:
@@ -105,13 +107,13 @@ class NaiveFollower(object):
             return Action.RandomMovementAction()
 
     def join(self):
-        super().join()
         if self.exc:
             raise self.exc
 
 
 def main(host, render=False, lobby="bot-sandbox", pause_per_turn=0):
     # Create client and connect to server.
+    logging.basicConfig(level=logging.INFO)
     client = RemoteClient(host, render, lobby_name=lobby)
     connected, reason = client.Connect()
     assert connected, f"Unable to connect: {reason}"
@@ -126,6 +128,7 @@ def main(host, render=False, lobby="bot-sandbox", pause_per_turn=0):
     # Handles game logic.
     follower = NaiveFollower(game, pause_per_turn)
     follower.run()
+    follower.join()
 
 
 if __name__ == "__main__":
