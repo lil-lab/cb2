@@ -1,4 +1,5 @@
 import logging
+import pathlib
 from datetime import timedelta
 
 import fire
@@ -10,9 +11,6 @@ from py_client.remote_client import RemoteClient
 from server.messages.prop import PropUpdate
 
 logger = logging.getLogger(__name__)
-
-# Replace "your_openai_key_here" with your actual OpenAI API key
-openai.api_key = "your_openai_key_here"
 
 
 def actions_from_code(action_code, i_uuid: str = None):
@@ -103,7 +101,7 @@ class GPTFollower(object):
                     )
 
                     response = openai.ChatCompletion.create(
-                        model="gpt-4",
+                        model="gpt-3.5-turbo",
                         messages=game_history,
                         max_tokens=10,
                         n=1,
@@ -141,7 +139,18 @@ class GPTFollower(object):
             raise self.exc
 
 
-def main(host, render=False, lobby="bot-sandbox", pause_per_turn=0):
+def main(
+    host,
+    render=False,
+    lobby="bot-sandbox",
+    pause_per_turn=0,
+    api_key="~/openai_api_key.txt",
+):
+    # Set up OpenAI API key. Expand user directory.
+    api_key = pathlib.Path(api_key).expanduser()
+    with open(api_key, "r") as f:
+        openai.api_key = f.read().strip()
+
     client = RemoteClient(host, render, lobby_name=lobby)
     connected, reason = client.Connect()
     assert connected, f"Unable to connect: {reason}"

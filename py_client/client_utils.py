@@ -29,7 +29,8 @@ def DescribeLocationFromActor(location: HecsCoord, actor: Actor) -> str:
 
 def FollowerSystemPrompt() -> str:
     system_prompt = "GAME EXPLANATION: "
-    system_prompt += "You are playing a text-based videogame. In this game, you are the FOLLOWER. Your role is to follow the ACTIVE instruction. Move by entering a number of comma-separated 'R', 'L', 'F', and 'B' commands (Right, Left, Forward, and Back). You can also write 'D', to mark an instruction as completed. Each turn, you can only make 10 movements (see TURN_STATE for number of remaining moves). Headings are described in degrees, with positive meaning to the left and negative meaning to the right. You are on a discrete hex grid, each turn is 60 degrees. Example instruction: F,F,F,D. This means move forward 3 times, then marks the instruction as done. You can only use a `d` command once per instruction."
+    system_prompt += "You are playing a text-based videogame. In this game, you are the FOLLOWER. Your role is to follow the ACTIVE instruction. Move by entering a single command. One of: 'R', 'L', 'F', and 'B' (Right, Left, Forward, and Back). You can also write 'D', to mark an instruction as completed. Headings are described in degrees, with positive meaning to the left and negative meaning to the right. You are on a discrete hex grid, each turn is 60 degrees. You get a new observation each time you move."
+    system_prompt += "\n##OBSERVATION\n"
     return system_prompt
 
 
