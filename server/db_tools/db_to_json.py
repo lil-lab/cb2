@@ -74,6 +74,7 @@ def ConvertGameToDict(game: Game):
         "start_time": game.start_time,
         "end_time": game.end_time,
         "events": [ConvertEventToDict(event) for event in game_events],
+        "kvals": game.kvals,
     }
 
 
