@@ -1,7 +1,7 @@
 set -ex
 username=$(whoami)
-echo "Installing some system packages: python3.9-venv, gcc, sqlite3, cython, cargo."
-sudo apt install python3 gcc sqlite3 libsqlite3-dev cython cargo unzip
+echo "Installing some system packages: gcc, sqlite3, cargo."
+sudo apt install gcc sqlite3 libsqlite3-dev cargo unzip
 echo "Setting up python env..."
 echo "Your python version is: "
 python3 --version
