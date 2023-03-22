@@ -1255,6 +1255,13 @@ class State(object):
             delayed_actor_load: If actor loading is delayed, then actor
                 state is preloaded and later players will init with their state.
         """
+        # If the scenario is packaged with any kvals and the game_record is populated, then
+        # we should add the kvals to the game_record.
+        if scenario.kvals and self._game_recorder.kvals() is not None:
+            kvals = self._game_recorder.kvals()
+            for scenario_key in scenario.kvals:
+                kvals[scenario_key] = scenario.kvals[scenario_key]
+            self._game_recorder.set_kvals(kvals)
         # Clear existing states.
         self._instruction_history = deque()
         self._turn_complete_queue = deque()

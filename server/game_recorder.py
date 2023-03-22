@@ -565,11 +565,15 @@ class GameRecorder(object):
         self._game_record.save()
 
     def kvals(self):
+        if self._disabled:
+            return None
         if self._game_record.kvals is None:
             return {}
         return orjson.loads(self._game_record.kvals)
 
     def set_kvals(self, kvals):
+        if self._disabled:
+            return
         self._game_record.kvals = orjson.dumps(kvals)
         self._game_record.save()
 

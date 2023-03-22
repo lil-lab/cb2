@@ -1,7 +1,7 @@
 """Scenarios allow the client to modify the game state to recreate certain situations."""
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from dataclasses_json import config
 from mashumaro.mixins.json import DataClassJSONMixin
@@ -21,6 +21,7 @@ class Scenario(DataClassJSONMixin):
     turn_state: TurnState
     objectives: List[ObjectiveMessage]
     actor_state: StateSync
+    kvals: Dict[str, str] = field(default_factory=dict)
 
 
 class ScenarioRequestType(Enum):
