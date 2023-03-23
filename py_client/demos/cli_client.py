@@ -3,7 +3,7 @@ from datetime import timedelta
 
 import fire
 
-from py_client.client_utils import DescribeMap
+from py_client.client_utils import DescribeMap, FollowerSystemPrompt
 from py_client.game_endpoint import Action
 from py_client.remote_client import RemoteClient
 from server.messages.prop import PropUpdate
@@ -61,6 +61,7 @@ class CliFollower(object):
 
     def run(self):
         try:
+            logger.info(FollowerSystemPrompt())
             game_state = self.game.initial_state()
             (_, _, turn_state, _, _, _) = game_state
             # It's always the leader's turn first. Wait for follower turn by executing a noop.

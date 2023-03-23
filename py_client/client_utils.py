@@ -14,13 +14,15 @@ from server.messages.turn_state import TurnState
 
 def DescribeLocationFromActor(location: HecsCoord, actor: Actor) -> str:
     """Returns a string describing the given location from the perspective of the given actor."""
-    distance = actor.location().distance_to(location)
+    distance = round(actor.location().distance_to(location), 1)
     direction = (
-        round(
-            actor.heading_degrees()
-            - actor.location().degrees_to_precise(location)
-            - 60,
-            1,
+        -(
+            round(
+                actor.heading_degrees()
+                - actor.location().degrees_to_precise(location)
+                - 60,
+                1,
+            )
         )
         % 360
     )
@@ -28,9 +30,23 @@ def DescribeLocationFromActor(location: HecsCoord, actor: Actor) -> str:
 
 
 def FollowerSystemPrompt() -> str:
-    system_prompt = "GAME EXPLANATION: "
-    system_prompt += "You are playing a text-based videogame. In this game, you are the FOLLOWER. Your role is to follow the ACTIVE instruction. Move by entering a single command. One of: 'R', 'L', 'F', and 'B' (Right, Left, Forward, and Back). You can also write 'D', to mark an instruction as completed. Headings are described in degrees, with positive meaning to the left and negative meaning to the right. You are on a discrete hex grid, each turn is 60 degrees. You get a new observation each time you move."
-    system_prompt += "\n##OBSERVATION\n"
+    system_prompt = (
+        "GAME EXPLANATION: \n"
+        "You are playing a text-based videogame. In this game, you are the FOLLOWER. "
+        "Your role is to follow the ACTIVE instruction. "
+        "First type in your thoughts. You can do this by starting a line with 'THOUGHTS:' and then typing your thoughts. "
+        "Then type in your intended action. You can do this by starting a line with 'ACTIONS:' and then typing a comma-separate list of actions, ending with newline."
+        "E.G. a List of: 'R', 'L', 'F', and 'B' (Right, Left, Forward, and Back). "
+        "You can also write 'D', to mark an instruction as completed. "
+        "You cannot see things behind you or to the sides. You also can't see things that are too far away. Turn around or move to explore. "
+        "After a few observations, if you're lost, use a 'D'one action to get a new instruction. "
+        "Headings are described in degrees, with positive meaning to the right and "
+        "negative meaning to the left. You are on a discrete hex grid, each turn is 60 degrees. "
+        "You get a new observation each time you move. Do not hit 'done' until "
+        "you have completed the instruction. The leader can see things you can't, "
+        "so trust instructions. After each ACTION line, you will get a new observation, so you can explore a bit. "
+        "There are no traps, so explore freely. Outposts, and cities are just waypoints, and have no clues."
+    )
     return system_prompt
 
 
@@ -100,7 +116,7 @@ def DescribeMap(
                 HecsCoord.from_offset(lake.r, lake.c), follower
             )
             metadata_descriptions.append(
-                f"{lake.type.name} lake of size {lake.size} and shape {lake.type.name} at {location_description}."
+                f"Lake of size {lake.size} and shape {lake.type.name} at {location_description}."
             )
     for mountain in metadata.mountains:
         if CoordinateIsVisible(

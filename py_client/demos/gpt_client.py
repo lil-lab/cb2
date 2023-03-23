@@ -1,6 +1,9 @@
+import concurrent.futures
+import functools
 import logging
 import pathlib
 from datetime import timedelta
+from time import sleep
 
 import fire
 import openai
@@ -13,6 +16,36 @@ from server.messages.prop import PropUpdate
 logger = logging.getLogger(__name__)
 
 
+def timeout_decorator(timeout):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(func, *args, **kwargs)
+                try:
+                    return future.result(timeout)
+                except concurrent.futures.TimeoutError:
+                    print("Function call timed out")
+
+        return wrapper
+
+    return decorator
+
+
+@timeout_decorator(timeout=20)
+def call_openai_api_sync(messages):
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        # model="gpt-4",
+        # model="gpt-3.5-turbo",
+        messages=messages,
+        max_tokens=50,
+        n=1,
+        temperature=0.5,
+    )
+    return response
+
+
 def actions_from_code(action_code, i_uuid: str = None):
     # Split action code by comma.
     characters_in_prompt = action_code.split(",")
@@ -21,8 +54,8 @@ def actions_from_code(action_code, i_uuid: str = None):
         return None
     actions = []
     for c in characters_in_prompt:
-        # Convert to lower.
-        c = c.lower()
+        # Convert to lower and strip whitespace.
+        c = c.lower().strip()
         logger.info(f"Action code: `{c}`")
         if "forward".startswith(c):
             actions.append(Action.Forwards())
@@ -78,6 +111,7 @@ class GPTFollower(object):
             },
         ]
         try:
+            logger.info(FollowerSystemPrompt())
             game_state = self.game.initial_state()
             (_, _, turn_state, _, _, _) = game_state
             action = Action.NoopAction()
@@ -89,10 +123,10 @@ class GPTFollower(object):
                 description = DescribeMap(
                     mapu, prop_update, instrs, turn_state, follower, leader
                 )
-                print("===============================")
-                print(description)
 
                 if len(self.actions) == 0:
+                    print("===============================")
+                    print(description)
                     game_history.append(
                         {
                             "role": "user",
@@ -100,27 +134,40 @@ class GPTFollower(object):
                         }
                     )
 
-                    response = openai.ChatCompletion.create(
-                        model="gpt-3.5-turbo",
-                        messages=game_history,
-                        max_tokens=10,
-                        n=1,
-                        stop=["\n"],
-                        temperature=0.5,
-                    )
+                    logger.info(f"========== OPENAI API CALL ==========")
+                    response = call_openai_api_sync(messages=game_history)
 
-                    action_code = response.choices[0].message.content.strip()
-                    print(f"GPT-4 action: `{action_code}`")
+                    if not response:
+                        logger.info(f"step(NOOP)")
+                        game_state = self.game.step(Action.NoopAction())
+                        continue
+
+                    response_text = response.choices[0].message.content.strip()
+                    logger.info(
+                        f"############# OPENAI API RESPONSE ##############\n{response_text}\n###############"
+                    )
+                    sleep(2)
+                    action_string = ""
+                    # Split by lines. If a line starts with "THOUGHTS:" or "THOUGHT:", then
+                    # print the line. If a line starts with "ACTIONS:" or "ACTION:", then
+                    # collect everything after the colon and split by comma.
+                    lines = response_text.split("\n")
+                    for line in lines:
+                        if line.startswith("THOUGHTS:") or line.startswith("THOUGHT:"):
+                            print(f"GPT thought: `{line}`")
+                        elif line.startswith("ACTIONS:") or line.startswith("ACTION:"):
+                            action_string = line.split(":")[1]
+                            break
 
                     game_history.append(
                         {
                             "role": "assistant",
-                            "content": action_code,
+                            "content": response_text,
                         }
                     )
 
                     active_instruction = get_active_instruction(instrs)
-                    actions = actions_from_code(action_code, active_instruction.uuid)
+                    actions = actions_from_code(action_string, active_instruction.uuid)
                     if len(actions) == 0:
                         # Instead of rapidly polling OpenAI, just quit.
                         logger.info("No actions. Quitting.")
