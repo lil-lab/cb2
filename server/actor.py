@@ -2,6 +2,8 @@ import logging
 from datetime import datetime
 from queue import Queue
 
+from mashumaro.types import SerializableType
+
 from server.hex import HecsCoord
 from server.messages import state_sync
 from server.messages.action import ActionType, Turn, Walk
@@ -9,7 +11,7 @@ from server.messages.action import ActionType, Turn, Walk
 logger = logging.getLogger(__name__)
 
 
-class Actor(object):
+class Actor(SerializableType, use_annotations=True):
     def __init__(
         self, actor_id, asset_id, role, spawn, realtime=False, spawn_rotation_degrees=0
     ):
@@ -23,6 +25,13 @@ class Actor(object):
         self._projected_location = spawn
         self._projected_heading = 0
         self._role = role
+
+    def _serialize(self) -> state_sync.StateSync:
+        return self.state()
+
+    @classmethod
+    def _deserialize(cls, value: state_sync.StateSync):
+        return Actor.from_state(value)
 
     @staticmethod
     def from_state(state, realtime: bool = False):

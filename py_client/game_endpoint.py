@@ -6,11 +6,14 @@ import dataclasses
 import logging
 import random
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
+from typing import Iterator, List, Union
 
 import numpy as np
 import pygame
+from mashumaro.mixins.json import DataClassJSONMixin
 
 import server.actor as actor
 import server.messages.state_sync as state_sync
@@ -33,14 +36,19 @@ from py_client.follower_data_masking import (
     CensorFollowerProps,
 )
 from py_client.game_socket import GameSocket
+from server.actor import Actor
 from server.config.config import Config
 from server.main import HEARTBEAT_TIMEOUT_S
 from server.map_tools.visualize import GameDisplay
 from server.messages import action as action_module
 from server.messages import message_from_server
 from server.messages.action import Action, ActionType
-from server.messages.prop import PropType
+from server.messages.live_feedback import LiveFeedback
+from server.messages.map_update import MapUpdate
+from server.messages.objective import ObjectiveMessage
+from server.messages.prop import Prop, PropType
 from server.messages.rooms import Role
+from server.messages.turn_state import TurnState
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +81,41 @@ async def pygame_event_handler():
     while True:
         pygame_handle_events()
         await asyncio.sleep(0.1)
+
+
+@dataclass
+class GameState(DataClassJSONMixin):
+    """Represents the state of the game at a given time. Unpacks to a tuple for compatibility with the old API."""
+
+    map_update: MapUpdate
+    props: List[Prop]
+    turn_state: TurnState
+    instructions: List[ObjectiveMessage]
+    actors: List[Actor]
+    live_feedback: List[LiveFeedback]
+
+    def __iter__(
+        self,
+    ) -> Iterator[
+        Union[
+            MapUpdate,
+            List[Prop],
+            TurnState,
+            List[ObjectiveMessage],
+            List[Actor],
+            List[LiveFeedback],
+        ]
+    ]:
+        return iter(
+            (
+                self.map_update,
+                self.props,
+                self.turn_state,
+                self.instructions,
+                self.actors,
+                self.live_feedback,
+            )
+        )
 
 
 class Action(object):
@@ -452,7 +495,7 @@ class GameEndpoint(object):
         """Returns true if the game timed out in the last step()."""
         return self._timeout_observed
 
-    def step(self, action, wait_for_turn=True):
+    def step(self, action, wait_for_turn=True) -> GameState:
         """Executes one action and blocks until the environment is ready for another action.
 
         For local games, we provide wait_for_turn as a parameter to disable
@@ -480,7 +523,7 @@ class GameEndpoint(object):
         # While it isn't our turn to move:
         #   Wait for tick
         #   Process messages
-        # Return true
+        # Return state
         #
         # Process any pending messages...
         self._timeout_observed = False
@@ -634,7 +677,7 @@ class GameEndpoint(object):
     def __exit__(self, type, value, traceback):
         self.close()
 
-    def _state(self):
+    def _state(self) -> GameState:
         leader = None
         follower = None
         for id in self.actors:
@@ -655,7 +698,7 @@ class GameEndpoint(object):
             map_update = CensorFollowerMap(map_update, follower, self.config)
             props = CensorFollowerProps(props, follower, self.config)
             actors = CensorActors(actors, follower, self.config)
-        return (
+        return GameState(
             map_update,
             props,
             self.turn_state,
