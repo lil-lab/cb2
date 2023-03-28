@@ -177,6 +177,61 @@ public class MenuTransitionHandler : MonoBehaviour
         Network.NetworkManager.TaggedInstance().ReturnToMenu();
     }
 
+    // Maps Network.SoundClipType to TAG name of audio source in Unity.
+    private static readonly string[] audioSourceTags = new string[] {
+        "",
+        "INSTRUCTION_RECEIVED_SOUND",
+        "INSTRUCTION_SENT_SOUND",
+        "INVALID_SET_SOUND",
+        "NEGATIVE_FEEDBACK_SOUND",
+        "POSITIVE_FEEDBACK_SOUND",
+        "VALID_SET_SOUND",
+    };
+
+    public static void PlaySound(Network.SoundTrigger trigger)
+    {
+        if (trigger.sound_clip == Network.SoundClipType.NONE)
+            return;
+        Logger logger = Logger.GetOrCreateTrackedLogger(TAG);
+        // Make sure trigger.sound_clip is valid.
+        if ((int)trigger.sound_clip >= audioSourceTags.Length)
+        {
+            logger.Warn("Sound clip unknown: " + trigger.sound_clip);
+            return;
+        }
+        string tagName = audioSourceTags[(int)trigger.sound_clip];
+        GameObject soundObject = GameObject.FindGameObjectWithTag(tagName);
+        if (soundObject == null)
+        {
+            logger.Warn("Could not find sound object for trigger: " + trigger.ToString());
+            return;
+        }
+        AudioSource audioSource = soundObject.GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            logger.Warn("Could not find audio source for trigger: " + trigger.ToString());
+            return;
+        }
+        GameObject muteToggleObject = GameObject.FindGameObjectWithTag(MUTE_AUDIO_TOGGLE);
+        if (muteToggleObject != null)
+        {
+            Toggle muteToggle = muteToggleObject.GetComponent<Toggle>();
+            if (muteToggle != null)
+            {
+                Debug.Log("Mute toggle is " + muteToggle.isOn);
+                if (muteToggle.isOn)
+                {
+                    logger.Info("Muted sound: " + trigger.ToString());
+                    audioSource.Stop();
+                    return;
+                }
+            }
+        }
+        audioSource.volume = trigger.volume;
+        audioSource.Play();
+    }
+
+
     public List<Network.ObjectiveMessage> ObjectiveList()
     {
         return _lastObjectivesList;

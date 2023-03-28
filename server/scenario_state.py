@@ -60,6 +60,7 @@ class ScenarioState(object):
         game_record,
         log_to_db: bool = True,
         realtime_actions: bool = False,
+        lobby: "server.Lobby" = None,
     ):
         self._room_id = room_id
         self._scenario_id = ""
@@ -69,6 +70,7 @@ class ScenarioState(object):
             use_preset_data=False,
             log_to_db=log_to_db,
             realtime_actions=realtime_actions,
+            lobby=lobby,
         )
 
         # Set the default map to all water. This locks the player in place and prevents movement. When a scenario is loaded, the map will be updated.

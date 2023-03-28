@@ -77,7 +77,9 @@ class Room(object):
                 self._game_record.type = f"{game_type_prefix}game-mturk"
             else:
                 self._game_record.type = f"{game_type_prefix}game"
-            game_state = State(self._id, self._game_record, realtime_actions=True)
+            game_state = State(
+                self._id, self._game_record, realtime_actions=True, lobby=lobby
+            )
         elif self._room_type == RoomType.TUTORIAL:
             if RoleFromTutorialName(tutorial_name) == Role.LEADER:
                 self._game_record.type = game_type_prefix + "lead_tutorial"
@@ -88,7 +90,7 @@ class Room(object):
             if not from_event_uuid:
                 raise ValueError("Preset game must be initialized from an instruction.")
             game_state, reason = State.InitializeFromExistingState(
-                self._id, from_event_uuid, True
+                self._id, from_event_uuid, True, lobby=lobby
             )
             if game_state is None:
                 logger.warning(f"Failed to initialize game from instruction: {reason}")
@@ -98,7 +100,7 @@ class Room(object):
         elif self._room_type == RoomType.SCENARIO:
             self._game_record.type = f"{game_type_prefix}scenario"
             game_state = ScenarioState(
-                self._id, self._game_record, realtime_actions=True
+                self._id, self._game_record, realtime_actions=True, lobby=lobby
             )
         else:
             game_state = None

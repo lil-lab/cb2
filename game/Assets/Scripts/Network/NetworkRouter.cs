@@ -279,12 +279,10 @@ namespace Network
             }
             if (message.type == MessageFromServer.MessageType.PROP_SPAWN)
             {
-                _logger.Info("Received prop spawn message!");
                 RegisterProp(message.prop_spawn);
             }
             if (message.type == MessageFromServer.MessageType.PROP_DESPAWN)
             {
-                _logger.Info("Received prop despawn message with " + message.prop_despawn.Count + " props to destroy...");
                 for (int i = 0; i < message.prop_despawn.Count; i++)
                 {
                     int id = message.prop_despawn[i].id;
@@ -293,7 +291,6 @@ namespace Network
             }
             if (message.type == MessageFromServer.MessageType.REPLAY_RESPONSE)
             {
-                _logger.Info("Received replay response!");
                 if (_mode == Mode.REPLAY) {
                     ReplayManager.TaggedInstance().HandleReplayResponse(message.replay_response); 
                 } else {
@@ -302,8 +299,11 @@ namespace Network
             }
             if (message.type == MessageFromServer.MessageType.SCENARIO_RESPONSE)
             {
-                _logger.Info("Received scenario response!");
                 ProcessScenarioResponse(message.scenario_response);
+            }
+            if (message.type == MessageFromServer.MessageType.SOUND_TRIGGER)
+            {
+                MenuTransitionHandler.PlaySound(message.sound_trigger);
             }
         }
 

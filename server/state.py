@@ -32,6 +32,7 @@ from server.messages.action import ActionType, Color
 from server.messages.prop import PropUpdate
 from server.messages.rooms import Role
 from server.messages.scenario import Scenario, ScenarioResponse, ScenarioResponseType
+from server.messages.sound_trigger import SoundClipType, SoundTrigger
 from server.messages.state_sync import StateMachineTick
 from server.messages.turn_state import GameOverMessage, TurnUpdate
 from server.state_utils import (
@@ -59,7 +60,11 @@ logger = logging.getLogger(__name__)
 class State(object):
     @classmethod
     def InitializeFromExistingState(
-        cls, room_id, event_uuid: str = "", realtime_actions: bool = False
+        cls,
+        room_id,
+        event_uuid: str = "",
+        realtime_actions: bool = False,
+        lobby: "server.Lobby" = None,
     ):
         """Initialize the game from a given event.
 
@@ -80,6 +85,7 @@ class State(object):
             scenario,
             realtime_actions=realtime_actions,
             log_to_db=False,
+            lobby=lobby,
         )
         return s, ""
 
@@ -91,6 +97,7 @@ class State(object):
         scenario: Scenario = None,
         log_to_db: bool = True,
         realtime_actions: bool = False,
+        lobby: "server.Lobby" = None,
     ):
         """Initialize the game state.
 
@@ -107,6 +114,7 @@ class State(object):
         """
         self._start_time = datetime.utcnow()
         self._room_id = room_id
+        self._lobby = lobby
 
         # Rolling count of iteration loop. Used to indicate when an iteration of
         # the logic loop has occurred. Sent out in StateMachineTick messages
@@ -147,6 +155,10 @@ class State(object):
         self._prop_stale = (
             {}
         )  # Maps from player_id -> bool if their prop list is stale.
+
+        self._sound_trigger_messages = (
+            {}
+        )  # Maps from player_id -> List[sound trigger messages].
 
         self._ticks = {}  # Maps from player_id -> tick message.
 
@@ -486,6 +498,8 @@ class State(object):
                         stepping_actor = self._actors[actor_id]
                         break
                 self._game_recorder.record_card_selection(stepping_actor, card)
+            self.queue_sound_clip(self._leader.actor_id(), SoundClipType.INVALID_SET)
+            self.queue_sound_clip(self._follower.actor_id(), SoundClipType.INVALID_SET)
 
         if (
             not self._map_provider.selected_cards_collide()
@@ -506,6 +520,8 @@ class State(object):
             self._current_set_invalid = False
             added_turns = 0
             cards_changed = True
+            self.queue_sound_clip(self._leader.actor_id(), SoundClipType.VALID_SET)
+            self.queue_sound_clip(self._follower.actor_id(), SoundClipType.VALID_SET)
             added_turns = turn_reward(self._turn_state.sets_collected)
             new_turn_state = TurnUpdate(
                 self._turn_state.turn,
@@ -781,10 +797,31 @@ class State(object):
         self._game_recorder.record_instruction_sent(objective)
         if len(self._instructions) == 0:
             self._game_recorder.record_instruction_activated(objective)
+            self.queue_sound_clip(
+                self._follower.actor_id(), SoundClipType.INSTRUCTION_RECEIVED
+            )
         self._instructions.append(objective)
         self._instruction_added = True
         for actor_id in self._actors:
             self._instructions_stale[actor_id] = True
+        self.queue_sound_clip(self._leader.actor_id(), SoundClipType.INSTRUCTION_SENT)
+
+    def queue_sound_clip(self, player_id: int, clip_id: SoundClipType):
+        if player_id not in self._actors:
+            logger.warning(
+                "Warning, sound clip received from non-actor ID: {str(player_id)}"
+            )
+            return
+        if self._lobby is None or self._lobby.lobby_info() is None:
+            return
+        if player_id not in self._sound_trigger_messages:
+            self._sound_trigger_messages[player_id] = []
+        self._sound_trigger_messages[player_id].append(
+            SoundTrigger(
+                clip_id,
+                self._lobby.lobby_info().sound_clip_volume,
+            )
+        )
 
     def _drain_instruction_complete(self, id, objective_complete):
         self._instruction_complete_queue.append((id, objective_complete))
@@ -804,6 +841,13 @@ class State(object):
         if self._turn_state.turn != Role.FOLLOWER:
             logger.warn(f"Warning, live feedback received during the leader's turn.")
             return
+        sound_clip = (
+            SoundClipType.POSITIVE_FEEDBACK
+            if feedback.signal == live_feedback.FeedbackType.POSITIVE
+            else SoundClipType.NEGATIVE_FEEDBACK
+        )
+        self.queue_sound_clip(self._leader.actor_id(), sound_clip)
+        self.queue_sound_clip(self._follower.actor_id(), sound_clip)
         self._live_feedback_queue.append((id, feedback))
 
     def _drain_turn_complete(self, id, turn_complete):
@@ -1063,8 +1107,23 @@ class State(object):
             msg = message_from_server.StateMachineTickFromServer(tick)
             return msg
 
+        sound_trigger = self._next_sound_trigger(player_id)
+        if not sound_trigger is None:
+            logger.debug(
+                f"Room {self._room_id} sound trigger {sound_trigger} for player_id {player_id}"
+            )
+            msg = message_from_server.SoundTriggerFromServer(sound_trigger)
+            return msg
+
         # Nothing to send.
         return None
+
+    def _next_sound_trigger(self, player_id):
+        if not player_id in self._sound_trigger_messages:
+            return None
+        if self._sound_trigger_messages[player_id].empty():
+            return None
+        return self._sound_trigger_messages[player_id].pop()
 
     def _next_actions(self, actor_id):
         if not actor_id in self._action_history:
@@ -1238,6 +1297,9 @@ class State(object):
         self._game_recorder.record_instruction_complete(objective_complete)
         if len(self._instructions) > 0:
             self._game_recorder.record_instruction_activated(self._instructions[0])
+            self.queue_sound_clip(
+                self._follower.actor_id(), SoundClipType.INSTRUCTION_RECEIVED
+            )
         for actor_id in self._actors:
             self._instructions_stale[actor_id] = True
 

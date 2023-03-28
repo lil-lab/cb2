@@ -90,3 +90,8 @@ capture a longer moment of time.
 
 - Google SSO docs:
     https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid
+
+- Game Sound & Audio effects sourced from:
+
+https://github.com/akx/Notifications
+https://github.com/JimLynchCodes/Game-Sound-Effects

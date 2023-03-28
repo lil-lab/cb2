@@ -48,3 +48,5 @@ class LobbyInfo(DataClassJSONMixin):
     comment: str = ""
     # The maximum number of games that can be created in this lobby.
     game_capacity: int = 40
+    # To disable sound, just set this to 0.0
+    sound_clip_volume: float = 1.0

@@ -20,6 +20,7 @@ from server.messages.prop import Prop, PropUpdate
 from server.messages.replay_messages import ReplayResponse
 from server.messages.rooms import RoomManagementResponse
 from server.messages.scenario import ScenarioResponse
+from server.messages.sound_trigger import SoundTrigger
 from server.messages.state_sync import StateMachineTick, StateSync
 from server.messages.turn_state import TurnState
 from server.messages.tutorials import TutorialResponse
@@ -51,6 +52,8 @@ class MessageType(Enum):
     SCENARIO_RESPONSE = 16
     # Used for configuring a dynamic part of the main menu.
     MENU_OPTIONS = 17
+    # Prompt the follower with feedback questions.
+    FEEDBACK_QUESTION = 18
 
 
 def ActionsFromServer(actions):
@@ -352,6 +355,31 @@ def MenuOptionsFromServer(menu_options):
     )
 
 
+def SoundTriggerFromServer(sound_trigger):
+    return MessageFromServer(
+        datetime.utcnow(),
+        MessageType.SOUND_TRIGGER,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        sound_trigger,
+    )
+
+
 def ExcludeIfNone(value):
     return value is None
 
@@ -393,5 +421,8 @@ class MessageFromServer(DataClassJSONMixin):
         default=None, metadata=config(exclude=ExcludeIfNone)
     )
     menu_options: Optional[MenuOptions] = field(
+        default=None, metadata=config(exclude=ExcludeIfNone)
+    )
+    sound_trigger: Optional[SoundTrigger] = field(
         default=None, metadata=config(exclude=ExcludeIfNone)
     )
