@@ -10,7 +10,7 @@ matplotlib==3.5.1
 humanhash3==0.0.6
 orjson==3.6.7
 pendulum==2.1.2
-mashumaro==3.2
+mashumaro==3.5
 viztracer==0.15.6
 tqdm==4.64.0
 sparklines==0.4.2
@@ -27,3 +27,4 @@ time-machine==2.8.2
 appdirs==1.4.4
 cachecontrol==0.12.11
 openai==0.27.2
+evals==0.1.1
