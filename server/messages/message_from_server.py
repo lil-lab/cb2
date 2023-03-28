@@ -53,7 +53,7 @@ class MessageType(Enum):
     # Used for configuring a dynamic part of the main menu.
     MENU_OPTIONS = 17
     # Prompt the follower with feedback questions.
-    FEEDBACK_QUESTION = 18
+    SOUND_TRIGGER = 18
 
 
 def ActionsFromServer(actions):

@@ -1121,7 +1121,7 @@ class State(object):
     def _next_sound_trigger(self, player_id):
         if not player_id in self._sound_trigger_messages:
             return None
-        if self._sound_trigger_messages[player_id].empty():
+        if len(self._sound_trigger_messages[player_id]) == 0:
             return None
         return self._sound_trigger_messages[player_id].pop()
 
