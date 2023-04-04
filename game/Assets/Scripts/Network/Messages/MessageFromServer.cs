@@ -27,6 +27,7 @@ namespace Network
             SCENARIO_RESPONSE,
             MENU_OPTIONS,
             SOUND_TRIGGER,
+            FEEDBACK_QUESTION,
         }
 
         // These fields are always provided with any packet.
@@ -54,5 +55,6 @@ namespace Network
         public ScenarioResponse scenario_response;
         public MenuOptions menu_options;
         public SoundTrigger sound_trigger;
+        public FeedbackQuestion feedback_question;
     }
 }  // namespace Network

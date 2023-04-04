@@ -305,6 +305,10 @@ namespace Network
             {
                 MenuTransitionHandler.PlaySound(message.sound_trigger);
             }
+            if (message.type == MessageFromServer.MessageType.FEEDBACK_QUESTION)
+            {
+                MenuTransitionHandler.Instance.DisplayQuestion(message.feedback_question);
+            }
         }
 
         // For messages which don't require in-game UI to be rendered.

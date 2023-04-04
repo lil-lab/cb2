@@ -11,6 +11,7 @@ import server.schemas as schemas
 from server.card import Card
 from server.hex import HecsCoord
 from server.messages.action import Action
+from server.messages.feedback_questions import FeedbackQuestion, FeedbackResponse
 from server.messages.rooms import Role
 from server.schemas.event import Event, EventOrigin, EventType
 from server.schemas.util import InitialState
@@ -279,6 +280,35 @@ def EventFromLiveFeedback(
     )
 
 
+def EventFromFeedbackQuestion(game, turn: int, tick: int, question: FeedbackQuestion):
+    return Event(
+        game=game,
+        type=EventType.FEEDBACK_QUESTION,
+        turn_number=turn,
+        tick=tick,
+        origin=EventOrigin.SERVER,
+        role=question.to,
+        short_code=question.uuid,
+        data=JsonSerialize(question),
+    )
+
+
+def EventFromFeedbackResponse(
+    game, turn: int, tick: int, question_event, response: FeedbackResponse
+):
+    return Event(
+        game=game,
+        type=EventType.FEEDBACK_RESPONSE,
+        turn_number=turn,
+        tick=tick,
+        origin=EventOrigin.SERVER,
+        role=question_event.role,
+        parent_event=question_event,
+        short_code=response.uuid,
+        data=JsonSerialize(response),
+    )
+
+
 class GameRecorder(object):
     """Helper class to record everything that happens in a game.
 
@@ -406,7 +436,7 @@ class GameRecorder(object):
     def record_instruction_activated(self, objective):
         if self._disabled:
             return
-        instruction_event = self._get_event_for_instruction_uuid(objective.uuid)
+        instruction_event = self._get_event_from_instruction_uuid(objective.uuid)
         if instruction_event is None:
             logger.error(
                 f"Could not find previous receipt of activated instruction with UUID {objective.uuid}"
@@ -424,7 +454,7 @@ class GameRecorder(object):
     def record_instruction_complete(self, objective_complete):
         if self._disabled:
             return
-        instruction_event = self._get_event_for_instruction_uuid(
+        instruction_event = self._get_event_from_instruction_uuid(
             objective_complete.uuid
         )
         if instruction_event is None:
@@ -464,7 +494,7 @@ class GameRecorder(object):
             return
         instruction_event = None
         if active_instruction is not None:
-            instruction_event = self._get_event_for_instruction_uuid(
+            instruction_event = self._get_event_from_instruction_uuid(
                 active_instruction.uuid
             )
         move_code = self._get_move_code_for_action(actor, action)
@@ -505,7 +535,7 @@ class GameRecorder(object):
     def record_instruction_cancelled(self, objective):
         if self._disabled:
             return
-        instruction_event = self._get_event_for_instruction_uuid(objective.uuid)
+        instruction_event = self._get_event_from_instruction_uuid(objective.uuid)
         if instruction_event is None:
             logger.warn(f"Could not find instruction record for {objective.uuid}")
             return
@@ -556,6 +586,35 @@ class GameRecorder(object):
         self._game_record.score = turn_state.score
         self._game_record.number_turns = turn_state.turn_number
         self._game_record.save()
+
+    def record_feedback_question(self, feedback_question: FeedbackQuestion):
+        if self._disabled:
+            return
+        event = EventFromFeedbackQuestion(
+            self._game_record,
+            self._turn_number,
+            self._tick,
+            feedback_question,
+        )
+        event.save(force_insert=True)
+
+    def record_feedback_response(self, feedback_response: FeedbackResponse):
+        if self._disabled:
+            return
+        question_event = self._get_event_from_question_uuid(feedback_response.uuid)
+        if question_event is None:
+            logger.error(
+                f"Could not find previous receipt of feedback question with UUID {feedback_response.uuid}"
+            )
+            return
+        event = EventFromFeedbackResponse(
+            self._game_record,
+            self._turn_number,
+            self._tick,
+            question_event,
+            feedback_response,
+        )
+        event.save(force_insert=True)
 
     def record_game_over(self):
         if self._disabled:
@@ -611,7 +670,7 @@ class GameRecorder(object):
             move_code = "INVALID"
         return move_code
 
-    def _get_event_for_instruction_uuid(self, instruction_uuid):
+    def _get_event_from_instruction_uuid(self, instruction_uuid):
         instruction_sent_event_query = Event.select().where(
             Event.type == EventType.INSTRUCTION_SENT,
             Event.short_code == instruction_uuid,
@@ -619,3 +678,12 @@ class GameRecorder(object):
         if not instruction_sent_event_query.exists():
             return None
         return instruction_sent_event_query.get()
+
+    def _get_event_from_question_uuid(self, question_uuid):
+        question_event_query = Event.select().where(
+            Event.type == EventType.FEEDBACK_QUESTION,
+            Event.short_code == question_uuid,
+        )
+        if not question_event_query.exists():
+            return None
+        return question_event_query.get()

@@ -50,3 +50,5 @@ class LobbyInfo(DataClassJSONMixin):
     game_capacity: int = 40
     # To disable sound, just set this to 0.0
     sound_clip_volume: float = 1.0
+    # After each instruction, prompt the follower with questions.
+    follower_feedback_questions: bool = False

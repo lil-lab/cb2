@@ -1,5 +1,8 @@
 import logging
 
+from server.messages.feedback_questions import FeedbackQuestion, FeedbackType
+from server.messages.rooms import Role
+
 LEADER_MOVES_PER_TURN = 5
 FOLLOWER_MOVES_PER_TURN = 10
 
@@ -33,3 +36,23 @@ def cumulative_turns_added(score):
     for i in range(score):
         turns += turn_reward(i)
     return turns
+
+
+FOLLOWER_FEEDBACK_QUESTIONS = [
+    FeedbackQuestion(
+        type=FeedbackType.BOOLEAN,
+        to=Role.FOLLOWER,
+        question="Did you follow all parts of the Leader's command and find everything correct?",
+        uuid="",
+        timeout_s=15.0,
+        transmit_time_s=0,
+    ),
+    FeedbackQuestion(
+        type=FeedbackType.BOOLEAN,
+        to=Role.FOLLOWER,
+        question="Was the instruction grammatical and well written?",
+        uuid="",
+        timeout_s=15.0,
+        transmit_time_s=0,
+    ),
+]

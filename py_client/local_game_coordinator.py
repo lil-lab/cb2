@@ -16,6 +16,7 @@ import pygame
 import server.schemas.game as game_db
 from py_client.game_endpoint import GameEndpoint
 from py_client.game_socket import GameSocket
+from server.lobby import Lobby
 from server.map_tools.visualize import GameDisplay
 from server.messages.rooms import Role
 from server.messages.tutorials import (
@@ -99,7 +100,12 @@ class LocalGameCoordinator:
         self._render_follower = render_follower
         self._config = config
 
-    def CreateGame(self, log_to_db: bool = True, realtime_actions: bool = False):
+    def CreateGame(
+        self,
+        log_to_db: bool = True,
+        realtime_actions: bool = False,
+        lobby: Lobby = None,
+    ):
         """Creates a new game. Exactly two agents can join this game with JoinGame().
 
         Returns the game name.
@@ -133,7 +139,11 @@ class LocalGameCoordinator:
         else:
             game_record = None
         state_machine = State(
-            room_id, game_record, log_to_db=log_to_db, realtime_actions=False
+            room_id,
+            game_record,
+            log_to_db=log_to_db,
+            realtime_actions=False,
+            lobby=lobby,
         )
         self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)
         return game_name

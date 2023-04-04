@@ -38,6 +38,7 @@ class MessageType(Enum):
     SCENARIO_REQUEST = 13
     # Ok in any room. Asks the server to download current game state as a scenario.
     SCENARIO_DOWNLOAD = 14
+    FEEDBACK_RESPONSE = 15
 
 
 @dataclass(frozen=True)

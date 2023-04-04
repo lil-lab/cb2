@@ -9,6 +9,8 @@ from py_client.endpoint_pair import EndpointPair
 from py_client.game_endpoint import Action
 from py_client.local_game_coordinator import LocalGameCoordinator
 from server.config.config import Config, SetGlobalConfig
+from server.lobbies.open_lobby import OpenLobby
+from server.lobby import LobbyInfo, LobbyType
 from server.messages.rooms import Role
 from server.schemas.base import (
     ConnectDatabase,
@@ -51,6 +53,9 @@ class RandomRealtimeLocalSelfPlayTest(unittest.TestCase):
             comment="State Machine Unit Test Config",
             live_feedback_enabled=True,
         )
+        lobby = OpenLobby(
+            LobbyInfo("Test Lobby", LobbyType.OPEN, "Unit test...", 40, 1, False)
+        )
         SetGlobalConfig(self.config)
         # In-memory db for test validation.
         SetDatabaseForTesting()
@@ -58,7 +63,7 @@ class RandomRealtimeLocalSelfPlayTest(unittest.TestCase):
         CreateTablesIfNotExists(ListDefaultTables())
         self.coordinator = LocalGameCoordinator(self.config)
         self.game_name = self.coordinator.CreateGame(
-            log_to_db=False, realtime_actions=True
+            log_to_db=False, realtime_actions=True, lobby=lobby
         )
         self.endpoint_pair = EndpointPair(self.coordinator, self.game_name)
 

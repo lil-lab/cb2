@@ -152,6 +152,15 @@ class EventType(IntEnum):
     #   data: str | JSON type LiveFeedback in server/messages/live_feedback.py
     #   short_code: str | Short description of Feedback. Positive/Negative.
     LIVE_FEEDBACK = 14
+    # Used to ask the leader/follower a question.
+    # Event fields:
+    #   short_code: str | UUID unique to this question. Not same as event UUID.
+    FEEDBACK_QUESTION = 15
+    # Record of the leader/follower's question response.
+    # Event fields:
+    #   parent_id: str | Question UUID of related FEEDBACK_QUESTION event.
+    #   short_code: str | UUID unique to this question. Not same as event UUID.
+    FEEDBACK_RESPONSE = 16
 
 
 class Event(BaseModel):

@@ -29,6 +29,7 @@ from server.messages import (
     state_sync,
 )
 from server.messages.action import ActionType, Color
+from server.messages.feedback_questions import FeedbackResponse
 from server.messages.prop import PropUpdate
 from server.messages.rooms import Role
 from server.messages.scenario import Scenario, ScenarioResponse, ScenarioResponseType
@@ -36,6 +37,7 @@ from server.messages.sound_trigger import SoundClipType, SoundTrigger
 from server.messages.state_sync import StateMachineTick
 from server.messages.turn_state import GameOverMessage, TurnUpdate
 from server.state_utils import (
+    FOLLOWER_FEEDBACK_QUESTIONS,
     FOLLOWER_MOVES_PER_TURN,
     FOLLOWER_SECONDS_PER_TURN,
     FOLLOWER_TURN_END_DELAY_SECONDS,
@@ -223,6 +225,11 @@ class State(object):
         self._current_set_invalid = self._map_provider.selected_cards_collide()
         # Adds card covers.
         self._prop_update = map_utils.CensorCards(self._prop_update, None)
+
+        # Maps from player_id -> list of feedback questions (for transmission).
+        self._feedback_questions = {}
+        # Maps from player_id -> list of feedback questions that have not been answered.
+        self._unanswered_feedback_question = {}
 
     def game_time(self):
         """Return timedelta between now and when the game started."""
@@ -647,13 +654,37 @@ class State(object):
         return False
 
     def _update_turn(self, force_role_switch=False, end_reason=""):
+        if self._turn_state.turn == Role.PAUSED:
+            return
         opposite_role = (
             Role.LEADER if self._turn_state.turn == Role.FOLLOWER else Role.FOLLOWER
         )
         role_switch = (
             datetime.utcnow() >= self._turn_state.turn_end
         ) or force_role_switch
-        next_role = opposite_role if role_switch else self._turn_state.turn
+        next_role = self._turn_state.turn
+        if role_switch:
+            if (
+                self._turn_state.turn == Role.FOLLOWER
+            ) and self._lobby.lobby_info().follower_feedback_questions:
+                next_role = Role.QUESTIONING_FOLLOWER
+                # Queue up the feedback questions for the follower.
+                for question in FOLLOWER_FEEDBACK_QUESTIONS:
+                    question.uuid = uuid.uuid4()
+                    question.transmit_time_s = (
+                        datetime.utcnow() - self._turn_state.game_start
+                    ).total_seconds()
+                    self._feedback_questions[self._follower.actor_id()].append(question)
+                    self._unanswered_feedback_question[
+                        self._follower.actor_id()
+                    ].append(question)
+                    self._game_recorder.record_feedback_question(question)
+            else:
+                next_role = opposite_role
+        if self._turn_state.turn == Role.QUESTIONING_FOLLOWER:
+            # If there are no pending questions, switch to the leader role.
+            if len(self._unanswered_feedback_question[self._follower.actor_id()]) == 0:
+                self._turn_state.turn = Role.LEADER
         # Force the leader to act if there's no uncompleted instructions.
         turn_skipped = False
         if next_role == Role.FOLLOWER and not self._has_instructions_todo():
@@ -771,8 +802,20 @@ class State(object):
                 f"Scenario download recvd. Room: {self._room_id}, Player: {id}"
             )
             self._drain_scenario_download(id)
+        elif message.type == message_to_server.MessageType.FEEDBACK_RESPONSE:
+            self._drain_feedback_response(id, message.feedback_response)
         else:
             logger.warn(f"Received unknown packet type: {message.type}")
+
+    def _drain_feedback_response(self, id, feedback_response: FeedbackResponse):
+        if id in self._unanswered_feedback_question:
+            # Find the question that matches the response UUID.
+            self._game_recorder.record_feedback_response(id, feedback_response)
+            player_questions = self._unanswered_feedback_question[id]
+            player_questions = [
+                q for q in player_questions if q.uuid != feedback_response.uuid
+            ]
+            self._unanswered_feedback_question[id] = player_questions
 
     def _drain_actions(self, id, actions):
         for action in actions:
@@ -1101,6 +1144,14 @@ class State(object):
             msg = message_from_server.ScenarioResponseFromServer(scenario_response)
             return msg
 
+        feedback_question = self._next_feedback_question(player_id)
+        if not feedback_question is None:
+            logger.debug(
+                f"Room {self._room_id} feedback question {feedback_question} for player_id {player_id}"
+            )
+            msg = message_from_server.FeedbackQuestionFromServer(feedback_question)
+            return msg
+
         tick = self._next_tick(player_id)
         if not tick is None:
             logger.debug(f"Room {self._room_id} tick {tick} for player_id {player_id}")
@@ -1213,6 +1264,17 @@ class State(object):
         return ScenarioResponse(
             ScenarioResponseType.SCENARIO_DOWNLOAD, scenario_download
         )
+
+    def _next_feedback_question(self, player_id):
+        if player_id not in self._feedback_questions:
+            return None
+        # pop(0) is inefficient, but this list should only be a few elements
+        # long at a time -- a human has to answer these questions in realtime,
+        # after all.
+        feedback_question = self._feedback_questions[player_id].pop(0)
+        if len(self._feedback_questions[player_id]) == 0:
+            return None
+        return feedback_question
 
     # Returns the current state of the game.
     def state(self, actor_id=-1):
