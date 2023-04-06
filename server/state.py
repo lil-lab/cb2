@@ -527,8 +527,20 @@ class State(object):
             self._current_set_invalid = False
             added_turns = 0
             cards_changed = True
-            self.queue_sound_clip(self._leader.actor_id(), SoundClipType.VALID_SET)
-            self.queue_sound_clip(self._follower.actor_id(), SoundClipType.VALID_SET)
+
+            sound_clip_type = SoundClipType.VALID_SET
+            # If the score is 5, 10, 15, or 20, play a different easter egg sound.
+            if self._turn_state.score == 5:
+                sound_clip_type = SoundClipType.EASTER_EGG_SOUND_1
+            elif self._turn_state.score == 10:
+                sound_clip_type = SoundClipType.EASTER_EGG_SOUND_2
+            elif self._turn_state.score == 15:
+                sound_clip_type = SoundClipType.EASTER_EGG_SOUND_3
+            elif self._turn_state.score == 20:
+                sound_clip_type = SoundClipType.EASTER_EGG_SOUND_4
+            self.queue_sound_clip(self._leader.actor_id(), sound_clip_type)
+            self.queue_sound_clip(self._follower.actor_id(), sound_clip_type)
+
             added_turns = turn_reward(self._turn_state.sets_collected)
             new_turn_state = TurnUpdate(
                 self._turn_state.turn,
@@ -762,6 +774,13 @@ class State(object):
             self._announce_action(card_select_action)
             self._game_recorder.record_card_selection(actor, stepped_on_card)
             self._last_card_step_actor = actor
+            clip_type = (
+                SoundClipType.CARD_SELECT if selected else SoundClipType.CARD_DESELECT
+            )
+            self.queue_sound_clip(actor_id, clip_type)
+            # If the follower selected a card, send the sound to the leader too.
+            if actor.role() == Role.FOLLOWER:
+                self.queue_sound_clip(self._leader.actor_id(), clip_type)
 
     def drain_messages(self, id, messages):
         for message in messages:

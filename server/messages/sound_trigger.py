@@ -13,6 +13,13 @@ class SoundClipType(Enum):
     NEGATIVE_FEEDBACK = 4
     POSITIVE_FEEDBACK = 5
     VALID_SET = 6
+    CARD_SELECT = 7
+    CARD_DESELECT = 8
+    # Easter egg sounds to play when the score is high enough.
+    EASTER_EGG_SOUND_1 = 9
+    EASTER_EGG_SOUND_2 = 10
+    EASTER_EGG_SOUND_3 = 11
+    EASTER_EGG_SOUND_4 = 12
     # Add more sound clip types here as needed
 
 

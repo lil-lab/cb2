@@ -186,6 +186,12 @@ public class MenuTransitionHandler : MonoBehaviour
         "NEGATIVE_FEEDBACK_SOUND",
         "POSITIVE_FEEDBACK_SOUND",
         "VALID_SET_SOUND",
+        "CARD_SELECT",
+        "CARD_DESELECT",
+        "EASTER_EGG_SOUND_1",
+        "EASTER_EGG_SOUND_2",
+        "EASTER_EGG_SOUND_3",
+        "EASTER_EGG_SOUND_4"
     };
 
     public static void PlaySound(Network.SoundTrigger trigger)
@@ -969,7 +975,7 @@ public class MenuTransitionHandler : MonoBehaviour
             feedback_obj.GetComponent<Image>().color = feedbackColor;
     }
 
-    private void DisplayQuestion(Network.FeedbackQuestion question)
+    public void DisplayQuestion(Network.FeedbackQuestion question)
     {
         // TBD
     }

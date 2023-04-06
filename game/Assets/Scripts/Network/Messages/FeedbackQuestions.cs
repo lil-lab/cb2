@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Network
 {
-    public enum FeedbackType
+    public enum QuestionType
     {
         NONE = 0,
         BOOLEAN,
@@ -14,7 +14,7 @@ namespace Network
     [Serializable]
     public class FeedbackQuestion
     {
-        public FeedbackType type = FeedbackType.NONE;
+        public QuestionType type = QuestionType.NONE;
         public Role to = Role.NONE; // Role which is being questioned.
         public string question = "";
         public string uuid = "";

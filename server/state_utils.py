@@ -1,6 +1,6 @@
 import logging
 
-from server.messages.feedback_questions import FeedbackQuestion, FeedbackType
+from server.messages.feedback_questions import FeedbackQuestion, QuestionType
 from server.messages.rooms import Role
 
 LEADER_MOVES_PER_TURN = 5
@@ -40,7 +40,7 @@ def cumulative_turns_added(score):
 
 FOLLOWER_FEEDBACK_QUESTIONS = [
     FeedbackQuestion(
-        type=FeedbackType.BOOLEAN,
+        type=QuestionType.BOOLEAN,
         to=Role.FOLLOWER,
         question="Did you follow all parts of the Leader's command and find everything correct?",
         uuid="",
@@ -48,7 +48,7 @@ FOLLOWER_FEEDBACK_QUESTIONS = [
         transmit_time_s=0,
     ),
     FeedbackQuestion(
-        type=FeedbackType.BOOLEAN,
+        type=QuestionType.BOOLEAN,
         to=Role.FOLLOWER,
         question="Was the instruction grammatical and well written?",
         uuid="",

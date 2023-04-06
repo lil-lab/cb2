@@ -7,7 +7,7 @@ from mashumaro.mixins.json import DataClassJSONMixin
 from server.messages.rooms import Role
 
 
-class FeedbackType(Enum):
+class QuestionType(Enum):
     NONE = 0
     BOOLEAN = 1
     MULTIPLE_CHOICE = 2
@@ -16,7 +16,7 @@ class FeedbackType(Enum):
 
 @dataclass(frozen=True)
 class FeedbackQuestion(DataClassJSONMixin):
-    type: FeedbackType = FeedbackType.NONE
+    type: QuestionType = QuestionType.NONE
     to: Role = ""  # To whom the question is directed
     question: str = ""
     uuid: str = field(default_factory=lambda: str(uuid4()))
