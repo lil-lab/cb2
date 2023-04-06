@@ -15,6 +15,8 @@ from py_client.endpoint_pair import EndpointPair
 from py_client.game_endpoint import Action, Role
 from py_client.local_game_coordinator import LocalGameCoordinator
 from server.config.config import ReadConfigOrDie
+from server.lobbies.open_lobby import OpenLobby
+from server.lobby import LobbyInfo, LobbyType
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +82,10 @@ def PlayGame(coordinator, e_uuid="", log_to_db: bool = True, slow: bool = False)
     if len(e_uuid) > 0:
         game_name = coordinator.CreateGameFromDatabase(e_uuid)
     else:
-        game_name = coordinator.CreateGame(log_to_db=log_to_db)
+        lobby = OpenLobby(
+            LobbyInfo("Test Lobby", LobbyType.OPEN, "Unit test...", 40, 1, False)
+        )
+        game_name = coordinator.CreateGame(log_to_db=log_to_db, lobby=lobby)
     endpoint_pair = EndpointPair(coordinator, game_name)
     leader_agent = PathfindingLeader(endpoint_pair.leader())
     follower_agent = NaiveFollower(endpoint_pair.follower())
