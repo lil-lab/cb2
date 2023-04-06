@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import List
 from uuid import uuid4
 
 from mashumaro.mixins.json import DataClassJSONMixin
@@ -24,7 +25,7 @@ class FeedbackQuestion(DataClassJSONMixin):
     # Time sent to the client, in seconds since the epoch. GMT time.
     transmit_time_s: float = field(default=0.0)
     # Valid for type MULTIPLE_CHOICE only
-    answers: list = field(default_factory=list)
+    answers: List = field(default_factory=list)
 
 
 class FeedbackResponse(DataClassJSONMixin):
