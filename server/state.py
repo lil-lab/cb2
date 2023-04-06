@@ -530,13 +530,13 @@ class State(object):
 
             sound_clip_type = SoundClipType.VALID_SET
             # If the score is 5, 10, 15, or 20, play a different easter egg sound.
-            if self._turn_state.score == 5:
+            if self._turn_state.score == 4:
                 sound_clip_type = SoundClipType.EASTER_EGG_SOUND_1
-            elif self._turn_state.score == 10:
+            elif self._turn_state.score == 9:
                 sound_clip_type = SoundClipType.EASTER_EGG_SOUND_2
-            elif self._turn_state.score == 15:
+            elif self._turn_state.score == 14:
                 sound_clip_type = SoundClipType.EASTER_EGG_SOUND_3
-            elif self._turn_state.score == 20:
+            elif self._turn_state.score == 19:
                 sound_clip_type = SoundClipType.EASTER_EGG_SOUND_4
             self.queue_sound_clip(self._leader.actor_id(), sound_clip_type)
             self.queue_sound_clip(self._follower.actor_id(), sound_clip_type)
