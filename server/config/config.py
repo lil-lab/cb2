@@ -167,6 +167,9 @@ class Config(DataClassJSONMixin):
                 LobbyType.SCENARIO,
                 "Lobby for scenario experiments.",
                 40,
+                1,
+                False,
+                True,
             ),
             LobbyInfo(
                 "google-leader-lobby",

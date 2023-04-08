@@ -52,3 +52,5 @@ class LobbyInfo(DataClassJSONMixin):
     sound_clip_volume: float = 1.0
     # After each instruction, prompt the follower with questions.
     follower_feedback_questions: bool = False
+    # From the follower's POV, the cards are standing and facing the follower.
+    cards_face_follower: bool = False

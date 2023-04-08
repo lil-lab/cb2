@@ -42,6 +42,7 @@ public class CardBuilder
     private bool _covered;
     private HecsCoord _location;
     private GameObject _cardAssembly;
+    private Logger _logger;
 
     public static CardBuilder FromNetwork(Network.Prop netProp)
     {
@@ -73,6 +74,7 @@ public class CardBuilder
         _shape = Shape.NONE;
         _color = Color.NONE;
         _count = -1;
+        _logger = Logger.GetOrCreateTrackedLogger("CardBuilder");
     }
 
     public CardBuilder SetPropId(int id)
@@ -132,6 +134,14 @@ public class CardBuilder
         GameObject followerOutline = card.transform.Find("follower_outline").gameObject;
         prop.SetOutline(outline);
         prop.SetFollowerOutline(followerOutline);
+        Prop follower = GetFollower();
+        // Fetch lobbyinfo from config to see if cards should stand up and track the follower.
+        Network.LobbyInfo lobbyInfo = Network.NetworkManager.TaggedInstance().ServerLobbyInfo();
+        Network.Role role = Network.NetworkManager.TaggedInstance().Role();
+        if ((lobbyInfo != null) && lobbyInfo.cards_face_follower && (role == Network.Role.FOLLOWER))
+        {
+            prop.SetLookAtTarget(follower.GetGameObject());
+        }
         GameObject cover = card.transform.Find("cover").gameObject;
         if (_covered)
         {
@@ -251,6 +261,28 @@ public class CardBuilder
             default:
                 Debug.LogWarning("Encountered unknown Color.");
                 return null;
+        }
+    }
+
+    private Prop GetFollower()
+    {
+        // Get the player's role from the network.
+        Network.NetworkManager nm = Network.NetworkManager.TaggedInstance();
+        if (nm.Role() == Network.Role.FOLLOWER)
+        {
+            Player p = Player.TaggedInstance();
+            return p.GetProp();
+        } else {
+            EntityManager em = EntityManager.TaggedInstance();
+            List<Actor> actors = em.Actors();
+            // Can safely assume that if the list has one element, it's the follower.
+            if (actors.Count >= 1)
+            {
+                return actors[0].GetProp();
+            } else {
+                Debug.LogWarning("Could not find follower.");
+                return null;
+            }
         }
     }
 }

@@ -808,6 +808,29 @@ namespace Network
             _serverConfigPollInProgress = false;
         }
 
+        public LobbyInfo ServerLobbyInfo()
+        {
+            Config c = ServerConfig();
+            if (c == null)
+            {
+                return null;
+            }
+            Dictionary<string, string> urlParameters = UrlParameters();
+            if (!urlParameters.ContainsKey("lobby_name"))
+            {
+                return null;
+            }
+            string lobby_name = urlParameters["lobby_name"];
+            for (int i = 0; i < c.lobbies.Count; i++)
+            {
+                if (c.lobbies[i].name == lobby_name)
+                {
+                    return c.lobbies[i];
+                }
+            }
+            return null;
+        }
+
         private bool NeedsGoogleAuth()
         {
             // Start the connection to the server. If the lobby is a Google lobby, wait until receiving an Oauth token.

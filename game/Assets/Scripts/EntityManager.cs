@@ -40,6 +40,11 @@ public class EntityManager : MonoBehaviour
         return _actors.Count;
     }
 
+    public List<Actor> Actors()
+    {
+        return new List<Actor>(_actors.Values);
+    }
+
     public int NumberOfProps()
     {
         return _props.Count;

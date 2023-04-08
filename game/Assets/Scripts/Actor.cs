@@ -11,6 +11,8 @@ public class Actor
     private GameObject _upperRight;
     private GameObject _right;
 
+    public Prop GetProp() { return _prop; }
+
     public static Actor FromStateSync(Network.StateSync.Actor netActor)
     {
         UnityAssetSource assetLoader = new UnityAssetSource();

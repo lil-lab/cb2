@@ -121,6 +121,11 @@ public class Player : MonoBehaviour
         _lastCameraToggle = DateTime.UtcNow;
     }
 
+    public Prop GetProp()
+    {
+        return _actor.GetProp();
+    }
+
     void Start()
     {
         if (ForceStartingPosition)

@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class Prop
 {
@@ -17,6 +18,10 @@ public class Prop
     // If set (see SetCover()), contains a reference to the cover geometry for this prop.
     // The cover geometry is only rendered if the State's CoverRadius is == zero.
     private GameObject _cover;
+
+    // If set (see SetLookAtTarget()) contains a reference to the GameObject to look at.
+    // The prop will face this object every frame. Y-axis altitude ignored (stays in gameboard plane)
+    private GameObject _lookAtTarget;
 
     private Logger _logger;
 
@@ -105,6 +110,11 @@ public class Prop
         _cover = cover;
     }
 
+    public void SetLookAtTarget(GameObject target)
+    {
+        _lookAtTarget = target;
+    }
+
     // Returns true if the actor is in the middle of an action.
     public bool IsBusy() { return _actionQueue.IsBusy(); }
 
@@ -137,6 +147,8 @@ public class Prop
         if (_asset == null) return;
         _asset.tag = tag;
     }
+
+    public GameObject GetGameObject() { return _asset; }
 
     public void Update()
     {
@@ -193,6 +205,15 @@ public class Prop
             }
         }
 
+        if (_lookAtTarget != null)
+        {
+            _logger.Info("Looking at target: " + _lookAtTarget.transform.position + " from " + _asset.transform.position);
+            _asset.transform.LookAt(_lookAtTarget.transform);
+            _asset.transform.Rotate(new Vector3(90, 0, 0));
+            _asset.transform.Rotate(new Vector3(0, 180, 0));
+            _asset.transform.Translate(new Vector3(0, 2, 0), Space.World);
+        }
+
         Animation animation = null;
         if (_asset != null) {
             animation = _asset.GetComponentInChildren<Animation>();
@@ -222,6 +243,8 @@ public class Prop
             // All other animations default to idle.
             animation.CrossFade("Armature|Idle", 0.3f);
         }
+
+
     }
 
     // A prop could self-deallocate if a Death action is sent to it. This allows
@@ -265,4 +288,5 @@ public class Prop
         HexGrid manager = obj.GetComponent<HexGrid>();
         return manager.Scale;
     }
+
 }

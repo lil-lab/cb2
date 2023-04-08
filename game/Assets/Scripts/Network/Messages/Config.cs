@@ -20,7 +20,11 @@ namespace Network
     {
         public string name;
         public LobbyType type;
+        public string comment;
         public int game_capacity;
+        public float sound_clip_volume;
+        public bool follower_feedback_questions;
+        public bool cards_face_follower;
     }
 
     // Server configuration, settings & options. Retrieve the latest config from NetworkManager.
