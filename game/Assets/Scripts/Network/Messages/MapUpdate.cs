@@ -101,5 +101,6 @@ namespace Network
 
         public Nullable<int> fog_start;
         public Nullable<int> fog_end;
+        public Network.Color color_tint;
     }
 }  // namespace Network

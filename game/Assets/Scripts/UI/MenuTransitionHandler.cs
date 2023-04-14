@@ -45,6 +45,7 @@ public class MenuTransitionHandler : MonoBehaviour
     private static readonly string TURN_START_SOUND = "TURN_START_SOUND";
 
     private static readonly string MUTE_AUDIO_TOGGLE = "MUTE_AUDIO_TOGGLE";
+    private static readonly string SCREEN_TINT_TAG = "SCREEN_TINT";
 
     // Used for replay scene.
     private static readonly string FOLLOWER_TURN_TAG = "FOLLOWER_TURN_INDICATOR";
@@ -699,10 +700,32 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        if (scene.name == "menu_scene") {
+            // Reset the global color tint.
+            // Get the SCREEN_TINT_TAG GUI panel and change the Image background color to UnityEngine.Color.transparent.
+            GlobalScreenTint(UnityEngine.Color.clear);
+        }
         if (scene.name != "menu_scene") {
             _positiveFeedbackSignal = GameObject.FindWithTag(POSITIVE_FEEDBACK_TAG);
             _negativeFeedbackSignal = GameObject.FindWithTag(NEGATIVE_FEEDBACK_TAG);
         }
+    }
+
+    public static void GlobalScreenTint(UnityEngine.Color color)
+    {
+        Logger logger = Logger.GetOrCreateTrackedLogger("MenuTransitionHandler");
+        GameObject panel = GameObject.FindWithTag(SCREEN_TINT_TAG);
+        if (panel == null) {
+            logger.Warn("Unable to find screen tint panel.");
+            return;
+        }
+        Image image = panel.GetComponent<Image>();
+        if (image == null) {
+            logger.Warn("Unable to find screen tint image.");
+            return;
+        }
+        logger.Info("Setting screen tint to " + color);
+        image.color = color;
     }
 
     public void TurnComplete()

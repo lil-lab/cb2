@@ -6,6 +6,7 @@ from typing import List, Optional
 from mashumaro.mixins.json import DataClassJSONMixin
 
 from server.hex import HecsCoord, HexBoundary, HexCell
+from server.messages.action import Color
 from server.messages.prop import Prop, PropUpdate
 
 logger = logging.getLogger(__name__)
@@ -87,6 +88,7 @@ class MapUpdate(DataClassJSONMixin):
     props: Optional[List[Prop]] = field(default_factory=list)  # deprecated.
     fog_start: Optional[int] = None
     fog_end: Optional[int] = None
+    color_tint: Color = Color(0, 0, 0, 0)
 
     @staticmethod
     def from_gym_state(observation):

@@ -144,6 +144,7 @@ class ScenarioState(object):
             self._scenario_messages[id] = []
         if scenario_request.type == ScenarioRequestType.LOAD_SCENARIO:
             parsed_scenario = Scenario.from_json(scenario_request.scenario_data)
+            logger.info(f"Received color_tint: {parsed_scenario.map.color_tint}")
             self._scenario_id = parsed_scenario.scenario_id
             # Modify turn_state turn_end time to be never...
             updated_turn_state = dataclasses.replace(
@@ -155,6 +156,10 @@ class ScenarioState(object):
             self._state._set_scenario(
                 parsed_scenario
             )  # pylint: disable=protected-access
+            # Force a resync of all actor states.
+            self._state.desync_all()
+            self._state._mark_prop_stale()
+            self._state._mark_map_stale()
             for monitor_id, _ in self._scenario_messages.items():
                 self._scenario_messages[monitor_id].append(
                     ScenarioResponse(

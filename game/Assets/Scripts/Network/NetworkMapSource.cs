@@ -84,6 +84,16 @@ namespace Network
                 _logger.Info("Partition sizes: " + string.Join(", ", mapInfo.metadata.partition_sizes));
             }
 
+            // Tint the screen based on the map's color tint settings.
+            _logger.Info("Color tint: " + mapInfo.color_tint);
+            if (mapInfo.color_tint != null) {
+                _logger.Info("Applying color tint: " + mapInfo.color_tint.ToString());
+                MenuTransitionHandler.GlobalScreenTint(mapInfo.color_tint.ToUnity());
+            } else {
+                _logger.Info("No color tint provided. Clearing tint.");
+                MenuTransitionHandler.GlobalScreenTint(UnityEngine.Color.clear);
+            }
+
             // If the map has fog, set the fog distance.
             if ((mapInfo.fog_start.HasValue) && (mapInfo.fog_end.HasValue))
             {

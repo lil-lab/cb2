@@ -93,6 +93,7 @@ TagManager:
   - EASTER_EGG_SOUND_2
   - EASTER_EGG_SOUND_3
   - EASTER_EGG_SOUND_4
+  - SCREEN_TINT
   layers:
   - Default
   - TransparentFX

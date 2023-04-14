@@ -19,6 +19,7 @@ from server.assets import AssetId, is_snowy
 from server.config.config import GlobalConfig
 from server.hex import HecsCoord
 from server.map_utils import *
+from server.messages.action import Color
 from server.messages.map_update import (
     City,
     Lake,
@@ -870,6 +871,8 @@ class MapProvider(object):
         self._fog_start = map_update.fog_start
         self._fog_end = map_update.fog_end
 
+        self._color_tint = map_update.color_tint
+
         self.add_map_boundaries()
         self.add_layer_boundaries()
         # Choose spawn tiles for future cards.
@@ -939,6 +942,8 @@ class MapProvider(object):
         else:
             self._fog_start = -1
             self._fog_end = -1
+
+        self._color_tint = Color(0, 0, 0, 0)
 
         self.add_map_boundaries()
         self.add_layer_boundaries()
@@ -1183,6 +1188,7 @@ class MapProvider(object):
                 [],
                 self._fog_start,
                 self._fog_end,
+                self._color_tint,
             )
         else:
             return MapUpdate(
@@ -1193,6 +1199,7 @@ class MapProvider(object):
                 [],
                 self._fog_start,
                 self._fog_end,
+                self._color_tint,
             )
 
     def prop_update(self):
