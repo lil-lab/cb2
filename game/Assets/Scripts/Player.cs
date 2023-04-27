@@ -41,6 +41,14 @@ public class Player : MonoBehaviour
 
     public void SetAssetId(int id)
     {
+        // If the ID is the same, don't do anything.
+        if (_actor != null)
+        {
+            if (_actor.AssetId() == (IAssetSource.AssetId)id)
+            {
+                return;
+            }
+        }
         UnityAssetSource assets = new UnityAssetSource();
         IAssetSource.AssetId assetId = (IAssetSource.AssetId)id;
         Actor actor = new Actor(assets.Load(assetId), assetId);
@@ -65,6 +73,28 @@ public class Player : MonoBehaviour
             _fpvCamera = cameraObj.GetComponent<Camera>();
         }
         InitCamera();
+
+        // If this lobby has standing/vertical cards enabled, make all of the
+        // cards "look at" the player. If we're the follower, that is.
+        // Fetch lobbyinfo from config to see if cards should stand up and track the follower.
+        Network.LobbyInfo lobbyInfo = Network.NetworkManager.TaggedInstance().ServerLobbyInfo();
+        Network.Role role = Network.NetworkManager.TaggedInstance().Role();
+        if ((lobbyInfo != null) && lobbyInfo.cards_face_follower && (role == Network.Role.FOLLOWER))
+        {
+            // Iterate through all entitymanager props.
+            EntityManager em = EntityManager.TaggedInstance();
+            foreach (Prop prop in em.Props())
+            {
+                // If the prop was already looking at an object, update it to
+                // look at the player. In the future if we have multiple lookat
+                // targets, this logic will need to be updated to only update
+                // cards which are looking at player.
+                if (prop.LookAtTarget() != null)
+                {
+                    prop.SetLookAtTarget(_actor.GetGameObject());
+                }
+            }
+        }
     }
 
 

@@ -71,6 +71,11 @@ public class Prop
         _asset.transform.localScale = new Vector3(scale, scale, scale);
     }
 
+    public IAssetSource.AssetId AssetId()
+    {
+        return (int)_assetId;
+    }
+
     public GameObject Find(string path)
     {
         if (_asset == null) return null;
@@ -113,6 +118,11 @@ public class Prop
     public void SetLookAtTarget(GameObject target)
     {
         _lookAtTarget = target;
+    }
+
+    public GameObject LookAtTarget()
+    {
+        return _lookAtTarget;
     }
 
     // Returns true if the actor is in the middle of an action.

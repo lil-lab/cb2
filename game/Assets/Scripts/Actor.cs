@@ -36,6 +36,11 @@ public class Actor
         _debuggingEnabled = false;
     }
 
+    public IAssetSource.AssetId AssetId()
+    {
+        return _prop.AssetId();
+    }
+
     public void SetWalkSpeed(float speed) { _prop.SetWalkSpeed(speed); }
 
     public void SetScale(float scale) { _prop.SetScale(scale); }
@@ -108,6 +113,8 @@ public class Actor
     {
         _prop.AddAction(action);
     }
+
+    public GameObject GetGameObject() { return _prop.GetGameObject(); }
 
     private float Scale()
     {
