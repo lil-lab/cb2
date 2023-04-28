@@ -73,7 +73,7 @@ public class Prop
 
     public IAssetSource.AssetId AssetId()
     {
-        return (int)_assetId;
+        return _assetId;
     }
 
     public GameObject Find(string path)
