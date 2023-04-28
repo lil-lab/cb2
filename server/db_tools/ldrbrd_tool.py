@@ -511,7 +511,12 @@ def main(
     elif command == "list_names":
         names = Username.select()
         for name in names:
-            print(f"{name.username}: {name.worker.hashed_id}")
+            if name.worker is not None:
+                print(f"mturk | {name.username}: {name.worker.hashed_id}")
+            elif name.user is not None:
+                print(f"google | {name.username}: {name.user.hashed_google_id}")
+            else:
+                print(f"unknown | {name.username}")
     elif command == "id_lookup":
         worker_name = leaderboard.LookupUsernameFromId(id)
         print(worker_name)

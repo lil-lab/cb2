@@ -54,3 +54,7 @@ class LobbyInfo(DataClassJSONMixin):
     follower_feedback_questions: bool = False
     # From the follower's POV, the cards are standing and facing the follower.
     cards_face_follower: bool = False
+    # For lobbies which use experience to match players, this is the percentage
+    # of times when the player will be matched randomly instead of by
+    # experience.
+    ranked_matchmaking_randomness: float = 0.0

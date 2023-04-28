@@ -146,6 +146,11 @@ async def TaskPage(request):
     return web.FileResponse("server/www/main-study.html")
 
 
+@routes.get("/mturk-task")
+async def TaskPage(request):
+    return web.FileResponse("server/www/mturk-task.html")
+
+
 @routes.get("/follower-qual")
 async def TaskPage(request):
     return web.FileResponse("server/www/follower-qual.html")

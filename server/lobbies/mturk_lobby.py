@@ -1,5 +1,6 @@
 """ A Lobby for mturk players. """
 import logging
+import random
 from datetime import datetime, timedelta
 from typing import Tuple
 
@@ -109,6 +110,7 @@ class MturkLobby(lobby.Lobby):
 
         # If there's a leader in the leader queue and a follower in the follower queue, match them.
         if len(self._leader_queue) > 0 and len(self._follower_queue) > 0:
+            logger.info(f"Matching a leader with a follower.")
             (_, leader, l_e_uuid) = self._leader_queue.popleft()
             (_, follower, f_e_uuid) = self._follower_queue.popleft()
             if l_e_uuid:
@@ -125,6 +127,7 @@ class MturkLobby(lobby.Lobby):
 
         # If there's a leader and a general player, match them.
         if len(self._leader_queue) > 0 and len(self._player_queue) > 0:
+            logger.info(f"Matching a leader with a general player.")
             (_, leader, l_e_uuid) = self._leader_queue.popleft()
             (_, player, f_e_uuid) = self._player_queue.popleft()
             if l_e_uuid:
@@ -137,6 +140,7 @@ class MturkLobby(lobby.Lobby):
 
         # If there's a follower waiting, match them with the first general player.
         if len(self._follower_queue) >= 1:
+            logger.info(f"Matching a follower with a general player.")
             (_, leader, l_e_uuid) = self._player_queue.popleft()
             (_, follower, f_e_uuid) = self._follower_queue.popleft()
             if l_e_uuid:
@@ -154,6 +158,7 @@ class MturkLobby(lobby.Lobby):
         # If a general player has been waiting for >= 10 seconds with no follower, match them with another general player.
         (ts, _, _) = self._player_queue[0]
         if datetime.now() - ts > timedelta(seconds=10):
+            logger.info(f"Matching two general players.")
             (_, player1, e_uuid_1) = self._player_queue.popleft()
             (_, player2, e_uuid_2) = self._player_queue.popleft()
             leader, follower = self.assign_leader_follower(player1, player2)
@@ -227,6 +232,19 @@ class MturkLobby(lobby.Lobby):
         each based on experience. Returns (leader, follower) or (None, None) if
         missing data on either player.
         """
+        # We now support random matchmaking for mturk players depending on lobby
+        # configuration.
+        random_match_chance = self._lobby_info.ranked_matchmaking_randomness
+        random_matchmaking = random.randrange(100) < (random_match_chance * 100)
+        if random_matchmaking:
+            logger.info(
+                f"Random matchmaking occurred for lobby {self._lobby_info.name}."
+            )
+            return random.choice([(player1, player2), (player2, player1)])
+        else:
+            logger.info(
+                f"Experience-based matchmaking occurred for lobby {self._lobby_info.name}."
+            )
         worker1 = GetWorkerFromRemote(player1)
         worker2 = GetWorkerFromRemote(player2)
         if worker1 is None and worker2 is None:
