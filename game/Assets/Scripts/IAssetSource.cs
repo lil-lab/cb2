@@ -50,6 +50,7 @@ public interface IAssetSource
         CARD_BASE_3,
         MOUNTAIN_TREE,
         SNOWY_MOUNTAIN_TREE,
+        GROUND_TILE_STREETLIGHT_FOILAGE,
         // These are 2D shapes that appear on card faces.
         SQUARE,
         STAR,

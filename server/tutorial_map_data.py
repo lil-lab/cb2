@@ -4,7 +4,7 @@ from server.map_utils import (
     GroundTile,
     GroundTileHouse,
     GroundTileRocky,
-    GroundTileStreetLight,
+    GroundTileStreetLightFoilage,
     GroundTileTree,
     GroundTileTreeRocks,
     GroundTileTrees,
@@ -241,7 +241,7 @@ def HardcodedMap():
     map[7][8] = PathTile()
 
     # Add a street light.
-    map[5][3] = GroundTileStreetLight()
+    map[5][3] = GroundTileStreetLightFoilage()
 
     # Fix all the tile coordinates.
     for r in range(0, MAP_HEIGHT):

@@ -422,6 +422,20 @@ def GroundTileStreetLight(rotation_degrees=0):
     )
 
 
+def GroundTileStreetLightFoilage(rotation_degrees=0):
+    """Creates a single tile of ground with a street light and some bushes/rocks around it."""
+    return Tile(
+        AssetId.GROUND_TILE_STREETLIGHT_FOILAGE,
+        HexCell(
+            HecsCoord.from_offset(0, 0),
+            HexBoundary(0x3F),
+            LayerToHeight(0),  # Height (float)
+            0,  # Z-Layer (int)
+        ),
+        rotation_degrees,
+    )
+
+
 def MountainTile(rotation_degrees=0, snowy=False):
     """Creates a single tile of mountain."""
     asset_id = AssetId.MOUNTAIN_TILE
