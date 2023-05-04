@@ -8,6 +8,7 @@ import appdirs
 import yaml
 from mashumaro.mixins.json import DataClassJSONMixin
 
+from server.config.map_config import MapConfig
 from server.lobby_consts import LobbyInfo, LobbyType
 
 logger = logging.getLogger(__name__)
@@ -244,6 +245,8 @@ class Config(DataClassJSONMixin):
 
     # Where exceptions are logged.
     exception_prefix: str = "exceptions/"
+
+    map_config: MapConfig = field(default=MapConfig)
 
     # Data path accessors that add the requisite data_prefix.
     def data_directory(self):

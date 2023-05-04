@@ -1,6 +1,15 @@
 from enum import IntEnum
 
 
+class AssetClass(IntEnum):
+    ACTOR = 0
+    GROUND_TILE = 1
+    PATH_TILE = 2
+    ROCKY_TILE = 3
+    FOILAGE_TILE = 4
+    GROUND_TILE_TREE = 5
+
+
 class AssetId(IntEnum):
     PLAYER = 0
     PLAYER_WITH_CAM = 1
@@ -51,8 +60,63 @@ class AssetId(IntEnum):
     MAX = 102  # Maximum possible value. Subject to change.
 
 
+class TileClass(IntEnum):
+    NONE = 0
+    GROUND_TILES = 2
+    PATH_TILES = 3
+    STONE_TILES = 4
+    BUSH_TILES = 5
+    TREE_TILES = 6
+    STREETLIGHT_TILES = 7
+    HOUSE_TILES = 8
+
+
+def AssetsFromTileClass(tile: TileClass):
+    if tile == TileClass.GROUND_TILES:
+        return [AssetId.GROUND_TILE]
+    elif tile == TileClass.PATH_TILES:
+        return [AssetId.GROUND_TILE_PATH]
+    elif tile == TileClass.STONE_TILES:
+        return [AssetId.GROUND_TILE_ROCKY, AssetId.GROUND_TILE_STONES]
+    elif tile == TileClass.BUSH_TILES:
+        return [
+            AssetId.GROUND_TILE_STONES_GREENBUSH,
+            AssetId.GROUND_TILE_STONES_BROWNBUSH,
+            AssetId.GROUND_TILE_STONES_GREYBUSH,
+        ]
+    elif tile == TileClass.TREE_TILES:
+        return [
+            AssetId.GROUND_TILE_TREE,
+            AssetId.GROUND_TILE_TREE_BROWN,
+            AssetId.GROUND_TILE_TREE_SNOW,
+            AssetId.GROUND_TILE_TREE_DARKGREEN,
+            AssetId.GROUND_TILE_TREE_SOLIDBROWN,
+            AssetId.GROUND_TILE_TREES,
+            AssetId.GROUND_TILE_TREES_2,
+            AssetId.GROUND_TILE_FOREST,
+        ]
+    elif tile == TileClass.STREETLIGHT_TILES:
+        return [
+            AssetId.GROUND_TILE_STREETLIGHT,
+            AssetId.GROUND_TILE_STREETLIGHT_FOILAGE,
+        ]
+    elif tile == TileClass.HOUSE_TILES:
+        return [
+            AssetId.GROUND_TILE_HOUSE,
+            AssetId.GROUND_TILE_HOUSE_RED,
+            AssetId.GROUND_TILE_HOUSE_BLUE,
+            AssetId.GROUND_TILE_HOUSE_GREEN,
+            AssetId.GROUND_TILE_HOUSE_ORANGE,
+            AssetId.GROUND_TILE_HOUSE_PINK,
+            AssetId.GROUND_TILE_HOUSE_YELLOW,
+            AssetId.GROUND_TILE_HOUSE_TRIPLE,
+            AssetId.GROUND_TILE_HOUSE_TRIPLE_RED,
+            AssetId.GROUND_TILE_HOUSE_TRIPLE_BLUE,
+        ]
+
+
 def TreeAssets():
-    """Returns a list of snow-themed assets."""
+    """Returns a list of tree-themed assets."""
     return [
         AssetId.GROUND_TILE_TREE,
         AssetId.GROUND_TILE_TREE_BROWN,
