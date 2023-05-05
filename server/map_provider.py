@@ -48,14 +48,14 @@ class SearchPoint:
 def place_city(map, city, map_config):
     """Places a city on the map."""
     # Place the center path tile.
-    map[city.r][city.c] = PathTile()
+    map[city.r][city.c] = PathTile(map_config=map_config)
     map_height, map_width = map_config.map_height, map_config.map_width
 
     # Make openings to enter and exit the city.
     connection_points = city_connection_points(city, map_config)
     for point in connection_points:
         r, c = point.to_offset_coordinates()
-        map[r][c] = PathTile()
+        map[r][c] = PathTile(0, map_config)
 
     point_queue = Queue()
     point_queue.put(SearchPoint(city.r, city.c, 0))
@@ -65,27 +65,29 @@ def place_city(map, city, map_config):
         if (point.r, point.c) in covered_points:
             continue
         covered_points.add((point.r, point.c))
-        if (
-            map[point.r][point.c].asset_id
-            in [AssetId.EMPTY_TILE, AssetId.GROUND_TILE] + NatureAssets()
-        ):
+        if map[point.r][point.c].asset_id in [
+            AssetId.EMPTY_TILE,
+            AssetId.GROUND_TILE,
+        ] + NatureAssetIds(map_config=map_config):
             if point.radius % 3 == 0:
                 tile_generator = np.random.choice(
-                    [PathTile, RandomGroundTree, GroundTileStreetLight],
+                    [PathTile, GroundTileTree, GroundTileStreetLight],
                     size=1,
                     p=[0.3, 0.3, 0.4],
                 )[0]
                 map[point.r][point.c] = tile_generator(
-                    rotation_degrees=random.choice([0, 60, 120, 180, 240, 300])
+                    rotation_degrees=random.choice([0, 60, 120, 180, 240, 300]),
+                    map_config=map_config,
                 )
             elif point.radius % 3 == 1:
-                map[point.r][point.c] = PathTile()
+                map[point.r][point.c] = PathTile(0, map_config)
             elif point.radius % 3 == 2:
                 coord = HecsCoord.from_offset(point.r, point.c)
                 center = HecsCoord.from_offset(city.r, city.c)
                 degrees_to_center = coord.degrees_to(center) - 60
                 map[point.r][point.c] = UrbanHouseTile(
-                    rotation_degrees=degrees_to_center
+                    rotation_degrees=degrees_to_center,
+                    map_config=map_config,
                 )
         hc = HecsCoord.from_offset(point.r, point.c)
         for neighbor in hc.neighbors():
@@ -119,7 +121,7 @@ def city_connection_points(city, map_config):
 def place_circular_lake(map, lake, map_config):
     """Places a lake on the map."""
     # Place the center tile.
-    map[lake.r][lake.c] = WaterTile()
+    map[lake.r][lake.c] = WaterTile(map_config=map_config)
 
     map_height, map_width = map_config.map_height, map_config.map_width
     point_queue = Queue()
@@ -141,9 +143,9 @@ def place_circular_lake(map, lake, map_config):
             edge_of_map = r == 0 or c == 0 or r == map_height - 1 or c == map_width - 1
             if map[r][c].asset_id in [AssetId.EMPTY_TILE, AssetId.GROUND_TILE]:
                 if (point.radius == lake.size) or edge_of_map:
-                    map[r][c] = PathTile()
+                    map[r][c] = PathTile(map_config=map_config)
                 elif map[r][c].asset_id == AssetId.EMPTY_TILE:
-                    map[r][c] = WaterTile()
+                    map[r][c] = WaterTile(map_config=map_config)
             if point.radius < lake.size:
                 point_queue.put(SearchPoint(r, c, point.radius + 1))
 
@@ -175,19 +177,19 @@ def place_island_lake(map, lake, map_config):
         [GroundTile, RandomNatureTile, GroundTileStreetLight],
         size=1,
         p=[0.05, 0.45, 0.5],
-    )[0]()
+    )[0](map_config=map_config)
     lr, lc = center.left().to_offset_coordinates()
     map[lr][lc] = np.random.choice(
         [GroundTile, RandomNatureTile, GroundTileStreetLight],
         size=1,
         p=[0.9, 0.05, 0.05],
-    )[0]()
+    )[0](map_config=map_config)
     rr, rc = center.right().to_offset_coordinates()
     map[rr][rc] = np.random.choice(
         [GroundTile, RandomNatureTile, GroundTileStreetLight],
         size=1,
         p=[0.9, 0.05, 0.05],
-    )[0]()
+    )[0](map_config=map_config)
 
     # Each "bridge" consists of two tiles (tile_inner, tile_outer)
     bridge_points = [
@@ -213,7 +215,7 @@ def place_island_lake(map, lake, map_config):
             [GroundTile, RandomNatureTile, GroundTileStreetLight],
             size=1,
             p=[0.9, 0.05, 0.05],
-        )[0]()
+        )[0](map_config=map_config)
 
 
 def random_lake_type():
@@ -278,7 +280,7 @@ def offset_coord_in_map(map, offset):
     )
 
 
-def place_small_mountain(map, mountain):
+def place_small_mountain(map, mountain, map_config: MapConfig):
     mountain_coords = []
     # MountainTile(rotation_degrees=0)
     # RampToMountain(rotation_degrees=0)
@@ -331,10 +333,10 @@ def place_small_mountain(map, mountain):
             offset = neighbor.to_offset_coordinates()
             if offset_coord_in_map(map, offset):
                 if map[offset[0]][offset[1]].asset_id == AssetId.EMPTY_TILE:
-                    map[offset[0]][offset[1]] = GroundTile()
+                    map[offset[0]][offset[1]] = GroundTile(map_config=map_config)
 
 
-def place_medium_mountain(map, mountain):
+def place_medium_mountain(map, mountain, map_config: MapConfig):
     mountain_coords = []
     # MountainTile(rotation_degrees=0)
     # RampToMountain(rotation_degrees=0)
@@ -390,10 +392,10 @@ def place_medium_mountain(map, mountain):
             offset = neighbor.to_offset_coordinates()
             if offset_coord_in_map(map, offset):
                 if map[offset[0]][offset[1]].asset_id == AssetId.EMPTY_TILE:
-                    map[offset[0]][offset[1]] = GroundTile()
+                    map[offset[0]][offset[1]] = GroundTile(map_config=map_config)
 
 
-def place_large_mountain(map, mountain):
+def place_large_mountain(map, mountain, map_config: MapConfig):
     mountain_coords = []
     # MountainTile(rotation_degrees=0)
     # RampToMountain(rotation_degrees=0)
@@ -450,16 +452,16 @@ def place_large_mountain(map, mountain):
             offset = neighbor.to_offset_coordinates()
             if offset_coord_in_map(map, offset):
                 if map[offset[0]][offset[1]].asset_id == AssetId.EMPTY_TILE:
-                    map[offset[0]][offset[1]] = GroundTile()
+                    map[offset[0]][offset[1]] = GroundTile(map_config=map_config)
 
 
-def place_mountain(map, mountain):
+def place_mountain(map, mountain, map_config: MapConfig):
     if mountain.type == MountainType.SMALL:
-        place_small_mountain(map, mountain)
+        place_small_mountain(map, mountain, map_config)
     elif mountain.type == MountainType.MEDIUM:
-        place_medium_mountain(map, mountain)
+        place_medium_mountain(map, mountain, map_config)
     elif mountain.type == MountainType.LARGE:
-        place_large_mountain(map, mountain)
+        place_large_mountain(map, mountain, map_config)
     else:
         logger.error(f"Unknown mountain type: {mountain.type}")
 
@@ -495,7 +497,7 @@ def mountain_connection_points(map, mountain):
     return connection_points
 
 
-def path_find(map, start, end):
+def path_find(map, start, end, map_config: MapConfig = MapConfig()):
     """Finds a path of empty or ground tiles from start to end on the map.
 
     Returns a list of tiles that make up the path.
@@ -516,11 +518,11 @@ def path_find(map, start, end):
             if nr < 0 or nr >= len(map) or nc < 0 or nc >= len(map[0]):
                 continue
             neighbor_tile = map[nr][nc]
-            if (
-                neighbor_tile.asset_id
-                in [AssetId.EMPTY_TILE, AssetId.GROUND_TILE, AssetId.GROUND_TILE_PATH]
-                + NatureAssets()
-            ):
+            if neighbor_tile.asset_id in [
+                AssetId.EMPTY_TILE,
+                AssetId.GROUND_TILE,
+                AssetId.GROUND_TILE_PATH,
+            ] + NatureAssetIds(map_config=map_config):
                 if neighbor not in visited:
                     path_to_neighbor = path_to_current + [neighbor]
                     child_node = (neighbor, path_to_neighbor)
@@ -529,7 +531,7 @@ def path_find(map, start, end):
     return None
 
 
-def place_outpost(map, outpost):
+def place_outpost(map, outpost, map_config: MapConfig):
     """Place tiles at (r, c), (r + 1, c), (r, c + 2), (r + 1, c + 2)"""
     coords = [
         (outpost.r, outpost.c),
@@ -550,14 +552,20 @@ def place_outpost(map, outpost):
         map[row][col] = tile
 
     # The outpost positioning purposefully leaves out (r, c+1). This is the center. Mark it as PathTile and then path-connect it to nearest features.
-    map[outpost.r + 2][outpost.c] = PathTile()
+    map[outpost.r + 2][outpost.c] = PathTile(map_config=map_config)
 
     # Connect the outpost to the nearest features.
     path_to_a = path_find(
-        map, HecsCoord.from_offset(outpost.r + 2, outpost.c), outpost.connection_a
+        map,
+        HecsCoord.from_offset(outpost.r + 2, outpost.c),
+        outpost.connection_a,
+        map_config=map_config,
     )
     path_to_b = path_find(
-        map, HecsCoord.from_offset(outpost.r + 2, outpost.c), outpost.connection_b
+        map,
+        HecsCoord.from_offset(outpost.r + 2, outpost.c),
+        outpost.connection_b,
+        map_config=map_config,
     )
 
     # Replace all non-mountain and non-ramp tiles in paths a and b with PathTile.
@@ -567,7 +575,7 @@ def place_outpost(map, outpost):
         for coord in path_to_x:
             offset = coord.to_offset_coordinates()
             if offset_coord_in_map(map, offset):
-                map[offset[0]][offset[1]] = PathTile()
+                map[offset[0]][offset[1]] = PathTile(map_config=map_config)
 
 
 def RandomMap(map_config: MapConfig):
@@ -652,7 +660,7 @@ def RandomMap(map_config: MapConfig):
             mountain_types.pop(),
             bool(np.random.choice([True, False], p=[0.3, 0.7])),
         )
-        place_mountain(map, mountain)
+        place_mountain(map, mountain, map_config)
         map_metadata.mountains.append(mountain)
         new_connection_points = mountain_connection_points(map, mountain)
         connection_points.extend(new_connection_points)
@@ -686,12 +694,18 @@ def RandomMap(map_config: MapConfig):
             outpost_center[1],
             first_connection_point,
             second_connection_point,
-            [RandomNatureTile(), UrbanHouseTile(), RandomNatureTile()],
+            [
+                RandomNatureTile(map_config=map_config),
+                UrbanHouseTile(map_config=map_config),
+                RandomNatureTile(map_config=map_config),
+            ],
         )
         map_metadata.outposts.append(outpost)
         if random.randint(0, 1) == 0:
-            outpost.tiles.append(UrbanHouseTile(rotation_degrees=180))
-        place_outpost(map, outpost)
+            outpost.tiles.append(
+                UrbanHouseTile(rotation_degrees=180, map_config=map_config)
+            )
+        place_outpost(map, outpost, map_config)
 
     # For each connection point, see if another connection point is nearby. If so, path connect them.
     number_of_entities = ids.num_allocated()
@@ -711,12 +725,12 @@ def RandomMap(map_config: MapConfig):
                 continue
             distance = connection_i.distance_to(connection_j)
             if distance > 0 and distance <= map_config.path_connection_distance:
-                path_to_j = path_find(map, connection_i, connection_j)
+                path_to_j = path_find(map, connection_i, connection_j, map_config)
                 if path_to_j is not None:
                     for coord in path_to_j:
                         offset = coord.to_offset_coordinates()
                         if offset_coord_in_map(map, offset):
-                            map[offset[0]][offset[1]] = PathTile()
+                            map[offset[0]][offset[1]] = PathTile(map_config=map_config)
                     connected[entity_i][entity_j] = 1
                     connected[entity_j][entity_i] = 1
 
@@ -747,8 +761,10 @@ def RandomMap(map_config: MapConfig):
                     size=1,
                     p=[0.88, 0.10, 0.02],
                 )[0]
-                tile = tile_generator()
-                snowify_tile = is_near_snow and tile.asset_id in TreeAssets()
+                tile = tile_generator(map_config=map_config)
+                snowify_tile = is_near_snow and tile.asset_id in TreeAssetIds(
+                    map_config=map_config
+                )
                 map[r][c] = SnowifyTile(tile) if snowify_tile else tile
 
     # Make sure there's at least 23 walkable tiles (2 for spawn points, 21 for card placement).
@@ -758,14 +774,14 @@ def RandomMap(map_config: MapConfig):
         for c in range(0, map_config.map_width):
             if is_walkable(map, HecsCoord.from_offset(r, c)):
                 walkable_tiles += 1
-            elif map[r][c].asset_id in NatureAssets():
+            elif map[r][c].asset_id in NatureAssetIds(map_config=map_config):
                 blocked_nature_tiles.append(map[r][c])
 
     if walkable_tiles < 23:
         for i in range(23 - walkable_tiles):
             blocked_nature_tile = random.choice(blocked_nature_tiles)
             r, c = blocked_nature_tile.cell.coord.to_offset_coordinates()
-            map[r][c] = GroundTile()
+            map[r][c] = GroundTile(map_config=map_config)
             blocked_nature_tiles.remove(blocked_nature_tile)
             walkable_tiles += 1
 

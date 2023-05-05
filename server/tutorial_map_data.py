@@ -1,13 +1,13 @@
+from server.assets import AssetId
 from server.card import Card, Color, Shape
 from server.hex import HecsCoord
 from server.map_utils import (
     GroundTile,
     GroundTileHouse,
-    GroundTileRocky,
+    GroundTileStone,
     GroundTileStreetLight,
     GroundTileTree,
     GroundTileTreeRocks,
-    GroundTileTrees,
     HouseType,
     LayerToHeight,
     MountainTile,
@@ -174,7 +174,7 @@ def HardcodedMap():
     map[0][2] = GroundTileHouse(rotation_degrees=120, type=HouseType.HOUSE_PINK)
     map[1][2] = GroundTileHouse(rotation_degrees=120, type=HouseType.HOUSE_ORANGE)
     map[0][3] = GroundTileTreeRocks()
-    map[0][4] = GroundTileTree()
+    map[0][4] = GroundTileTree(preference=AssetId.GROUND_TILE_TREE)
     map[1][3] = WaterTile()
     map[1][4] = WaterTile()
     map[0][5] = GroundTileTree()
@@ -198,14 +198,14 @@ def HardcodedMap():
     map[1][8] = GroundTileHouse(rotation_degrees=120, type=HouseType.TRIPLE_HOUSE_BLUE)
 
     # Add trees
-    map[5][5] = GroundTileTrees()
-    map[5][7] = GroundTileTrees(60)
-    map[6][5] = GroundTileTrees(120)
-    map[6][7] = GroundTileTrees(180)
+    map[5][5] = GroundTileTree()
+    map[5][7] = GroundTileTree(60)
+    map[6][5] = GroundTileTree(120)
+    map[6][7] = GroundTileTree(180)
 
     # Add rocks
-    map[6][4] = GroundTileRocky()
-    map[2][9] = GroundTileRocky()
+    map[6][4] = GroundTileStone(preference=AssetId.GROUND_TILE_STONES)
+    map[2][9] = GroundTileStone(preference=AssetId.GROUND_TILE_STONES)
 
     # Add a house.
     map[7][7] = GroundTileHouse()
@@ -241,7 +241,7 @@ def HardcodedMap():
     map[7][8] = PathTile()
 
     # Add a street light.
-    map[5][3] = GroundTileStreetLight()
+    map[5][3] = GroundTileStreetLight(preference=AssetId.GROUND_TILE_STREETLIGHT)
 
     # Fix all the tile coordinates.
     for r in range(0, MAP_HEIGHT):

@@ -1,4 +1,5 @@
 from enum import IntEnum
+from typing import List
 
 
 class AssetClass(IntEnum):
@@ -60,61 +61,6 @@ class AssetId(IntEnum):
     MAX = 102  # Maximum possible value. Subject to change.
 
 
-class TileClass(IntEnum):
-    NONE = 0
-    GROUND_TILES = 2
-    PATH_TILES = 3
-    STONE_TILES = 4
-    BUSH_TILES = 5
-    TREE_TILES = 6
-    STREETLIGHT_TILES = 7
-    HOUSE_TILES = 8
-
-
-def AssetsFromTileClass(tile: TileClass):
-    if tile == TileClass.GROUND_TILES:
-        return [AssetId.GROUND_TILE]
-    elif tile == TileClass.PATH_TILES:
-        return [AssetId.GROUND_TILE_PATH]
-    elif tile == TileClass.STONE_TILES:
-        return [AssetId.GROUND_TILE_ROCKY, AssetId.GROUND_TILE_STONES]
-    elif tile == TileClass.BUSH_TILES:
-        return [
-            AssetId.GROUND_TILE_STONES_GREENBUSH,
-            AssetId.GROUND_TILE_STONES_BROWNBUSH,
-            AssetId.GROUND_TILE_STONES_GREYBUSH,
-        ]
-    elif tile == TileClass.TREE_TILES:
-        return [
-            AssetId.GROUND_TILE_TREE,
-            AssetId.GROUND_TILE_TREE_BROWN,
-            AssetId.GROUND_TILE_TREE_SNOW,
-            AssetId.GROUND_TILE_TREE_DARKGREEN,
-            AssetId.GROUND_TILE_TREE_SOLIDBROWN,
-            AssetId.GROUND_TILE_TREES,
-            AssetId.GROUND_TILE_TREES_2,
-            AssetId.GROUND_TILE_FOREST,
-        ]
-    elif tile == TileClass.STREETLIGHT_TILES:
-        return [
-            AssetId.GROUND_TILE_STREETLIGHT,
-            AssetId.GROUND_TILE_STREETLIGHT_FOILAGE,
-        ]
-    elif tile == TileClass.HOUSE_TILES:
-        return [
-            AssetId.GROUND_TILE_HOUSE,
-            AssetId.GROUND_TILE_HOUSE_RED,
-            AssetId.GROUND_TILE_HOUSE_BLUE,
-            AssetId.GROUND_TILE_HOUSE_GREEN,
-            AssetId.GROUND_TILE_HOUSE_ORANGE,
-            AssetId.GROUND_TILE_HOUSE_PINK,
-            AssetId.GROUND_TILE_HOUSE_YELLOW,
-            AssetId.GROUND_TILE_HOUSE_TRIPLE,
-            AssetId.GROUND_TILE_HOUSE_TRIPLE_RED,
-            AssetId.GROUND_TILE_HOUSE_TRIPLE_BLUE,
-        ]
-
-
 def TreeAssets():
     """Returns a list of tree-themed assets."""
     return [
@@ -124,6 +70,11 @@ def TreeAssets():
         AssetId.GROUND_TILE_TREE_DARKGREEN,
         AssetId.GROUND_TILE_TREE_SOLIDBROWN,
     ]
+
+
+def TreeFrequencies():
+    """Returns a list of len(TreeAssets()) with the "proper" frequency of each asset."""
+    return [0.3, 0.1, 0.15, 0.2, 0.2]
 
 
 def SnowifyAssetId(asset_id):
@@ -175,11 +126,6 @@ def SnowAssets():
     ]
 
 
-def TreeFrequencies():
-    """Returns a list of len(TreeAssets()) with the "proper" frequency of each asset."""
-    return [0.3, 0.1, 0.15, 0.2, 0.2]
-
-
 def NatureAssets():
     """Trees, stones, or any other sort of blocking tile that would fit in a forest."""
     return TreeAssets() + [
@@ -189,3 +135,107 @@ def NatureAssets():
         AssetId.GROUND_TILE_STONES_GREYBUSH,
         AssetId.GROUND_TILE_STONES_GREENBUSH,
     ]
+
+
+class TileClass(IntEnum):
+    NONE = 0
+    GROUND_TILES = 2
+    PATH_TILES = 3
+    STONE_TILES = 4
+    FOLIAGE_TILES = 5
+    TREE_TILES = 6
+    STREETLIGHT_TILES = 7
+    HOUSE_TILES = 8
+    # Same as HOUSE_TILES, but with a different frequency distribution.
+    URBAN_HOUSE_TILES = 9
+    WATER_TILES = 10
+
+
+def AssetNamesFromTileClass(tile: TileClass):
+    return [e.name for e in AssetsFromTileClass(tile)]
+
+
+def AssetsFromTileClass(tile: TileClass):
+    if tile == TileClass.GROUND_TILES:
+        return [AssetId.GROUND_TILE]
+    elif tile == TileClass.PATH_TILES:
+        return [AssetId.GROUND_TILE_PATH]
+    elif tile == TileClass.STONE_TILES:
+        return [AssetId.GROUND_TILE_ROCKY, AssetId.GROUND_TILE_STONES]
+    elif tile == TileClass.FOLIAGE_TILES:
+        return [
+            AssetId.GROUND_TILE_STONES_GREENBUSH,
+            AssetId.GROUND_TILE_STONES_BROWNBUSH,
+            AssetId.GROUND_TILE_STONES_GREYBUSH,
+        ]
+    elif tile == TileClass.TREE_TILES:
+        return [
+            AssetId.GROUND_TILE_TREE,
+            AssetId.GROUND_TILE_TREE_BROWN,
+            AssetId.GROUND_TILE_TREE_SNOW,
+            AssetId.GROUND_TILE_TREE_DARKGREEN,
+            AssetId.GROUND_TILE_TREE_SOLIDBROWN,
+            AssetId.GROUND_TILE_TREES,
+            AssetId.GROUND_TILE_TREES_2,
+            AssetId.GROUND_TILE_FOREST,
+        ]
+    elif tile == TileClass.STREETLIGHT_TILES:
+        return [
+            AssetId.GROUND_TILE_STREETLIGHT,
+            AssetId.GROUND_TILE_STREETLIGHT_FOILAGE,
+        ]
+    elif tile == TileClass.HOUSE_TILES:
+        return [
+            AssetId.GROUND_TILE_HOUSE,
+            AssetId.GROUND_TILE_HOUSE_RED,
+            AssetId.GROUND_TILE_HOUSE_BLUE,
+            AssetId.GROUND_TILE_HOUSE_PINK,
+            AssetId.GROUND_TILE_HOUSE_GREEN,
+            AssetId.GROUND_TILE_HOUSE_ORANGE,
+            AssetId.GROUND_TILE_HOUSE_YELLOW,
+            AssetId.GROUND_TILE_HOUSE_TRIPLE,
+            AssetId.GROUND_TILE_HOUSE_TRIPLE_RED,
+            AssetId.GROUND_TILE_HOUSE_TRIPLE_BLUE,
+        ]
+    elif tile == TileClass.URBAN_HOUSE_TILES:
+        return [
+            AssetId.GROUND_TILE_HOUSE,
+            AssetId.GROUND_TILE_HOUSE_RED,
+            AssetId.GROUND_TILE_HOUSE_BLUE,
+            AssetId.GROUND_TILE_HOUSE_PINK,
+            AssetId.GROUND_TILE_HOUSE_GREEN,
+            AssetId.GROUND_TILE_HOUSE_ORANGE,
+            AssetId.GROUND_TILE_HOUSE_YELLOW,
+            AssetId.GROUND_TILE_HOUSE_TRIPLE,
+            AssetId.GROUND_TILE_HOUSE_TRIPLE_RED,
+            AssetId.GROUND_TILE_HOUSE_TRIPLE_BLUE,
+        ]
+    elif tile == TileClass.WATER_TILES:
+        return [
+            AssetId.WATER_TILE,
+        ]
+    else:
+        return []
+
+
+def AssetFrequenciesFromTileClass(tile: TileClass) -> List[float]:
+    if tile == TileClass.GROUND_TILES:
+        return [1.0]
+    elif tile == TileClass.PATH_TILES:
+        return [1.0]
+    elif tile == TileClass.STONE_TILES:
+        return [0.5, 0.5]
+    elif tile == TileClass.FOLIAGE_TILES:
+        return [0.33, 0.33, 0.33]
+    elif tile == TileClass.TREE_TILES:
+        return [0.3, 0.1, 0, 0.25, 0.2, 0.0, 0.15, 0]
+    elif tile == TileClass.STREETLIGHT_TILES:
+        return [0.5, 0.5]
+    elif tile == TileClass.HOUSE_TILES:
+        return [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+    elif tile == TileClass.URBAN_HOUSE_TILES:
+        return [0.13, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.09, 0.09, 0.09]
+    elif tile == TileClass.WATER_TILES:
+        return [1.0]
+    else:
+        return []

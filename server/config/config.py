@@ -246,7 +246,7 @@ class Config(DataClassJSONMixin):
     # Where exceptions are logged.
     exception_prefix: str = "exceptions/"
 
-    map_config: MapConfig = field(default=MapConfig)
+    map_config: MapConfig = field(default_factory=MapConfig)
 
     # Data path accessors that add the requisite data_prefix.
     def data_directory(self):

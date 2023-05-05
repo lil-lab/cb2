@@ -8,13 +8,14 @@ from queue import Queue
 import numpy as np
 
 from server.assets import (
+    AssetFrequenciesFromTileClass,
     AssetId,
-    NatureAssets,
+    AssetsFromTileClass,
     SnowAssets,
     SnowifyAssetId,
-    TreeAssets,
-    TreeFrequencies,
+    TileClass,
 )
+from server.config.map_config import MapConfig
 from server.hex import HecsCoord, HexBoundary, HexCell
 from server.messages.map_update import Tile
 
@@ -52,10 +53,59 @@ def SnowifyTile(tile):
     return Tile(SnowifyAssetId(tile.asset_id), tile.cell, tile.rotation_degrees)
 
 
-def GroundTile(rotation_degrees=0):
+def ChooseAssetFromTileClass(
+    tile_class: TileClass,
+    map_config: MapConfig = MapConfig(),
+    preference: AssetId = AssetId.NONE,
+):
+    frequencies = {
+        asset: frequency
+        for asset, frequency in zip(
+            AssetsFromTileClass(tile_class), AssetFrequenciesFromTileClass(tile_class)
+        )
+    }
+    tile_names = []
+    if tile_class == TileClass.GROUND_TILES:
+        tile_names = map_config.ground_tiles
+    elif tile_class == TileClass.PATH_TILES:
+        tile_names = map_config.path_tiles
+    elif tile_class == TileClass.STONE_TILES:
+        tile_names = map_config.stone_tiles
+    elif tile_class == TileClass.FOLIAGE_TILES:
+        tile_names = map_config.foliage_tiles
+    elif tile_class == TileClass.TREE_TILES:
+        tile_names = map_config.tree_tiles
+    elif tile_class == TileClass.STREETLIGHT_TILES:
+        tile_names = map_config.streetlight_tiles
+    elif tile_class == TileClass.HOUSE_TILES:
+        tile_names = map_config.house_tiles
+    elif tile_class == TileClass.URBAN_HOUSE_TILES:
+        tile_names = map_config.urban_house_tiles
+    elif tile_class == TileClass.WATER_TILES:
+        tile_names = map_config.water_tiles
+    else:
+        logger.error(f"Invalid tile class: {tile_class}")
+    tiles = [AssetId[tile_name] for tile_name in tile_names]
+    for tile in tiles:
+        assert type(tile) == AssetId, f"Invalid tile type: {tile}"
+    # Preference is used only if it is specified in the config.
+    if preference != AssetId.NONE and preference in tiles:
+        return preference
+    tile_frequencies = [frequencies[tile] for tile in tiles]
+    asset_id = int(np.random.choice(tiles, p=tile_frequencies))
+    assert type(asset_id) == int, f"Invalid asset_id type: {asset_id}"
+    return asset_id
+
+
+def GroundTile(
+    rotation_degrees=0,
+    map_config: MapConfig = MapConfig(),
+    preference: AssetId = AssetId.NONE,
+):
     """Creates a single tile of ground."""
+    asset_id = ChooseAssetFromTileClass(TileClass.GROUND_TILES, map_config, preference)
     return Tile(
-        AssetId.GROUND_TILE,
+        asset_id,
         HexCell(
             HecsCoord.from_offset(0, 0),
             HexBoundary(0),
@@ -80,10 +130,15 @@ def GroundTileSnow(rotation_degrees=0):
     )
 
 
-def WaterTile(rotation_degrees=0):
+def WaterTile(
+    rotation_degrees=0,
+    map_config: MapConfig = MapConfig(),
+    preference: AssetId = AssetId.NONE,
+):
     """Creates a single tile of Water."""
+    asset_id = ChooseAssetFromTileClass(TileClass.WATER_TILES, map_config, preference)
     return Tile(
-        AssetId.WATER_TILE,
+        asset_id,
         HexCell(
             HecsCoord.from_offset(0, 0),
             HexBoundary(0x3F),
@@ -94,10 +149,15 @@ def WaterTile(rotation_degrees=0):
     )
 
 
-def PathTile(rotation_degrees=0):
+def PathTile(
+    rotation_degrees=0,
+    map_config: MapConfig = MapConfig(),
+    preference: AssetId = AssetId.NONE,
+):
     """Creates a single tile of Path."""
+    asset_id = ChooseAssetFromTileClass(TileClass.PATH_TILES, map_config, preference)
     return Tile(
-        AssetId.GROUND_TILE_PATH,
+        asset_id,
         HexCell(
             HecsCoord.from_offset(0, 0),
             HexBoundary(0),
@@ -108,10 +168,15 @@ def PathTile(rotation_degrees=0):
     )
 
 
-def GroundTileRocky(rotation_degrees=0):
+def GroundTileStone(
+    rotation_degrees=0,
+    map_config: MapConfig = MapConfig(),
+    preference: AssetId = AssetId.NONE,
+):
     """Creates a single tile of rocky ground."""
+    asset_id = ChooseAssetFromTileClass(TileClass.STONE_TILES, map_config, preference)
     return Tile(
-        AssetId.GROUND_TILE_ROCKY,
+        asset_id,
         HexCell(
             HecsCoord.from_offset(0, 0),
             HexBoundary(0x3F),
@@ -124,30 +189,8 @@ def GroundTileRocky(rotation_degrees=0):
 
 def GroundTileRockySnow(rotation_degrees=0):
     """Creates a single tile of rocky ground."""
-    return Tile(
-        AssetId.SNOWY_GROUND_TILE_ROCKY,
-        HexCell(
-            HecsCoord.from_offset(0, 0),
-            HexBoundary(0x3F),
-            LayerToHeight(0),  # Height (float)
-            0,  # Z-Layer (int)
-        ),
-        rotation_degrees,
-    )
-
-
-def GroundTileStones(rotation_degrees=0):
-    """Creates a single tile of ground with stones."""
-    return Tile(
-        AssetId.GROUND_TILE_STONES,
-        HexCell(
-            HecsCoord.from_offset(0, 0),
-            HexBoundary(0x3F),
-            LayerToHeight(0),  # Height (float)
-            0,  # Z-Layer (int)
-        ),
-        rotation_degrees,
-    )
+    tile = GroundTileStone(rotation_degrees)
+    return SnowifyTile(tile)
 
 
 def GroundTileStonesSnow(rotation_degrees=0):
@@ -164,38 +207,20 @@ def GroundTileStonesSnow(rotation_degrees=0):
     )
 
 
-def GroundTileTrees(rotation_degrees=0):
-    """Creates a single tile of ground with several trees."""
+def TreeAssetIds(map_config: MapConfig = MapConfig()):
+    """Returns a list of tree asset ids."""
+    return [AssetId[name] for name in map_config.tree_tiles]
+
+
+def GroundTileTree(
+    rotation_degrees=0,
+    map_config: MapConfig = MapConfig(),
+    preference: AssetId = AssetId.NONE,
+):
+    """Creates a single tile of ground with a tree on it."""
+    asset_id = ChooseAssetFromTileClass(TileClass.TREE_TILES, map_config, preference)
     return Tile(
-        AssetId.GROUND_TILE_TREES,
-        HexCell(
-            HecsCoord.from_offset(0, 0),
-            HexBoundary(0x3F),
-            LayerToHeight(0),  # Height (float)
-            0,  # Z-Layer (int)
-        ),
-        rotation_degrees,
-    )
-
-
-def GroundTileTree(rotation_degrees=0):
-    """Creates a single tile of ground with several trees."""
-    return Tile(
-        AssetId.GROUND_TILE_TREE,
-        HexCell(
-            HecsCoord.from_offset(0, 0),
-            HexBoundary(0x3F),
-            LayerToHeight(0),  # Height (float)
-            0,  # Z-Layer (int)
-        ),
-        rotation_degrees,
-    )
-
-
-def GroundTileTreeBrown(rotation_degrees=0):
-    """Creates a single tile of ground with a tree."""
-    return Tile(
-        AssetId.GROUND_TILE_TREE_BROWN,
+        asset_id,
         HexCell(
             HecsCoord.from_offset(0, 0),
             HexBoundary(0x3F),
@@ -220,26 +245,17 @@ def GroundTileTreeSnow(rotation_degrees=0):
     )
 
 
-def RandomGroundTree(rotation_degrees=0):
-    """Creates a single tile of ground with a tree."""
-    tree_asset_id = int(np.random.choice(TreeAssets(), p=TreeFrequencies()))
-    return Tile(
-        tree_asset_id,
-        HexCell(
-            HecsCoord.from_offset(0, 0),
-            HexBoundary(0x3F),
-            LayerToHeight(0),  # Height (float)
-            0,  # Z-Layer (int)
-        ),
-        rotation_degrees,
+def NatureAssetIds(map_config: MapConfig = MapConfig()):
+    asset_names = (
+        map_config.tree_tiles + map_config.stone_tiles + map_config.foliage_tiles
     )
+    return [AssetId[name] for name in asset_names]
 
 
-def RandomNatureTile(rotation_degrees=0):
-    """Creates a single tile of nature."""
-    nature_asset_id = random.choice(NatureAssets())
+def RandomNatureTile(rotation_degrees=0, map_config: MapConfig = MapConfig()):
+    """Creates a single tile of nature. Nature tiles are trees, rocks, foliage, etc."""
     return Tile(
-        nature_asset_id,
+        random.choice(NatureAssetIds(map_config=map_config)),
         HexCell(
             HecsCoord.from_offset(0, 0),
             HexBoundary(0x3F),
@@ -360,7 +376,7 @@ def AssetIdFromHouseType(type):
         )
     else:
         logger.error(f"Unknown house type: {type}")
-        return AssetId.HOUSE
+        return AssetId.NONE
 
 
 def GroundTileHouse(rotation_degrees=0, type=HouseType.HOUSE):
@@ -378,24 +394,15 @@ def GroundTileHouse(rotation_degrees=0, type=HouseType.HOUSE):
     )
 
 
-def UrbanHouseTile(rotation_degrees=0):
+def UrbanHouseTile(
+    rotation_degrees=0,
+    map_config: MapConfig = MapConfig(),
+    preference: AssetId = AssetId.NONE,
+):
     """Creates a random house tile (like GroundTileHouse type=HouseType.RANDOM, but with a distribution meant for cities."""
-    house_types = [
-        HouseType.HOUSE,
-        HouseType.HOUSE_RED,
-        HouseType.HOUSE_BLUE,
-        HouseType.HOUSE_PINK,
-        HouseType.HOUSE_GREEN,
-        HouseType.HOUSE_ORANGE,
-        HouseType.HOUSE_YELLOW,
-        HouseType.TRIPLE_HOUSE,
-        HouseType.TRIPLE_HOUSE_RED,
-        HouseType.TRIPLE_HOUSE_BLUE,
-    ]
-    house_type = np.random.choice(
-        house_types, p=[0.13, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.09, 0.09, 0.09]
+    asset_id = ChooseAssetFromTileClass(
+        TileClass.URBAN_HOUSE_TILES, map_config, preference
     )
-    asset_id = AssetIdFromHouseType(house_type)
     return Tile(
         asset_id,
         HexCell(
@@ -408,10 +415,17 @@ def UrbanHouseTile(rotation_degrees=0):
     )
 
 
-def GroundTileStreetLight(rotation_degrees=0):
+def GroundTileStreetLight(
+    rotation_degrees=0,
+    map_config: MapConfig = MapConfig(),
+    preference: AssetId = AssetId.NONE,
+):
     """Creates a single tile of ground with a street light."""
+    asset_id = ChooseAssetFromTileClass(
+        TileClass.STREETLIGHT_TILES, map_config, preference
+    )
     return Tile(
-        AssetId.GROUND_TILE_STREETLIGHT,
+        asset_id,
         HexCell(
             HecsCoord.from_offset(0, 0),
             HexBoundary(0x3F),
