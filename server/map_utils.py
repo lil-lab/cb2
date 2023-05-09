@@ -92,6 +92,10 @@ def ChooseAssetFromTileClass(
     if preference != AssetId.NONE and preference in tiles:
         return preference
     tile_frequencies = [frequencies[tile] for tile in tiles]
+    # Normalize frequencies.
+    frequency_sum = sum(tile_frequencies)
+    for i in range(len(tile_frequencies)):
+        tile_frequencies[i] /= frequency_sum
     asset_id = int(np.random.choice(tiles, p=tile_frequencies))
     assert type(asset_id) == int, f"Invalid asset_id type: {asset_id}"
     return asset_id
@@ -185,6 +189,26 @@ def GroundTileStone(
         ),
         rotation_degrees,
     )
+
+
+def GroundTileRocky(rotation_degrees=0):
+    """Creates a single tile of rocky ground."""
+    return GroundTileStone(rotation_degrees, preference=AssetId.GROUND_TILE_ROCKY)
+
+
+def GroundTileStones(rotation_degrees=0):
+    """Creates a single tile of ground with stones."""
+    return GroundTileStone(rotation_degrees, preference=AssetId.GROUND_TILE_STONES)
+
+
+def GroundTileTreeBrown(rotation_degrees=0):
+    """Creates a single tile of ground with a brown tree."""
+    return GroundTileTree(rotation_degrees, preference=AssetId.GROUND_TILE_TREE_BROWN)
+
+
+def GroundTileTrees(rotation_degrees=0):
+    """Creates a single tile of ground with trees."""
+    return GroundTileTree(rotation_degrees, preference=AssetId.GROUND_TILE_TREES)
 
 
 def GroundTileRockySnow(rotation_degrees=0):
@@ -440,6 +464,62 @@ def GroundTileStreetLightFoilage(rotation_degrees=0):
     """Creates a single tile of ground with a street light and some bushes/rocks around it."""
     return Tile(
         AssetId.GROUND_TILE_STREETLIGHT_FOILAGE,
+        HexCell(
+            HecsCoord.from_offset(0, 0),
+            HexBoundary(0x3F),
+            LayerToHeight(0),  # Height (float)
+            0,  # Z-Layer (int)
+        ),
+        rotation_degrees,
+    )
+
+
+def GroundTileStreetLightBig(rotation_degrees=0):
+    """Creates a single tile of ground with a tall street light."""
+    return Tile(
+        AssetId.STREETLIGHT_BIG,
+        HexCell(
+            HecsCoord.from_offset(0, 0),
+            HexBoundary(0x3F),
+            LayerToHeight(0),  # Height (float)
+            0,  # Z-Layer (int)
+        ),
+        rotation_degrees,
+    )
+
+
+def GroundTileStreetLightBushes(rotation_degrees=0):
+    """Creates a single tile of ground with a street light and some bushes around it."""
+    return Tile(
+        AssetId.STREETLIGHT_BUSHES,
+        HexCell(
+            HecsCoord.from_offset(0, 0),
+            HexBoundary(0x3F),
+            LayerToHeight(0),  # Height (float)
+            0,  # Z-Layer (int)
+        ),
+        rotation_degrees,
+    )
+
+
+def GroundTileStreetLightRocks(rotation_degrees=0):
+    """Creates a single tile of ground with a street light and some rocks around it."""
+    return Tile(
+        AssetId.STREETLIGHT_ROCKS,
+        HexCell(
+            HecsCoord.from_offset(0, 0),
+            HexBoundary(0x3F),
+            LayerToHeight(0),  # Height (float)
+            0,  # Z-Layer (int)
+        ),
+        rotation_degrees,
+    )
+
+
+def GroundTileStreetLightWide(rotation_degrees=0):
+    """Creates a single tile of ground with a street light and some rocks around it."""
+    return Tile(
+        AssetId.STREETLIGHT_WIDE,
         HexCell(
             HecsCoord.from_offset(0, 0),
             HexBoundary(0x3F),

@@ -40,6 +40,7 @@ class AssetId(IntEnum):
     GROUND_TILE_HOUSE_TRIPLE_RED = 25
     GROUND_TILE_HOUSE_TRIPLE_BLUE = 26
     GROUND_TILE_STREETLIGHT = 27
+    STREETLIGHT = 27
     GROUND_TILE_PATH = 28
     WATER_TILE = 29
     MOUNTAIN_TILE = 30
@@ -56,6 +57,11 @@ class AssetId(IntEnum):
     MOUNTAIN_TILE_TREE = 41
     SNOWY_MOUNTAIN_TILE_TREE = 42
     GROUND_TILE_STREETLIGHT_FOILAGE = 43
+    STREETLIGHT_FOILAGE = 43
+    STREETLIGHT_BIG = 44
+    STREETLIGHT_BUSHES = 45
+    STREETLIGHT_ROCKS = 46
+    STREETLIGHT_WIDE = 47
     EMPTY_TILE = 100  # Used for map gen, should never appear in network protocol.
     NONE = 101  # Invalid value. Used for padding/masking unknown values.
     MAX = 102  # Maximum possible value. Subject to change.
@@ -183,6 +189,10 @@ def AssetsFromTileClass(tile: TileClass):
         return [
             AssetId.GROUND_TILE_STREETLIGHT,
             AssetId.GROUND_TILE_STREETLIGHT_FOILAGE,
+            AssetId.STREETLIGHT_BIG,
+            AssetId.STREETLIGHT_BUSHES,
+            AssetId.STREETLIGHT_ROCKS,
+            AssetId.STREETLIGHT_WIDE,
         ]
     elif tile == TileClass.HOUSE_TILES:
         return [
@@ -230,7 +240,7 @@ def AssetFrequenciesFromTileClass(tile: TileClass) -> List[float]:
     elif tile == TileClass.TREE_TILES:
         return [0.3, 0.1, 0, 0.25, 0.2, 0.0, 0.15, 0]
     elif tile == TileClass.STREETLIGHT_TILES:
-        return [0.5, 0.5]
+        return [0.2, 0.15, 0.15, 0.15, 0.15, 0.15, 0.05]
     elif tile == TileClass.HOUSE_TILES:
         return [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
     elif tile == TileClass.URBAN_HOUSE_TILES:
