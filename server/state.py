@@ -67,6 +67,7 @@ class State(object):
         event_uuid: str = "",
         realtime_actions: bool = False,
         lobby: "server.Lobby" = None,
+        log_to_db: bool = False,
     ):
         """Initialize the game from a given event.
 
@@ -86,7 +87,7 @@ class State(object):
             True,
             scenario,
             realtime_actions=realtime_actions,
-            log_to_db=False,
+            log_to_db=log_to_db,
             lobby=lobby,
         )
         return s, ""

@@ -50,6 +50,7 @@ from server.remote_table import (
 )
 from server.schemas import base
 from server.user_info_fetcher import UserInfoFetcher
+from server.util import HEARTBEAT_TIMEOUT_S
 
 routes = web.RouteTableDef()
 
@@ -58,9 +59,6 @@ MTURK_LOBBY = "mturk-lobby"
 DEFAULT_LOBBY = "default"
 OPEN_LOBBY = "open"
 BOT_SANDBOX = "bot-sandbox"
-
-# Constants which determine server behavior.
-HEARTBEAT_TIMEOUT_S = 20.0
 
 logger = logging.getLogger()
 

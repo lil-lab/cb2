@@ -64,6 +64,7 @@ def ValidateConfig(config):
 # Attempts to parse the config file. If there's any parsing or file errors,
 # doesn't handle the exceptions.
 def ReadConfigOrDie(config_path):
+    """Reads a config file and returns a Config object."""
     with open(config_path, "r") as cfg_file:
         data = yaml.load(cfg_file, Loader=yaml.CLoader)
         config = Config.from_dict(data)
@@ -71,6 +72,27 @@ def ReadConfigOrDie(config_path):
         if not valid_config:
             raise ValueError(f"Config file is invalid: {reason}")
         return config
+
+
+def ReadServerConfigOrDie(config_path):
+    """An alias of ReadConfigOrDie that indicates it's specifically server config."""
+    return ReadConfigOrDie(config_path)
+
+
+@dataclass
+class DataConfig(DataClassJSONMixin):
+    name: str = ""  # The name of the config.
+    sqlite_db_path: str = ""  # The path to the sqlite database.
+    # Default settings. Safe for use with low-resource AWS server (4g ram,
+    # 2vcpu). In this case, a t4g.medium instance.
+    sqlite_pragmas: List[List[str]] = field(
+        default_factory=lambda: [
+            ("journal_mode", "wal"),
+            ("cache_size", -1024 * 64),
+            ("foreign_keys", "1"),
+            ("synchronous", "off"),
+        ]
+    )
 
 
 # For backwards compatibility, the members of this class are ordered by when
@@ -171,6 +193,12 @@ class Config(DataClassJSONMixin):
                 1,
                 False,
                 True,
+            ),
+            LobbyInfo(
+                "eval-lobby",
+                LobbyType.SCENARIO,
+                "Lobby used for evaluating agents.",
+                10,
             ),
             LobbyInfo(
                 "google-leader-lobby",
@@ -277,3 +305,10 @@ class Config(DataClassJSONMixin):
 
     def exception_directory(self):
         return pathlib.Path(self.data_directory(), self.exception_prefix).expanduser()
+
+    def data_config(self) -> DataConfig:
+        return DataConfig(
+            name=self.name,
+            sqlite_db_path=self.database_path(),
+            sqlite_pragmas=self.sqlite_pragmas,
+        )

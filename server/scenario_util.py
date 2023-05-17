@@ -7,6 +7,7 @@ import orjson
 import server.messages.action as action_module
 import server.messages.objective as objective
 import server.schemas.game as game_db
+from py_client.game_endpoint import GameState
 from server.actor import Actor
 from server.card import Card
 from server.messages.map_update import MapUpdate
@@ -255,4 +256,16 @@ def ReconstructScenarioFromEvent(event_uuid: str) -> Scenario:
             state_sync_msg,
         ),
         None,
+    )
+
+
+def GameStateFromScenario(scenario: Scenario) -> GameState:
+    """Creates a GameState from a Scenario."""
+    return GameState(
+        scenario.map_update,
+        scenario.prop_update.props,
+        scenario.turn_state,
+        scenario.objectives,
+        [Actor.from_state(state) for state in scenario.actor_state],
+        [],
     )

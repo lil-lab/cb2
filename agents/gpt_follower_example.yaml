@@ -1,0 +1,12 @@
+# Copy this file to generate a GPTFollower agent.
+# See GPTFollowerConfig in agents/gpt_follower.py for more details.
+#
+# If you're afraid of YAML, realize that YAML is a superset of JSON, so you can
+# just replace this file with an equivalent JSON file if you want.
+name: "GPT 3.5 Follower"
+comment: "An agent which describes the game map using text, and then asks GPT what to do."
+agent_type: "GPTFollower"
+gpt_follower_config:
+  queueing_enabled: true
+  gpt_api_key: "<your key here>"
+  model: "gpt-3.5-turbo"

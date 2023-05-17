@@ -15,6 +15,9 @@ import orjson
 
 MAX_ID = 1000000
 
+# Constants which determine server behavior.
+HEARTBEAT_TIMEOUT_S = 20.0
+
 
 def JsonSerialize(x, pretty=True):
     options = orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME

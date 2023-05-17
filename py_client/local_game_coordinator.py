@@ -148,7 +148,9 @@ class LocalGameCoordinator:
         self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)
         return game_name
 
-    def CreateGameFromDatabase(self, event_uuid: str):
+    def CreateGameFromDatabase(
+        self, event_uuid: str, log_to_db: bool = False, lobby: Lobby = None
+    ):
         """Creates a new game from a specific instruction in a recorded game.
 
         Exactly two agents can join this game with JoinGame().
@@ -163,7 +165,11 @@ class LocalGameCoordinator:
 
         # For cards, take all cards so far and then delete any CardSets().
         state_machine, reason = State.InitializeFromExistingState(
-            room_id, event_uuid, realtime_actions=False
+            room_id,
+            event_uuid,
+            realtime_actions=False,
+            log_to_db=log_to_db,
+            lobby=lobby,
         )
         assert (
             state_machine is not None
@@ -234,6 +240,13 @@ class LocalGameCoordinator:
 
     def JoinTutorial(self, game_name, role: Role):
         """Joins a tutorial with the given name.
+
+        Returns a Game object used to interact with the game.
+        """
+        return self.JoinSinglePlayerGame(game_name, role)
+
+    def JoinSinglePlayerGame(self, game_name, role: Role):
+        """Joins a single player game with the given name.
 
         If the game doesn't exist, crashes.
 

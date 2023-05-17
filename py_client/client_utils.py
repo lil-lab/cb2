@@ -50,6 +50,27 @@ def FollowerSystemPrompt() -> str:
     return system_prompt
 
 
+def SingleActionSystemPrompt() -> str:
+    system_prompt = (
+        "GAME EXPLANATION: \n"
+        "You are playing a text-based videogame. In this game, you are the FOLLOWER. "
+        "Your role is to follow the ACTIVE instruction. "
+        "First type in your thoughts. You can do this by starting a line with 'THOUGHTS:' and then typing your thoughts. "
+        "Then type in your intended action. You can do this by starting a line with 'ACTION:' and then typing only a single action, ending with newline."
+        "E.G. one of: 'R', 'L', 'F', and 'B' (Right, Left, Forward, and Back). "
+        "You can also write 'D', to mark an instruction as completed. "
+        "You cannot see things behind you or to the sides. You also can't see things that are too far away. Turn around or move to explore. "
+        "After a few observations, if you're lost, use a 'D' action to get a new instruction. "
+        "Headings are described in degrees, with positive meaning to the right and "
+        "negative meaning to the left. You are on a discrete hex grid, each turn is 60 degrees. "
+        "You get a new observation each time you move. Do not hit 'done' until "
+        "you have completed the instruction. The leader can see things you can't, "
+        "so trust instructions. After each ACTION line, you will get a new observation, so you can explore a bit. "
+        "There are no traps, so explore freely. Outposts, and cities are just waypoints, and have no clues."
+    )
+    return system_prompt
+
+
 def DescribeMap(
     map_update: MapUpdate,
     prop_update: PropUpdate,

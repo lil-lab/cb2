@@ -1,6 +1,7 @@
 from server.schemas.base import *
 from server.schemas.cards import *
 from server.schemas.clients import *
+from server.schemas.eval import *
 from server.schemas.event import *
 from server.schemas.game import *
 from server.schemas.google_user import *
@@ -32,6 +33,12 @@ TABLES = [
     Event,
 ]
 
+EVAL_TABLES = [Eval, InstructionEvaluation]
+
 
 def ListDefaultTables():
     return TABLES
+
+
+def EvalTables():
+    return EVAL_TABLES

@@ -38,7 +38,6 @@ from py_client.follower_data_masking import (
 from py_client.game_socket import GameSocket
 from server.actor import Actor
 from server.config.config import Config
-from server.main import HEARTBEAT_TIMEOUT_S
 from server.map_tools.visualize import GameDisplay
 from server.messages import action as action_module
 from server.messages import message_from_server
@@ -49,6 +48,7 @@ from server.messages.objective import ObjectiveMessage
 from server.messages.prop import Prop, PropType
 from server.messages.rooms import Role
 from server.messages.turn_state import TurnState
+from server.util import HEARTBEAT_TIMEOUT_S
 
 logger = logging.getLogger(__name__)
 
