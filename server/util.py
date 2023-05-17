@@ -11,6 +11,7 @@ from asyncio import events
 from datetime import datetime, timedelta
 from typing import List
 
+import git
 import orjson
 
 MAX_ID = 1000000
@@ -62,13 +63,18 @@ def GetCommitHash():
     """Returns the git commit hash of the system software.
     Use __file__ to get the path to the git repo.
     """
-    return (
-        subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=pathlib.Path(__file__).parent
+    try:
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=pathlib.Path(__file__).parent
+            )
+            .decode("utf-8")
+            .strip()
         )
-        .decode("utf-8")
-        .strip()
-    )
+    except subprocess.CalledProcessError:
+        # This is the more cross platform way.
+        repo = git.Repo(pathlib.Path(__file__).parent.parent)
+        return repo.head.object.hexsha
 
 
 class CountDownTimer(object):

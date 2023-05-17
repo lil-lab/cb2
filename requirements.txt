@@ -28,3 +28,5 @@ appdirs==1.4.4
 cachecontrol==0.12.11
 openai==0.27.2
 evals==0.1.1
+pdoc==13.1.1
+gitpython==3.1.31

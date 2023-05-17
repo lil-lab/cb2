@@ -1,6 +1,7 @@
 import concurrent.futures
 import functools
 import logging
+from dataclasses import dataclass
 
 import openai
 from mashumaro.mixins.json import DataClassJSONMixin

@@ -17,7 +17,14 @@ import datetime
 import uuid
 from enum import IntEnum
 
-from peewee import DateTimeField, ForeignKeyField, IntegerField, TextField, UUIDField
+from peewee import (
+    BooleanField,
+    DateTimeField,
+    ForeignKeyField,
+    IntegerField,
+    TextField,
+    UUIDField,
+)
 
 from server.schemas.base import BaseModel
 
@@ -69,3 +76,7 @@ class InstructionEvaluation(BaseModel):
     agent_outcome = TextField()
     # A serialized scenario struct.
     baseline_outcome = TextField()
+    # Whether or not the evaluation is considered successful.
+    success = BooleanField()
+    # The number of turns that the agent took to complete the instruction.
+    agent_turns = IntegerField()

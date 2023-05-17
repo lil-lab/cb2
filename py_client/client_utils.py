@@ -5,7 +5,7 @@ from server.actor import Actor
 from server.assets import AssetId
 from server.config.config import Config
 from server.hex import HecsCoord
-from server.map_utils import AssetId, NatureAssets, TreeAssets
+from server.map_utils import AssetId, NatureAssetIds, TreeAssetIds
 from server.messages.map_update import MapUpdate
 from server.messages.objective import ObjectiveMessage
 from server.messages.prop import PropType, PropUpdate
@@ -193,9 +193,9 @@ def DescribeMap(
             nearby_tiles.append(f"Left tile: {AssetId(tile.asset_id).name}")
         elif tile.cell.coord == follower_right:
             nearby_tiles.append(f"Right tile: {AssetId(tile.asset_id).name}")
-        elif tile.asset_id in NatureAssets() + [
+        elif tile.asset_id in NatureAssetIds() + [
             AssetId.GROUND_TILE_TREE_SNOW
-        ] + TreeAssets() + [AssetId.GROUND_TILE_PATH]:
+        ] + TreeAssetIds() + [AssetId.GROUND_TILE_PATH]:
             direction = (
                 follower.heading_degrees()
                 - follower.location().degrees_to_precise(tile.cell.coord)

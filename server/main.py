@@ -12,6 +12,7 @@ import statistics
 import sys
 import tempfile
 import time
+import warnings
 import zipfile
 from datetime import datetime, timedelta, timezone
 
@@ -20,6 +21,7 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = ""  # Hide pygame welcome message
 import aiohttp
 import fire
 import orjson
+import pdoc
 import peewee
 from aiohttp import web
 from dateutil import parser, tz
@@ -97,6 +99,11 @@ async def transmit_bytes(ws, message):
 @routes.get("/")
 async def Index(request):
     return web.FileResponse("server/www/index.html")
+
+
+@routes.get("/docs")
+async def DocIndex(request):
+    return web.HTTPFound("/docs/index.html")
 
 
 @routes.get("/play")
@@ -1285,12 +1292,13 @@ async def asset(request):
 
 
 async def serve(config):
+
     app = web.Application()
-
-    # Add a route for serving web frontend files on /.
-    routes.static("/", "server/www/WebGL")
-
     app.add_routes(routes)
+    # Serve documentation.
+    app.add_routes(
+        [web.static("/docs/", "docs/", show_index=False, append_version=True)]
+    )
     runner = runner = aiohttp.web.AppRunner(app, handle_signals=True)
     await runner.setup()
     site = web.TCPSite(runner, None, config.http_port)
@@ -1316,6 +1324,9 @@ def InitPythonLogging():
     logging.basicConfig(level=logging.INFO, format=log_format)
     logging.getLogger("asyncio").setLevel(logging.INFO)
     logging.getLogger("peewee").setLevel(logging.INFO)
+    # Disable pdoc warnings.
+    warnings.filterwarnings("ignore", module="pdoc")
+    logging.getLogger("pdoc").setLevel(logging.INFO)
 
 
 def InitGameRecording(config):
@@ -1348,6 +1359,25 @@ def InitGameRecording(config):
     base.SetDatabase(config)
     base.ConnectDatabase()
     base.CreateTablesIfNotExists(defaults.ListDefaultTables())
+
+
+def InitializeDocumentation():
+    # Get all top-level modules in the CB2 project by checking the directory
+    # structure.
+    cb2_modules = []
+    for file in os.listdir("."):
+        if not os.path.isdir(file):
+            continue
+        if "__init__.py" in os.listdir(file):
+            cb2_modules.append(file)
+    logger.info(f"Initializing documentation for modules: {cb2_modules}")
+    # Use pdoc to generate static docs in /docs.
+    pdoc.render.configure(
+        favicon="/images/favicon-32x32.png",
+        logo="/images/icon.png",
+        search=True,
+    )
+    pdoc.pdoc(*cb2_modules, output_directory=pathlib.Path("docs"))
 
 
 def CreateDataDirectory(config):
@@ -1383,6 +1413,7 @@ def main(config_filepath="server/config/server-config.yaml"):
 
     InitPythonLogging()
     InitGlobalConfig(config_filepath)
+    InitializeDocumentation()
 
     logger.info("Config file parsed.")
     logger.info(f"data prefix: {GlobalConfig().data_prefix}")

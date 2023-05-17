@@ -3,7 +3,8 @@ import logging
 import fire
 from tqdm import tqdm
 
-from agents.agent import Agent, CreateAgent, Role
+from agents.agent import Agent, Role
+from agents.agent_util import CreateAgent
 from agents.config import ReadAgentConfigOrDie
 from py_client.game_endpoint import GameState
 from py_client.local_game_coordinator import LocalGameCoordinator

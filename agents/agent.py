@@ -2,12 +2,11 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from agents.gpt_follower import GPTFollower
 from py_client.game_endpoint import Action, GameState
 from server.messages.rooms import Role
 
 if TYPE_CHECKING:
-    from agents.config import AgentConfig
+    pass
 
 
 class Agent(ABC):
@@ -41,14 +40,3 @@ class AgentType(Enum):
     @staticmethod
     def from_str(s: str):
         return AgentType[s]
-
-
-def CreateAgent(config: AgentConfig) -> Agent:
-    agent_type = AgentType.from_str(config.agent_type)
-    if agent_type == AgentType.NONE:
-        return None
-    elif agent_type == AgentType.PILOT_FOLLOWER:
-        # TODO: Implement PilotFollower agent.
-        return None
-    elif agent_type == AgentType.GPT_FOLLOWER:
-        return GPTFollower(config.gpt_follower_config)
