@@ -1,4 +1,5 @@
 import logging
+from typing import List
 
 import fire
 from tqdm import tqdm
@@ -105,7 +106,7 @@ def final_follower_move(instruction: Event) -> Event:
     return event_after
 
 
-def CompareCardSelections(a: list[Card], b: list[Card]) -> bool:
+def CompareCardSelections(a: List[Card], b: List[Card]) -> bool:
     selected_ids_a = set([card.id for card in a if card.selected])
     selected_ids_b = set([card.id for card in b if card.selected])
     return selected_ids_a == selected_ids_b

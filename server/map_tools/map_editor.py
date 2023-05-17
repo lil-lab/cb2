@@ -2,8 +2,12 @@ import dataclasses
 import logging
 import math
 import random
-import tkinter
-from tkinter.filedialog import askopenfilename, asksaveasfilename
+
+# Only import these on execution. This prevents pdoc from failing to build the docs.
+# tkinter isn't a server dependency, so it's not available in the server environment.
+if __name__ == "__main__":
+    import tkinter
+    from tkinter.filedialog import askopenfilename, asksaveasfilename
 from typing import Tuple
 
 import pygame
