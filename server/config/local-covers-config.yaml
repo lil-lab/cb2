@@ -19,5 +19,6 @@
     "google_oauth_client_id": "787231947800-ee2g4lptmfa0av2qb26n1qu60hf5j2fd.apps.googleusercontent.com",
     "map_config": {
       "streetlight_tiles": ["GROUND_TILE_STREETLIGHT"]
-    }
+    },
+    "generate_documentation": false
 }

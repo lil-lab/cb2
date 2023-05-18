@@ -1361,7 +1361,13 @@ def InitGameRecording(config):
     base.CreateTablesIfNotExists(defaults.ListDefaultTables())
 
 
-def InitializeDocumentation():
+def InitializeDocumentation(config):
+    if not config.generate_documentation:
+        logger.warn(
+            "Skipping documentation generation because config.generate_documentation false."
+        )
+        return
+
     # Get all top-level modules in the CB2 project by checking the directory
     # structure.
     cb2_modules = []
@@ -1413,7 +1419,7 @@ def main(config_filepath="server/config/server-config.yaml"):
 
     InitPythonLogging()
     InitGlobalConfig(config_filepath)
-    InitializeDocumentation()
+    InitializeDocumentation(GlobalConfig())
 
     logger.info("Config file parsed.")
     logger.info(f"data prefix: {GlobalConfig().data_prefix}")
