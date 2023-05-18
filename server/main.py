@@ -1292,6 +1292,8 @@ async def asset(request):
 
 
 async def serve(config):
+    # Add a route for serving web frontend files on /.
+    routes.static("/", "server/www/WebGL")
 
     app = web.Application()
     app.add_routes(routes)
