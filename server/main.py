@@ -34,6 +34,7 @@ import server.schemas.defaults as defaults
 import server.schemas.event as event_db
 import server.schemas.game as game_db
 import server.schemas.mturk as mturk
+from server.client_exception_logger import ClientExceptionLogger
 from server.config.config import GlobalConfig, InitGlobalConfig
 from server.google_authenticator import GoogleAuthenticator
 from server.lobby_consts import IsMturkLobby, LobbyType
@@ -66,6 +67,7 @@ logger = logging.getLogger()
 
 google_authenticator = GoogleAuthenticator()
 user_info_fetcher = UserInfoFetcher()
+client_exception_logger = ClientExceptionLogger()
 
 
 async def transmit(ws, message):
@@ -594,6 +596,13 @@ def CleanupDownloadFiles():
     for file in files_to_clean:
         logger.info(f"Deleting: {file}")
         os.remove(file)
+
+
+def SaveClientExceptionsToDB():
+    logger.info(
+        f"Saving {len(client_exception_logger.pending_exceptions())} client exceptions to DB..."
+    )
+    client_exception_logger.save_exceptions_to_db()
 
 
 @routes.get("/data/download_retrieve")
@@ -1166,6 +1175,13 @@ async def receive_agent_updates(request, ws, lobby):
             lobby.handle_request(message, ws)
             continue
 
+        if message.type == message_to_server.MessageType.CLIENT_EXCEPTION:
+            logger.info(
+                f"========== @@@@@@@@@ ############ $$$$$$$$$$$ Client exception: {message.client_exception}"
+            )
+            client_exception_logger.queue_exception(message.client_exception)
+            continue
+
         if message.type == message_to_server.MessageType.PONG:
             # Calculate the time offset.
             t0 = remote.last_ping.replace(tzinfo=timezone.utc)
@@ -1401,17 +1417,6 @@ def CreateExceptionDirectory(config):
     exception_dir.mkdir(parents=False, exist_ok=True)
 
 
-async def profiler():
-    last_print = datetime.now()
-    while True:
-        await asyncio.sleep(1)
-        if datetime.now() - last_print > timedelta(seconds=10):
-            # print(f"====== Profiler ======")
-            # yappi.get_func_stats().print_all()
-            # yappi.get_thread_stats().print_all()
-            last_print = datetime.now()
-
-
 def main(config_filepath="server/config/server-config.yaml"):
     global assets_map
     global lobby
@@ -1433,9 +1438,7 @@ def main(config_filepath="server/config/server-config.yaml"):
     CreateDataDirectory(GlobalConfig())
     CreateExceptionDirectory(GlobalConfig())
     InitGameRecording(GlobalConfig())
-
-    # yappi.set_clock_type("cpu") # Use set_clock_type("wall") for wall time
-    # yappi.start()
+    client_exception_logger.set_config(GlobalConfig())
 
     lobbies = GetLobbies()
     lobby_coroutines = []
@@ -1461,13 +1464,6 @@ def main(config_filepath="server/config/server-config.yaml"):
     finally:
         lobby.end_server()
         loop.close()
-
-        # yappi.stop()
-
-        # Export a pstats file.
-        # yappi.get_func_stats().save('yappi.pstat', type='pstat')
-        # yappi.get_func_stats().print_all()
-        # yappi.get_thread_stats().print_all()
 
 
 if __name__ == "__main__":

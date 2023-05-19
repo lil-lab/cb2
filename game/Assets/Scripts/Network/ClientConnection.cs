@@ -174,7 +174,7 @@ namespace Network
             await _webSocket.SendText(serialized);
         }
 
-        private async void HandleReceivedActions()
+        private void HandleReceivedActions()
         {
             if (_webSocket.State != WebSocketState.Open)
             {

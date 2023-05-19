@@ -1,5 +1,6 @@
 from server.schemas.base import *
 from server.schemas.cards import *
+from server.schemas.client_exception import *
 from server.schemas.clients import *
 from server.schemas.eval import *
 from server.schemas.event import *
@@ -31,6 +32,7 @@ TABLES = [
     Username,
     GoogleUser,
     Event,
+    ClientException,
 ]
 
 EVAL_TABLES = [Eval, InstructionEvaluation]

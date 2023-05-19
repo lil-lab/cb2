@@ -39,6 +39,8 @@ namespace Network
         private Role _currentTurn = Network.Role.NONE;
         private bool _waitingForTick = false;
 
+        private string _currentGameId = "";
+
         // The time at which we should stop waiting for a tick.
         // Tick waiting is a soft constraint - we don't want to wait forever and
         // freeze the client.
@@ -342,6 +344,16 @@ namespace Network
             _logger = Logger.GetOrCreateTrackedLogger("NetworkManager");
         }
 
+        public void OnEnable()
+        {
+            Application.logMessageReceived += HandleException;
+        }
+
+        public void OnDisable()
+        {
+            Application.logMessageReceived -= HandleException;
+        }
+
         // Called when a user clicks the "Join Game" menu button. Enters the game queue.
         public void JoinGame()
         {
@@ -587,6 +599,7 @@ namespace Network
                 _user_info_requested = false;
                 // When reloading the menu scene, we need to re-authenticate.
                 _authenticated = false;
+                _currentGameId = "";
                 StartCoroutine(FetchConfig());
                 return;    
             }
@@ -602,6 +615,27 @@ namespace Network
             } else {
                 _router.SetMode(NetworkRouter.Mode.NETWORK);
             }
+        }
+
+        void HandleException(string condition, string stacktrace, LogType type)
+        {
+            // Send ClientException message.
+            MessageToServer message = new MessageToServer();
+            message.type = MessageToServer.MessageType.CLIENT_EXCEPTION;
+            message.client_exception = new ClientException();
+            message.client_exception.condition = condition;
+            // If stack_trace is an empty string, use System.Diagnostics.StackTrace to get the stack trace.
+            if (stacktrace == "")
+            {
+                stacktrace = new System.Diagnostics.StackTrace(true).ToString();
+            }
+            message.client_exception.stack_trace = stacktrace;
+            message.client_exception.game_id = _currentGameId;
+            message.client_exception.role = _role.ToString();
+            if (_menuTransitionHandler != null) {
+                message.client_exception.bug_report = _menuTransitionHandler.CollectBugReport();
+            }
+            _client.TransmitMessage(message);
         }
 
         public void OnApplicationQuit()
@@ -640,6 +674,7 @@ namespace Network
                     _router.Clear();
                     SceneManager.LoadScene("game_scene");
                     _role = response.join_response.role;
+                    _currentGameId = (response.join_response.game_id).ToString();
                 } else if (response.join_response.booted_from_queue) {
                     _logger.Info("Booted from queue.");
                     GameObject bootedUi = GameObject.FindGameObjectWithTag("QUEUE_TIMEOUT_UI");

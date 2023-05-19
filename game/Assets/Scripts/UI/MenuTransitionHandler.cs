@@ -112,12 +112,22 @@ public class MenuTransitionHandler : MonoBehaviour
     public void SaveGameData()
     {
         // Downloads the game's map update to a json file.
+        BugReport bugReport = CollectBugReport();
+        if (bugReport == null)
+        {
+            return;
+        }
+        string bugReportJson = JsonConvert.SerializeObject(bugReport, Formatting.Indented);
+        DownloadJson("client_bug_report.json.log", bugReportJson);
+    }
+
+    public BugReport CollectBugReport() {
         Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
         IMapSource mapSource = networkManager.MapSource();
         if (mapSource == null)
         {
             Debug.Log("No map source.");
-            return;
+            return null;
         }
         Network.MapUpdate mapUpdate = mapSource.RawMapUpdate();
 
@@ -140,9 +150,7 @@ public class MenuTransitionHandler : MonoBehaviour
             localBugReport.Logs.Add(moduleLog);
             Debug.Log("Module: " + module + " and log size: " + moduleLog.Log.Length);
         }
-
-        string bugReportJson = JsonConvert.SerializeObject(localBugReport, Formatting.Indented);
-        DownloadJson("client_bug_report.json.log", bugReportJson);
+        return localBugReport;
     }
 
     public delegate void UploadCallback(string contents);

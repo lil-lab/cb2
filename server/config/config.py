@@ -279,6 +279,9 @@ class Config(DataClassJSONMixin):
     # If set to false, does not generate documentation on server startup.
     generate_documentation: bool = True
 
+    max_client_exceptions: int = 100
+    """The maximum number of exceptions to store in the database."""
+
     # Data path accessors that add the requisite data_prefix.
     def data_directory(self):
         # If data_prefix is None or empty string, use appdirs. Else use the prefix.

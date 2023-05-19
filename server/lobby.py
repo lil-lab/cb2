@@ -326,7 +326,9 @@ class Lobby(ABC):
                             RoomManagementResponse(
                                 RoomResponseType.JOIN_RESPONSE,
                                 None,
-                                JoinResponse(True, 0, Role.FOLLOWER),
+                                JoinResponse(
+                                    True, 0, Role.FOLLOWER, False, "", game_id
+                                ),
                                 None,
                                 None,
                             )
@@ -372,7 +374,7 @@ class Lobby(ABC):
                         RoomManagementResponse(
                             RoomResponseType.JOIN_RESPONSE,
                             None,
-                            JoinResponse(True, 0, Role.LEADER),
+                            JoinResponse(True, 0, Role.LEADER, False, "", room.id()),
                             None,
                             None,
                         )
@@ -381,7 +383,7 @@ class Lobby(ABC):
                         RoomManagementResponse(
                             RoomResponseType.JOIN_RESPONSE,
                             None,
-                            JoinResponse(True, 0, Role.FOLLOWER),
+                            JoinResponse(True, 0, Role.FOLLOWER, False, "", room.id()),
                             None,
                             None,
                         )
@@ -437,7 +439,7 @@ class Lobby(ABC):
                     RoomManagementResponse(
                         RoomResponseType.JOIN_RESPONSE,
                         None,
-                        JoinResponse(True, 0, Role.LEADER),
+                        JoinResponse(True, 0, Role.LEADER, False, "", game_id),
                         None,
                         None,
                     )
@@ -446,7 +448,7 @@ class Lobby(ABC):
                     RoomManagementResponse(
                         RoomResponseType.JOIN_RESPONSE,
                         None,
-                        JoinResponse(True, 0, Role.FOLLOWER),
+                        JoinResponse(True, 0, Role.FOLLOWER, False, "", game_id),
                         None,
                         None,
                     )
@@ -703,7 +705,7 @@ class Lobby(ABC):
                 RoomManagementResponse(
                     RoomResponseType.JOIN_RESPONSE,
                     None,
-                    JoinResponse(True, -1, Role.SPECTATOR),
+                    JoinResponse(True, -1, Role.SPECTATOR, False, "", room.id()),
                     None,
                     None,
                 )

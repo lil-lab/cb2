@@ -9,6 +9,7 @@ from mashumaro import pass_through
 from mashumaro.mixins.json import DataClassJSONMixin
 
 from server.messages.action import Action
+from server.messages.client_exception import ClientException
 from server.messages.google_auth import GoogleAuth
 from server.messages.live_feedback import LiveFeedback
 from server.messages.objective import ObjectiveCompleteMessage, ObjectiveMessage
@@ -39,6 +40,7 @@ class MessageType(Enum):
     # Ok in any room. Asks the server to download current game state as a scenario.
     SCENARIO_DOWNLOAD = 14
     FEEDBACK_RESPONSE = 15
+    CLIENT_EXCEPTION = 16
 
 
 @dataclass(frozen=True)
@@ -58,3 +60,4 @@ class MessageToServer(DataClassJSONMixin):
     google_auth: Optional[GoogleAuth] = None
     replay_request: Optional[ReplayRequest] = None
     scenario_request: Optional[ScenarioRequest] = None
+    client_exception: Optional[ClientException] = None
