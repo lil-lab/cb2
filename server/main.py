@@ -1308,15 +1308,13 @@ async def asset(request):
 
 
 async def serve(config):
+    # Serve documentation.
+    routes.static("/docs/", "docs/", show_index=False, append_version=True)
     # Add a route for serving web frontend files on /.
     routes.static("/", "server/www/WebGL")
 
     app = web.Application()
     app.add_routes(routes)
-    # Serve documentation.
-    app.add_routes(
-        [web.static("/docs/", "docs/", show_index=False, append_version=True)]
-    )
     runner = runner = aiohttp.web.AppRunner(app, handle_signals=True)
     await runner.setup()
     site = web.TCPSite(runner, None, config.http_port)
