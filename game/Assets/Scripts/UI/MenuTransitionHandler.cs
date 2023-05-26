@@ -121,7 +121,7 @@ public class MenuTransitionHandler : MonoBehaviour
         DownloadJson("client_bug_report.json.log", bugReportJson);
     }
 
-    public BugReport CollectBugReport() {
+    public BugReport CollectBugReport(int max_log_size_kb = -1) {
         Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
         IMapSource mapSource = networkManager.MapSource();
         if (mapSource == null)
@@ -132,23 +132,33 @@ public class MenuTransitionHandler : MonoBehaviour
         Network.MapUpdate mapUpdate = mapSource.RawMapUpdate();
 
         List<TurnState> turnStateLog = new List<TurnState>();
-        turnStateLog.Add(_lastTurn);
+        if (_lastTurn != null) {
+            turnStateLog.Add(_lastTurn);
+        }
 
         Network.BugReport localBugReport = new Network.BugReport();
-        localBugReport.MapUpdate = mapUpdate;
-        localBugReport.TurnStateLog = turnStateLog;
+        localBugReport.map_update = mapUpdate;
+        localBugReport.turn_state_log = turnStateLog;
 
-        localBugReport.Logs = new List<ModuleLog>();
+        localBugReport.logs = new List<ModuleLog>();
         List<string> modules = Logger.GetTrackedModules();
         Debug.Log("Modules: " + modules.Count);
         foreach (string module in modules)
         {
             Logger logger = Logger.GetTrackedLogger(module);
             ModuleLog moduleLog = new ModuleLog();
-            moduleLog.Module = module;
-            moduleLog.Log = System.Text.Encoding.UTF8.GetString(logger.GetBuffer());
-            localBugReport.Logs.Add(moduleLog);
-            Debug.Log("Module: " + module + " and log size: " + moduleLog.Log.Length);
+            moduleLog.module = module;
+            string log = System.Text.Encoding.UTF8.GetString(logger.GetBuffer()).TrimEnd('\0');
+            if ((max_log_size_kb > 0) && (log.Length > max_log_size_kb * 1024))
+            {
+                // Chop off the front of the string to make it fit. This is a
+                // cyclical buffer, so the final bytes are newer and more
+                // useful.
+                log = log.Substring(log.Length - max_log_size_kb * 1024);
+            }
+            moduleLog.log = log;
+            localBugReport.logs.Add(moduleLog);
+            Debug.Log("Module: " + module + " and log size: " + moduleLog.log.Length);
         }
         return localBugReport;
     }

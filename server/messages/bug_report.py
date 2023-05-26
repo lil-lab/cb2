@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import List
+from dataclasses import dataclass, field
+from typing import List, Optional
 
 from mashumaro.mixins.json import DataClassJSONMixin
 
@@ -16,7 +16,7 @@ class ModuleLog(DataClassJSONMixin):
 
 @dataclass(frozen=True)
 class BugReport(DataClassJSONMixin):
-    map_update: MapUpdate
-    turn_state_log: List[TurnState]
-    state_sync: StateSync
     logs: List[ModuleLog]
+    turn_state_log: List[TurnState] = field(default_factory=list)
+    state_sync: Optional[StateSync] = None
+    map_update: Optional[MapUpdate] = None

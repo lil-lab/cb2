@@ -38,8 +38,10 @@ class ClientExceptionLogger(object):
                 bug_report=exception.bug_report.to_json(),
                 condition=exception.condition,
                 stack_trace=exception.stack_trace,
+                type=exception.type,
             )
             db_exception.save(force_insert=True)
+        self._exceptions = []
         # If there's more than self._max_exceptions in the database, delete the oldest ones.
         # This is a bit inefficient, but it runs once at the end of the server.
         num_exceptions = ClientExceptionSchema.select().count()

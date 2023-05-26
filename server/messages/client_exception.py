@@ -14,3 +14,4 @@ class ClientException(DataClassJSONMixin):
     stack_trace: str
     game_id: str
     role: str
+    type: str

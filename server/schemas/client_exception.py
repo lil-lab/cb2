@@ -28,3 +28,5 @@ class ClientException(BaseModel):
     """The exception encountered. """
     stack_trace = TextField()
     """The stack trace of the exception. """
+    type = TextField()
+    """The type of the exception. See https://docs.unity3d.com/ScriptReference/LogType.html"""

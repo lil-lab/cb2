@@ -30,6 +30,7 @@ from playhouse.sqlite_ext import SqliteExtDatabase
 import server.db_tools.db_utils as db_utils
 import server.leaderboard as leaderboard
 import server.schemas as schemas
+import server.schemas.client_exception as client_exception_db
 import server.schemas.defaults as defaults
 import server.schemas.event as event_db
 import server.schemas.game as game_db
@@ -466,6 +467,25 @@ download_status = {
 }
 
 
+async def ExceptionSaver(lobbies, config):
+    while True:
+        try:
+            await asyncio.sleep(config.exception_log_interval)
+            # Check mturk lobbies to see if there are any active games.
+            active_game = False
+            for lob in lobbies:
+                if not IsMturkLobby(lob.lobby_type()):
+                    continue
+                if len(lob.room_ids()) > 0:
+                    active_game = True
+                    break
+            if not active_game:
+                logger.info(f"No active games, saving exceptions to DB.")
+                client_exception_logger.save_exceptions_to_db()
+        except Exception as e:
+            logger.exception(e)
+
+
 async def DataDownloader(lobbies):
     global download_requested
     global download_status
@@ -717,6 +737,32 @@ async def GameList(request):
     end_time = time.time()
     logger.info(f"Search took {end_time - start_time} seconds.")
     return web.json_response(response)
+
+
+@routes.get("/data/client-exception-list")
+async def ClientExceptionList(request):
+    exceptions = client_exception_db.ClientException.select().order_by(
+        client_exception_db.ClientException.date.desc()
+    )
+    responses = [
+        {
+            "id": exception.id.hex,
+            "game_id": exception.game_id,
+            "role": exception.role,
+            "date": str(exception.date),
+            "bug_report": exception.bug_report,
+            "condition": exception.condition,
+            "stack_trace": exception.stack_trace,
+            "type": exception.type,
+        }
+        for exception in exceptions
+    ]
+    return web.json_response(responses)
+
+
+@routes.get("/view/client-exceptions")
+async def ClientExceptionViewer(request):
+    return web.FileResponse("server/www/exceptions_viewer.html")
 
 
 @routes.get("/view/games")
@@ -1308,9 +1354,17 @@ async def asset(request):
 
 
 async def serve(config):
+    # Check if the server/www/WebGL directory exists.
+    if not os.path.isdir("server/www/WebGL"):
+        logger.warning(
+            "WebGL directory not found. This directory contains the compiled Unity front-end. You can download it here https://github.com/lil-lab/cb2/releases. You can also compile from source, but this requires installing Unity and getting a license. See game/ for client code and build_client.sh for instructions building the client from headless mode in Unity."
+        )
+        return
+
     # Serve documentation.
     routes.static("/docs/", "docs/", show_index=False, append_version=True)
     # Add a route for serving web frontend files on /.
+    routes.static("/docs/", "docs/", show_index=False, append_version=True)
     routes.static("/", "server/www/WebGL")
 
     app = web.Application()
@@ -1421,6 +1475,7 @@ def main(config_filepath="server/config/server-config.yaml"):
 
     # On exit, deletes temporary download files.
     atexit.register(CleanupDownloadFiles)
+    atexit.register(SaveClientExceptionsToDB)
 
     InitPythonLogging()
     InitGlobalConfig(config_filepath)
@@ -1451,6 +1506,7 @@ def main(config_filepath="server/config/server-config.yaml"):
         serve(GlobalConfig()),
         MapGenerationTask(lobbies, GlobalConfig()),
         DataDownloader(lobbies),
+        ExceptionSaver(lobbies, GlobalConfig()),
     )
     loop = asyncio.get_event_loop()
     # loop.set_debug(enabled=True)

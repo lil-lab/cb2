@@ -12,5 +12,6 @@ namespace Network
         public string stack_trace;
         public string game_id;
         public string role;
+        public string type;
     }
 }

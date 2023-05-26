@@ -282,6 +282,9 @@ class Config(DataClassJSONMixin):
     max_client_exceptions: int = 100
     """The maximum number of exceptions to store in the database."""
 
+    exception_log_interval: int = 60
+    """The number of seconds between exception log dumps."""
+
     # Data path accessors that add the requisite data_prefix.
     def data_directory(self):
         # If data_prefix is None or empty string, use appdirs. Else use the prefix.

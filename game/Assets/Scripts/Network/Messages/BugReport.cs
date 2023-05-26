@@ -6,16 +6,16 @@ namespace Network
     [Serializable]
     public class ModuleLog
     {
-        public string Module;
-        public string Log;
+        public string module;
+        public string log;
     }
 
     [Serializable]
     public class BugReport
     {
-        public MapUpdate MapUpdate;
-        public List<TurnState> TurnStateLog;
-        public StateSync StateSync;
-        public List<ModuleLog> Logs;
+        public MapUpdate map_update;
+        public List<TurnState> turn_state_log;
+        public StateSync state_sync;
+        public List<ModuleLog> logs;
     }
 }

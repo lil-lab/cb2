@@ -55,6 +55,7 @@ namespace Network
 
         private UserInfo _user_info = null;
         private bool _user_info_requested = false;
+        private bool _handlingException = false;
 
         private Logger _logger;
 
@@ -619,23 +620,40 @@ namespace Network
 
         void HandleException(string condition, string stacktrace, LogType type)
         {
+            // This function is non re-entrant.
+            if (_handlingException)
+            {
+                return;
+            }
+            // Only handle exceptions, errors or assertions.
+            if (!(type == LogType.Exception || type == LogType.Error || type == LogType.Assert))
+            {
+                return;
+            }
+            _handlingException = true;
             // Send ClientException message.
             MessageToServer message = new MessageToServer();
             message.type = MessageToServer.MessageType.CLIENT_EXCEPTION;
+            message.transmit_time = DateTime.UtcNow.ToString("s");
             message.client_exception = new ClientException();
             message.client_exception.condition = condition;
+            message.client_exception.type = type.ToString();
             // If stack_trace is an empty string, use System.Diagnostics.StackTrace to get the stack trace.
-            if (stacktrace == "")
+            if (String.IsNullOrEmpty(stacktrace))
             {
-                stacktrace = new System.Diagnostics.StackTrace(true).ToString();
+                stacktrace = (new System.Diagnostics.StackTrace(true)).ToString();
             }
             message.client_exception.stack_trace = stacktrace;
             message.client_exception.game_id = _currentGameId;
             message.client_exception.role = _role.ToString();
             if (_menuTransitionHandler != null) {
-                message.client_exception.bug_report = _menuTransitionHandler.CollectBugReport();
+                message.client_exception.bug_report =
+                    _menuTransitionHandler.CollectBugReport(
+                        /* max_log_size_kb= */ 10
+                );
             }
             _client.TransmitMessage(message);
+            _handlingException = false;
         }
 
         public void OnApplicationQuit()
@@ -713,7 +731,7 @@ namespace Network
                 MessageFromServer map_update_message = new MessageFromServer();
                 map_update_message.type = MessageFromServer.MessageType.MAP_UPDATE;
                 map_update_message.map_update = response.map_update;
-                map_update_message.transmit_time = DateTime.UtcNow.ToString();
+                map_update_message.transmit_time = DateTime.UtcNow.ToString("s");
                 _router.HandleMessage(map_update_message);
             }
             else
@@ -831,7 +849,7 @@ namespace Network
                         _logger.Warn("HTTP Error: " + webRequest.error);
                         break;
                     case UnityWebRequest.Result.Success:
-                        _logger.Info("Received: " + webRequest.downloadHandler.text);
+                        _logger.Info("Received config!");
                         _serverConfig = JsonConvert.DeserializeObject<Network.Config>(webRequest.downloadHandler.text);
                         _serverConfig.timestamp = DateTime.UtcNow;
                         OnConfigReceived(_serverConfig);

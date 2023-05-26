@@ -89,12 +89,9 @@ public class HexGrid : MonoBehaviour
 
     public void OnEnable()
     {
-        Debug.Log("HexGrid: OnEnable()");
         if (_manager == null)
         {
-            Debug.Log("HexGrid: Start()");
             Start();
-            _logger.Info("HexGridManager re-initialized.");
         }
     }
 

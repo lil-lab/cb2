@@ -20,19 +20,19 @@ public class GameSaveHandler : MonoBehaviour
         Network.MapUpdate mapUpdate = mapSource.RawMapUpdate();
 
         Network.BugReport localBugReport = new Network.BugReport();
-        localBugReport.MapUpdate = mapUpdate;
+        localBugReport.map_update = mapUpdate;
 
-        localBugReport.Logs = new List<Network.ModuleLog>();
+        localBugReport.logs = new List<Network.ModuleLog>();
         List<string> modules = Logger.GetTrackedModules();
         Debug.Log("Modules: " + modules.Count);
         foreach (string module in modules)
         {
             Logger logger = Logger.GetTrackedLogger(module);
             Network.ModuleLog moduleLog = new Network.ModuleLog();
-            moduleLog.Module = module;
-            moduleLog.Log = System.Text.Encoding.UTF8.GetString(logger.GetBuffer());
-            localBugReport.Logs.Add(moduleLog);
-            Debug.Log("Module: " + module + " and log size: " + moduleLog.Log.Length);
+            moduleLog.module = module;
+            moduleLog.log = System.Text.Encoding.UTF8.GetString(logger.GetBuffer());
+            localBugReport.logs.Add(moduleLog);
+            Debug.Log("Module: " + module + " and log size: " + moduleLog.log.Length);
         }
 
         string bugReportJson = JsonUtility.ToJson(localBugReport, /*prettyPrint=*/true);
