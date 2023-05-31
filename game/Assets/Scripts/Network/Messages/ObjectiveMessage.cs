@@ -10,7 +10,7 @@ namespace Network
         public string uuid = "";
         public bool completed = false;
         public bool cancelled = false;
-
+        public string feedback_text = "";
         public bool is_concluded()
         {
             return completed || cancelled;

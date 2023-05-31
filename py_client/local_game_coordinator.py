@@ -16,7 +16,9 @@ import pygame
 import server.schemas.game as game_db
 from py_client.game_endpoint import GameEndpoint
 from py_client.game_socket import GameSocket
+from server.lobbies.open_lobby import OpenLobby
 from server.lobby import Lobby
+from server.lobby_consts import LobbyInfo, LobbyType
 from server.map_tools.visualize import GameDisplay
 from server.messages.rooms import Role
 from server.messages.tutorials import (
@@ -31,6 +33,9 @@ from server.util import GetCommitHash
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_LOBBY = OpenLobby(
+    LobbyInfo(LobbyType.OPEN, "default local game coordinator lobby")
+)
 
 # pylint: disable=protected-access
 class LocalSocket(GameSocket):
@@ -104,7 +109,7 @@ class LocalGameCoordinator:
         self,
         log_to_db: bool = True,
         realtime_actions: bool = False,
-        lobby: Lobby = None,
+        lobby: Lobby = DEFAULT_LOBBY,
     ):
         """Creates a new game. Exactly two agents can join this game with JoinGame().
 
@@ -149,7 +154,7 @@ class LocalGameCoordinator:
         return game_name
 
     def CreateGameFromDatabase(
-        self, event_uuid: str, log_to_db: bool = False, lobby: Lobby = None
+        self, event_uuid: str, log_to_db: bool = False, lobby: Lobby = DEFAULT_LOBBY
     ):
         """Creates a new game from a specific instruction in a recorded game.
 

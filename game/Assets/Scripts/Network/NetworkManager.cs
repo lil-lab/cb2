@@ -370,6 +370,7 @@ namespace Network
             msg.room_request.type = RoomRequestType.JOIN;
             _logger.Info("Joining game...");
             _client.TransmitMessage(msg);
+            MenuTransitionHandler.ShowWaitQueue();
         }
 
         public void JoinAsLeader()

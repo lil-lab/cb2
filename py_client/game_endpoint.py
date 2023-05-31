@@ -38,6 +38,7 @@ from py_client.follower_data_masking import (
 from py_client.game_socket import GameSocket
 from server.actor import Actor
 from server.config.config import Config
+from server.lobby_consts import LobbyInfo
 from server.map_tools.visualize import GameDisplay
 from server.messages import action as action_module
 from server.messages import message_from_server
@@ -425,10 +426,17 @@ class GameEndpoint(object):
 
     """
 
-    def __init__(self, game_socket: GameSocket, config: Config, render=False):
+    def __init__(
+        self,
+        game_socket: GameSocket,
+        config: Config,
+        render=False,
+        lobby_info: LobbyInfo = None,
+    ):
         self.socket = game_socket
         self.config = config
         self.render = render
+        self.lobby_info = lobby_info
         self._timeout_observed = False
         self._reset()
 
@@ -589,6 +597,13 @@ class GameEndpoint(object):
         self.last_step_call = datetime.now()
         return state
 
+    def _feedback_enabled(self):
+        if not self.lobby_info:
+            return self.config.live_feedback_enabled
+        return (
+            self.config.live_feedback_enabled and self.lobby_info.live_feedback_enabled
+        )
+
     def _can_act(self):
         if self.player_role() == self.turn_state.turn:
             if self.player_role() == Role.FOLLOWER:
@@ -604,7 +619,7 @@ class GameEndpoint(object):
                 return False
             return True
 
-        if (self.player_role() == Role.LEADER) and self.config.live_feedback_enabled:
+        if (self.player_role() == Role.LEADER) and self._feedback_enabled():
             # Check if the follower position has changed since the last tick.
             return self._follower_moved
 

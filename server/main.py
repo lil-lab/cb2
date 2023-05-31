@@ -1085,7 +1085,7 @@ async def stream_game_state(request, ws, lobby):
     while not ws.closed:
         await asyncio.sleep(0)
         poll_period = time.time() - last_loop
-        if (poll_period) > 0.1:
+        if (poll_period) > 0.2:
             logging.warning(
                 f"Transmit socket for iphash {remote.hashed_ip} port {remote.client_port}, slow poll period of {poll_period}s"
             )

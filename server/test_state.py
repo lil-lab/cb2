@@ -51,7 +51,6 @@ class RandomRealtimeLocalSelfPlayTest(unittest.TestCase):
         self.config = Config(
             card_covers=True,
             comment="State Machine Unit Test Config",
-            live_feedback_enabled=True,
         )
         lobby = OpenLobby(
             LobbyInfo("Test Lobby", LobbyType.OPEN, "Unit test...", 40, 1, False)

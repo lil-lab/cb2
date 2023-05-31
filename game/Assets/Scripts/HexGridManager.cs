@@ -55,22 +55,27 @@ public class HexGridManager
             _logger.Info("HexGrid not yet initialized. Returning vector3.zero");
             return Vector3.zero;
         }
-        Tile corner_1 = _grid[0, 0, 0];
-        Tile corner_2 = _grid[a, r, c];
-        Tile corner_3 = _grid[a, r, 0];
-        Tile corner_4 = _grid[0, 0, c];
-        if ((corner_1 == null) || (corner_2 == null) || (corner_3 == null) || (corner_4 == null))
-        {
-            _logger.Info("HexGrid not yet initialized. Returning vector3.zero");
+        try {
+            Tile corner_1 = _grid[0, 0, 0];
+            Tile corner_2 = _grid[a, r, c];
+            Tile corner_3 = _grid[a, r, 0];
+            Tile corner_4 = _grid[0, 0, c];
+            if ((corner_1 == null) || (corner_2 == null) || (corner_3 == null) || (corner_4 == null))
+            {
+                _logger.Info("HexGrid not yet initialized. Returning vector3.zero");
+                return Vector3.zero;
+            }
+            Vector3 center = 0.25f * (
+                corner_1.Cell.Center() +
+                corner_2.Cell.Center() +
+                corner_3.Cell.Center() +
+                corner_4.Cell.Center()
+            );
+            return center;
+        } catch (IndexOutOfRangeException e) {
+            _logger.Error("Index out of range exception: " + e);
             return Vector3.zero;
         }
-        Vector3 center = 0.25f * (
-            corner_1.Cell.Center() +
-            corner_2.Cell.Center() +
-            corner_3.Cell.Center() +
-            corner_4.Cell.Center()
-        );
-        return center;
     }
 
     public Vector3 Position(int i, int j)

@@ -16,7 +16,13 @@ public class KeyboardShortcutHandler : MonoBehaviour
 
     public void SendPositiveFeedback()
     {
-        if (!Network.NetworkManager.TaggedInstance().ServerConfig().live_feedback_enabled)
+        Network.NetworkManager network = Network.NetworkManager.TaggedInstance();
+        if (network == null) {
+            _logger.Info("SendPositiveFeedback(): NetworkManager not found");
+            return;
+        }
+        bool feedback_enabled = (network.ServerConfig().live_feedback_enabled || network.ServerLobbyInfo().live_feedback_enabled || network.ServerLobbyInfo().delayed_feedback_enabled);
+        if (!feedback_enabled)
         {
             _logger.Info("SendPositiveFeedback(): Live feedback not enabled");
             return;
@@ -38,7 +44,13 @@ public class KeyboardShortcutHandler : MonoBehaviour
 
     public void SendNegativeFeedback()
     {
-        if (!Network.NetworkManager.TaggedInstance().ServerConfig().live_feedback_enabled)
+        Network.NetworkManager network = Network.NetworkManager.TaggedInstance();
+        if (network == null) {
+            _logger.Info("SendNegativeFeedback(): NetworkManager not found");
+            return;
+        }
+        bool feedback_enabled = (network.ServerConfig().live_feedback_enabled || network.ServerLobbyInfo().live_feedback_enabled || network.ServerLobbyInfo().delayed_feedback_enabled);
+        if (!feedback_enabled)
         {
             _logger.Info("SendNegativeFeedback(): Live feedback not enabled");
             return;

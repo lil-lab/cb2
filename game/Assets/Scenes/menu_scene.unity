@@ -9738,17 +9738,29 @@ PrefabInstance:
       value: Join Game
       objectReference: {fileID: 0}
     - target: {fileID: 3242963580036650475, guid: 2ae19408d3b53418b9826631badaabfa, type: 3}
+      propertyPath: m_Delegates.Array.data[0].callback.m_PersistentCalls.m_Calls.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3242963580036650475, guid: 2ae19408d3b53418b9826631badaabfa, type: 3}
       propertyPath: m_Delegates.Array.data[0].callback.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
       objectReference: {fileID: 1182511419}
     - target: {fileID: 3242963580036650475, guid: 2ae19408d3b53418b9826631badaabfa, type: 3}
       propertyPath: m_Delegates.Array.data[0].callback.m_PersistentCalls.m_Calls.Array.data[1].m_Target
       value: 
-      objectReference: {fileID: 93418522}
+      objectReference: {fileID: 634278946}
     - target: {fileID: 3242963580036650475, guid: 2ae19408d3b53418b9826631badaabfa, type: 3}
       propertyPath: m_Delegates.Array.data[0].callback.m_PersistentCalls.m_Calls.Array.data[2].m_Target
       value: 
       objectReference: {fileID: 634278946}
+    - target: {fileID: 3242963580036650475, guid: 2ae19408d3b53418b9826631badaabfa, type: 3}
+      propertyPath: m_Delegates.Array.data[0].callback.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: JoinGame
+      objectReference: {fileID: 0}
+    - target: {fileID: 3242963580036650475, guid: 2ae19408d3b53418b9826631badaabfa, type: 3}
+      propertyPath: m_Delegates.Array.data[0].callback.m_PersistentCalls.m_Calls.Array.data[1].m_Arguments.m_BoolArgument
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3242963580036650476, guid: 2ae19408d3b53418b9826631badaabfa, type: 3}
       propertyPath: m_Name
       value: Join Game

@@ -92,6 +92,7 @@ public class UnityAssetSource : IAssetSource
         "Prefab/UI/Instruction_Prefabs/PendingObjective",
         "Prefab/UI/Instruction_Prefabs/CancelledObjective",
         "Prefab/UI/MenuButton",
+        "Prefab/UI/Instruction_Prefabs/FeedbackLine",
     };
 
     public GameObject Load(IAssetSource.AssetId assetId)

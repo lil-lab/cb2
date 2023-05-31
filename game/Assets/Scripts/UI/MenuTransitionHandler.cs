@@ -142,7 +142,6 @@ public class MenuTransitionHandler : MonoBehaviour
 
         localBugReport.logs = new List<ModuleLog>();
         List<string> modules = Logger.GetTrackedModules();
-        Debug.Log("Modules: " + modules.Count);
         foreach (string module in modules)
         {
             Logger logger = Logger.GetTrackedLogger(module);
@@ -158,7 +157,6 @@ public class MenuTransitionHandler : MonoBehaviour
             }
             moduleLog.log = log;
             localBugReport.logs.Add(moduleLog);
-            Debug.Log("Module: " + module + " and log size: " + moduleLog.log.Length);
         }
         return localBugReport;
     }
@@ -302,6 +300,16 @@ public class MenuTransitionHandler : MonoBehaviour
             objectiveUi.transform.localPosition = Vector3.zero;
             objectiveUi.transform.localRotation = Quaternion.identity;
             objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = objectives[i].text;
+            // If playing as the leader, show all feedback messages.
+            // If playing as the follower, only show feedback messages for completed objectives.
+            // Check if this is enabled in the config.
+            bool delayed_feedback_enabled = networkManager.ServerLobbyInfo().delayed_feedback_enabled;
+            if (((networkManager.Role() == Network.Role.LEADER) || objectives[i].completed) && delayed_feedback_enabled)
+            {
+                GameObject feedbackUi = Instantiate(source.LoadUi(IAssetSource.UiId.OBJECTIVE_FEEDBACK)) as GameObject;
+                feedbackUi.transform.SetParent(objectivesPanel.transform);
+                feedbackUi.transform.Find("Label").gameObject.GetComponent<Text>().text = objectives[i].feedback_text;
+            }
             if (activeIndex == i)
             {
                 objectiveUi.GetComponent<UIObjectiveInfo>().Objective = objectives[i];
@@ -310,9 +318,9 @@ public class MenuTransitionHandler : MonoBehaviour
             {
                 if (networkManager.Role() == Network.Role.LEADER)
                 {
-                    objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = "(unseen) " + objectives[i].text;
+                    objectiveUi.transform.Find("Label").gameObject.GetComponent<Text>().text = "(unseen) " + objectives[i].text;
                 } else {
-                    objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = "(pending objective)";
+                    objectiveUi.transform.Find("Label").gameObject.GetComponent<Text>().text = "(pending objective)";
                     // Only draw one "(pending objective)", even if multiple are available.
                     break;
                 }
@@ -378,7 +386,9 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public void SendPositiveFeedback()
     {
-        if (!Network.NetworkManager.TaggedInstance().ServerConfig().live_feedback_enabled)
+        Network.NetworkManager network = Network.NetworkManager.TaggedInstance();
+        bool live_feedback_enabled = network.ServerConfig().live_feedback_enabled && network.ServerLobbyInfo().live_feedback_enabled;
+        if (!live_feedback_enabled)
         {
             _logger.Info("SendPositiveFeedback(): Live feedback is not enabled.");
             return;
@@ -390,7 +400,9 @@ public class MenuTransitionHandler : MonoBehaviour
 
     public void SendNegativeFeedback()
     {
-        if (!Network.NetworkManager.TaggedInstance().ServerConfig().live_feedback_enabled)
+        Network.NetworkManager network = Network.NetworkManager.TaggedInstance();
+        bool live_feedback_enabled = network.ServerConfig().live_feedback_enabled && network.ServerLobbyInfo().live_feedback_enabled;
+        if (!live_feedback_enabled)
         {
             _logger.Info("SendNegativeFeedback(): Live feedback is not enabled.");
             return;
@@ -763,12 +775,12 @@ public class MenuTransitionHandler : MonoBehaviour
         _logger.Info("Bulletin");
         // Set the information bulletin.
         Text bulletin = FindTextWithTag(INFO_BULLETIN);
-        if (bulletin == null)
+        if (bulletin != null)
         {
+            bulletin.text = m.bulletin_message;
+        } else {
             _logger.Warn("Unable to find info bulletin.");
-            return;
         }
-        bulletin.text = m.bulletin_message;
 
         // Remove dynamic menu children.
         _logger.Info("Clearing dynamic menu.");
@@ -797,7 +809,7 @@ public class MenuTransitionHandler : MonoBehaviour
             if (ui_button == null)
             {
                 _logger.Warn("Unable to instantiate menu button.");
-                return;
+                continue;
             }
             ui_button.transform.SetParent(dynamic_menu.transform, false);
             ui_button.GetComponent<Text>().text = button.text;

@@ -76,8 +76,6 @@ TagManager:
   - UploadScenarioState
   - DisplayCoordinates
   - DYNAMIC_BUTTONS
-  - DisplayCoordinates
-  - DYNAMIC_BUTTONS
   - BULLETIN_TEXT
   - MAIN_MENU
   - WAIT_QUEUE_MENU

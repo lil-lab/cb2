@@ -443,18 +443,17 @@ class State(object):
             (id, feedback) = self._live_feedback_queue.popleft()
             for actor_id in self._actors:
                 self._live_feedback[actor_id] = feedback.signal
-            # Find the follower. TODO(sharf): cleanup code like this in the file...
-            follower = None
-            for actor_id in self._actors:
-                if self._actors[actor_id].role() == Role.FOLLOWER:
-                    follower = self._actors[actor_id]
-                    break
             send_tick = True
             active_instruction = None
             if len(self._instructions) > 0:
                 active_instruction = self._instructions[0]
+                if feedback.signal == live_feedback.FeedbackType.POSITIVE:
+                    active_instruction.pos_feedback += 1
+                elif feedback.signal == live_feedback.FeedbackType.NEGATIVE:
+                    active_instruction.neg_feedback += 1
+                active_instruction.update_feedback_text()
             self._game_recorder.record_live_feedback(
-                feedback, follower, active_instruction
+                feedback, self._follower, active_instruction
             )
 
         # If the follower currently has no instructions, end their turn.
@@ -890,7 +889,15 @@ class State(object):
         self._instruction_complete_queue.append((id, objective_complete))
 
     def _drain_live_feedback(self, id, feedback):
-        if config.GlobalConfig() and not config.GlobalConfig().live_feedback_enabled:
+        if not config.GlobalConfig():
+            logger.debug(f"Global config not set. Dropping message.")
+            return
+        feedback_enabled = (
+            config.GlobalConfig().live_feedback_enabled
+            or self._lobby.lobby_info().live_feedback_enabled
+            or self._lobby.lobby_info().delayed_feedback_enabled
+        )
+        if not feedback_enabled:
             logger.debug(f"Live feedback disabled. Dropping message.")
             return
         if feedback.signal == live_feedback.FeedbackType.NONE:

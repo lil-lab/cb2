@@ -152,7 +152,8 @@ class Config(DataClassJSONMixin):
     # The game ID to start all statistical/research calculations from (discard before this).
     analytics_since_game_id: int = -1
 
-    live_feedback_enabled: bool = True  # Is leader live feedback enabled for games?
+    live_feedback_enabled: bool = False  # Is leader live feedback enabled for games?
+    """Deprecated. See live_feedback_enabled member in LobbyInfo struct."""
 
     # Default settings. Safe for use with low-resource AWS server (4g ram,
     # 2vcpu). In this case, a t4g.medium instance.
@@ -171,6 +172,30 @@ class Config(DataClassJSONMixin):
             LobbyInfo("default", LobbyType.GOOGLE, "The default lobby.", 40),
             LobbyInfo(
                 "open", LobbyType.OPEN, "Lobby open to anyone. -- No user info.", 40
+            ),
+            LobbyInfo(
+                "delayed-feedback",
+                LobbyType.OPEN,
+                "Lobby open to anyone. -- No user info.",
+                40,
+                1,
+                False,
+                False,
+                0,
+                False,
+                True,
+            ),
+            LobbyInfo(
+                "dual-feedback",
+                LobbyType.OPEN,
+                "Lobby open to anyone. -- No user info.",
+                40,
+                1,
+                False,
+                False,
+                0,
+                True,
+                True,
             ),
             LobbyInfo(
                 "bot-sandbox", LobbyType.OPEN, "Open lobby intended for bots.", 40
