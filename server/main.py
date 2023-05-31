@@ -1099,6 +1099,7 @@ async def stream_game_state(request, ws, lobby):
         if not menu_options_updated:
             menu_options_updated = True
             message = message_from_server.MenuOptionsFromServer(lobby.menu_options(ws))
+            # Wait 10ms first,
             await transmit_bytes(ws, orjson.dumps(message, option=orjson.OPT_NAIVE_UTC))
 
         # Handle any authentication confirmations.

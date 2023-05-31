@@ -59,4 +59,4 @@ class LobbyInfo(DataClassJSONMixin):
     # experience.
     ranked_matchmaking_randomness: float = 0.0
     live_feedback_enabled: bool = True
-    delayed_feedback_enabled: bool = False
+    delayed_feedback_enabled: bool = True

@@ -342,7 +342,7 @@ namespace Network
             if (message.type == MessageFromServer.MessageType.MENU_OPTIONS)
             {
                 _logger.Info("Received menu options!");
-                MenuTransitionHandler.TaggedInstance().DisplayMenu(message.menu_options);
+                MenuTransitionHandler.TaggedInstance().SetMenu(message.menu_options);
             }
             return false;
         }

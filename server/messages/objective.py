@@ -23,19 +23,21 @@ class ObjectiveMessage(DataClassJSONMixin):
         ObjectiveMessage to populate the feedback_text field with a summary of
         the feedback.
 
-        Renders the pos and neg feedback into a string using thumbs up/down emoji:
+        Renders the pos and neg feedback into a string using thumbs up/down signs like:
 
         <pos_feedback> 👍 <neg_feedback> 👎
 
-        For now, we use unicode characters ✔✘ instead of emoji. This is because
-        the emoji are not supported in the version of unity currently used.
+        For now, we use a Unity sprite map instead of emoji. This is because
+        the emoji don't seem to be well supported. The sprite map is stored in
+        game/Assets/Resources/text_sprites and has two entities: thumbs_up and
+        thumbs_down (index 1 and index 0, respectively).
         """
         pos = self.pos_feedback
         neg = self.neg_feedback
         if pos == 0 and neg == 0:
             self.feedback_text = ""
             return
-        self.feedback_text = f"Feedback: {pos} Positive, {neg} Negative"
+        self.feedback_text = f"{pos} <sprite index=1> {neg} <sprite index=0>"
 
 
 @dataclass(frozen=True)

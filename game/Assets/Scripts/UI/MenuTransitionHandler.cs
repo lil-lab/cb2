@@ -88,6 +88,8 @@ public class MenuTransitionHandler : MonoBehaviour
     private DateTime _lastNegativeFeedback = DateTime.MinValue;
     private GameObject _negativeFeedbackSignal;
 
+    private MenuOptions _dynamicMenu;
+
     private static readonly float FEEDBACK_DURATION_SECONDS = 1.0f;
 
     public static MenuTransitionHandler TaggedInstance()
@@ -304,11 +306,15 @@ public class MenuTransitionHandler : MonoBehaviour
             // If playing as the follower, only show feedback messages for completed objectives.
             // Check if this is enabled in the config.
             bool delayed_feedback_enabled = networkManager.ServerLobbyInfo().delayed_feedback_enabled;
-            if (((networkManager.Role() == Network.Role.LEADER) || objectives[i].completed) && delayed_feedback_enabled)
+            if (((networkManager.Role() == Network.Role.LEADER) || objectives[i].completed) && delayed_feedback_enabled && (!String.IsNullOrEmpty(objectives[i].feedback_text)))
             {
                 GameObject feedbackUi = Instantiate(source.LoadUi(IAssetSource.UiId.OBJECTIVE_FEEDBACK)) as GameObject;
                 feedbackUi.transform.SetParent(objectivesPanel.transform);
-                feedbackUi.transform.Find("Label").gameObject.GetComponent<Text>().text = objectives[i].feedback_text;
+                feedbackUi.transform.localScale = Vector3.one;
+                feedbackUi.transform.localPosition = Vector3.zero;
+                feedbackUi.transform.localRotation = Quaternion.identity;
+                GameObject feedbackLabel = feedbackUi.transform.Find("Label").gameObject;
+                feedbackLabel.GetComponent<TMPro.TMP_Text>().text = objectives[i].feedback_text;
             }
             if (activeIndex == i)
             {
@@ -318,9 +324,9 @@ public class MenuTransitionHandler : MonoBehaviour
             {
                 if (networkManager.Role() == Network.Role.LEADER)
                 {
-                    objectiveUi.transform.Find("Label").gameObject.GetComponent<Text>().text = "(unseen) " + objectives[i].text;
+                    objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = "(unseen) " + objectives[i].text;
                 } else {
-                    objectiveUi.transform.Find("Label").gameObject.GetComponent<Text>().text = "(pending objective)";
+                    objectiveUi.transform.Find("Label").gameObject.GetComponent<TMPro.TMP_Text>().text = "(pending objective)";
                     // Only draw one "(pending objective)", even if multiple are available.
                     break;
                 }
@@ -387,10 +393,24 @@ public class MenuTransitionHandler : MonoBehaviour
     public void SendPositiveFeedback()
     {
         Network.NetworkManager network = Network.NetworkManager.TaggedInstance();
-        bool live_feedback_enabled = network.ServerConfig().live_feedback_enabled && network.ServerLobbyInfo().live_feedback_enabled;
-        if (!live_feedback_enabled)
+        if (network == null) {
+            _logger.Info("SendPositiveFeedback(): NetworkManager not found");
+            return;
+        }
+        bool feedback_enabled = (network.ServerConfig().live_feedback_enabled || network.ServerLobbyInfo().live_feedback_enabled || network.ServerLobbyInfo().delayed_feedback_enabled);
+        if (!feedback_enabled)
         {
-            _logger.Info("SendPositiveFeedback(): Live feedback is not enabled.");
+            _logger.Info("SendPositiveFeedback(): Live feedback not enabled");
+            return;
+        }
+        if (Network.NetworkManager.TaggedInstance().CurrentTurn() != Network.Role.FOLLOWER)
+        {
+            _logger.Info("SendPositiveFeedback(): Not follower's turn");
+            return;
+        }
+        if (Network.NetworkManager.TaggedInstance().Role() != Network.Role.LEADER)
+        {
+            _logger.Info("SendPositiveFeedback(): Not leader");
             return;
         }
         Network.LiveFeedback feedback = new Network.LiveFeedback();
@@ -401,10 +421,24 @@ public class MenuTransitionHandler : MonoBehaviour
     public void SendNegativeFeedback()
     {
         Network.NetworkManager network = Network.NetworkManager.TaggedInstance();
-        bool live_feedback_enabled = network.ServerConfig().live_feedback_enabled && network.ServerLobbyInfo().live_feedback_enabled;
-        if (!live_feedback_enabled)
+        if (network == null) {
+            _logger.Info("SendNegativeFeedback(): NetworkManager not found");
+            return;
+        }
+        bool feedback_enabled = (network.ServerConfig().live_feedback_enabled || network.ServerLobbyInfo().live_feedback_enabled || network.ServerLobbyInfo().delayed_feedback_enabled);
+        if (!feedback_enabled)
         {
-            _logger.Info("SendNegativeFeedback(): Live feedback is not enabled.");
+            _logger.Info("SendNegativeFeedback(): Live feedback not enabled");
+            return;
+        }
+        if (Network.NetworkManager.TaggedInstance().CurrentTurn() != Network.Role.FOLLOWER)
+        {
+            _logger.Info("SendNegativeFeedback(): Not follower's turn");
+            return;
+        }
+        if (Network.NetworkManager.TaggedInstance().Role() != Network.Role.LEADER)
+        {
+            _logger.Info("SendNegativeFeedback(): Not leader");
             return;
         }
         Network.LiveFeedback feedback = new Network.LiveFeedback();
@@ -734,6 +768,9 @@ public class MenuTransitionHandler : MonoBehaviour
             // Reset the global color tint.
             // Get the SCREEN_TINT_TAG GUI panel and change the Image background color to UnityEngine.Color.transparent.
             GlobalScreenTint(UnityEngine.Color.clear);
+            if (_dynamicMenu != null) {
+                DisplayMenu();
+            }
         }
         if (scene.name != "menu_scene") {
             _positiveFeedbackSignal = GameObject.FindWithTag(POSITIVE_FEEDBACK_TAG);
@@ -763,21 +800,25 @@ public class MenuTransitionHandler : MonoBehaviour
         Network.NetworkManager.TaggedInstance().TransmitTurnComplete();
     }
 
-    public void DisplayMenu(MenuOptions m)
+    public void SetMenu(MenuOptions m) {
+        _dynamicMenu = m;
+        DisplayMenu();
+    }
+
+    public void DisplayMenu()
     {
-        _logger.Info("Displaying menu.");
-        Scene scene = SceneManager.GetActiveScene();
-        if (scene.name != "menu_scene") {
-            _logger.Warn("Attempted to set menu in non-menu scene.");
+        if (_dynamicMenu == null)
+        {
+            _logger.Warn("Attempted to display menu without a dynamic menu from server.");
             return;
         }
-
+        _logger.Info("Displaying menu.");
         _logger.Info("Bulletin");
         // Set the information bulletin.
         Text bulletin = FindTextWithTag(INFO_BULLETIN);
         if (bulletin != null)
         {
-            bulletin.text = m.bulletin_message;
+            bulletin.text = _dynamicMenu.bulletin_message;
         } else {
             _logger.Warn("Unable to find info bulletin.");
         }
@@ -803,7 +844,7 @@ public class MenuTransitionHandler : MonoBehaviour
             _logger.Warn("Unable to load menu button prefab.");
             return;
         }
-        foreach (Network.ButtonDescriptor button in m.buttons)
+        foreach (Network.ButtonDescriptor button in _dynamicMenu.buttons)
         {
             GameObject ui_button = Instantiate(prefab);
             if (ui_button == null)
