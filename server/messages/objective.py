@@ -35,7 +35,7 @@ class ObjectiveMessage(DataClassJSONMixin):
         if pos == 0 and neg == 0:
             self.feedback_text = ""
             return
-        self.feedback_text = f"Feedback: {pos} ✔ {neg} ✘"
+        self.feedback_text = f"Feedback: {pos} Positive, {neg} Negative"
 
 
 @dataclass(frozen=True)
