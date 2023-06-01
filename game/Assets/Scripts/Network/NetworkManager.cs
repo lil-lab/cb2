@@ -870,11 +870,13 @@ namespace Network
                 return null;
             }
             Dictionary<string, string> urlParameters = UrlParameters();
-            if (!urlParameters.ContainsKey("lobby_name"))
+            string lobby_name;
+            if (urlParameters.ContainsKey("lobby_name"))
             {
-                return null;
+                lobby_name = urlParameters["lobby_name"];
+            } else {
+                lobby_name = "default";
             }
-            string lobby_name = urlParameters["lobby_name"];
             for (int i = 0; i < c.lobbies.Count; i++)
             {
                 if (c.lobbies[i].name == lobby_name)
