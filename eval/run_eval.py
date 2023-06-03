@@ -15,9 +15,13 @@ from server.db_tools.db_utils import ListAnalysisGames
 from server.lobbies.open_lobby import OpenLobby
 from server.lobby_consts import LobbyInfo, LobbyType
 from server.messages.prop import PropType
-from server.scenario_util import GameStateFromScenario, ReconstructScenarioFromEvent
+from server.scenario_util import (
+    GameStateFromScenario,
+    ReconstructScenarioFromEvent,
+    ScenarioFromGameState,
+)
 from server.schemas import base
-from server.schemas.eval import Eval, RunSource
+from server.schemas.eval import Eval, InstructionEvaluation, RunSource
 from server.schemas.event import Event, EventType
 from server.util import GetCommitHash
 
@@ -48,7 +52,7 @@ def follower_eval_start(instruction: Event) -> Event:
     event_before = (
         Event.select()
         .where(
-            (Event.game == first_follower_move)
+            (Event.game == first_follower_move.game)
             & (Event.time < first_follower_move.time)
         )
         .order_by(Event.time)
@@ -120,6 +124,7 @@ def main(
     remote_address: str = None,
 ):
     agent_config = ReadAgentConfigOrDie(agent_config)
+    agent = CreateAgent(agent_config)
     config = ReadServerConfigOrDie(server_config)
 
     base.SetDatabase(config)
@@ -146,7 +151,11 @@ def main(
         run_source=RunSource.LOCAL,
         client_hash=agent_config.client_hash,
         commit_version=GetCommitHash(),
+        agent_config=agent_config,
+        agent_role=agent.role(),
+        server_config=server_config.to_json(),
     )
+    eval_run.save(force_insert=True)
 
     # This object will help us launch local games.
     coordinator = LocalGameCoordinator(
@@ -165,8 +174,11 @@ def main(
         )
     )
 
-    agent = CreateAgent(agent_config)
+    agent_instructions_passed = []
     for instruction in tqdm(instructions):
+        logger.info(
+            f"Evaluating agent {agent_config.name} on instruction {instruction.id}"
+        )
         if agent.role() == Role.LEADER:
             # Leader eval not yet supported.
             logger.info(f"Leader eval not yet supported.")
@@ -196,12 +208,14 @@ def main(
 
         # Keep running until the current turn is over. We check for this inside
         # the loop because the game state may change in the middle of the loop.
+        agent_actions = 0
         while not game_endpoint.over():
             # If the turn is over, then the eval for this instruction is done.
             if game_state.turn_state.turn != agent.role():
                 break
             action = agent.choose_action(game_state)
             game_state = game_endpoint.step(action)
+            agent_actions += 1
 
         # Now we have the agent's completed game state. We must compare it to
         # the baseline. Fetch the final game state after this instruction was
@@ -217,18 +231,32 @@ def main(
             for prop in final_agent_props
             if prop.prop_type == PropType.CARD
         ]
+        final_agent_score = game_state.turn_state.score
         final_baseline_props = final_baseline_state.props
         final_baseline_cards = [
             Card.FromProp(prop)
             for prop in final_baseline_props
             if prop.prop_type == PropType.CARD
         ]
+        final_baseline_score = final_baseline_state.turn_state.score
         card_selections_match = CompareCardSelections(
             final_agent_cards, final_baseline_cards
         )
-        if card_selections_match:
-            # TODO finish eval...
-            pass
+        passed_instruction_eval = card_selections_match and (
+            final_agent_score >= final_baseline_score
+        )
+        if passed_instruction_eval:
+            agent_instructions_passed.append(instruction.id)
+        result = InstructionEvaluation(
+            eval_run=eval_run,
+            instruction_uuid=instruction.shortcode,
+            event_uuid=eval_start_event.id,
+            agent_outcome=ScenarioFromGameState(game_state).to_json(),
+            baseline_outcome=ScenarioFromGameState(final_baseline_state).to_json(),
+            success=passed_instruction_eval,
+            agent_actions=agent_actions,
+        )
+        result.save(force_insert=True)
 
 
 if __name__ == "__main__":

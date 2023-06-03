@@ -267,5 +267,17 @@ def GameStateFromScenario(scenario: Scenario) -> GameState:
         scenario.turn_state,
         scenario.objectives,
         [Actor.from_state(state) for state in scenario.actor_state],
-        [],
+        live_feedback=scenario.live_feedback,
+    )
+
+
+def ScenarioFromGameState(state: GameState) -> Scenario:
+    """Creates a scenario from a gamestate."""
+    return Scenario(
+        state.map_update,
+        PropUpdate(props=state.prop_update),
+        state.turn_state,
+        state.objectives,
+        [actor.state() for actor in state.actors],
+        state.live_feedback,
     )

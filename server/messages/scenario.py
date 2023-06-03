@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 from dataclasses_json import config
 from mashumaro.mixins.json import DataClassJSONMixin
 
+from server.messages.live_feedback import LiveFeedback
 from server.messages.map_update import MapUpdate
 from server.messages.objective import ObjectiveMessage
 from server.messages.prop import PropUpdate
@@ -22,6 +23,7 @@ class Scenario(DataClassJSONMixin):
     objectives: List[ObjectiveMessage]
     actor_state: StateSync
     kvals: Dict[str, str] = field(default_factory=dict)
+    live_feedback: List[LiveFeedback] = field(default_factory=list)
 
 
 class ScenarioRequestType(Enum):

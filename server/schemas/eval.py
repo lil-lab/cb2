@@ -59,6 +59,7 @@ class Eval(BaseModel):
     run_date = DateTimeField(default=datetime.datetime.now)
     agent_config = TextField()
     agent_role = TextField()  # 'LEADER' or 'FOLLOWER'.
+    server_config = TextField()
 
 
 class InstructionEvaluation(BaseModel):
@@ -71,6 +72,10 @@ class InstructionEvaluation(BaseModel):
     id = UUIDField(primary_key=True, default=uuid.uuid4, unique=True)
     eval_run = ForeignKeyField(Eval, backref="events")
     instruction_uuid = TextField()
+    # UUID of the event from which eval started. For example if it was
+    # a follower eval, it's the event before the follower's first move for this
+    # instruction. The leader might have made subsequent moves during their
+    # turn, so the board state might have changed.
     event_uuid = TextField()
     # A serialized scenario struct.
     agent_outcome = TextField()
@@ -78,5 +83,5 @@ class InstructionEvaluation(BaseModel):
     baseline_outcome = TextField()
     # Whether or not the evaluation is considered successful.
     success = BooleanField()
-    # The number of turns that the agent took to complete the instruction.
-    agent_turns = IntegerField()
+    # The number of actions that the agent took to complete the instruction.
+    agent_actions = IntegerField()
