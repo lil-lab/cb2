@@ -4,9 +4,9 @@ from typing import List
 import fire
 from tqdm import tqdm
 
+import server.schemas.defaults as defaults
 from agents.agent import Agent, Role
-from agents.agent_util import CreateAgent
-from agents.config import ReadAgentConfigOrDie
+from agents.config import CreateAgent, ReadAgentConfigOrDie
 from py_client.game_endpoint import GameState
 from py_client.local_game_coordinator import LocalGameCoordinator
 from server.card import Card
@@ -155,7 +155,6 @@ def main(
         agent_role=agent.role(),
         server_config=server_config.to_json(),
     )
-    eval_run.save(force_insert=True)
 
     # This object will help us launch local games.
     coordinator = LocalGameCoordinator(
@@ -175,6 +174,7 @@ def main(
     )
 
     agent_instructions_passed = []
+    results = []
     for instruction in tqdm(instructions):
         logger.info(
             f"Evaluating agent {agent_config.name} on instruction {instruction.id}"
@@ -247,16 +247,26 @@ def main(
         )
         if passed_instruction_eval:
             agent_instructions_passed.append(instruction.id)
-        result = InstructionEvaluation(
-            eval_run=eval_run,
-            instruction_uuid=instruction.shortcode,
-            event_uuid=eval_start_event.id,
-            agent_outcome=ScenarioFromGameState(game_state).to_json(),
-            baseline_outcome=ScenarioFromGameState(final_baseline_state).to_json(),
-            success=passed_instruction_eval,
-            agent_actions=agent_actions,
+        results.append(
+            InstructionEvaluation(
+                eval_run=eval_run,
+                instruction_uuid=instruction.shortcode,
+                event_uuid=eval_start_event.id,
+                agent_outcome=ScenarioFromGameState(game_state).to_json(),
+                baseline_outcome=ScenarioFromGameState(final_baseline_state).to_json(),
+                success=passed_instruction_eval,
+                agent_actions=agent_actions,
+            )
         )
+
+    # Switch databases and then save the results.
+    base.SetDatabase(eval_output)
+    base.ConnectDatabase()
+    base.CreateTablesIfNotExists(defaults.ListEvalTables())
+
+    for result in results:
         result.save(force_insert=True)
+    eval_run.save(force_insert=True)
 
 
 if __name__ == "__main__":

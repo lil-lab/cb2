@@ -48,17 +48,20 @@ class GPTFollower(Agent):
         ]
         self.action_queue = []
 
+    # OVERRIDES role
     def role(self) -> Role:
         return Role.FOLLOWER
 
     # OVERRIDES choose_action
-    def choose_action(self, game_state: GameState) -> Action:
+    def choose_action(self, game_state: GameState, action_mask=None) -> Action:
         """Chooses an action to take, given a game state.
 
         If queueing_enabled is true in the constructor, one prompt can
         return multiple instructions (to save on GPT API calls). They are
         queued up in self.action_queue.  If the queue is empty, then we need
         to call the GPT API to get more actions.
+
+        Action masking not supported. This parameter is ignored.
 
         If queueing is not enabled, each prompt returns one instruction.
         """

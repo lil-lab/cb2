@@ -141,6 +141,10 @@ class Action(object):
         LOAD_SCENARIO = 12
         MAX = 12
 
+        @staticmethod
+        def from_str(s: str):
+            return Action.ActionCode[s]
+
     # Helper initialization functions.
     @staticmethod
     def Forwards():

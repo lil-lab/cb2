@@ -42,5 +42,5 @@ def ListDefaultTables():
     return TABLES
 
 
-def EvalTables():
+def ListEvalTables():
     return EVAL_TABLES

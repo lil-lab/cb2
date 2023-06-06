@@ -926,7 +926,7 @@ class MapProvider(object):
         map_type,
         map_update: MapUpdate = None,
         cards: List[card.Card] = None,
-        map_config: MapConfig = None,
+        map_config: MapConfig = MapConfig(),
     ):
         if map_config is None:
             map_config = GlobalConfig().map_config

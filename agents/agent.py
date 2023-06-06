@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
-from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
 
 from py_client.game_endpoint import Action, GameState
 from server.messages.rooms import Role
@@ -19,24 +18,18 @@ class Agent(ABC):
     """
 
     @abstractmethod
-    def choose_action(self, game_state: GameState) -> Action:
-        """Chooses the next action to take, given a game state."""
+    def choose_action(
+        self, game_state: GameState, action_mask: Optional[List[bool]] = None
+    ) -> Action:
+        """Chooses the next action to take, given a game state.
+
+        Actions can be optionally masked out, by providing a mask. Agent may or
+        may not support action_masking.  If None, then no masking is done.
+
+        """
         ...
 
     @abstractmethod
     def role(self) -> Role:
         """Returns the role of the agent."""
         ...
-
-
-class AgentType(Enum):
-    NONE = 0
-    PILOT_FOLLOWER = 1
-    GPT_FOLLOWER = 2
-
-    def __str__(self):
-        return self.name
-
-    @staticmethod
-    def from_str(s: str):
-        return AgentType[s]
