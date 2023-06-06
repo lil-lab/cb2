@@ -130,7 +130,7 @@ def main(
     base.SetDatabase(config)
     base.ConnectDatabase()
 
-    games = ListAnalysisGames(server_config)
+    games = ListAnalysisGames(config)
     game_ids = [game.id for game in games]
     instructions = Event.select().where(
         (Event.type == EventType.INSTRUCTION_SENT)
