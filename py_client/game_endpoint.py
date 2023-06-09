@@ -93,7 +93,7 @@ class GameState(DataClassJSONMixin):
     turn_state: TurnState
     instructions: List[ObjectiveMessage]
     actors: List[Actor]
-    live_feedback: List[LiveFeedback]
+    live_feedback: List[LiveFeedback] = None
 
     def __iter__(
         self,
@@ -460,7 +460,7 @@ class GameEndpoint(object):
         self._initial_state_ready = False
         self._initial_state_retrieved = False
         self._follower_moved = False
-        self.live_feedback = None
+        self.live_feedback = []
         self.pygame_task = None
         self._timeout_observed = False
         self._tutorial_messages = []
@@ -567,10 +567,10 @@ class GameEndpoint(object):
             )
         message, reason = action.message_to_server(self.player_actor)
         if message != None:
-            logger.info(f"Sending action: {message.type}")
+            logger.debug(f"Sending action: {message.type}")
             self.socket.send_message(message)
         for message in self.queued_messages:
-            logger.info(f"Sending action: {message.type}")
+            logger.debug(f"Sending action: {message.type}")
             self.socket.send_message(message)
         self.queued_messages = []
         # Reset this variable. We want to see if while waiting for ticks, the
@@ -593,7 +593,7 @@ class GameEndpoint(object):
         state = self._state()
         # Clear internal live feedback before returning. This is to make sure that the
         # live feedback only occurs for 1 step per feedback message.
-        self.live_feedback = None
+        self.live_feedback = []
 
         # Updates the game visualization. If self._render, draws the display to the screen.
         self._render()
@@ -911,7 +911,7 @@ class GameEndpoint(object):
         elif message.type == message_from_server.MessageType.PING:
             self.queued_messages.append(PongMessage())
         elif message.type == message_from_server.MessageType.LIVE_FEEDBACK:
-            self.live_feedback = message.live_feedback.signal
+            self.live_feedback.append(message.live_feedback.signal)
         elif message.type == message_from_server.MessageType.PROP_UPDATE:
             self._handle_prop_update(message.prop_update)
         elif message.type == message_from_server.MessageType.STATE_MACHINE_TICK:

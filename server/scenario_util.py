@@ -110,7 +110,7 @@ def ReconstructScenarioFromEvent(event_uuid: str) -> Scenario:
     logger.debug(f"Detected {len(cards)} cards in the game. at this point.")
 
     turn_record_query = game_events.where(
-        Event.type << [EventType.TURN_STATE, EventType.START_OF_TURN]
+        Event.type << [EventType.TURN_STATE, EventType.START_OF_TURN],
     ).order_by(Event.server_time.desc())
     turn_state = None
     if turn_record_query.count() == 0:
@@ -127,7 +127,7 @@ def ReconstructScenarioFromEvent(event_uuid: str) -> Scenario:
             0,
         )
     else:
-        turn_record = turn_record_query.get()
+        turn_record = turn_record_query.first()
         turn_state = TurnState.from_json(turn_record.data)
 
     # Integrate all instruction events up to the given event, to get the current instruction state
@@ -145,16 +145,12 @@ def ReconstructScenarioFromEvent(event_uuid: str) -> Scenario:
     for event in instruction_events:
         if event.type == EventType.INSTRUCTION_SENT:
             instruction_list.append(objective.ObjectiveMessage.from_json(event.data))
-            logger.info(f"Sent: {instruction_list[-1].uuid}")
         if event.type == EventType.INSTRUCTION_ACTIVATED:
             parent_instruction_event = event.parent_event
             instruction = objective.ObjectiveMessage.from_json(
                 parent_instruction_event.data
             )
-            logger.info(f"Activated: {instruction.uuid}")
             if instruction_list[0].uuid != instruction.uuid:
-                for instruction in instruction_list:
-                    logger.info(f"Instruction: {instruction.uuid}")
                 return (
                     None,
                     f"Activated instruction {instruction.uuid} not found in instruction list.",
@@ -172,14 +168,14 @@ def ReconstructScenarioFromEvent(event_uuid: str) -> Scenario:
                     )
             except IndexError:
                 # Print the list of instructions.
-                logger.info(
+                logger.debug(
                     f"Instruction list is empty. ================ cancelled: {instruction.uuid}"
                 )
                 for instruction in instruction_list:
-                    logger.info(f"Instruction: {instruction.uuid}")
+                    logger.debug(f"Instruction: {instruction.uuid}")
                 # raise e
             if len(instruction_list) > 0:
-                logger.info(f"Cancelled: {instruction_list[0].uuid}")
+                logger.debug(f"Cancelled: {instruction_list[0].uuid}")
                 # Delete the instruction from the list.
                 instruction_list = instruction_list[1:]
         if event.type == EventType.INSTRUCTION_DONE:
@@ -187,7 +183,6 @@ def ReconstructScenarioFromEvent(event_uuid: str) -> Scenario:
             instruction = objective.ObjectiveMessage.from_json(
                 parent_instruction_event.data
             )
-            logger.info(f"Done: {instruction_list[0].uuid}")
             # Make sure this instruction is at the head of the list.
             if instruction_list[0].uuid != instruction.uuid:
                 return (
@@ -262,11 +257,11 @@ def ReconstructScenarioFromEvent(event_uuid: str) -> Scenario:
 def GameStateFromScenario(scenario: Scenario) -> GameState:
     """Creates a GameState from a Scenario."""
     return GameState(
-        scenario.map_update,
+        scenario.map,
         scenario.prop_update.props,
         scenario.turn_state,
         scenario.objectives,
-        [Actor.from_state(state) for state in scenario.actor_state],
+        [Actor.from_state(state) for state in scenario.actor_state.actors],
         live_feedback=scenario.live_feedback,
     )
 
@@ -275,9 +270,9 @@ def ScenarioFromGameState(state: GameState) -> Scenario:
     """Creates a scenario from a gamestate."""
     return Scenario(
         state.map_update,
-        PropUpdate(props=state.prop_update),
+        PropUpdate(props=state.props),
         state.turn_state,
-        state.objectives,
+        state.instructions,
         [actor.state() for actor in state.actors],
         state.live_feedback,
     )

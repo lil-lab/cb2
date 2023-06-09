@@ -71,17 +71,18 @@ class InstructionEvaluation(BaseModel):
 
     id = UUIDField(primary_key=True, default=uuid.uuid4, unique=True)
     eval_run = ForeignKeyField(Eval, backref="events")
-    instruction_uuid = TextField()
     # UUID of the event from which eval started. For example if it was
     # a follower eval, it's the event before the follower's first move for this
     # instruction. The leader might have made subsequent moves during their
     # turn, so the board state might have changed.
+    instruction_uuid = TextField()
+    instruction_text = TextField()
+    # Comma-separated list of actions agent took to complete the instruction.
+    agent_actions = TextField()
     event_uuid = TextField()
-    # A serialized scenario struct.
+    # A serialized GameState struct.
     agent_outcome = TextField()
-    # A serialized scenario struct.
+    # A serialized GameState struct.
     baseline_outcome = TextField()
     # Whether or not the evaluation is considered successful.
     success = BooleanField()
-    # The number of actions that the agent took to complete the instruction.
-    agent_actions = IntegerField()

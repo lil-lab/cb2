@@ -178,6 +178,7 @@ def migrate_to_new_game(
         event_type = EventType.TURN_STATE
         if not last_turn or (last_turn.role != turn_state.role):
             event_type = EventType.START_OF_TURN
+        last_turn = turn_state
         moves_remaining = 10 if turn_state.role == Role.LEADER else 5
         move_times = [c.move.server_time for c in card_sets]
         last_score_i = bisect.bisect(move_times, turn_state.time)

@@ -660,19 +660,24 @@ async def DataDownloadStart(request):
 @routes.get("/data/game-list")
 async def GameList(request):
     start_time = time.time()
+    # Default to 100 games to reduce load on server.
+    limit_to_100 = True
+    request_query = json.loads(request.query.get("request", "{}"))
+    if "all" in request_query:
+        if request_query["all"]:
+            limit_to_100 = False
     # Get search data from request.
-    games = (
-        game_db.Game.select()
-        .join(
-            mturk.Worker,
-            join_type=peewee.JOIN.LEFT_OUTER,
-            on=(
-                (game_db.Game.leader == mturk.Worker.id)
-                or (game_db.Game.follower == mturk.Worker.id)
-            ),
-        )
-        .order_by(game_db.Game.id.desc())
-    ).limit(100)
+    games = game_db.Game.select().join(
+        mturk.Worker,
+        join_type=peewee.JOIN.LEFT_OUTER,
+        on=(
+            (game_db.Game.leader == mturk.Worker.id)
+            or (game_db.Game.follower == mturk.Worker.id)
+        ),
+    )
+    if limit_to_100:
+        games = games.limit(100)
+    games = games.order_by(game_db.Game.id.desc())
     response = []
     # For convenience, convert timestamps to US eastern time.
     NYC = tz.gettz("America/New_York")

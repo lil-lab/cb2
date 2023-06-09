@@ -288,7 +288,9 @@ class State(object):
 
     def _self_initialize(self):
         """This exists for scenario_state and other "private" clients to skip the player join initializing process."""
-        logger.info(f"Initializing game with {self._leader} and {self._follower}")
+        logger.debug(
+            f"Initializing game with leader {self._leader} and follower {self._follower}"
+        )
         self._game_recorder.record_initial_state(
             self._iter,
             self._map_provider.map(),
@@ -299,7 +301,7 @@ class State(object):
         )
         self._game_recorder.record_start_of_turn(self._turn_state, "StartOfGame")
         self._initialized = True
-        logger.info(f"Game initialized.")
+        logger.debug(f"Game initialized.")
 
     def update(self):
         send_tick = False
@@ -505,8 +507,8 @@ class State(object):
                         stepping_actor = self._actors[actor_id]
                         break
                 self._game_recorder.record_card_selection(stepping_actor, card)
-            self.queue_sound_clip(self._leader.actor_id(), SoundClipType.INVALID_SET)
-            self.queue_sound_clip(self._follower.actor_id(), SoundClipType.INVALID_SET)
+            self.queue_leader_sound(SoundClipType.INVALID_SET)
+            self.queue_follower_sound(SoundClipType.INVALID_SET)
 
         if (
             not self._map_provider.selected_cards_collide()
@@ -538,8 +540,8 @@ class State(object):
                 sound_clip_type = SoundClipType.EASTER_EGG_SOUND_3
             elif self._turn_state.score == 19:
                 sound_clip_type = SoundClipType.EASTER_EGG_SOUND_4
-            self.queue_sound_clip(self._leader.actor_id(), sound_clip_type)
-            self.queue_sound_clip(self._follower.actor_id(), sound_clip_type)
+            self.queue_leader_sound(sound_clip_type)
+            self.queue_follower_sound(sound_clip_type)
 
             added_turns = turn_reward(self._turn_state.sets_collected)
             new_turn_state = TurnUpdate(
@@ -780,7 +782,7 @@ class State(object):
             self.queue_sound_clip(actor_id, clip_type)
             # If the follower selected a card, send the sound to the leader too.
             if actor.role() == Role.FOLLOWER:
-                self.queue_sound_clip(self._leader.actor_id(), clip_type)
+                self.queue_leader_sound(clip_type)
 
     def drain_messages(self, id, messages):
         for message in messages:
@@ -859,14 +861,22 @@ class State(object):
         self._game_recorder.record_instruction_sent(objective)
         if len(self._instructions) == 0:
             self._game_recorder.record_instruction_activated(objective)
-            self.queue_sound_clip(
-                self._follower.actor_id(), SoundClipType.INSTRUCTION_RECEIVED
-            )
+            self.queue_follower_sound(SoundClipType.INSTRUCTION_RECEIVED)
         self._instructions.append(objective)
         self._instruction_added = True
         for actor_id in self._actors:
             self._instructions_stale[actor_id] = True
-        self.queue_sound_clip(self._leader.actor_id(), SoundClipType.INSTRUCTION_SENT)
+        self.queue_leader_sound(SoundClipType.INSTRUCTION_SENT)
+
+    def queue_leader_sound(self, clip_id: SoundClipType):
+        if not self._leader:
+            return
+        self.queue_sound_clip(self._leader.actor_id(), clip_id)
+
+    def queue_follower_sound(self, clip_id: SoundClipType):
+        if not self._follower:
+            return
+        self.queue_sound_clip(self._follower.actor_id(), clip_id)
 
     def queue_sound_clip(self, player_id: int, clip_id: SoundClipType):
         if player_id not in self._actors:
@@ -916,8 +926,8 @@ class State(object):
             if feedback.signal == live_feedback.FeedbackType.POSITIVE
             else SoundClipType.NEGATIVE_FEEDBACK
         )
-        self.queue_sound_clip(self._leader.actor_id(), sound_clip)
-        self.queue_sound_clip(self._follower.actor_id(), sound_clip)
+        self.queue_leader_sound(sound_clip)
+        self.queue_follower_sound(sound_clip)
         self._live_feedback_queue.append((id, feedback))
 
     def _drain_turn_complete(self, id, turn_complete):
@@ -974,7 +984,6 @@ class State(object):
             self._instructions_stale[actor_id] = True
 
     def create_actor(self, role):
-        logger.info(f"create_actor() Role: {role}")
         if role in self._preloaded_actors:
             self._actors_added = True
             actor = self._preloaded_actors[role]
@@ -1386,9 +1395,7 @@ class State(object):
         self._game_recorder.record_instruction_complete(objective_complete)
         if len(self._instructions) > 0:
             self._game_recorder.record_instruction_activated(self._instructions[0])
-            self.queue_sound_clip(
-                self._follower.actor_id(), SoundClipType.INSTRUCTION_RECEIVED
-            )
+            self.queue_follower_sound(SoundClipType.INSTRUCTION_RECEIVED)
         for actor_id in self._actors:
             self._instructions_stale[actor_id] = True
 
@@ -1464,9 +1471,13 @@ class State(object):
                     self._follower = self._actors[follower_id]
                 else:
                     self._preloaded_actors[Role.FOLLOWER] = actor
-        if (self._leader is None) or (Role.LEADER not in self._preloaded_actors):
+        if (self._leader is None and not delayed_actor_load) or (
+            Role.LEADER not in self._preloaded_actors and delayed_actor_load
+        ):
             logger.warn("Warning, scenario did not contain leader")
-        if (self._follower is None) or (Role.FOLLOWER not in self._preloaded_actors):
+        if (self._follower is None and not delayed_actor_load) or (
+            Role.FOLLOWER not in self._preloaded_actors and delayed_actor_load
+        ):
             logger.warn("Warning, scenario did not contain follower")
         # Mark everything as stale.
         self._mark_map_stale()

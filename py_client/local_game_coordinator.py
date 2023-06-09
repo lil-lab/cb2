@@ -266,19 +266,12 @@ class LocalGameCoordinator:
         game_driver = self._game_drivers[game_name]
         state_machine = game_driver.state_machine()
 
-        number_players = len(state_machine.player_ids())
-
-        if number_players != 1:
-            raise Exception(
-                f"Game is not ready for player! Number of players: {len(state_machine.player_ids())}"
-            )
-
-        # If the game has one player, join as leader. Else, follow.
         actor_id = state_machine.create_actor(role)
         render = self._render_leader if role == Role.LEADER else self._render_follower
         game_endpoint = GameEndpoint(
             LocalSocket(self, game_name, actor_id), self._config, render
         )
+
         # Register endpoints for this game so we can initialize them in StartGame().
         if role == Role.LEADER:
             self._game_endpoints[game_name] = (game_endpoint, None)

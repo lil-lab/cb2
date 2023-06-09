@@ -18,6 +18,12 @@ $(function () {
       $("#grid").height($(window).height() * 0.95);
     });
 
+    // Parse the get URL param "all".
+    show_all_games = false;
+    var urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('all')) {
+      show_all_games = urlParams.get('all') == 'true';
+    }
 
     $('#grid').w2grid({
         name: 'grid',
@@ -39,6 +45,9 @@ $(function () {
           }
         ],
         url: "/data/game-list",
+        postData: {
+            "all": show_all_games,
+        },
     });
 });
 </script>
