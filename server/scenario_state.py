@@ -175,7 +175,6 @@ class ScenarioState(object):
         created_id = self._state.create_actor(role)
 
         if role == Role.SPECTATOR:
-            logger.info(f"Creating monitor with id {created_id}")
             self._scenario_messages[created_id] = []
             return created_id
 

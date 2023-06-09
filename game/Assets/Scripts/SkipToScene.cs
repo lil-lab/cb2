@@ -24,6 +24,8 @@ public class SkipToScene : MonoBehaviour
     private Dictionary<Tuple<KeyCode, KeyCode>, DateTime> _sceneKeysHeldTime = new Dictionary<Tuple<KeyCode, KeyCode>, DateTime>();
     private Dictionary<Tuple<KeyCode, KeyCode>, bool> _sceneKeysTriggered = new Dictionary<Tuple<KeyCode, KeyCode>, bool>();
 
+    bool _networkManagerInited = false;
+
     void Start()
     {
         _sceneMap.Add(new Tuple<KeyCode, KeyCode>(KeyCode.X, KeyCode.R), SceneTransition("replay_scene"));
@@ -37,13 +39,8 @@ public class SkipToScene : MonoBehaviour
         }
     }
 
-    void Update()
-    {
-        // Wait until the NetworkManager is ready.
-        if (Network.NetworkManager.TaggedInstance() == null)
-        {
-            return;
-        }
+    void NetworkManagerStartup() {
+        if (_networkManagerInited) return;
         var urlParams = Network.NetworkManager.UrlParameters();
         if (urlParams.ContainsKey("map_viewer"))
         {
@@ -53,6 +50,28 @@ public class SkipToScene : MonoBehaviour
         if (urlParams.ContainsKey("replay_game"))
         {
             SceneManager.LoadScene("replay_scene");
+        }
+
+        if (urlParams.ContainsKey("auto"))
+        {
+            if (urlParams["auto"] == "join_follower_queue")
+            {
+                Network.NetworkManager.TaggedInstance().JoinAsFollower();
+            }
+            else if (urlParams["auto"] == "join_game_queue")
+            {
+                Network.NetworkManager.TaggedInstance().JoinGame();
+            }
+        }
+        _networkManagerInited = true;
+    }
+
+    void Update()
+    {
+        // Wait until the NetworkManager is ready.
+        if (!_networkManagerInited && (Network.NetworkManager.TaggedInstance() != null))
+        {
+            NetworkManagerStartup();
         }
 
         foreach (var sceneKey in _sceneMap.Keys)

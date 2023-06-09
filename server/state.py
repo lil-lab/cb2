@@ -1234,8 +1234,8 @@ class State(object):
         # Send the latest objective list and mark as fresh for this player.
         self._instructions_stale[actor_id] = False
 
-        # For Leaders it's simple, send the current objective list.
-        if self._actors[actor_id].role() == Role.LEADER:
+        # For Leaders/Spectators it's simple, send the current objective list.
+        if self._actors[actor_id].role() in [Role.LEADER, Role.SPECTATOR]:
             return list(self._instruction_history) + list(self._instructions)
 
         follower_instructions = list(self._instruction_history)
