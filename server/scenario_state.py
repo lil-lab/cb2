@@ -176,6 +176,7 @@ class ScenarioState(object):
 
         if role == Role.SPECTATOR:
             self._scenario_messages[created_id] = []
+            self._state._self_initialize()  # pylint: disable=protected-access
             return created_id
 
         actor = self._state._actors[created_id]  # pylint: disable=protected-access
@@ -208,12 +209,7 @@ class ScenarioState(object):
     def fill_messages(
         self, player_id, out_messages: List[message_from_server.MessageFromServer]
     ) -> bool:
-        """Serializes all messages to one player into a linear history.
-
-        If any messages have been generated this iteration, caps those
-        messages with a StateMachineTick. This lets us separate logic
-        iterations on the receive side.
-        """
+        """Serializes all messages to one player into a linear history."""
         message = self._next_message(player_id)
         messages_added = 0
         while message != None:
