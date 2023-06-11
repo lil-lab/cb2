@@ -4,11 +4,10 @@ from datetime import datetime, timedelta
 from typing import List
 
 import fire
-import openai
 from tqdm import tqdm
 
 import server.schemas.defaults as defaults
-from agents.agent import Role
+from agents.agent import RateLimitException, Role
 from agents.config import CreateAgent, ReadAgentConfigOrDie
 from py_client.endpoint_pair import EndpointPair
 from py_client.local_game_coordinator import LocalGameCoordinator
@@ -290,7 +289,7 @@ def main(
                     agent_thoughts=str(thoughts),
                 )
             )
-        except openai.error.RateLimitError:
+        except RateLimitException:
             logger.info(f"Rate limit error. Waiting 60 seconds.")
             results.append(
                 InstructionEvaluation(

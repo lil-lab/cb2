@@ -8,6 +8,10 @@ if TYPE_CHECKING:
 from py_client.game_endpoint import Action, GameState, Role
 
 
+class RateLimitException(Exception):
+    """Raised when the agent is rate limited by the implementation."""
+
+
 class Agent(ABC):
     """CB2 agent interface.
 

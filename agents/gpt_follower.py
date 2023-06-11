@@ -7,7 +7,7 @@ import openai
 import tiktoken
 from mashumaro.mixins.json import DataClassJSONMixin
 
-from agents.agent import Agent, Role
+from agents.agent import Agent, RateLimitException, Role
 from py_client.client_utils import (
     DescribeMap,
     FollowerSystemPrompt,
@@ -111,7 +111,11 @@ class GPTFollower(Agent):
                 "content": description,
             }
         )
-        response = call_openai_api_sync(messages=self.game_history)
+
+        try:
+            response = call_openai_api_sync(messages=self.game_history)
+        except openai.error.RateLimitError as e:
+            raise RateLimitException(f"OpenAI API rate limit exceeded: {e}")
 
         if not response:
             return Action.NoopAction()
