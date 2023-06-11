@@ -10,9 +10,10 @@ from server.messages.map_update import MapUpdate
 from server.messages.objective import ObjectiveMessage
 from server.messages.prop import PropType, PropUpdate
 from server.messages.turn_state import TurnState
+from server.routing_utils import get_instruction_to_location
 
 
-def DescribeLocationFromActor(location: HecsCoord, actor: Actor) -> str:
+def DescribeBearingFromActor(location: HecsCoord, actor: Actor) -> str:
     """Returns a string describing the given location from the perspective of the given actor."""
     distance = round(actor.location().distance_to(location), 1)
     direction = (
@@ -30,6 +31,19 @@ def DescribeLocationFromActor(location: HecsCoord, actor: Actor) -> str:
     if distance == 0:
         direction = 0
     return f"distance: {distance} units and heading: {direction} degrees"
+
+
+def DescribeLocationFromActor(location: HecsCoord, actor: Actor, map, cards) -> str:
+    """Returns a string describing the given location from the perspective of the given actor."""
+    if actor.location() == location:
+        return "You are standing here."
+    default_instruction = "<Cannot reach>"
+    instruction = get_instruction_to_location(
+        location, actor, map, cards, default_instruction=default_instruction
+    )
+    if instruction == default_instruction:
+        return f"Path not in sight. {DescribeBearingFromActor(location, actor)}"
+    return f"Path to reach: {instruction}"
 
 
 def FollowerSystemPrompt() -> str:
@@ -85,6 +99,8 @@ def DescribeMap(
     """Returns a string describing the given map."""
     header = f"MAP DIMENSIONS:\n\t{map_update.rows}x{map_update.cols} hexagon map with {len(prop_update.props)} props. \n"
 
+    cards = [prop for prop in prop_update.props if prop.prop_type == PropType.CARD]
+
     fog_end = map_update.fog_end
     if fog_end is None:
         # Create a config object and use the default value.
@@ -120,7 +136,7 @@ def DescribeMap(
     for prop in prop_update.props:
         if prop.prop_type == PropType.CARD:
             location_description = DescribeLocationFromActor(
-                prop.prop_info.location, follower
+                prop.prop_info.location, follower, map_update, cards
             )
             # Only show shape, color, count for selected cards.
             if prop.card_init.selected:
@@ -137,7 +153,7 @@ def DescribeMap(
             HecsCoord.from_offset(lake.r, lake.c), follower, fog_end
         ):
             location_description = DescribeLocationFromActor(
-                HecsCoord.from_offset(lake.r, lake.c), follower
+                HecsCoord.from_offset(lake.r, lake.c), follower, map_update, cards
             )
             metadata_descriptions.append(
                 f"Lake of size {lake.size} and shape {lake.type.name} at {location_description}."
@@ -147,7 +163,10 @@ def DescribeMap(
             HecsCoord.from_offset(mountain.r, mountain.c), follower, fog_end
         ):
             location_description = DescribeLocationFromActor(
-                HecsCoord.from_offset(mountain.r, mountain.c), follower
+                HecsCoord.from_offset(mountain.r, mountain.c),
+                follower,
+                map_update,
+                cards,
             )
             metadata_descriptions.append(
                 f"{mountain.type.name} mountain{' (snowy)' if mountain.snowy else ''} at {location_description}."
@@ -157,7 +176,7 @@ def DescribeMap(
             HecsCoord.from_offset(city.r, city.c), follower, fog_end
         ):
             location_description = DescribeLocationFromActor(
-                HecsCoord.from_offset(city.r, city.c), follower
+                HecsCoord.from_offset(city.r, city.c), follower, map_update, cards
             )
             metadata_descriptions.append(
                 f"City of size {city.size} at {location_description}."
@@ -167,14 +186,16 @@ def DescribeMap(
             HecsCoord.from_offset(outpost.r, outpost.c), follower, fog_end
         ):
             location_description = DescribeLocationFromActor(
-                HecsCoord.from_offset(outpost.r, outpost.c), follower
+                HecsCoord.from_offset(outpost.r, outpost.c), follower, map_update, cards
             )
             metadata_descriptions.append(f"Outpost at {location_description}.")
 
     # If provided, and if visible, describe the leader.
     if leader:
         if CoordinateIsVisible(leader.location(), follower, fog_end):
-            leader_location = DescribeLocationFromActor(leader.location(), follower)
+            leader_location = DescribeLocationFromActor(
+                leader.location(), follower, map_update, cards
+            )
             metadata_descriptions.append(f"Leader at {leader_location}.")
 
     # Describe nearby tiles

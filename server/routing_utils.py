@@ -1,7 +1,10 @@
 """A set of utilities for pathfinding and routing in CB2 maps."""
+import logging
 from collections import deque
 
 from server.hex import HecsCoord
+
+logger = logging.getLogger(__name__)
 
 
 def find_path_to_card(location: HecsCoord, follower, map, cards):
@@ -29,6 +32,9 @@ def find_path_to_card(location: HecsCoord, follower, map, cards):
             if tile.cell.boundary.get_edge_between(tile.cell.coord, neighbor):
                 continue
             neighbor_tile = map.tile_at(neighbor)
+            # This can happen if routing on a follower view with limited map visibility.
+            if neighbor_tile is None:
+                continue
             if neighbor_tile.cell.boundary.get_edge_between(neighbor, tile.cell.coord):
                 continue
             location_queue.append((neighbor, current_path + [neighbor]))
@@ -36,14 +42,19 @@ def find_path_to_card(location: HecsCoord, follower, map, cards):
 
 
 def get_instruction_to_location(
-    location: HecsCoord, follower, map, cards, game_endpoint=None
+    location: HecsCoord,
+    follower,
+    map,
+    cards,
+    game_endpoint=None,
+    default_instruction="random, random, random, random, random, random",
 ):
     distance_to_follower = lambda c: c.prop_info.location.distance_to(
         follower.location()
     )
     path = find_path_to_card(location, follower, map, cards)
     if not path:
-        return "random, random, random, random, random"
+        return default_instruction
     game_vis = game_endpoint.visualization() if game_endpoint else None
     if game_vis is not None:
         game_vis.set_trajectory([(coord, 0) for coord in path])

@@ -308,7 +308,12 @@ def main(
             )
             time.sleep(60)
             continue
-        except Exception:
+        except Exception as e:
+            # Log the exception, with stack trace and instruction ID.
+            logger.error(
+                f"Exception in eval run {eval_run.id} for instruction {instruction.id}."
+            )
+            logger.error(e, exc_info=True)
             break
 
     # Switch databases and then save the results.

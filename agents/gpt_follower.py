@@ -98,7 +98,6 @@ class GPTFollower(Agent):
         description = DescribeMap(
             mapu, prop_update, instrs, turn_state, follower, leader
         )
-        logger.info(f"Description: {description}")
 
         # If the message can't fit, prune old non-system messages, then see if it can fit.
         while not self._can_message_fit(description):
@@ -140,6 +139,9 @@ class GPTFollower(Agent):
         )
         active_instruction = get_active_instruction(instrs)
         actions = actions_from_code(action_string, active_instruction.uuid)
+        # Print a message if the final action is not INSTRUCTION_DONE, hinting at exploration.
+        if actions[-1].action_code().name != "INSTRUCTION_DONE":
+            logger.info("Final action is not DONE, hinting at exploration!")
         if len(actions) == 0:
             return Action.NoopAction()
 
