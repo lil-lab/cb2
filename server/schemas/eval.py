@@ -86,3 +86,5 @@ class InstructionEvaluation(BaseModel):
     baseline_outcome = TextField()
     # Whether or not the evaluation is considered successful.
     success = BooleanField()
+    # Any "thoughts" the agent might have had while executing instructions.
+    agent_thoughts = TextField()

@@ -26,6 +26,9 @@ def DescribeLocationFromActor(location: HecsCoord, actor: Actor) -> str:
         )
         % 360
     )
+    # If we're standing on the tile, give a heading of zero.
+    if distance == 0:
+        direction = 0
     return f"distance: {distance} units and heading: {direction} degrees"
 
 
@@ -34,10 +37,10 @@ def FollowerSystemPrompt() -> str:
         "GAME EXPLANATION: \n"
         "You are playing a text-based videogame. In this game, you are the FOLLOWER. "
         "Your role is to follow the ACTIVE instruction. "
-        "First type in your thoughts. You can do this by starting a line with 'THOUGHTS:' and then typing your thoughts. "
+        "First you must type in your thoughts. You can do this by starting a line with 'THOUGHTS:' and then typing your thoughts on the same line (important!). "
         "Then type in your intended action. You can do this by starting a line with 'ACTIONS:' and then typing a comma-separate list of actions, ending with newline."
-        "E.G. a List of: 'R', 'L', 'F', and 'B' (Right, Left, Forward, and Back). "
-        "You can also write 'D', to mark an instruction as completed. "
+        "E.G. a List of: 'R', 'L', 'F', 'B', or 'D' (Right, Left, Forward, Back, Done). Actions MUST be one of these single-letters. "
+        "Use 'D' to mark the instruction as completed. "
         "You cannot see things behind you or to the sides. You also can't see things that are too far away. Turn around or move to explore. "
         "After a few observations, if you're lost, use a 'D'one action to get a new instruction. "
         "Headings are described in degrees, with positive meaning to the right and "

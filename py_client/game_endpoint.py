@@ -918,6 +918,8 @@ class GameEndpoint(object):
             return
         elif message.type == message_from_server.MessageType.TUTORIAL_RESPONSE:
             self._tutorial_messages.append(message.tutorial_response)
+        elif message.type == message_from_server.MessageType.SOUND_TRIGGER:
+            ...
         else:
             logger.warning(
                 f"Received unexpected message type: {message.type}. msg: {message}"

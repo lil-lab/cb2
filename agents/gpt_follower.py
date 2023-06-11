@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 
 import openai
+import tiktoken
 from mashumaro.mixins.json import DataClassJSONMixin
 
 from agents.agent import Agent, Role
@@ -31,12 +32,17 @@ class GPTFollowerConfig(DataClassJSONMixin):
     gpt_api_key: str
     queueing_enabled: bool = False
     model: str = "gpt-3.5-turbo"
+    maximum_tokens: int = (
+        3900  # Model maximum of 4097. Completion consumes some tokens too though.
+    )
 
 
 class GPTFollower(Agent):
     def __init__(self, config: GPTFollowerConfig):
         self.queueing_enabled = config.queueing_enabled
         self.gpt_api_key = config.gpt_api_key
+        self.max_tokens = config.maximum_tokens
+        openai.api_key = self.gpt_api_key
         self.model = config.model
         game_explanation = (
             FollowerSystemPrompt()
@@ -47,10 +53,28 @@ class GPTFollower(Agent):
             {"role": "system", "content": game_explanation},
         ]
         self.action_queue = []
+        self.thought_queue = []
 
     # OVERRIDES role
     def role(self) -> Role:
         return Role.FOLLOWER
+
+    def _count_tokens(self, text: str):
+        enc = tiktoken.encoding_for_model("gpt-4")
+        return len(enc.encode(text))
+
+    def _can_message_fit(self, text: str):
+        tokens = sum([self._count_tokens(x["content"]) for x in self.game_history])
+        new_tokens = self._count_tokens(text)
+        return tokens + new_tokens <= self.max_tokens
+
+    def _prune_oldest_messages(self, text: str) -> bool:
+        """Prunes the oldest non-system message in the history. Returns true if message removed."""
+        for i, _ in enumerate(self.game_history):
+            if self.game_history[i]["role"] != "system":
+                self.game_history.pop(i)
+                return True
+        return False
 
     # OVERRIDES choose_action
     def choose_action(self, game_state: GameState, action_mask=None) -> Action:
@@ -74,6 +98,13 @@ class GPTFollower(Agent):
         description = DescribeMap(
             mapu, prop_update, instrs, turn_state, follower, leader
         )
+        logger.info(f"Description: {description}")
+
+        # If the message can't fit, prune old non-system messages, then see if it can fit.
+        while not self._can_message_fit(description):
+            if not self._prune_oldest_messages(description):
+                raise AssertionError("Message too long to fit in GPT API call.")
+
         self.game_history.append(
             {
                 "role": "user",
@@ -93,7 +124,7 @@ class GPTFollower(Agent):
         lines = response_text.split("\n")
         for line in lines:
             if line.startswith("THOUGHTS:") or line.startswith("THOUGHT:"):
-                print(f"GPT thought: `{line}`")
+                self.thought_queue.append(line.split(":")[1])
             elif line.startswith("ACTIONS:") or line.startswith("ACTION:"):
                 action_string = line.split(":")[1]
                 break
@@ -113,6 +144,13 @@ class GPTFollower(Agent):
             return actions[0]
 
         return actions[0]
+
+    # Overrides thoughts().
+    def thoughts(self) -> str:
+        """Returns a list of thoughts for the most recent action."""
+        thoughts = self.thought_queue
+        self.thought_queue = []
+        return thoughts
 
 
 def timeout_decorator(timeout):
@@ -156,7 +194,6 @@ def actions_from_code(action_code, i_uuid: str = None):
     for c in characters_in_prompt:
         # Convert to lower and strip whitespace.
         c = c.lower().strip()
-        logger.info(f"Action code: `{c}`")
         if "forward".startswith(c):
             actions.append(Action.Forwards())
         elif "backward".startswith(c):
