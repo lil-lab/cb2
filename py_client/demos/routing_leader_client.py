@@ -6,7 +6,7 @@ import fire
 
 from py_client.game_endpoint import Action, Role
 from py_client.remote_client import RemoteClient
-from server.routing_utils import get_instruction_for_card
+from server.routing_utils import get_instruction_to_location
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,9 @@ def main(host, render=False, e_uuid="", lobby="bot-sandbox", pause_per_turn=0):
             action = Action.SendInstruction("random, random, random, random, random")
         else:
             action = Action.SendInstruction(
-                get_instruction_for_card(closest_card, follower, map, game, cards)
+                get_instruction_to_location(
+                    closest_card.prop_info.location, follower, map, cards, game
+                )
             )
     else:
         action = Action.NoopAction()

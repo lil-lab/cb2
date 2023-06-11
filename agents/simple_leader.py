@@ -10,6 +10,7 @@ from collections import deque
 
 from agents.agent import Role
 from py_client.game_endpoint import Action, GameState
+from server.routing_utils import get_instruction_to_location
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,9 @@ class SimpleLeader(object):
 
         # Otherwise, send an instruction to move to the closest card.
         return Action.SendInstruction(
-            _get_instruction_for_card(closest_card, follower, map, cards)
+            get_instruction_to_location(
+                closest_card.prop_info.location, follower, map, cards
+            )
         )
 
     def _get_action(self, game_state):
@@ -180,60 +183,6 @@ def _find_path_to_card(card, follower, map, cards):
                 continue
             location_queue.append((neighbor, current_path + [neighbor]))
     return None
-
-
-def _get_instruction_for_card(card, follower, map, cards):
-    distance_to_follower = lambda c: c.prop_info.location.distance_to(
-        follower.location()
-    )
-    path = _find_path_to_card(card, follower, map, cards)
-    if not path:
-        return "random, random, random, random, random"
-    heading = follower.heading_degrees() - 60
-    instructions = []
-    for idx, location in enumerate(path):
-        next_location = path[idx + 1] if idx + 1 < len(path) else None
-        if not next_location:
-            break
-        degrees_away = location.degrees_to(next_location) - heading
-        if degrees_away < 0:
-            degrees_away += 360
-        if degrees_away > 180:
-            degrees_away -= 360
-        # Pre-defined shortcuts to introduce backstepping.
-        if degrees_away == 180:
-            instructions.append("backward")
-            location = next_location
-            continue
-        if degrees_away == 120:
-            instructions.append("left")
-            instructions.append("backward")
-            heading -= 60
-            location = next_location
-            continue
-        if degrees_away == -120:
-            instructions.append("right")
-            instructions.append("backward")
-            heading += 60
-            location = next_location
-            continue
-        # General-case movement pattern.
-        if degrees_away > 0:
-            instructions.extend(["right"] * int(degrees_away / 60))
-        else:
-            instructions.extend(["left"] * int(-degrees_away / 60))
-        heading += degrees_away
-        instructions.append("forward")
-        location = next_location
-
-    return ", ".join(instructions)
-
-
-def _get_distance_to_card(card, follower):
-    distance_to_follower = lambda c: c.prop_info.location.distance_to(
-        follower.location()
-    )
-    return distance_to_follower(card)
 
 
 def _has_instruction_available(instructions):

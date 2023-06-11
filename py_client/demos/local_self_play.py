@@ -40,8 +40,8 @@ class PathfindingLeader(threading.Thread):
             return Action.SendInstruction(
                 "random, random, random, random, random, random"
             )
-        instruction = get_instruction_for_card(
-            closest_card, follower, map, self.game, cards
+        instruction = get_instruction_to_location(
+            closest_card.prop_info.location, follower, map, cards, self.game
         )
         logger.info(f"Lead sending: {instruction}")
         return Action.SendInstruction(instruction)

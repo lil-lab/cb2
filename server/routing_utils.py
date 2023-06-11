@@ -1,10 +1,12 @@
 """A set of utilities for pathfinding and routing in CB2 maps."""
 from collections import deque
 
+from server.hex import HecsCoord
 
-def find_path_to_card(card, follower, map, cards):
+
+def find_path_to_card(location: HecsCoord, follower, map, cards):
     start_location = follower.location()
-    end_location = card.prop_info.location
+    end_location = location
     location_queue = deque()
     location_queue.append((start_location, [start_location]))
     card_locations = set([card.prop_info.location for card in cards])
@@ -33,11 +35,13 @@ def find_path_to_card(card, follower, map, cards):
     return None
 
 
-def get_instruction_for_card(card, follower, map, game_endpoint, cards):
+def get_instruction_to_location(
+    location: HecsCoord, follower, map, cards, game_endpoint=None
+):
     distance_to_follower = lambda c: c.prop_info.location.distance_to(
         follower.location()
     )
-    path = find_path_to_card(card, follower, map, cards)
+    path = find_path_to_card(location, follower, map, cards)
     if not path:
         return "random, random, random, random, random"
     game_vis = game_endpoint.visualization() if game_endpoint else None
@@ -81,10 +85,3 @@ def get_instruction_for_card(card, follower, map, game_endpoint, cards):
         location = next_location
 
     return ", ".join(instructions)
-
-
-def get_distance_to_card(card, follower):
-    distance_to_follower = lambda c: c.prop_info.location.distance_to(
-        follower.location()
-    )
-    return distance_to_follower(card)

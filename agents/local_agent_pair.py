@@ -56,14 +56,14 @@ def PlayGame(coordinator, e_uuid="", log_to_db: bool = True, slow: bool = False)
             time.sleep(0.5)
         if game_state.turn_state.turn == Role.LEADER:
             leader_action = leader_agent.choose_action(game_state)
-            logger.info(f"Leader step({leader_action})")
+            logger.debug(f"Leader step({leader_action})")
             game_state = endpoint_pair.step(leader_action)
         else:
-            logger.info("=====================")
+            logger.debug("=====================")
             follower_action = follower_agent.choose_action(game_state)
-            logger.info(f"Follower step({follower_action})")
+            logger.debug(f"Follower step({follower_action})")
             game_state = endpoint_pair.step(follower_action)
-    logger.info(
+    logger.debug(
         f"Game over. Score: {endpoint_pair.score()}, Duration: {endpoint_pair.duration().total_seconds()}"
     )
     coordinator.Cleanup()
