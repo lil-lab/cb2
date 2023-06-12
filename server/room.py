@@ -25,8 +25,8 @@ from server.remote_table import GetRemote
 from server.replay_state import ReplayState
 from server.scenario_state import ScenarioState
 from server.schemas.google_user import GetOrCreateGoogleUser
+from server.state import State
 from server.state_machine_driver import StateMachineDriver
-from server.state_machines.state import State
 from server.tutorial_state import TutorialGameState
 
 logger = logging.getLogger(__name__)

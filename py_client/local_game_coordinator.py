@@ -26,8 +26,8 @@ from server.messages.tutorials import (
     LEADER_TUTORIAL,
     RoleFromTutorialName,
 )
+from server.state import State
 from server.state_machine_driver import StateMachineDriver
-from server.state_machines.state import State
 from server.tutorial_state import TutorialGameState
 from server.util import GetCommitHash
 
