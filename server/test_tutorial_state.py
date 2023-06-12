@@ -169,6 +169,7 @@ class TutorialTest(unittest.TestCase):
             Action.NoopAction(),
             Action.TutorialNextStep(),
             Action.Interrupt(),
+            Action.TutorialNextStep(),
             Action.SendInstruction(
                 "UNIT TEST -- Turn around, grab the card at edge of map."
             ),

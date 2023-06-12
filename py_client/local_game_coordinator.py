@@ -26,8 +26,8 @@ from server.messages.tutorials import (
     LEADER_TUTORIAL,
     RoleFromTutorialName,
 )
-from server.state import State
 from server.state_machine_driver import StateMachineDriver
+from server.state_machines.state import State
 from server.tutorial_state import TutorialGameState
 from server.util import GetCommitHash
 
@@ -198,7 +198,9 @@ class LocalGameCoordinator:
         """
         return self._CreateTutorial(FOLLOWER_TUTORIAL, realtime)
 
-    def _CreateTutorial(self, tutorial_name: str, realtime: bool):
+    def _CreateTutorial(
+        self, tutorial_name: str, realtime: bool, lobby: Lobby = DEFAULT_LOBBY
+    ):
         """Creates a tutorial game. One-player only.
 
         Returns the game name.
@@ -220,7 +222,9 @@ class LocalGameCoordinator:
         game_record.type = "local-simulated|0|tutorial"
         game_record.save()
         # The value
-        state_machine = TutorialGameState(room_id, tutorial_name, game_record, realtime)
+        state_machine = TutorialGameState(
+            room_id, tutorial_name, game_record, realtime, lobby=lobby
+        )
         self._game_endpoints[game_name] = (None, None)
         self._game_drivers[game_name] = StateMachineDriver(state_machine, room_id)
         return game_name

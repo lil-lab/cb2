@@ -48,9 +48,17 @@ logger = logging.getLogger(__name__)
 
 
 class TutorialGameState(object):
-    def __init__(self, room_id, tutorial_name, tutorial_record, realtime: bool = True):
+    def __init__(
+        self,
+        room_id,
+        tutorial_name,
+        tutorial_record,
+        realtime: bool = True,
+        lobby: "server.Lobby" = None,
+    ):
         self._start_time = datetime.utcnow()
         self._room_id = room_id
+        self._lobby = lobby
 
         self._player_role = RoleFromTutorialName(tutorial_name)
 
@@ -583,7 +591,16 @@ class TutorialGameState(object):
             logger.warn(f"Received unknown packet type: {message.type}")
 
     def handle_live_feedback(self, id, feedback):
-        if config.GlobalConfig() and not config.GlobalConfig().live_feedback_enabled:
+        feedback_enabled = (
+            config.GlobalConfig()
+            and self._lobby
+            and (
+                config.GlobalConfig().live_feedback_enabled
+                or self._lobby.lobby_info().live_feedback_enabled
+                or self._lobby.lobby_info().delayed_feedback_enabled
+            )
+        )
+        if not feedback_enabled:
             logger.debug(f"Live feedback disabled. Dropping message.")
             return
         if feedback.signal == live_feedback.FeedbackType.NONE:

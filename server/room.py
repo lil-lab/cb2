@@ -25,8 +25,8 @@ from server.remote_table import GetRemote
 from server.replay_state import ReplayState
 from server.scenario_state import ScenarioState
 from server.schemas.google_user import GetOrCreateGoogleUser
-from server.state import State
 from server.state_machine_driver import StateMachineDriver
+from server.state_machines.state import State
 from server.tutorial_state import TutorialGameState
 
 logger = logging.getLogger(__name__)
@@ -85,7 +85,9 @@ class Room(object):
                 self._game_record.type = game_type_prefix + "lead_tutorial"
             else:
                 self._game_record.type = game_type_prefix + "follow_tutorial"
-            game_state = TutorialGameState(self._id, tutorial_name, self._game_record)
+            game_state = TutorialGameState(
+                self._id, tutorial_name, self._game_record, True, self._lobby
+            )
         elif self._room_type == RoomType.PRESET_GAME:
             if not from_event_uuid:
                 raise ValueError("Preset game must be initialized from an instruction.")

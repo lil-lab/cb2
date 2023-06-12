@@ -197,6 +197,15 @@ LEADER_TUTORIAL_STEPS = [
         None,
     ),
     TutorialStep(
+        [],
+        Tooltip(
+            "",
+            "REPEATED FOR CLARITY: You've just issued an interrupt. This cancels ALL queued up instructions and ends the follower's turn immediately (press \"shift\" to continue)",
+            TooltipType.UNTIL_DISMISSED,
+        ),
+        None,
+    ),
+    TutorialStep(
         [Indicator(HecsCoord(0, 2, 0))],
         Tooltip(
             "MessageInputField",
@@ -260,7 +269,7 @@ LEADER_TUTORIAL_STEPS = [
             TooltipType.UNTIL_DISMISSED,
         ),
         None,
-    ),    
+    ),
     TutorialStep(
         [],
         Tooltip(
