@@ -147,6 +147,8 @@ def main(
         run_source=RunSource.LOCAL,
         client_hash="",
         commit_version=GetCommitHash(),
+        agent_name=agent_config.name,
+        agent_type=agent_config.agent_type,
         agent_config=agent_config,
         agent_role=agent.role(),
         server_config=config.to_json(),

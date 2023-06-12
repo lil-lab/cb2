@@ -57,6 +57,8 @@ class Eval(BaseModel):
     client_hash = TextField()
     commit_version = TextField()
     run_date = DateTimeField(default=datetime.datetime.now)
+    agent_name = TextField()
+    agent_type = TextField()
     agent_config = TextField()
     agent_role = TextField()  # 'LEADER' or 'FOLLOWER'.
     server_config = TextField()

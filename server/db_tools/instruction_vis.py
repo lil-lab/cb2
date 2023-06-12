@@ -3,6 +3,7 @@
 import json
 import logging
 import pathlib
+from typing import List
 
 import fire
 import peewee
@@ -68,7 +69,13 @@ def draw_wrapped(display, instruction_text, max_width=50):
 
 
 def draw_instruction(
-    instruction, moves, feedbacks, map_update, filename, game_id, props
+    instruction: ObjectiveMessage,
+    moves: List[Action],
+    feedbacks: List[live_feedback_msg.LiveFeedback],
+    map_update: map_update_msg.MapUpdate,
+    filename: str,
+    game_id: int,
+    props: List[prop_msg.Prop],
 ):
     display = visualize.GameDisplay(SCREEN_SIZE)
     display.set_map(map_update)
