@@ -1,6 +1,7 @@
 import concurrent.futures
 import functools
 import logging
+import string
 from dataclasses import dataclass
 
 import openai
@@ -112,7 +113,9 @@ class GPTFollower(Agent):
         )
 
         try:
-            response = call_openai_api_sync(messages=self.game_history)
+            response = call_openai_api_sync(
+                messages=self.game_history, model=self.model
+            )
         except openai.error.RateLimitError as e:
             raise RateLimitException(f"OpenAI API rate limit exceeded: {e}")
 
@@ -130,7 +133,15 @@ class GPTFollower(Agent):
                 self.thought_queue.append(line.split(":")[1])
             elif line.startswith("ACTIONS:") or line.startswith("ACTION:"):
                 action_string = line.split(":")[1]
-                break
+                # Strip punctuation from the end of the action string.
+                action_string = action_string.rstrip(string.punctuation)
+            else:
+                # Make sure the line isn't just whitespace/punctuation.
+                if line.strip(string.whitespace + string.punctuation) == "":
+                    continue
+                # If the line doesn't start with THOUGHTS or ACTIONS, this is
+                # unexpected. GPT is probably not working as expected.
+                logger.warning(f"Unexpected line in GPT response: {line}.")
         self.game_history.append(
             {
                 "role": "assistant",
@@ -175,10 +186,8 @@ def timeout_decorator(timeout):
 @timeout_decorator(timeout=20)
 def call_openai_api_sync(messages, model="gpt-3.5-turbo"):
     """Calls OpenAI API synchronously with a timeout. Some other values for model parameter:"""
-    # model="gpt-4",
-    # model="gpt-3.5-turbo",
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model=model,
         messages=messages,
         max_tokens=50,
         n=1,

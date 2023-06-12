@@ -3,6 +3,10 @@
 #
 # If you're afraid of YAML, realize that YAML is a superset of JSON, so you can
 # just replace this file with an equivalent JSON file if you want.
+#
+# Some OpenAI models you can try:
+# model="gpt-4"
+# model="gpt-3.5-turbo"
 name: "GPT 3.5 Follower"
 comment: "An agent which describes the game map using text, and then asks GPT what to do."
 agent_type: "GPT_FOLLOWER"

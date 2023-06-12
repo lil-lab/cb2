@@ -301,9 +301,7 @@ def main(
                     agent_outcome="Rate limit error. Waiting 60 seconds.",
                     baseline_outcome="",
                     success=False,
-                    agent_thoughts=str(
-                        thoughts, "Rate limit error. Waiting 60 seconds."
-                    ),
+                    agent_thoughts="Rate limit error. Waiting 60 seconds.",
                 )
             )
             time.sleep(60)
