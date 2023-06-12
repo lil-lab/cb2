@@ -320,6 +320,10 @@ def main(
     SwitchToDatabase(eval_output)
     base.CreateTablesIfNotExists(defaults.ListEvalTables())
 
+    eval_run.percent_passed = (
+        (100 * len(agent_instructions_passed) / len(results)) if len(results) > 0 else 0
+    )
+    eval_run.total_instructions = len(results)
     eval_run.save(force_insert=True)
     for result in results:
         result.save(force_insert=True)

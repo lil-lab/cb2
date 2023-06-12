@@ -139,9 +139,6 @@ class GPTFollower(Agent):
         )
         active_instruction = get_active_instruction(instrs)
         actions = actions_from_code(action_string, active_instruction.uuid)
-        # Print a message if the final action is not INSTRUCTION_DONE, hinting at exploration.
-        if actions[-1].action_code().name != "INSTRUCTION_DONE":
-            logger.info("Final action is not DONE, hinting at exploration!")
         if len(actions) == 0:
             return Action.NoopAction()
 

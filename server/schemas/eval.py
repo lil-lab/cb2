@@ -60,6 +60,8 @@ class Eval(BaseModel):
     agent_config = TextField()
     agent_role = TextField()  # 'LEADER' or 'FOLLOWER'.
     server_config = TextField()
+    percent_passed = TextField()
+    total_instructions = IntegerField()
 
 
 class InstructionEvaluation(BaseModel):
