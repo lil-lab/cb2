@@ -68,7 +68,7 @@ class GoogleLobby(lobby.Lobby):
             return MenuOptions(
                 [
                     ButtonDescriptor(
-                        ButtonCode.JOIN_FOLLOWER_QUEUE, "Player as Follower", ""
+                        ButtonCode.JOIN_FOLLOWER_QUEUE, "Play as Follower", ""
                     ),
                     ButtonDescriptor(
                         ButtonCode.START_LEADER_TUTORIAL, "Leader Tutorial", ""
