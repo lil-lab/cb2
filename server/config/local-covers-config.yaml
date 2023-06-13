@@ -20,5 +20,4 @@
     "map_config": {
       "streetlight_tiles": ["GROUND_TILE_STREETLIGHT"]
     },
-    "generate_documentation": false
 }

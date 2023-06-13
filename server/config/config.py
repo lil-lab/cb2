@@ -301,9 +301,6 @@ class Config(DataClassJSONMixin):
 
     map_config: MapConfig = field(default_factory=MapConfig)
 
-    # If set to false, does not generate documentation on server startup.
-    generate_documentation: bool = True
-
     max_client_exceptions: int = 100
     """The maximum number of exceptions to store in the database."""
 

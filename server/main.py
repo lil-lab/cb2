@@ -21,7 +21,6 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = ""  # Hide pygame welcome message
 import aiohttp
 import fire
 import orjson
-import pdoc
 import peewee
 from aiohttp import web
 from dateutil import parser, tz
@@ -102,11 +101,6 @@ async def transmit_bytes(ws, message):
 @routes.get("/")
 async def Index(request):
     return web.FileResponse("server/www/index.html")
-
-
-@routes.get("/docs")
-async def DocIndex(request):
-    return web.HTTPFound("/docs/index.html")
 
 
 @routes.get("/play")
@@ -1367,10 +1361,7 @@ async def serve(config):
         )
         return
 
-    # Serve documentation.
-    routes.static("/docs/", "docs/", show_index=False, append_version=True)
     # Add a route for serving web frontend files on /.
-    routes.static("/docs/", "docs/", show_index=False, append_version=True)
     routes.static("/", "server/www/WebGL")
 
     app = web.Application()
@@ -1437,34 +1428,8 @@ def InitGameRecording(config):
     base.CreateTablesIfNotExists(defaults.ListDefaultTables())
 
 
-def InitializeDocumentation(config):
-    if not config.generate_documentation:
-        logger.warn(
-            "Skipping documentation generation because config.generate_documentation false."
-        )
-        return
-
-    # Get all top-level modules in the CB2 project by checking the directory
-    # structure.
-    cb2_modules = []
-    for file in os.listdir("."):
-        if not os.path.isdir(file):
-            continue
-        if "__init__.py" in os.listdir(file):
-            cb2_modules.append(file)
-    logger.info(f"Initializing documentation for modules: {cb2_modules}")
-    # Use pdoc to generate static docs in /docs.
-    pdoc.render.configure(
-        favicon="/images/favicon-32x32.png",
-        logo="/images/icon.png",
-        search=True,
-    )
-    pdoc.pdoc(*cb2_modules, output_directory=pathlib.Path("docs"))
-
-
 def CreateDataDirectory(config):
     data_prefix = pathlib.Path(config.data_prefix).expanduser()
-
     # Create the directory if it doesn't exist.
     data_prefix.mkdir(parents=False, exist_ok=True)
 
@@ -1485,7 +1450,6 @@ def main(config_filepath="server/config/server-config.yaml"):
 
     InitPythonLogging()
     InitGlobalConfig(config_filepath)
-    InitializeDocumentation(GlobalConfig())
 
     logger.info("Config file parsed.")
     logger.info(f"data prefix: {GlobalConfig().data_prefix}")
