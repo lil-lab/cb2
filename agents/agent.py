@@ -39,7 +39,7 @@ class Agent(ABC):
         ...
 
     @abstractmethod
-    def thoughts(self) -> str:
+    def thoughts(self) -> List[str]:
         """Returns the thoughts of the agent.
 
         This is used for logging the "thought" stage of chain-of-thought agents.

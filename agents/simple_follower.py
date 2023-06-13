@@ -7,6 +7,7 @@ not be very diverse.
 
 import logging
 from dataclasses import dataclass
+from typing import List
 
 from mashumaro.mixins.json import DataClassJSONMixin
 
@@ -76,6 +77,9 @@ class SimpleFollower(object):
         action = self.actions[0]
         self.actions.pop(0)
         return action
+
+    def thoughts(self) -> List[str]:
+        return []
 
 
 def _actions_from_instruction(instruction):
