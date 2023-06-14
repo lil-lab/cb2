@@ -20,4 +20,5 @@
     "map_config": {
       "streetlight_tiles": ["GROUND_TILE_STREETLIGHT"]
     },
+    "server_password_sha512": ""
 }

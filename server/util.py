@@ -2,6 +2,8 @@
 
 import contextvars
 import functools
+import hashlib
+import json
 import pathlib
 import subprocess
 import sys
@@ -13,6 +15,9 @@ from typing import List
 
 import git
 import orjson
+from aiohttp import web
+
+from server.config.config import GlobalConfig
 
 MAX_ID = 1000000
 
@@ -56,7 +61,44 @@ def SafePasswordCompare(a, b):
     """Compares two passwords. Resistant to timing attacks."""
     if len(a) != len(b):
         return False
-    return all(x == y for x, y in zip(a, b))
+
+    # Always compare all characters, to avoid timing attacks.
+    result = 0
+    for x, y in zip(a, b):
+        result |= ord(x) ^ ord(y)
+    return result == 0
+
+
+def password_protected(func):
+    """A decorator that password protects an AIOHTTP endpoint.
+
+    Password is passed in as a GET password= query parameter. Specify the
+    password using the server configuration.
+    """
+
+    def wrapper(request):
+        config = GlobalConfig()
+        if config == None:
+            return web.HTTPInternalServerError(reason="No config loaded.")
+        if config.server_password_sha512 == "":
+            return func(request)
+        password = None
+        if "password" in request.query:
+            password = request.query["password"]
+        elif "request" in request.query:  # Support password-protected w2ui requests.
+            request_query = json.loads(request.query.get("request", "{}"))
+            if "password" in request_query:
+                password = request_query["password"]
+        if password is None:
+            return web.HTTPUnauthorized(
+                reason="Permission denied -- please provide a valid password using the password= parameter."
+            )
+        password_hash = hashlib.sha512(password.encode("utf-8")).hexdigest()
+        if not SafePasswordCompare(config.server_password_sha512, password_hash):
+            return web.HTTPUnauthorized(reason="Permission denied -- invalid password.")
+        return func(request)
+
+    return wrapper
 
 
 def GetCommitHash():

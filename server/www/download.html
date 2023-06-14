@@ -15,13 +15,17 @@
                 link.click();
             }
 
+            // Look for a password parameter in the URL and forward it in requests below.
+            var urlParams = new URLSearchParams(window.location.search);
+            var password = urlParams.get('password');
+
             var interval = undefined;
             var fetched_download = false;
             function check_download_status() {
                 // Make a jquery GET request to "/data/download_status" to check if the download is complete.
                 // The response is a JSON object with "status" and "log" keys. Update the elements with ids "status" and "download_log" accordingly.
                 // The item in "log" is a list of strings. Concatenate them before placing in "download_log".
-                $.get("/data/download_status")
+                $.get("/data/download_status", {password: password})
                     .done(function(data) {
                         // Update the status element with the status.
                         $("#status").text("Status: " + data.status);
@@ -40,14 +44,14 @@
                                     fetched_download = true;
                                     console.log("Redirecting to download link...");
                                     $("#download-link").css("display", "block");
-                                    downloadFile("/data/download_retrieve");
+                                    downloadFile("/data/download_retrieve" + (password ? "?password=" + password : ""));
                                 }, 1000);
                             }
                         }
                     })
-                    .fail(function(data) {
+                    .fail(function(jqxhr, textStatus, error) {
                         // If the request fails, update the status element with an error message.
-                        $("#status").text("Error: Could not check download status. Server bandwidth limits may have been reached, try refreshing the page.");
+                        $("#status").text("Error: Could not check download status: " + textStatus + ", " + error + ". Check to see if a password is required in the URL. Server bandwidth limits may also have been exceeded");
                     });
             }
 
@@ -57,7 +61,7 @@
             }
 
             function RetrieveDownload() {
-                downloadFile("/data/download_retrieve");
+                downloadFile("/data/download_retrieve" + (password ? "?password=" + password : ""));
             }
         </script>
         <div>

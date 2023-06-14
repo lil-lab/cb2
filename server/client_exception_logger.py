@@ -6,12 +6,15 @@ It makes a number of tradeoffs:
 2. We don't want this system to slow down the server, so we wait until shutdown to write the exceptions to database.
 """
 
+import logging
 from typing import List
 
 from server.messages.client_exception import ClientException
 from server.schemas.client_exception import ClientException as ClientExceptionSchema
 
 DEFAULT_MAX_EXCEPTIONS = 0
+
+logger = logging.getLogger(__name__)
 
 
 class ClientExceptionLogger(object):
@@ -31,6 +34,9 @@ class ClientExceptionLogger(object):
         return list(self._exceptions)
 
     def save_exceptions_to_db(self):
+        if len(self._exceptions) == 0:
+            return
+        logger.info(f"Saving {len(self._exceptions)} exceptions to DB.")
         for exception in self._exceptions:
             db_exception = ClientExceptionSchema(
                 game_id=exception.game_id,

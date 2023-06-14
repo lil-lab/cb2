@@ -41,7 +41,6 @@ from server.lobby_consts import IsMturkLobby, LobbyType
 from server.lobby_utils import GetLobbies, GetLobby, InitializeLobbies
 from server.map_provider import MapGenerationTask, MapPoolSize
 from server.messages import message_from_server, message_to_server
-from server.messages.logs import GameInfo, GameLog, LogEntry
 from server.messages.user_info import UserType
 from server.remote_table import (
     AddRemote,
@@ -53,7 +52,7 @@ from server.remote_table import (
 )
 from server.schemas import base
 from server.user_info_fetcher import UserInfoFetcher
-from server.util import HEARTBEAT_TIMEOUT_S
+from server.util import HEARTBEAT_TIMEOUT_S, password_protected
 
 routes = web.RouteTableDef()
 
@@ -267,6 +266,7 @@ def LobbyStatus(player_lobby):
 
 
 @routes.get("/status")
+@password_protected
 async def Status(request):
     start_time = time.time()
     global assets_map
@@ -304,64 +304,6 @@ async def Status(request):
     ).decode("utf-8")
     logger.info(f"Status request took {time.time() - start_time} seconds")
     return web.json_response(status, dumps=pretty_dumper)
-
-
-def FindGameDirectory(game_id):
-    record_base_dir = pathlib.Path(GlobalConfig().record_directory())
-    games = os.listdir(record_base_dir)
-    for game in games:
-        id = game.split("_")[1]
-        if game_id == id:
-            return record_base_dir / game
-    return None
-
-
-@routes.get("/data/messages_from_server/{game_id}")
-async def MessagesFromServer(request):
-    if not request.match_info.get("game_id"):
-        return web.HTTPNotFound()
-    game_dir = FindGameDirectory(request.match_info["game_id"])
-    if not game_dir:
-        return web.HTTPNotFound()
-    return web.FileResponse(game_dir / "messages_from_server.json")
-
-
-@routes.get("/data/messages_to_server/{game_id}")
-async def MessagesToServer(request):
-    if not request.match_info.get("game_id"):
-        return web.HTTPNotFound()
-    game_dir = FindGameDirectory(request.match_info["game_id"])
-    if not game_dir:
-        return web.HTTPNotFound()
-    return web.FileResponse(game_dir / "messages_to_server.json")
-
-
-@routes.get("/data/game_logs/{game_id}")
-async def GameLogs(request):
-    if not request.match_info.get("game_id"):
-        return web.HTTPNotFound()
-    game_dir = FindGameDirectory(request.match_info["game_id"])
-    if not game_dir:
-        return web.HTTPNotFound()
-    game_log = GameLog(GameInfo(datetime.min, 0, "", [], []), [])
-    with open(game_dir / "messages_from_server.jsonl.log", "r") as f:
-        for line in f:
-            log_entry_obj = orjson.loads(line)
-            game_log.log_entries.append(LogEntry.from_dict(log_entry_obj))
-    with open(game_dir / "game_info.jsonl.log", "r") as f:
-        line = f.readline()
-        game_log.game_info = GameInfo.from_json(line)
-    if (game_dir / "config.json").exists():
-        with open(game_dir / "config.json", "r") as f:
-            game_log.server_config = orjson.loads(f.read())
-    json_str = orjson.dumps(
-        game_log,
-        option=orjson.OPT_NAIVE_UTC
-        | orjson.OPT_INDENT_2
-        | orjson.OPT_PASSTHROUGH_DATETIME,
-        default=datetime.isoformat,
-    )
-    return web.Response(text=json_str.decode("utf-8"), content_type="application/json")
 
 
 @routes.get("/data/username_from_id/{user_id}")
@@ -433,26 +375,6 @@ async def MessagesFromServer(request):
     return web.json_response(leaderboard_entries)
 
 
-@routes.get("/data/messages_from_server/{game_id}")
-async def MessagesFromServer(request):
-    if not request.match_info.get("game_id"):
-        return web.HTTPNotFound()
-    game_dir = FindGameDirectory(request.match_info["game_id"])
-    if not game_dir:
-        return web.HTTPNotFound()
-    return web.FileResponse(game_dir / "messages_from_server.json")
-
-
-@routes.get("/data/messages_to_server/{game_id}")
-async def MessagesToServer(request):
-    if not request.match_info.get("game_id"):
-        return web.HTTPNotFound()
-    game_dir = FindGameDirectory(request.match_info["game_id"])
-    if not game_dir:
-        return web.HTTPNotFound()
-    return web.FileResponse(game_dir / "messages_to_server.json")
-
-
 download_requested = False
 download_file_path = ""
 download_status = {
@@ -474,7 +396,6 @@ async def ExceptionSaver(lobbies, config):
                     active_game = True
                     break
             if not active_game:
-                logger.info(f"No active games, saving exceptions to DB.")
                 client_exception_logger.save_exceptions_to_db()
         except Exception as e:
             logger.exception(e)
@@ -595,6 +516,7 @@ def GatherDataForDownload(config, response, logs):
 
 
 @routes.get("/data/download_status")
+@password_protected
 async def DownloadStatus(request):
     global download_status
     return web.json_response(download_status)
@@ -620,6 +542,7 @@ def SaveClientExceptionsToDB():
 
 
 @routes.get("/data/download_retrieve")
+@password_protected
 async def RetrieveData(request):
     global download_status
     global download_file_path
@@ -645,6 +568,7 @@ async def RetrieveData(request):
 
 
 @routes.get("/data/download")
+@password_protected
 async def DataDownloadStart(request):
     global download_requested
     download_requested = True
@@ -652,6 +576,7 @@ async def DataDownloadStart(request):
 
 
 @routes.get("/data/game-list")
+@password_protected
 async def GameList(request):
     start_time = time.time()
     # Default to 100 games to reduce load on server.
@@ -739,6 +664,7 @@ async def GameList(request):
 
 
 @routes.get("/data/client-exception-list")
+@password_protected
 async def ClientExceptionList(request):
     exceptions = client_exception_db.ClientException.select().order_by(
         client_exception_db.ClientException.date.desc()
@@ -760,16 +686,19 @@ async def ClientExceptionList(request):
 
 
 @routes.get("/view/client-exceptions")
+@password_protected
 async def ClientExceptionViewer(request):
     return web.FileResponse("server/www/exceptions_viewer.html")
 
 
 @routes.get("/view/games")
+@password_protected
 async def GamesViewer(request):
     return web.FileResponse("server/www/games_viewer.html")
 
 
 @routes.get("/view/game/{game_id}")
+@password_protected
 async def GameViewer(request):
     # Extract the game_id from the request.
     return web.FileResponse("server/www/game_viewer.html")
@@ -789,6 +718,7 @@ async def Stats(request):
 
 
 @routes.get("/data/turns/{game_id}")
+@password_protected
 async def GameData(request):
     game_id = request.match_info.get("game_id")
     game_turn_events = event_db.Event.select().where(
@@ -802,6 +732,7 @@ async def GameData(request):
 
 
 @routes.get("/data/events/{game_id}")
+@password_protected
 async def EventData(request):
     """HTTP endpoint to fetch all events for a particular game."""
     game_id = request.match_info.get("game_id")
@@ -815,6 +746,7 @@ async def EventData(request):
 
 
 @routes.get("/data/instructions/{game_id}")
+@password_protected
 async def InstructionData(request):
     """HTTP endpoint to fetch all instructions for a particular game."""
     game_id = request.match_info.get("game_id")
@@ -831,6 +763,7 @@ async def InstructionData(request):
 
 
 @routes.get("/data/game_live_feedback/{game_id}")
+@password_protected
 async def GetGameLiveFeedback(request):
     """HTTP endpoint to fetch all live feedback for a particular game."""
     game_id = request.match_info.get("game_id")
@@ -883,6 +816,7 @@ async def GetGameLiveFeedback(request):
 
 
 @routes.get("/data/instruction/{i_uuid}")
+@password_protected
 async def InstructionFromUuid(request):
     """HTTP endpoint to fetch an instruction from its UUID. Note that this is the in-game state machine UUID, not the database UUID."""
     instruction_uuid = request.match_info.get("i_uuid")
@@ -901,6 +835,7 @@ async def InstructionFromUuid(request):
 
 
 @routes.get("/data/moves_for_instruction/{i_uuid}")
+@password_protected
 async def MovesForInstruction(request):
     instruction_uuid = request.match_info.get("i_uuid")
     instruction = (
@@ -929,6 +864,7 @@ async def MovesForInstruction(request):
 
 
 @routes.get("/data/stats")
+@password_protected
 async def stats(request):
     games = db_utils.ListAnalysisGames(GlobalConfig())
     post_data = request.query.get("request", None)

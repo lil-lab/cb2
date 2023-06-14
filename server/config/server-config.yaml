@@ -8,5 +8,6 @@
     "google_oauth_client_id": "787231947800-ee2g4lptmfa0av2qb26n1qu60hf5j2fd.apps.googleusercontent.com",
     "map_config": {
       "streetlight_tiles": ["GROUND_TILE_STREETLIGHT"]
-    }
+    },
+    "server_password_sha512": "36c15ac8ccb12768b353b7bde3a35af96a1253a68a047314db9e669fa203c60d8f6d7adf2cd4d6ac0d60a112aaa5e8c743bdcd38ee459fcd42da97ecc4144ae6"
 }

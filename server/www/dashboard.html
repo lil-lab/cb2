@@ -29,6 +29,18 @@ $(function () {
     // Resize Status Monitor to 50% of the window height.
     $("#status-monitor").height($(window).height() * 0.5);
 
+    // Parse the get URL param "all".
+    show_all_games = false;
+    var urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('all')) {
+      show_all_games = urlParams.get('all') == 'true';
+    }
+
+    // Look for a password parameter in the URL and forward it to /status and
+    // /data/game-list requests.
+    var urlParams = new URLSearchParams(window.location.search);
+    var password = urlParams.get('password');
+
     // On window resize, resize the grid and status monitor.
     $(window).resize(function() {
       $("#grid").height($(window).height() * 0.49);
@@ -86,6 +98,10 @@ $(function () {
           const md5hash = CryptoJS.MD5(searchValue).toString();
           w2ui['grid'].toolbar.set('search-hash', {text: "md5: " + md5hash});
         },
+        postData: {
+            "all": show_all_games,
+            "password": password,
+        },
     });
 
     // Every second, poll /status for the latest status struct.
@@ -108,7 +124,7 @@ $(function () {
     // find the max timestamp.
     var max_timestep = 0;
     setInterval(function() {
-      $.get("/status", function(data) {
+      $.get("/status", data={"password": password}, function(data) {
         // lobbies is a dictionary of "lobby_name": -> {<lobby description object>}
         var lobbies = data.lobbies;
         // Check if the trace already exists in game_traces.

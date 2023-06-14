@@ -301,11 +301,26 @@ class Config(DataClassJSONMixin):
 
     map_config: MapConfig = field(default_factory=MapConfig)
 
+    # The maximum number of exceptions to store in the database.
     max_client_exceptions: int = 100
-    """The maximum number of exceptions to store in the database."""
 
+    # The number of seconds between exception log dumps.
     exception_log_interval: int = 60
-    """The number of seconds between exception log dumps."""
+
+    # SHA512sum hash of the server access password.
+    # If this is empty, then no password is required.
+    # You can use the following command to generate a password:
+    #
+    # echo -n "password" | sha512sum
+    #
+    # Or use the python command:
+    #
+    #   import hashlib
+    #   hashlib.sha512("password".encode("utf-8")).hexdigest()
+    #
+    # Any CB2 page which provides access to data or functionality which
+    # should not be public should require this password.
+    server_password_sha512: str = ""
 
     # Data path accessors that add the requisite data_prefix.
     def data_directory(self):
