@@ -713,6 +713,7 @@ async def GetConfig(request):
 
 
 @routes.get("/view/stats")
+@password_protected
 async def Stats(request):
     return web.FileResponse("server/www/stats.html")
 

@@ -20,6 +20,7 @@ Cereal Bar V2
         - [Running the map editor](#running-the-map-editor)
   - [Deploying a WebGL Client](#deploying-a-webgl-client)
   - [Server Endpoints](#server-endpoints)
+      - [Password-protected endpoints.](#password-protected-endpoints)
   - [Demonstration Model](#demonstration-model)
   - [Dataset](#dataset)
   - [Resources](#resources)
@@ -232,7 +233,28 @@ Server Endpoints
 | `/`                  | Serves static files from `server/www`.                |
 | `/status`            | Prints server status in JSON.                         |
 | `/player_endpoint`   | Websocket endpoint for communication with clients.    |
-| `/assets/{asset_id}` | Currently unused mechanism to obscurely serve assets. |
+| `/view/games`        | View all games played on the server.                  |
+
+#### Password-protected endpoints.
+The server contains some optionally password-protected endpoints. These are
+endpoints which allow access to game data or live user information. You can set
+the password in the config via the server_password_sha512 field. Do not put the
+plaintext password in your configuration file. Instead, you use a sha512
+hash of the password. You can generate a password hash with the following
+command:
+
+```
+python3 -c 'import hashlib; print(hashlib.sha512(b"your_password").hexdigest())'
+```
+
+To access password-protected endpoints, you must pass the password as a query
+parameter. For example, if your password is `password`, you would access the
+`/view/games` endpoint with the following URL:
+
+```
+http://localhost:8080/view/games?password=password
+```
+
 
 Demonstration Model
 -------------------

@@ -11,8 +11,14 @@
 </body>
 <script>
 $(function () {
+    // Look for a password parameter in the URL and forward it in postData below.
+    var urlParams = new URLSearchParams(window.location.search);
+    var password = urlParams.get('password');
+
     var mturkParameters = new URLSearchParams(window.location.search);
-    var postData = {}
+    var postData = {
+        "password": password,
+    };
     if (mturkParameters.has('from_game_id'))
     {
       console.log("from_game_id: " + mturkParameters.get('from_game_id'));
