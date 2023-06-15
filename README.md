@@ -18,7 +18,7 @@ Cereal Bar V2
       - [Scenario (Map) Editor](#scenario-map-editor)
         - [Requirements](#requirements)
         - [Running the map editor](#running-the-map-editor)
-  - [Deploying a WebGL Client](#deploying-a-webgl-client)
+  - [Documentation](#documentation)
   - [Server Endpoints](#server-endpoints)
       - [Password-protected endpoints.](#password-protected-endpoints)
   - [Demonstration Model](#demonstration-model)
@@ -114,7 +114,20 @@ When you're done, you can quit the python venv with `deactivate` on the command 
 
 ### Client
 
-The client is a Unity project developed using Unity `Version 2020.3.25f1`. This is contained in the `game/` directory. No setup should be necessary, just open the project in Unity.
+The client is a Unity project developed using Unity `Version 2020.3.xx`. This is contained in the `game/` directory. Once unity is installed, the application should open successfully.
+
+For development purposes, the server may be run locally and the client run directly in the Unity editor. This connects to the server using the default lobby. For deployment, the game is compiled to HTML + WebGL.
+
+The WebGL client can either be compiled from within Unity or from the command line with [build_client.sh](https://github.com/lil-lab/cb2/blob/main/build_client.sh). This launches a headless version of Unity which builds a WebGL client and moves it to the appropriate directory (`server/www/WebGL`) in the server.
+
+```
+# Before running this script, open it and change the UNITY variable to the path to your Unity executable.
+./build_client.sh # Unity must be closed before running this.
+```
+
+This launches a headless version of Unity which builds a WebGL client and moves it to the appropriate directory (`server/www/WebGL`) in the server. Any pre-existing contents of `server/www/WebGL` are moved to `server/www/OLD_WebGL`.
+
+Upon completion of this command, one may launch the server and access the client via ```localhost:8080/WebGL/index.html```.
 
 ### Deploying the server to a new machine.
 
@@ -211,19 +224,9 @@ tiles.
 You can resize a scenario map by editing the "rows" and "cols" fields respectively
 of the scenario file with a text editor.
 
-
-Deploying a WebGL Client
-------------------------
-
-For development purposes, the server may be run locally and the client run directly in the Unity editor. For deployment, the game is compiled to Web Assembly and WebGL is used for efficient graphics in the browser. You can deploy a new version of the client by running:
-
-```
-./build_client.sh # Unity must be closed when running this.
-```
-
-This launches a headless version of Unity which builds a WebGL client and moves it to the appropriate directory (`server/www/WebGL`) in the server.
-
-Upon completion of this command, one may launch the server and access the client via ```0.0.0.0:8080/WebGL/index.html```. The old build of the client is preserved at  `server/www/OLD_WebGL`.
+Documentation
+-------------
+For more information on CB2, see the [CB2 Wiki](https://github.com/lil-lab/cb2/wiki).
 
 Server Endpoints
 ----------------
