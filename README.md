@@ -228,12 +228,16 @@ Upon completion of this command, one may launch the server and access the client
 Server Endpoints
 ----------------
 
+The CB2 server creates a number of HTTP endpoints for inspecting and accessing user data from a live server instance. This makes it easier to administer experiments with CB2 – server admins can inspect games in-progress live.
+
 | Endpoint URL         | Description                                           |
 | -------------------- | ----------------------------------------------------- |
-| `/`                  | Serves static files from `server/www`.                |
-| `/status`            | Prints server status in JSON.                         |
+| `/`                  | CB2 Homepage. Contains links to docs, code, etc.      |
+| `/play`              | Serves Unity WebGL client                             |
 | `/player_endpoint`   | Websocket endpoint for communication with clients.    |
 | `/view/games`        | View all games played on the server.                  |
+
+For a full list of endpoints and more info, see the [CB2 URLs doc](https://github.com/lil-lab/cb2/wiki/Cb2-Url-Endpoints) in the wiki.
 
 #### Password-protected endpoints.
 The server contains some optionally password-protected endpoints. These are
