@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional
 
+import pygame
 from dateutil import tz
 from mashumaro import pass_through
 from mashumaro.mixins.json import DataClassJSONMixin
@@ -47,6 +48,11 @@ class Color(DataClassJSONMixin):
     def __eq__(self, rhs):
         return (
             self.r == rhs.r and self.g == rhs.g and self.b == rhs.b and self.a == rhs.a
+        )
+
+    def pygame_color(self):
+        return pygame.Color(
+            int(self.r * 255), int(self.g * 255), int(self.b * 255), int(self.a * 255)
         )
 
 

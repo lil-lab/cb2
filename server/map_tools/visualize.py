@@ -11,7 +11,7 @@ import pygame.freetype
 
 from server.actor import Actor
 from server.assets import AssetId
-from server.card import Color, Shape
+from server.card import Card, Color, Shape
 from server.hex import Edges
 from server.messages.bug_report import BugReport
 from server.messages.prop import Prop, PropType
@@ -342,7 +342,7 @@ def draw_hexagon(screen, x, y, width, height, color, rotation, boundary):
         pygame.draw.line(screen, line_color, vertices[5], vertices[0], line_width)
 
 
-def draw_card(screen, x, y, width, height, card_info):
+def draw_card(screen, x, y, width, height, card: Card):
     """Draws a card to the screen.
 
     screen: A pygame screen to draw to.
@@ -355,9 +355,9 @@ def draw_card(screen, x, y, width, height, card_info):
         screen, pygame.Color("white"), (x - width / 2, y - height / 2, width, height), 0
     )
     outline_color = (
-        pygame.Color("blue") if card_info.selected else pygame.Color("black")
+        card.border_color.pygame_color() if card.selected else pygame.Color("black")
     )
-    outline_radius = 5 if card_info.selected else 1
+    outline_radius = 5 if card.selected else 1
     pygame.draw.rect(
         screen,
         outline_color,
@@ -365,10 +365,10 @@ def draw_card(screen, x, y, width, height, card_info):
         outline_radius,
     )
 
-    for i in range(card_info.count):
-        color = PygameColorFromCardColor(card_info.color)
-        offset = -(height / 5) * ((card_info.count) / 2) + (height / 5) * i
-        draw_shape(screen, x, y + offset, card_info.shape, color)
+    for i in range(card.count):
+        color = PygameColorFromCardColor(card.color)
+        offset = -(height / 5) * ((card.count) / 2) + (height / 5) * i
+        draw_shape(screen, x, y + offset, card.shape, color)
 
 
 def draw_shape(screen, x, y, shape, color):
@@ -608,13 +608,14 @@ class GameDisplay(object):
             # Get the card location.
             loc = prop.prop_info.location
             (center_x, center_y) = self.transform_to_screen_coords(loc.cartesian())
+            card = Card.FromProp(prop)
             draw_card(
                 self._screen,
                 center_x,
                 center_y,
                 self._cell_width / 2,
                 self._cell_height * 0.7,
-                prop.card_init,
+                card,
             )
 
     def visualize_actor(self, actor_index):

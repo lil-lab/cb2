@@ -927,7 +927,25 @@ class MapProvider(object):
         map_update: MapUpdate = None,
         cards: List[card.Card] = None,
         map_config: MapConfig = MapConfig(),
+        custom_targets: List[int] = None,  # List of target card IDs.
     ):
+        """Creates a MapProvider. This handles generating the map, updating the
+        map, doing collision detection, generating cards, and detecting when a
+        new set of cards has been collected.
+
+        There are a number of initialization schemes, including random data,
+        hardcoded maps (for the tutorial) and custom maps (for scenarios, loaded
+        from a file).
+
+        If the map type is PRESET, then map_update and cards must be provided.
+        You can optionally also provide custom_targets, which will define a list
+        of card IDs which are the targets for the scenario. Selecting these
+        cards is the only way to score, and once all of them are selected, the
+        scenario ends.
+        """
+        self._custom_targets = None
+        if (custom_targets is not None) and (len(custom_targets) > 0):
+            self._custom_targets = set(custom_targets)
         if map_config is None:
             map_config = GlobalConfig().map_config
         if map_type == MapType.RANDOM:
@@ -1177,6 +1195,15 @@ class MapProvider(object):
         return self._selected_cards.values()
 
     def selected_cards_collide(self):
+        """Determines whether any invalid cards are selected.
+
+        In normal games, this uses the usual CB2 rules. However if custom
+        targets are defined, just checks if any non-target cards are selected.
+        """
+        if self._custom_targets is not None:
+            return any(
+                card.id not in self._custom_targets for card in self.selected_cards()
+            )
         shapes = set()
         colors = set()
         counts = set()
@@ -1191,6 +1218,11 @@ class MapProvider(object):
         )
 
     def selected_valid_set(self):
+        if self._custom_targets is not None:
+            return (
+                len(self.selected_cards()) == len(self._custom_targets)
+                and not self.selected_cards_collide()
+            )
         return len(self.selected_cards()) == 3 and not self.selected_cards_collide()
 
     def card_by_location(self, location):

@@ -24,6 +24,9 @@ class Scenario(DataClassJSONMixin):
     actor_state: StateSync
     kvals: Dict[str, str] = field(default_factory=dict)
     live_feedback: List[LiveFeedback] = field(default_factory=list)
+    # A list of card IDs that must be selected to complete the scenario. If empty, normal game
+    # play is allowed.
+    target_card_ids: Optional[List[int]] = None
 
 
 class ScenarioRequestType(Enum):

@@ -1429,7 +1429,9 @@ class State(object):
         # Load in map & props.
         props = scenario.prop_update.props
         cards = [Card.FromProp(prop) for prop in props]
-        self._map_provider = MapProvider(MapType.PRESET, scenario.map, cards)
+        self._map_provider = MapProvider(
+            MapType.PRESET, scenario.map, cards, custom_targets=scenario.target_card_ids
+        )
         self._map_update = self._map_provider.map()
         self._prop_update = self._map_provider.prop_update()
         self._prop_update = map_utils.CensorCards(self._prop_update, None)

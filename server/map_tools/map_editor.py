@@ -2,12 +2,14 @@ import dataclasses
 import logging
 import math
 import random
+from enum import Enum
 
 # Only import these on execution. This prevents pdoc from failing to build the docs.
 # tkinter isn't a server dependency, so it's not available in the server environment.
 if __name__ == "__main__":
     import tkinter
     from tkinter.filedialog import askopenfilename, asksaveasfilename
+
 from typing import Tuple
 
 import pygame
@@ -56,6 +58,7 @@ from server.map_utils import (
     WaterTile,
     copy,
 )
+from server.messages.action import Color as RgbColor
 from server.messages.scenario import Scenario
 from server.util import IdAssigner, JsonSerialize
 
@@ -106,6 +109,22 @@ tile_generators = [
     lambda x: MountainTileTree(x, True),  # Snowy
     lambda x: RampToMountain(x, True),  # Snowy
 ]
+
+
+class CardAttribute(Enum):
+    """The type of card to draw."""
+
+    NORMAL_CARD = 0
+    GOAL = 1
+
+    def to_str(self):
+        """Define a very short string representation for the enum."""
+        if self == CardAttribute.NORMAL_CARD:
+            return "N"
+        elif self == CardAttribute.GOAL:
+            return "G"
+        else:
+            return ""
 
 
 def LayerToHeight(layer):
@@ -208,7 +227,7 @@ def edit_scenario(scenario: Scenario) -> Scenario:
     # The third row should allow the user to select from integers 1-3 (inclusive).
 
     # Draw the card tool panel.
-    card_panel = pygame.Surface((SCREEN_SIZE - 250, 150))
+    card_panel = pygame.Surface((SCREEN_SIZE - 250, 200))
     card_panel.fill((200, 230, 230))
 
     # Draw card options in the panel.
@@ -252,6 +271,13 @@ def edit_scenario(scenario: Scenario) -> Scenario:
         (text, _) = FONT.render(str(i), pygame.Color(90, 90, 90))
         card_panel.blit(text, coordinates)
         card_number_coords[global_coordinates] = i
+    card_attr_coords = {}
+    for i, attr in enumerate([CardAttribute.NORMAL_CARD, CardAttribute.GOAL]):
+        coordinates = (i * 50 + 60, 145)
+        global_coordinates = (coordinates[0] + 60, coordinates[1] + SCREEN_SIZE - 190)
+        (text, _) = FONT.render(attr.to_str(), pygame.Color(90, 90, 90))
+        card_panel.blit(text, coordinates)
+        card_attr_coords[global_coordinates] = attr
 
     # Draw the save button.
     save_button = pygame.Surface((50, 50))
@@ -289,6 +315,7 @@ def edit_scenario(scenario: Scenario) -> Scenario:
     active_color = Color.RED
     active_shape = Shape.SQUARE
     active_number = 1
+    active_attribute = CardAttribute.NORMAL_CARD
     active_card = None
     active_tool_surface = None
     active_tool = None
@@ -358,12 +385,21 @@ def edit_scenario(scenario: Scenario) -> Scenario:
             for location, number in card_number_coords.items():
                 if number is active_number:
                     number_location = location
+                    display._screen.blit(
+                        selected_tool_surface,
+                        (number_location[0] - 25, number_location[1] - 25),
+                    )  # pylint: disable=protected-access
                     break
-            if number_location is not None:
-                display._screen.blit(
-                    selected_tool_surface,
-                    (number_location[0] - 25, number_location[1] - 25),
-                )  # pylint: disable=protected-access
+            # Draw the selected_tool_surface around the active attribute.
+            attribute_location = None
+            for location, attr in card_attr_coords.items():
+                if attr == active_attribute:
+                    attribute_location = location
+                    display._screen.blit(
+                        selected_tool_surface,
+                        (attribute_location[0] - 25, attribute_location[1] - 25),
+                    )
+                    break
 
         # Find the map tile closest to the mouse.
         mouse_pos = pygame.mouse.get_pos()
@@ -443,6 +479,11 @@ def edit_scenario(scenario: Scenario) -> Scenario:
                         active_number = number
                         found_card = True
                         break
+                for coordinates, attr in card_attr_coords.items():
+                    if distance(coordinates, event.pos) < 15:
+                        active_attribute = attr
+                        found_card = True
+                        break
                 if found_card:
                     tool_location = None
                     active_card = Card(
@@ -452,7 +493,10 @@ def edit_scenario(scenario: Scenario) -> Scenario:
                         active_shape,
                         active_color,
                         active_number,
-                        False,
+                        active_attribute == CardAttribute.GOAL,
+                        RgbColor(
+                            1, 215 / 255, 0, 0
+                        ),  # Goal cards appear as selected yellow.
                     )
                     active_tool_surface = pygame.Surface((50, 50))
                     # Make the surface transparent.
@@ -480,14 +524,26 @@ def edit_scenario(scenario: Scenario) -> Scenario:
                         if active_card is not None:
                             for i, prop in enumerate(scenario.prop_update.props):
                                 if prop.prop_info.location == tile.cell.coord:
+                                    if (scenario.target_card_ids is not None) and (
+                                        prop.id in scenario.target_card_ids
+                                    ):
+                                        scenario.target_card_ids.remove(prop.id)
                                     # Remove the old prop.
                                     scenario.prop_update.props.pop(i)
                                     break
                             if active_number > 0:
                                 # Set the coordinate.
                                 new_card = copy.deepcopy(active_card)
+                                new_card.selected = False
+                                new_card.border_color = RgbColor(0, 0, 1, 0)
                                 new_card.location = tile.cell.coord
                                 scenario.prop_update.props.append(new_card.prop())
+                                if active_attribute == CardAttribute.GOAL:
+                                    if scenario.target_card_ids is None:
+                                        scenario = dataclasses.replace(
+                                            scenario, target_card_ids=[]
+                                        )
+                                    scenario.target_card_ids.append(new_card.id)
                         found_map_tile = True
                         break
                 if not found_tool and not found_map_tile and not found_card:

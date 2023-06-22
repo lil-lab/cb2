@@ -73,7 +73,8 @@ class ScenarioState(object):
             lobby=lobby,
         )
 
-        # Set the default map to all water. This locks the player in place and prevents movement. When a scenario is loaded, the map will be updated.
+        # Set the default map to the default map. This gives the player a place
+        # to wait. When a scenario is loaded, the map will be updated.
         self._state._map_provider = MapProvider(
             MapType.PRESET, DefaultMap(), []
         )  # pylint: disable=protected-access
