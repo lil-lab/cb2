@@ -14,7 +14,7 @@ python3 -m pip install cython
 python3 -m pip install -r requirements.txt
 echo "Downloading client..."
 cd server/www/
-wget https://github.com/lil-lab/cb2/releases/download/deployed-march-2023/WebGL.zip
+wget -O WebGL.zip https://github.com/lil-lab/cb2/releases/download/deployed-march-2023/WebGL.zip
 echo "Decompressing client."
 unzip WebGL
 cd -
