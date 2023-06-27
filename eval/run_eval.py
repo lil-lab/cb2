@@ -6,9 +6,9 @@ from typing import List
 import fire
 from tqdm import tqdm
 
-import server.schemas.defaults as defaults
 from agents.agent import RateLimitException, Role
-from agents.config import CreateAgent, ReadAgentConfigOrDie
+from agents.config import AgentType, CreateAgent, ReadAgentConfigOrDie
+from eval.eval_schema import Eval, InstructionEvaluation, RunSource
 from py_client.endpoint_pair import EndpointPair
 from py_client.local_game_coordinator import LocalGameCoordinator
 from server.card import Card
@@ -21,7 +21,6 @@ from server.messages.prop import PropType
 from server.messages.turn_state import TurnState
 from server.scenario_util import GameStateFromScenario, ReconstructScenarioFromEvent
 from server.schemas import base
-from server.schemas.eval import Eval, InstructionEvaluation, RunSource
 from server.schemas.event import Event, EventType
 from server.state_utils import FOLLOWER_MOVES_PER_TURN, FOLLOWER_SECONDS_PER_TURN
 from server.util import GetCommitHash
@@ -112,7 +111,7 @@ def InitPythonLogging():
 def main(
     agent_config: str,
     server_config: str,
-    eval_output: str = "./evalrun.db",
+    output_prefix: str = "eval_",
     limit=-1,
     remote: bool = False,
     remote_address: str = None,
@@ -145,15 +144,13 @@ def main(
     # Create an eval run entry in the database.
     eval_run = Eval(
         run_source=RunSource.LOCAL,
-        client_hash="",
         commit_version=GetCommitHash(),
         agent_name=agent_config.name,
-        agent_type=agent_config.agent_type,
+        agent_type=AgentType.from_str(agent_config.agent_type),
         agent_config=agent_config,
         agent_role=agent.role(),
         server_config=config.to_json(),
     )
-
     # This object will help us launch local games.
     coordinator = LocalGameCoordinator(
         config,
@@ -234,15 +231,11 @@ def main(
             # Keep running until the current turn is over. We check for this inside
             # the loop because the game state may change in the middle of the loop.
             agent_actions = []
-            thoughts = []
             while not endpoint_pair.over():
                 # If the turn is over, then the eval for this instruction is done.
                 if game_state.turn_state.turn != agent.role():
                     break
                 action = agent.choose_action(game_state)
-                thought = agent.thoughts()
-                if len(thought) > 0:
-                    thoughts.extend(thought)
                 game_state = endpoint_pair.step(action)
                 agent_actions.append(str(action))
 
@@ -280,30 +273,21 @@ def main(
                 agent_instructions_passed.append(instruction.id)
             results.append(
                 InstructionEvaluation(
-                    eval_run=eval_run,
                     instruction_uuid=instruction.short_code,
-                    instruction_text=objective.text,
                     agent_actions=str(agent_actions),
-                    event_uuid=eval_start_event.id,
-                    agent_outcome=game_state.to_json(),
-                    baseline_outcome=final_baseline_state.to_json(),
+                    event_uuid=eval_start_event.id.hex,
                     success=passed_instruction_eval,
-                    agent_thoughts=str(thoughts),
                 )
             )
         except RateLimitException:
             logger.info(f"Rate limit error. Waiting 60 seconds.")
             results.append(
                 InstructionEvaluation(
-                    eval_run=eval_run,
                     instruction_uuid=instruction.short_code,
-                    instruction_text=objective.text,
                     agent_actions=str(agent_actions),
-                    event_uuid=eval_start_event.id,
-                    agent_outcome="Rate limit error. Waiting 60 seconds.",
-                    baseline_outcome="",
+                    event_uuid=eval_start_event.id.hex,
                     success=False,
-                    agent_thoughts="Rate limit error. Waiting 60 seconds.",
+                    error="Rate limit error. Waiting 60 seconds.",
                 )
             )
             time.sleep(60)
@@ -316,18 +300,17 @@ def main(
             logger.error(e, exc_info=True)
             break
 
-    # Switch databases and then save the results.
-    SwitchToDatabase(eval_output)
-    base.CreateTablesIfNotExists(defaults.ListEvalTables())
-
+    # Save results to JSON file. See eval/eval_schema.py for the schema.
     eval_run.percent_passed = (
         (100 * len(agent_instructions_passed) / len(results)) if len(results) > 0 else 0
     )
     eval_run.total_instructions = len(results)
-    eval_run.save(force_insert=True)
-    for result in results:
-        result.save(force_insert=True)
-
+    eval_run.instruction_evals = results
+    # Serialize the eval run to JSON.
+    eval_run_json = eval_run.to_json()
+    # Save the JSON to a file.
+    with open(f"{output_prefix}{eval_run.id}.json", "w") as f:
+        f.write(eval_run_json)
     logger.info(f"Eval run {eval_run.id} complete.")
     if len(results) > 0:
         logger.info(

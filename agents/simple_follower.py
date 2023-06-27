@@ -7,7 +7,6 @@ not be very diverse.
 
 import logging
 from dataclasses import dataclass
-from typing import List
 
 from mashumaro.mixins.json import DataClassJSONMixin
 
@@ -78,9 +77,6 @@ class SimpleFollower(object):
         self.actions.pop(0)
         return action
 
-    def thoughts(self) -> List[str]:
-        return []
-
 
 def _actions_from_instruction(instruction):
     actions = []
@@ -99,9 +95,6 @@ def _actions_from_instruction(instruction):
             actions.append(Action.Right())
         elif "random".startswith(action_code):
             actions.append(Action.RandomMovementAction())
-    if len(actions) == 0:
-        # Choose a random action.
-        Action.RandomMovementAction()
     return actions
 
 
@@ -110,18 +103,3 @@ def _get_active_instruction(instructions):
         if not instruction.completed and not instruction.cancelled:
             return instruction
     return None
-
-
-def _get_actors(game_state):
-    (
-        _,
-        _,
-        _,
-        _,
-        actors,
-        _,
-    ) = game_state
-    if len(actors) == 1:
-        return (None, actors[0])
-    else:
-        return actors

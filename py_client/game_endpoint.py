@@ -88,12 +88,14 @@ async def pygame_event_handler():
 class GameState(DataClassJSONMixin):
     """Represents the state of the game at a given time. Unpacks to a tuple for compatibility with the old API."""
 
-    map_update: MapUpdate
-    props: List[Prop]
-    turn_state: TurnState
-    instructions: List[ObjectiveMessage]
-    actors: List[Actor]
-    live_feedback: List[LiveFeedback] = None
+    map_update: MapUpdate  # The game map.
+    props: List[Prop]  # The props in the game.
+    turn_state: TurnState  # Moves left, current role, score, turns left, etc...
+    instructions: List[ObjectiveMessage]  # List of follower instructions.
+    actors: List[Actor]  # List of actors in the game.
+    live_feedback: List[
+        LiveFeedback
+    ] = None  # List of live feedback messages since the last call to step().
 
     def __iter__(
         self,

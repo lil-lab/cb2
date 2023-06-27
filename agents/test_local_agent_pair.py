@@ -6,6 +6,10 @@ import unittest
 import numpy as np
 from tqdm import tqdm
 
+from agents.config import AgentConfig, AgentType, CreateAgent
+from agents.simple_follower import SimpleFollowerConfig
+from py_client.game_endpoint import Action
+
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = ""  # Hide pygame welcome message
 
 from agents.local_agent_pair import PlayGame
@@ -55,8 +59,31 @@ class RandomRealtimeLocalSelfPlayTest(unittest.TestCase):
 
     def test_pair(self):
         """Runs a set of games between two naive agents."""
+        leader_agent = CreateAgent(
+            AgentConfig(
+                name="Simple leader",
+                comment="Used for testing purposes",
+                agent_type=AgentType.SIMPLE_LEADER.name,
+            )
+        )
+        follower_agent = CreateAgent(
+            AgentConfig(
+                name="Simple follower",
+                comment="Used for testing purposes",
+                agent_type=AgentType.SIMPLE_FOLLOWER.name,
+                simple_follower_config=SimpleFollowerConfig(
+                    default_action=Action.ActionCode.INSTRUCTION_DONE.name,
+                ),
+            )
+        )
         for i in tqdm(range(NUMBER_OF_GAMES)):
-            score, duration = PlayGame(self.coordinator, slow=False, log_to_db=False)
+            score, duration = PlayGame(
+                self.coordinator,
+                leader_agent,
+                follower_agent,
+                slow=False,
+                log_to_db=False,
+            )
             self.scores.append(score)
             self.durations.append(duration)
         # Print out the scores.

@@ -3,7 +3,6 @@ import functools
 import logging
 import string
 from dataclasses import dataclass
-from typing import List
 
 import openai
 import tiktoken
@@ -159,13 +158,6 @@ class GPTFollower(Agent):
             return actions[0]
 
         return actions[0]
-
-    # Overrides thoughts().
-    def thoughts(self) -> List[str]:
-        """Returns a list of thoughts for the most recent action."""
-        thoughts = self.thought_queue
-        self.thought_queue = []
-        return thoughts
 
 
 def timeout_decorator(timeout):

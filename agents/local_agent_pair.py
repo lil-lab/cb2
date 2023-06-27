@@ -8,6 +8,7 @@ import numpy as np
 from viztracer import VizTracer
 
 import server.db_tools.db_utils as db_utils
+from agents.agent import Agent
 from py_client.endpoint_pair import EndpointPair
 from py_client.game_endpoint import Action, Role
 from py_client.local_game_coordinator import LocalGameCoordinator
@@ -21,7 +22,14 @@ from agents.config import AgentConfig, AgentType, CreateAgent
 from agents.simple_follower import SimpleFollowerConfig
 
 
-def PlayGame(coordinator, e_uuid="", log_to_db: bool = True, slow: bool = False):
+def PlayGame(
+    coordinator,
+    leader_agent: Agent,
+    follower_agent: Agent,
+    e_uuid="",
+    log_to_db: bool = True,
+    slow: bool = False,
+):
     if len(e_uuid) > 0:
         game_name = coordinator.CreateGameFromDatabase(e_uuid)
     else:
@@ -31,24 +39,6 @@ def PlayGame(coordinator, e_uuid="", log_to_db: bool = True, slow: bool = False)
         game_name = coordinator.CreateGame(log_to_db=log_to_db, lobby=lobby)
 
     endpoint_pair = EndpointPair(coordinator, game_name)
-
-    leader_agent = CreateAgent(
-        AgentConfig(
-            name="Simple leader",
-            comment="Used for testing purposes",
-            agent_type=AgentType.SIMPLE_LEADER.name,
-        )
-    )
-    follower_agent = CreateAgent(
-        AgentConfig(
-            name="Simple follower",
-            comment="Used for testing purposes",
-            agent_type=AgentType.SIMPLE_FOLLOWER.name,
-            simple_follower_config=SimpleFollowerConfig(
-                default_action=Action.ActionCode.INSTRUCTION_DONE.name,
-            ),
-        )
-    )
     endpoint_pair.initialize()
     game_state = endpoint_pair.initial_state()
     while not endpoint_pair.over():
@@ -88,10 +78,29 @@ def main(
     coordinator = LocalGameCoordinator(
         config, render_leader=False, render_follower=False
     )
+    leader_agent = CreateAgent(
+        AgentConfig(
+            name="Simple leader",
+            comment="Used for testing purposes",
+            agent_type=AgentType.SIMPLE_LEADER.name,
+        )
+    )
+    follower_agent = CreateAgent(
+        AgentConfig(
+            name="Simple follower",
+            comment="Used for testing purposes",
+            agent_type=AgentType.SIMPLE_FOLLOWER.name,
+            simple_follower_config=SimpleFollowerConfig(
+                default_action=Action.ActionCode.INSTRUCTION_DONE.name,
+            ),
+        )
+    )
     # If profile=True, play only 1 game, but import viztracer and save the trace to cb2-local.prof.
     if profile:
         with VizTracer(output_file="cb2-local-prof.json", tracer_entries=10000000):
-            score, duration = PlayGame(coordinator, event_uuid)
+            score, duration = PlayGame(
+                coordinator, leader_agent, follower_agent, event_uuid
+            )
         logger.info(f"Game over. Score: {score}, Duration: {duration}")
         return
 
@@ -100,7 +109,12 @@ def main(
             f"========================== STARTING GAME {i} =========================="
         )
         score, duration = PlayGame(
-            coordinator, event_uuid, slow=slow, log_to_db=log_to_db
+            coordinator,
+            leader_agent,
+            follower_agent,
+            event_uuid,
+            slow=slow,
+            log_to_db=log_to_db,
         )
         logger.info(f"Game over. Score: {score}, Duration: {duration}")
         scores.append(score)

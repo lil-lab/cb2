@@ -37,12 +37,3 @@ class Agent(ABC):
     def role(self) -> Role:
         """Returns the role of the agent."""
         ...
-
-    @abstractmethod
-    def thoughts(self) -> List[str]:
-        """Returns the thoughts of the agent.
-
-        This is used for logging the "thought" stage of chain-of-thought agents.
-        Other agents can just use the default implementation (an empty string).
-        """
-        return ""
