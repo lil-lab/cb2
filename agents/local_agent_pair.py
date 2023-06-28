@@ -3,7 +3,6 @@ import time
 
 import fire
 import matplotlib.pyplot as plt
-import nest_asyncio
 import numpy as np
 from viztracer import VizTracer
 
@@ -60,24 +59,54 @@ def PlayGame(
     return endpoint_pair.score(), endpoint_pair.duration().total_seconds()
 
 
+def PlayNGames(
+    config_filepath: str,
+    leader_agent: Agent,
+    follower_agent: Agent,
+    num_games: int = 10,
+    log_to_db: bool = True,
+    slow: bool = False,
+):
+    config = ReadConfigOrDie(config_filepath)
+    db_utils.ConnectToDatabase(config)
+    coordinator = LocalGameCoordinator(
+        config, render_leader=False, render_follower=False
+    )
+    scores = []
+    durations = []
+    for i in range(num_games):
+        logger.info(
+            f"========================== STARTING GAME {i} =========================="
+        )
+        score, duration = PlayGame(
+            coordinator,
+            leader_agent,
+            follower_agent,
+            log_to_db=log_to_db,
+            slow=slow,
+        )
+        logger.info(f"Game over. Score: {score}, Duration: {duration}")
+        scores.append(score)
+        durations.append(duration)
+    logger.info(f"len(scores) = {len(scores)}")
+    logger.info(f"len(durations) = {len(durations)}")
+    return scores, durations
+
+
 def main(
     config_filepath="server/config/local-covers-config.yaml",
     event_uuid="",
     profile=False,
     num_games=10,
-    slow: bool = False,
     log_to_db: bool = False,
+    slow: bool = False,
 ):
-    nest_asyncio.apply()
     # Disabling most logs improves performance by about 50ms per game.
     logging.basicConfig(level=logging.INFO)
     config = ReadConfigOrDie(config_filepath)
     db_utils.ConnectToDatabase(config)
     scores = []
     durations = []
-    coordinator = LocalGameCoordinator(
-        config, render_leader=False, render_follower=False
-    )
     leader_agent = CreateAgent(
         AgentConfig(
             name="Simple leader",
@@ -98,27 +127,18 @@ def main(
     # If profile=True, play only 1 game, but import viztracer and save the trace to cb2-local.prof.
     if profile:
         with VizTracer(output_file="cb2-local-prof.json", tracer_entries=10000000):
+            coordinator = LocalGameCoordinator(
+                config, render_leader=False, render_follower=False
+            )
             score, duration = PlayGame(
                 coordinator, leader_agent, follower_agent, event_uuid
             )
         logger.info(f"Game over. Score: {score}, Duration: {duration}")
         return
 
-    for i in range(num_games):
-        logger.info(
-            f"========================== STARTING GAME {i} =========================="
-        )
-        score, duration = PlayGame(
-            coordinator,
-            leader_agent,
-            follower_agent,
-            event_uuid,
-            slow=slow,
-            log_to_db=log_to_db,
-        )
-        logger.info(f"Game over. Score: {score}, Duration: {duration}")
-        scores.append(score)
-        durations.append(duration)
+    scores, durations = PlayNGames(
+        config_filepath, leader_agent, follower_agent, num_games, log_to_db, slow
+    )
     # Print out the scores.
     logger.info(f"Mean score: {np.mean(scores)}")
     logger.info(f"Mean duration: {np.mean(durations)}")

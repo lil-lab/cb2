@@ -22,7 +22,6 @@ from typing import List
 from mashumaro.config import BaseConfig
 from mashumaro.mixins.json import DataClassJSONMixin
 
-from agents.config import AgentConfig, AgentType
 from server.messages.rooms import Role
 from server.util import GetCommitHash
 
@@ -88,8 +87,8 @@ class Eval(DataClassJSONMixin):
     commit_version: str = GetCommitHash()
     run_date: datetime.datetime = datetime.datetime.utcnow()
     agent_name: str = ""
-    agent_type: AgentType = AgentType.NONE
-    agent_config: AgentConfig = "{}"
+    agent_type: str = "NONE"
+    agent_config: str = "{}"
     agent_role: Role = (Role.NONE,)
     server_config: str = "{}"
     percent_passed: float = float(0)

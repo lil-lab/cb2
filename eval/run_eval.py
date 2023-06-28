@@ -6,14 +6,14 @@ from typing import List
 import fire
 from tqdm import tqdm
 
-from agents.agent import RateLimitException, Role
-from agents.config import AgentType, CreateAgent, ReadAgentConfigOrDie
+from agents.agent import Agent, RateLimitException, Role
+from agents.config import AgentConfig, CreateAgent, ReadAgentConfigOrDie
 from eval.eval_schema import Eval, InstructionEvaluation, RunSource
 from py_client.endpoint_pair import EndpointPair
 from py_client.local_game_coordinator import LocalGameCoordinator
 from server.card import Card
 from server.config.config import ReadServerConfigOrDie
-from server.db_tools.db_utils import ListAnalysisGames
+from server.db_tools.db_utils import ListGames
 from server.lobbies.open_lobby import OpenLobby
 from server.lobby_consts import LobbyInfo, LobbyType
 from server.messages.objective import ObjectiveMessage
@@ -108,23 +108,34 @@ def InitPythonLogging():
     logging.getLogger("peewee").setLevel(logging.INFO)
 
 
-def main(
-    agent_config: str,
-    server_config: str,
+def RunEval(
+    agent: Agent,
     output_prefix: str = "eval_",
-    limit=-1,
-    remote: bool = False,
-    remote_address: str = None,
+    server_config_path: str = "",
+    limit: int = -1,
+    # Optional information about the agent that will be saved in the eval JSON output.
+    agent_config: AgentConfig = None,
+    agent_name: str = "",
+    agent_type: str = "",
 ):
-    InitPythonLogging()
-    agent_config = ReadAgentConfigOrDie(agent_config)
-    agent = CreateAgent(agent_config)
-    config = ReadServerConfigOrDie(server_config)
+    """Runs an eval against the given agent.
+
+    Server configuration is required. This allows us to preserve the settings,
+    software version, and lobby configuration that were used to collect the game
+    data. Without this, an eval would be impossible to reproduce.
+
+    Args:
+        agent: The agent to run the eval against.
+        output_prefix: The prefix to use for the output file.
+        limit: The maximum number of instructions to evaluate. If -1, no limit.
+        server_config_path: The path to the server config file.
+    """
+    config = ReadServerConfigOrDie(server_config_path)
 
     base.SetDatabase(config)
     base.ConnectDatabase()
 
-    games = ListAnalysisGames(config)
+    games = ListGames()
     game_ids = [game.id for game in games]
     instructions = Event.select().where(
         (Event.type == EventType.INSTRUCTION_SENT) & (Event.game_id << game_ids)
@@ -137,17 +148,13 @@ def main(
         print("No instructions found.")
         return
 
-    if remote:
-        print("Remote eval not yet supported.")
-        return
-
     # Create an eval run entry in the database.
     eval_run = Eval(
         run_source=RunSource.LOCAL,
         commit_version=GetCommitHash(),
-        agent_name=agent_config.name,
-        agent_type=AgentType.from_str(agent_config.agent_type),
-        agent_config=agent_config,
+        agent_name=agent_name,
+        agent_type=agent_type,
+        agent_config=agent_config.to_json(),
         agent_role=agent.role(),
         server_config=config.to_json(),
     )
@@ -191,35 +198,30 @@ def main(
                     continue
 
             # Create a local game to run the eval.
-            if remote:
-                logger.info(f"Remote eval not yet supported.")
-                return
-            else:
-                game_name = coordinator.CreateGameFromDatabase(
-                    eval_start_event.id.hex, log_to_db=False, lobby=eval_lobby
+            game_name = coordinator.CreateGameFromDatabase(
+                eval_start_event.id.hex, log_to_db=False, lobby=eval_lobby
+            )
+            # Due to a known bug (now patched) where TURN_STATE events were not
+            # being logged, we need to force the current turn state to be at the
+            # beginning of the follower's turn, with full moves and time.
+            state_machine = coordinator._state_machine_driver(
+                game_name
+            ).state_machine()  # pylint: disable=protected-access
+            state_machine._send_turn_state(
+                TurnState(  # pylint: disable=protected-access
+                    Role.FOLLOWER,
+                    FOLLOWER_MOVES_PER_TURN,
+                    1,  # As long as next turn isn't game over.
+                    datetime.utcnow() + timedelta(seconds=FOLLOWER_SECONDS_PER_TURN),
+                    datetime.utcnow(),
+                    0,  # Let's start each eval with a score of zero.
+                    0,
+                    False,
+                    0,
                 )
-                # Due to a known bug (now patched) where TURN_STATE events were not
-                # being logged, we need to force the current turn state to be at the
-                # beginning of the follower's turn, with full moves and time.
-                state_machine = coordinator._state_machine_driver(
-                    game_name
-                ).state_machine()  # pylint: disable=protected-access
-                state_machine._send_turn_state(
-                    TurnState(  # pylint: disable=protected-access
-                        Role.FOLLOWER,
-                        FOLLOWER_MOVES_PER_TURN,
-                        1,  # As long as next turn isn't game over.
-                        datetime.utcnow()
-                        + timedelta(seconds=FOLLOWER_SECONDS_PER_TURN),
-                        datetime.utcnow(),
-                        0,  # Let's start each eval with a score of zero.
-                        0,
-                        False,
-                        0,
-                    )
-                )
-                endpoint_pair = EndpointPair(coordinator, game_name)
-                endpoint_pair.initialize()
+            )
+            endpoint_pair = EndpointPair(coordinator, game_name)
+            endpoint_pair.initialize()
             game_state = endpoint_pair.initial_state()
 
             if game_state.turn_state.turn != agent.role():
@@ -317,6 +319,26 @@ def main(
             f"Instructions passed: {len(agent_instructions_passed)}. ({100 * len(agent_instructions_passed) / len(results)}%)"
         )
     logger.info(f"Total instructions: {len(results)}")
+
+
+def main(
+    agent_config: str,
+    output_prefix: str = "eval_",
+    server_config: str = "",
+    limit: int = -1,
+):
+    InitPythonLogging()
+    agent_config = ReadAgentConfigOrDie(agent_config)
+    agent = CreateAgent(agent_config)
+    RunEval(
+        agent,
+        output_prefix,
+        server_config,
+        limit,
+        agent_config,
+        agent_name=agent_config.name,
+        agent_type=agent_config.agent_type,
+    )
 
 
 if __name__ == "__main__":

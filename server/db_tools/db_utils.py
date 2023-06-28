@@ -175,21 +175,26 @@ def high_percent_cancelled_instructions(game_events):
     all_instructions = game_events.where(Event.type == EventType.INSTRUCTION_SENT)
     all_instructions = all_instructions.order_by(Event.server_time)
 
-    for instruction in all_instructions:        
+    for instruction in all_instructions:
         # Check if the instruction was activated
-        activation_query = instruction.children.where(Event.type == EventType.INSTRUCTION_ACTIVATED)
+        activation_query = instruction.children.where(
+            Event.type == EventType.INSTRUCTION_ACTIVATED
+        )
         if not activation_query.exists():
             continue
 
         # Check if the instruction has actions associated with it
-        actions = instruction.children.where(Event.type == EventType.ACTION,
-                                             Event.role == "Role.FOLLOWER")
+        actions = instruction.children.where(
+            Event.type == EventType.ACTION, Event.role == "Role.FOLLOWER"
+        )
         if actions.count() == 0:
             continue
         total_active_instructions += 1
 
         # Check if the instruction was cancelled
-        cancellation_query = instruction.children.where(Event.type == EventType.INSTRUCTION_CANCELLED)
+        cancellation_query = instruction.children.where(
+            Event.type == EventType.INSTRUCTION_CANCELLED
+        )
         if not cancellation_query.exists():
             continue
         cancelled_instructions += 1
@@ -208,8 +213,9 @@ def follower_got_lost(game_events):
     game_instructions = game_events.where(Event.type == EventType.INSTRUCTION_SENT)
     follower_got_lost = False
     for instruction in game_instructions:
-        moves = game_events.where(Event.parent_event == instruction.id,
-                                  Event.type == EventType.ACTION)
+        moves = game_events.where(
+            Event.parent_event == instruction.id, Event.type == EventType.ACTION
+        )
         if moves.count() >= 25:
             follower_got_lost = True
             break

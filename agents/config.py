@@ -14,8 +14,11 @@ from agents.simple_leader import SimpleLeader
 
 class AgentType(Enum):
     NONE = 0
+    # Follower used for CB2 pilot study.
     PILOT_FOLLOWER = 1
+    # Experimental follower that uses a text-only interface to OpenAI's GPT API.
     GPT_FOLLOWER = 2
+    # Simple follower/leader for unit testing and debugging.
     SIMPLE_FOLLOWER = 3
     SIMPLE_LEADER = 4
 
