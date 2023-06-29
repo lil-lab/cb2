@@ -3,90 +3,21 @@
 import random
 
 import fire
-import pygame
-import pygame.freetype
-import schemas.defaults
-import schemas.game
-from config.config import Config
-from db_tools import db_utils
-from hex import HecsCoord
-from map_tools import visualize
-from schemas import base
-from schemas.game import Game, Instruction
 
-pygame.freetype.init()
-INSTRUCTION_FONT = pygame.freetype.SysFont("Times New Roman", 30)
-
-# The below imports are used to import pygame in a headless setup, to render map
-# updates as images for game recordings.
-import os
-
-# set SDL to use the dummy NULL video driver,
-#   so it doesn't need a windowing system.
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-import pygame.transform
-
-if 1:
-    # some platforms might need to init the display for some parts of pygame.
-    import pygame.display
-
-    pygame.display.init()
-    screen = pygame.display.set_mode((1, 1))
-
-SCREEN_SIZE = 800
-
-
-def draw_wrapped(display, instruction_text, max_width=50):
-    words = instruction_text.split(" ")
-    lines = []
-    current_line = ""
-    for word in words:
-        if len(current_line) + len(word) > max_width:
-            lines.append(current_line)
-            current_line = word
-        else:
-            current_line += " " + word
-    lines.append(current_line)
-    for i, line in enumerate(lines):
-        (line_text, _) = INSTRUCTION_FONT.render(line, pygame.Color(90, 90, 90))
-        display._screen.blit(
-            line_text,
-            (
-                SCREEN_SIZE * 0.5 - line_text.get_width() / 2,
-                SCREEN_SIZE * 0.75 + i * 30,
-            ),
-        )
-
-
-def draw_instruction(instruction, moves, map_update, filename):
-    display = visualize.GameDisplay(SCREEN_SIZE)
-    display.set_map(map_update)
-    trajectory = [move.position_before for move in moves]
-    if len(moves) > 0:
-        final_position = HecsCoord.add(
-            moves[-1].position_before, moves[-1].action.displacement
-        )
-        trajectory.append(final_position)
-    display.set_trajectory(trajectory)
-    display.draw()
-    draw_wrapped(display, f'"{instruction.text}"')
-    pygame.display.flip()
-    pygame.image.save(display.screen(), filename)
-
-
-# Attempts to parse the config file. If there's any parsing or file errors,
-# doesn't handle the exceptions.
-def ReadConfigOrDie(config_path):
-    with open(config_path, "r") as cfg_file:
-        config = Config.from_json(cfg_file.read())
-        return config
+from server.config.config import ReadConfigOrDie
+from server.db_tools import db_utils
+from server.messages.objective import ObjectiveMessage
+from server.schemas import base
+from server.schemas.defaults import ListDefaultTables
+from server.schemas.event import Event, EventType
+from server.schemas.game import Game
 
 
 def main(
     number=-1,
     search_term="",
     research_only=True,
-    config_filepath="config/server-config.json",
+    config_filepath="server/config/local-covers-config.yaml",
 ):
     config = ReadConfigOrDie(config_filepath)
 
@@ -94,7 +25,7 @@ def main(
     # Setup the sqlite database used to record game actions.
     base.SetDatabase(config)
     base.ConnectDatabase()
-    base.CreateTablesIfNotExists(schemas.defaults.ListDefaultTables())
+    base.CreateTablesIfNotExists(ListDefaultTables())
 
     games = (
         db_utils.ListAnalysisGames(config)
@@ -104,12 +35,19 @@ def main(
     words = set()
     instruction_list = []
     for game in games:
-        instructions = Instruction.select().join(Game).where(Instruction.game == game)
+        instructions = (
+            Event.select()
+            .where(Event.type == EventType.INSTRUCTION_SENT)
+            .join(Game)
+            .where(Event.game == game)
+        )
         for instruction in instructions:
-            if len(search_term) > 0 and search_term in instruction.text:
-                print(f"Search term found in game {game.id}: {instruction.text}")
-            words.update(instruction.text.split(" "))
-            instruction_list.append(instruction.text)
+            decoded_data = ObjectiveMessage.from_json(instruction.data)
+            text = decoded_data.text
+            if len(search_term) > 0 and search_term in text:
+                print(f"Search term found in game {game.id}: {text}")
+            words.update(text.split(" "))
+            instruction_list.append(text)
 
     if number < 0:
         number = len(instruction_list)
