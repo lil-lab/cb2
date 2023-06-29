@@ -40,6 +40,12 @@ class Game(BaseModel):
     kvals = TextField(null=True)  # JSON of key-value pairs.
 
 
+# Most of the rest of this file isn't used in the database anymore, and is just
+# kept for the migration script to convert older versions of the database (see
+# server/db_tools/migrate_db.py). Games are recorded as a list of Events now
+# (see server/schemas/event.py).
+
+
 class ActionField(TextField):
     def db_value(self, value):
         return orjson.dumps(
