@@ -1364,7 +1364,10 @@ async def serve(config):
     app = web.Application()
     fernet_key = cryptography.fernet.Fernet.generate_key()
     fernet = cryptography.fernet.Fernet(fernet_key)
-    setup(app, EncryptedCookieStorage(fernet))
+    setup(
+        app,
+        EncryptedCookieStorage(fernet, httponly=True, samesite="Strict"),
+    )
     app.add_routes(routes)
     runner = aiohttp.web.AppRunner(app, handle_signals=True)
     await runner.setup()
