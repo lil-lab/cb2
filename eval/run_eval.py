@@ -12,7 +12,7 @@ from eval.eval_schema import Eval, InstructionEvaluation, RunSource
 from py_client.endpoint_pair import EndpointPair
 from py_client.local_game_coordinator import LocalGameCoordinator
 from server.card import Card
-from server.config.config import ReadServerConfigOrDie
+from server.config.config import Config, ReadServerConfigOrDie
 from server.db_tools.db_utils import ListGames
 from server.lobbies.open_lobby import OpenLobby
 from server.lobby_consts import LobbyInfo, LobbyType
@@ -130,7 +130,13 @@ def RunEval(
         limit: The maximum number of instructions to evaluate. If -1, no limit.
         server_config_path: The path to the server config file.
     """
-    config = ReadServerConfigOrDie(server_config_path)
+    if server_config_path == "":
+        config = Config()
+        logger.warning(
+            f"Server config path not provided. Using default config. Database path: {config.data_directory()}"
+        )
+    else:
+        config = ReadServerConfigOrDie(server_config_path)
 
     base.SetDatabase(config)
     base.ConnectDatabase()

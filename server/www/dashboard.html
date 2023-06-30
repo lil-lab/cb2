@@ -36,11 +36,6 @@ $(function () {
       show_all_games = urlParams.get('all') == 'true';
     }
 
-    // Look for a password parameter in the URL and forward it to /status and
-    // /data/game-list requests.
-    var urlParams = new URLSearchParams(window.location.search);
-    var password = urlParams.get('password');
-
     // On window resize, resize the grid and status monitor.
     $(window).resize(function() {
       $("#grid").height($(window).height() * 0.49);
@@ -100,7 +95,6 @@ $(function () {
         },
         postData: {
             "all": show_all_games,
-            "password": password,
         },
     });
 
@@ -124,7 +118,7 @@ $(function () {
     // find the max timestamp.
     var max_timestep = 0;
     setInterval(function() {
-      $.get("/status", data={"password": password}, function(data) {
+      $.get("/status", function(data) {
         // lobbies is a dictionary of "lobby_name": -> {<lobby description object>}
         var lobbies = data.lobbies;
         // Check if the trace already exists in game_traces.

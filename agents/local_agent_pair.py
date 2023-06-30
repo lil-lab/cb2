@@ -11,7 +11,7 @@ from agents.agent import Agent
 from py_client.endpoint_pair import EndpointPair
 from py_client.game_endpoint import Action, Role
 from py_client.local_game_coordinator import LocalGameCoordinator
-from server.config.config import ReadConfigOrDie
+from server.config.config import Config, ReadConfigOrDie
 from server.lobbies.open_lobby import OpenLobby
 from server.lobby import LobbyInfo, LobbyType
 
@@ -103,7 +103,13 @@ def main(
 ):
     # Disabling most logs improves performance by about 50ms per game.
     logging.basicConfig(level=logging.INFO)
-    config = ReadConfigOrDie(config_filepath)
+    if config_filepath == "":
+        config = Config()
+        logger.warning(
+            f"No config was provided. Using default database located at: {config.database_path()}"
+        )
+    else:
+        config = ReadConfigOrDie(config_filepath)
     db_utils.ConnectToDatabase(config)
     scores = []
     durations = []

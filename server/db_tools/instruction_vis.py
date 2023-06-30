@@ -24,6 +24,8 @@ from server.messages.objective import ObjectiveMessage
 from server.schemas import base
 from server.schemas.event import Event, EventType
 
+logger = logging.getLogger(__name__)
+
 pygame.freetype.init()
 INSTRUCTION_FONT = pygame.freetype.SysFont("Times New Roman", 30)
 
@@ -120,7 +122,13 @@ def main(
     research_only=True,
 ):
     logging.basicConfig(level=logging.INFO)
-    cfg = config.ReadConfigOrDie(config_filepath)
+    if config_filepath == "":
+        cfg = config.Config()
+        logger.warning(
+            f"No config was provided. Using default database located at: {cfg.database_path()}"
+        )
+    else:
+        cfg = config.ReadConfigOrDie(config_filepath)
 
     print(f"Reading database from {cfg.database_path()}")
     # Setup the sqlite database used to record game actions.

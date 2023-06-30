@@ -32,10 +32,6 @@ $(function () {
       $("#event-grid").height($(window).height() * 0.95);
     });
 
-    // Look for a password parameter in the URL and forward it in postData below.
-    var urlParams = new URLSearchParams(window.location.search);
-    var password = urlParams.get('password');
-
     var path = window.location.pathname
     var game_id = parseInt(window.location.pathname.split("/").at(-1));
     WriteReplayLink("replay-link", game_id);
@@ -58,7 +54,6 @@ $(function () {
           { field: 'parent', text: 'Parent Event', size: '5%' },
         ],
         url: "/data/events/" + game_id,
-        postData: {"password": password},
     });
 });
 </script>

@@ -24,10 +24,6 @@ $(function () {
       $("#grid").height($(window).height() * 0.99);
     });
 
-    // Look for a password parameter in the URL and forward it in postData below.
-    var urlParams = new URLSearchParams(window.location.search);
-    var password = urlParams.get('password');
-
 
     $('#grid').w2grid({
         name: 'grid',
@@ -66,9 +62,6 @@ $(function () {
           { field: 'bug_report', text: 'JSON Bug Report.', size: '40%' },
         ],
         url: "/data/client-exception-list",
-        postData: {
-            "password": password,
-        },
     });
 });
 </script>

@@ -1,10 +1,11 @@
 # Creates a set of graphics where an instruction is displayed on the left, and
 # the follower's pathway is displayed on the right.
+import logging
 import random
 
 import fire
 
-from server.config.config import ReadConfigOrDie
+from server.config.config import Config, ReadConfigOrDie
 from server.db_tools import db_utils
 from server.messages.objective import ObjectiveMessage
 from server.schemas import base
@@ -12,14 +13,23 @@ from server.schemas.defaults import ListDefaultTables
 from server.schemas.event import Event, EventType
 from server.schemas.game import Game
 
+logger = logging.getLogger(__name__)
+
 
 def main(
     number=-1,
     search_term="",
     research_only=True,
-    config_filepath="server/config/local-covers-config.yaml",
+    config_filepath="",
 ):
-    config = ReadConfigOrDie(config_filepath)
+    logging.basicConfig(level=logging.INFO)
+    if config_filepath == "":
+        config = Config()
+        logger.warning(
+            f"No config was provided. Using default database located at: {config.database_path()}"
+        )
+    else:
+        config = ReadConfigOrDie(config_filepath)
 
     print(f"Reading database from {config.database_path()}")
     # Setup the sqlite database used to record game actions.

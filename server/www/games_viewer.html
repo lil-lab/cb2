@@ -25,10 +25,6 @@ $(function () {
       show_all_games = urlParams.get('all') == 'true';
     }
 
-    // Look for a password parameter in the URL and forward it in postData below.
-    var urlParams = new URLSearchParams(window.location.search);
-    var password = urlParams.get('password');
-
     $('#grid').w2grid({
         name: 'grid',
         header: 'List of Games',
@@ -44,14 +40,13 @@ $(function () {
           { field: 'duration', text: 'Duration', size: '120px' },
           { field: 'completed', text: 'Game Finished?', size: '120px' },
           { field: 'link', text: 'Link', size: '120px', render: function(rec, extra) {
-              return '<a href="/view/game/' + rec.id + '?password=' + password + '">Link</a>';
+              return '<a href="/view/game/' + rec.id + '">Link</a>';
             }
           }
         ],
         url: "/data/game-list",
         postData: {
             "all": show_all_games,
-            "password": password,
         },
     });
 });

@@ -1,5 +1,6 @@
 import asyncio
 import atexit
+import base64
 import dataclasses
 import hashlib
 import json
@@ -16,13 +17,18 @@ import warnings
 import zipfile
 from datetime import datetime, timedelta, timezone
 
+from server.util import SafePasswordCompare
+
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = ""  # Hide pygame welcome message
 
 import aiohttp
+import cryptography
 import fire
 import orjson
 import peewee
 from aiohttp import web
+from aiohttp_session import get_session, new_session, setup
+from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from dateutil import parser, tz
 from playhouse.sqlite_ext import SqliteExtDatabase
 
@@ -102,6 +108,59 @@ async def Index(request):
     return web.FileResponse("server/www/index.html")
 
 
+# Login form for password-protected backend URLs.
+@routes.get("/login")
+async def Login(request):
+    session = await get_session(request)
+    authenticated = session.get("authenticated", False)
+    if authenticated:
+        # Get the redirect URL from the "next" parameter.
+        next_url = request.query.get("next", "/")
+        return web.HTTPFound(next_url)
+    config = GlobalConfig()
+    if config:
+        if len(config.server_password_sha512) == 0:
+            next_url = request.query.get("next", "/")
+            return web.HTTPFound(next_url)
+    return web.FileResponse("server/www/login.html")
+
+
+# Authentication endpoint for password-protected backend URLs.
+@routes.post("/auth")
+async def Auth(request):
+    session = await new_session(request)
+    if session is None:
+        return web.HTTPFound("/login")
+    # Get the password from the HTTP Authorization header
+    auth = request.headers.get("Authorization")
+    if auth is None:
+        return web.HTTPFound("/login")
+    # Auth line should look like "Basic <base64-encoded password>"
+    user_password_base64 = auth.split(" ")[-1]
+    user_password = base64.b64decode(user_password_base64).decode("utf-8")
+    if user_password is None:
+        return web.HTTPUnauthorized(
+            reason="Permission denied -- please provide a valid password using the password= parameter."
+        )
+    # The basic auth password is of the form user:password.
+    password = user_password.split(":")[-1]
+
+    # Check if the password is correct
+    config = GlobalConfig()
+    if config == None:
+        return web.HTTPInternalServerError(reason="No config loaded.")
+    password_hash = hashlib.sha512(password.encode("utf-8")).hexdigest()
+    if not SafePasswordCompare(config.server_password_sha512, password_hash):
+        return web.HTTPUnauthorized(reason="Permission denied -- invalid password.")
+
+    # Create a session cookie with the IP address and date.
+    session["authenticated"] = True
+    session["ip"] = request.remote
+    session["expires"] = time.time() + 60 * 60 * 24 * 7  # 1 week
+    session.changed()
+    return web.HTTPFound("/")
+
+
 @routes.get("/play")
 async def GamePage(request):
     return web.FileResponse("server/www/WebGL/index.html")
@@ -173,6 +232,7 @@ async def Privacy(request):
 
 
 @routes.get("/view/dashboard")
+@password_protected
 async def Dashboard(request):
     return web.FileResponse("server/www/dashboard.html")
 
@@ -1302,8 +1362,11 @@ async def serve(config):
     routes.static("/", "server/www/WebGL")
 
     app = web.Application()
+    fernet_key = cryptography.fernet.Fernet.generate_key()
+    fernet = cryptography.fernet.Fernet(fernet_key)
+    setup(app, EncryptedCookieStorage(fernet))
     app.add_routes(routes)
-    runner = runner = aiohttp.web.AppRunner(app, handle_signals=True)
+    runner = aiohttp.web.AppRunner(app, handle_signals=True)
     await runner.setup()
     site = web.TCPSite(runner, None, config.http_port)
     await site.start()
@@ -1407,7 +1470,6 @@ def main(config_filepath="server/config/server-config.yaml"):
         lobby_coroutines.append(lobby.cleanup_rooms())
 
     assets_map = HashCollectAssets(GlobalConfig().assets_directory())
-    logger.info(f"WARNING: ")
     tasks = asyncio.gather(
         *lobby_coroutines,
         serve(GlobalConfig()),

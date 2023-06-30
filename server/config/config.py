@@ -96,9 +96,7 @@ class DataConfig(DataClassJSONMixin):
 
 
 # For backwards compatibility, the members of this class are ordered by when
-# they were added rather than by relevancy.  This is unfortunate, I should
-# probably group config members by category (analysis, server, database, etc)
-# and then have a wrapper which breaks them out that way.
+# they were added rather than by relevancy.
 #
 # Config files are now YAML instead of JSON! This doesn't change anything, as
 # YAML is actually a superset of JSON. But it lets us add comments to our config
@@ -109,7 +107,7 @@ class Config(DataClassJSONMixin):
 
     # Data filepath configurations. All of these are relative to return value of user_data_dir() from appdirs.
     # If you leave data_prefix empty, then a folder under the appdirs user data directory will be used by default.
-    data_prefix: str = ""  # Prefix added to the below data directories. Can be used to store data on a different fs.
+    data_prefix: str = ""  # Prefix added to the below data directories. (Can be used to store data on a different fs -- but that CAN HURT performance).
     record_directory_suffix: str = "game_records/"  # Where to store game recordings.
     assets_directory_suffix: str = (
         "assets/"  # Where to store asset resources. Currently unused.

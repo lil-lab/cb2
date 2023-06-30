@@ -2,8 +2,7 @@
 
 import contextvars
 import functools
-import hashlib
-import json
+import logging
 import pathlib
 import subprocess
 import sys
@@ -16,6 +15,7 @@ from typing import List
 import git
 import orjson
 from aiohttp import web
+from aiohttp_session import get_session
 
 from server.config.config import GlobalConfig
 
@@ -23,6 +23,8 @@ MAX_ID = 1000000
 
 # Constants which determine server behavior.
 HEARTBEAT_TIMEOUT_S = 20.0
+
+logger = logging.getLogger(__name__)
 
 
 def JsonSerialize(x, pretty=True):
@@ -76,27 +78,29 @@ def password_protected(func):
     password using the server configuration.
     """
 
-    def wrapper(request):
+    async def wrapper(request):
         config = GlobalConfig()
         if config == None:
             return web.HTTPInternalServerError(reason="No config loaded.")
         if config.server_password_sha512 == "":
-            return func(request)
-        password = None
-        if "password" in request.query:
-            password = request.query["password"]
-        elif "request" in request.query:  # Support password-protected w2ui requests.
-            request_query = json.loads(request.query.get("request", "{}"))
-            if "password" in request_query:
-                password = request_query["password"]
-        if password is None:
-            return web.HTTPUnauthorized(
-                reason="Permission denied -- please provide a valid password using the password= parameter."
+            return await func(request)
+        session = await get_session(request)
+        if not session.get("authenticated", False):
+            logger.info(
+                f"Password protected endpoint {request.path} accessed, redirecting to login..."
             )
-        password_hash = hashlib.sha512(password.encode("utf-8")).hexdigest()
-        if not SafePasswordCompare(config.server_password_sha512, password_hash):
-            return web.HTTPUnauthorized(reason="Permission denied -- invalid password.")
-        return func(request)
+            return web.HTTPFound("/login?next=" + request.path)
+        if session.get("ip", "") != request.remote:
+            logger.warning(
+                f"Password protected endpoint {request.path} accessed from different IP, redirecting to login..."
+            )
+            return web.HTTPFound("/login?next=" + request.path)
+        if session.get("expires", 0) < time.time():
+            logger.info(
+                f"Password protected endpoint {request.path} accessed, session expired, redirecting to login..."
+            )
+            return web.HTTPFound("/login?next=" + request.path)
+        return await func(request)
 
     return wrapper
 

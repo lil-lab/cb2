@@ -83,11 +83,20 @@ class MapMetadata(DataClassJSONMixin):
 class MapUpdate(DataClassJSONMixin):
     rows: int
     cols: int
+    # Tiles are flattened into a linear list.
+    # Here's some useful things you can do with a tile:
+    # tile.asset_id: Asset ID of the tile.
+    # tile.cell.coord: HECS coordinate of the tile.
+    # tile.cell.coord.to_offset_coordinates(): (x, y) coords in hex grid.
+    # tile.cell.boundary: Walkable boundary of the tile (edges).
+    # tile.cell.layer: Z-layer of the tile (water/ground/mountains).
+    # tile.rotation_degrees: Rotation of the tile's asset.
     tiles: List[Tile]
     metadata: Optional[MapMetadata] = field(default_factory=MapMetadata)
     props: Optional[List[Prop]] = field(default_factory=list)  # deprecated.
     fog_start: Optional[int] = None
     fog_end: Optional[int] = None
+    # Used in custom scenarios to tint the map.
     color_tint: Color = Color(0, 0, 0, 0)
 
     @staticmethod
