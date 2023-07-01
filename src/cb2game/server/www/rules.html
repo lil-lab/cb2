@@ -1,0 +1,115 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Rules - CerealBar2</title>
+        <link rel='stylesheet' href='https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css'>
+        <style type="text/css">
+          .hint {
+            color: grey;
+            font-style: italic;
+            position: relative;
+            left: 30px;
+          }
+          .side-image {
+            margin-right: 5px;
+            margin-top: 5px;
+            width: 100px;
+            height: 100px;
+            display: inline-block;
+          }
+          #example {
+            margin-left: auto;
+            margin-right: auto;
+            padding: 0;
+            width: 90%;
+          }
+          #example-images {
+            display: inline-block;
+            margin-top: 0;
+            vertical-align: middle;
+          }
+          #example-text {
+            width: 45%;
+            display: inline-block;
+            vertical-align: middle;
+          }
+          p {
+            margin-left: 30px;
+          }
+        </style>
+    </head>
+    <body>
+        <h1>Cerealbar 2 Rules.</h1>
+        <p>This game is a research project to study human-human interaction and natural language processing (NLP). It is a followup to <a href="https://lil.nlp.cornell.edu/cerealbar/">this study.</a></p>
+        <h2>Game Objective</h2>
+        <p>The goal of the game is to collect as many unique sets of 3 cards as
+        possible. Note: this isn't a competition!! The follower and the
+        leader work together.</p>
+        <h2>Unique Sets</h2>
+        <h3 style="margin-left: 30px;">Example</h3>
+        <div id="example">
+          <div id="example-images">
+            <img class="side-image" src="/images/question-1-option-d.png"
+            alt="image-of-card" /><!--
+            --><img class="side-image" src="/images/question-2-option-b.png"
+            alt="image-of-card" /><!--
+            --><img class="side-image" src="/images/question-2-option-c.png" alt="image-of-card" />
+          </div>
+          <div id="example-text">
+            <p class="hint"> This unique set contains:</p>
+            <ul class="hint">
+              <li>1 yellow circle.</li>
+              <li>3 green squares.</li>
+              <li>2 pink plusses.</li>
+            </ul>
+          </div>
+        </div>
+        <h3 style="margin-left: 30px;">Explanation</h3>
+        <p>Each card has a color, a shape, and a number (1-3) of occurrences of
+        that shape. A unique set is one in which each card has a different
+        color, shape, and number. When a unique set is collected, the 3 cards
+        disappear from the board and are replaced with 3 new cards.</p>
+        <h2>Game Over</h2>
+        <p>The game is over when the number of turns runs out.</p>
+        <h2>The Leader's Turn</h2>
+        <ul>
+        <li>The leader can see the entire board. Plan ahead and give instructions
+        to the follower to collect sets.</li>
+        <li>The leader gets <b>a minute per turn</b>. The leader's turn ends when time
+        runs out (But the leader can also end the turn early). If the leader has
+        not left any instructions for the follower, the follower's turn will be
+        skipped -- it will be the leader's turn again, and the # of turns
+        remaining will decrease by 1.</li>
+        <li>If the follower doesn't understand, please be
+        patient and try again.
+        Remember that there are all sorts of people out there. Each game is
+        between two humans -- there's someone else out there working with
+        you!</li>
+        </ul>
+        <h2>The Follower's Turn</h2>
+        <ul>
+        <li>The follower's role is simpler. Your strength is additional mobility.</li>
+        <li>Without any instructions from the leader, the follower can't do
+        anything. In fact, the follower's turn is skipped if the leader forgets
+        to leave instructions for them.</li>
+        <li>As the follower, follow instructions using your movements and hit
+        "done" only once they're achieved. You can't see new instructions until
+        you've completed your current instruction.</li>
+        <li>The follower's turn ends immediately once you're out of <b>time</b>, <b>moves</b>, or <b>instructions</b>.</li>
+        </ul>
+
+        <h2>Live Feedback</h2>
+        <p>The leader can see the follower's moves as they play. The leader can provide feedback to guide the follower by making use of the live feedback UI.</p>
+        <p>Leader Feedback UI</p>
+        <img src="/images/leader_feedback.png" style="width: 300px; margin-left: 30px;" alt="leader_feedback" />
+        <p>Follower Feedback UI</p>
+        <img src="/images/follower_feedback.png" style="width: 300px; margin-left: 30px;" alt="follower_feedback" />
+
+        <h2>Advice</h2>
+        <p>This game is structured to reward cooperation. The leader can see the
+        entire board, but can only move 5 moves per turn. The follower can move
+        twice as far, but the follower's view is clouded with fog and only
+        first-person. Cooperate to get a higher score!</p>
+    </body>
+</html>

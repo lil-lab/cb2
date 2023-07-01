@@ -1,0 +1,4 @@
+{
+    "_comment": "This config is used for launching the server from your local machine.",
+    "data_prefix": "~/cb2-game-data"
+}

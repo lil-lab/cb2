@@ -1,6 +1,6 @@
 [submodule "game/Assets/Scripts/Network/NativeWebSocket"]
-	path = game/Assets/Scripts/Network/NativeWebSocket
+	path = unity_client/Assets/Scripts/Network/NativeWebSocket
 	url = git@github.com:jsharf/NativeWebSocket.git
 [submodule "game/Assets/WebGLInput"]
-	path = game/Assets/WebGLInput
+	path = unity_client/Assets/WebGLInput
 	url = git@github.com:jsharf/WebGLInput.git

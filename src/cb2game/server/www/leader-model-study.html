@@ -1,0 +1,201 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Follower Game Task</title>
+        <link rel='stylesheet' href='https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css'>
+        <link rel='stylesheet' href='https://cdn.form.io/formiojs/formio.full.min.css'>
+        <script src='https://cdn.form.io/formiojs/formio.full.min.js'></script>
+        <link rel="stylesheet" type="text/css" href="https://w2ui.com/src/w2ui-1.5.min.css" />
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.0/jquery.min.js"></script>
+        <script type="text/javascript" src="https://w2ui.com/src/w2ui-1.5.min.js"></script>
+    </head>
+    <body>
+        <script type="text/javascript">
+            function validPreviewParams(params) {
+                if (!params.has('assignmentId')) {
+                    console.log('Missing assignmentId parameter.');
+                    return false;
+                }
+                if (params.get('assignmentId') != 'ASSIGNMENT_ID_NOT_AVAILABLE') {
+                    console.log('Not in preview mode.');
+                    return false;
+                }
+                return true;
+            }
+            function validWorkerParams(params) {
+                if (!params.has('workerId')) {
+                    console.log('Missing workerId parameter.');
+                    return false;
+                }
+                if (!params.has('assignmentId')) {
+                    console.log('Missing assignmentId parameter.');
+                    return false;
+                }
+                if (!params.has('turkSubmitTo'))
+                {
+                    console.log('Missing turkSubmitTo parameter.');
+                    return false;
+                }
+                return true;
+            }
+
+            // Performs an XHR request to endpoint "/data/username_from_id/{workerId}" to lookup the username.
+            // Then updates the element with ID username_element_id with the username.
+            function lookupUsername(workerId, username_element_id) {
+                $.ajax({
+                    url: "/data/username_from_id/" + workerId,
+                    success: function(data) {
+                        // Update the username element with the username.
+                        $("#" + username_element_id).text("Your Username: " + data.username);
+                    },
+                    error: function(data) {
+                        // If the request fails, update the username element with an error message.
+                        $("#" + username_element_id).text("Error: Could not lookup username.");
+                    }
+                });
+            }
+
+            function onFormSubmit(event) {
+                event.preventDefault();
+                var params = new URLSearchParams(window.location.search);
+                var htmlForm = document.createElement('form');
+                htmlForm.action = (new URL('mturk/externalSubmit', params.get('turkSubmitTo'))).href
+                console.log(htmlForm.action);
+                htmlForm.method = 'post';
+
+                // Add the assignment ID to the form.
+                var assignmentIdInput = document.createElement("input");
+                assignmentIdInput.setAttribute("type", "hidden");
+                assignmentIdInput.setAttribute("name", "assignmentId");
+                assignmentIdInput.setAttribute("value", params.get('assignmentId'));
+                htmlForm.appendChild(assignmentIdInput);
+
+                // Add the form data to the form.
+                var checkbox = document.getElementById("verification");
+                var formDataInput = document.createElement("input");
+                formDataInput.setAttribute("type", "hidden");
+                formDataInput.setAttribute("name", "userCheckbox");
+                formDataInput.setAttribute("value", checkbox.checked);
+                htmlForm.appendChild(formDataInput);
+
+                // Submit the form.
+                document.body.appendChild(htmlForm);
+                htmlForm.submit();
+            }
+
+            window.onload = function() {
+                var submissionButton = document.getElementById("submission_button");
+                submissionButton.disabled = true;
+                var params = new URLSearchParams(window.location.search);
+                var statusElement = document.getElementById('status');
+                if (validWorkerParams(params)) {
+                    statusElement.innerHTML = 'Valid Amazon MTurk parameters. Proceed to task.';
+                    statusElement.style.backgroundColor = '#7FFFD4';
+                    RewritePlayGameLink();
+                    lookupUsername(params.get('workerId'), 'username');
+                } else if (validPreviewParams(params)) {
+                        statusElement.innerHTML = 'MTurk PREVIEW. You can preview the form, but you cannot submit it.';
+                        statusElement.style.backgroundColor = 'yellow';
+                } else {
+                    statusElement.innerHTML = 'Missing Amazon MTurk parameters. Did you access this page through mechanical turk?';
+                    statusElement.style.backgroundColor = 'red';
+                }
+            }
+
+            function openInNewWindowForwardParams(url) {
+                var mturkParameters = new URLSearchParams(window.location.search);
+                var win = window.open(url + "&" + mturkParameters.toString(), '_blank');
+                win.focus();
+            }
+
+            function RewriteLinkWithForwardParams(link_id, url) {
+                var mturkParameters = new URLSearchParams(window.location.search);
+                var link = document.getElementById(link_id);
+                link.href = url + "&" + mturkParameters.toString();
+            }
+
+            function RewritePlayGameLink(url)
+            {
+                RewriteLinkWithForwardParams("game-link", "https://cb2.ai/?skipToTask=joinGameQueue&lobby_name=follower-pilot--lobby");
+            }
+
+            function controlSubmitButton() {
+                var checkbox = document.getElementById("verification");
+                var submissionButton = document.getElementById("submission_button");
+                var validationWarning = document.getElementById("validation_warning");
+                submissionButton.disabled = !checkbox.checked;
+                validationWarning.style.display = (checkbox.checked) ? "none" : "inline";
+            }
+
+        </script>
+        <div>
+            <h1>Follower Game Task</h1>
+            <h2 id="status"></h2>
+            <h2 style="background:yellow;"> Please make sure you aren't reserving more than 1 HIT at a time with Panda. </h2>
+            <h2>
+                Steps
+            </h2>
+            <ol>
+                <li><a id="game-link" href="#"  target="_blank">Click here</a> to enter the game queue and play a game. You MUST use this link.</li>
+                <li>Once a game has been completed, come back and hit "submit" below. You MUST hit the submit button after or you will not receive credit for your work. It is okay to submit even if the game was cancelled or ended early.</li>
+		<li><a target="_blank" href="/rules">Click here</a> if you wish to review rules.</li>
+            </ol>
+	    <h2>Scenario information</h2>
+	    <ol>
+	      <li>You will be receiving a sequence of instructions from an AI leader. Please follow instructions to the best of your ability.</li>
+	      <li>After each completed instruction, you will be asked two questions: one about whether the instruction was grammatically correct, and another about whether you believe you successfully completed the instruction. Please answer these truthfully. Your responses will be used to train and improve the AI for future rounds.</li>
+	      <li><a target="_blank" href="/payout">Click here</a> to see how game performance relates to bonuses.</li>
+	    </ol>
+            <h2>What if it's taking a long time to be matched with a leader?</h2>
+            <p style="margin-left: 15px">
+               Wait for up to 5m. After 5m, the server will remove you from the
+               queue because there's no one available to play with you. Once
+               this happens, you can come back here and submit the assignment.
+            </p>
+	    <h2>Consent form</h2>
+	    <p style="margin-left: 15px">
+	      This HIT is part of a larger research study. Please read our <a target="_blank" href="/consent-form">consent form</a> before starting the task.
+	      By accepting the task, you acknowledge that you understand our consent form, and agree to take part in this research.
+	    </p>
+            <p style="background-color: rgb(255, 255, 170); font-size: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center; width: 60%;">
+                You are <b>strongly</b> encouraged to
+                <a href="https://discord.gg/YtFcCpKqfa">join the discord</a> for
+                support, updates and <b>notifications of new assignments</b>.
+            </p>
+            <h2>
+                Game Submission
+            </h2>
+            <form id="qual-form" style="margin-left: 15px;" onsubmit="onFormSubmit(event)" method="post">
+                <input type="checkbox" onclick="controlSubmitButton()" id="verification" name="verification" value="verified">
+                <label for="verification">I used the link above to participate in a Cerealbar2 game. <span id="validation_warning" style="color: red">(required)</span></label><br>
+                <input type="submit" id="submission_button" value="Submit">
+            </form>
+            <h2> Leaderboard (beta) </h2>
+            <p id="username" style="margin-left: 15px; background-color: rgb(112, 255, 155); display:inline;"><p>
+            <p style="margin-left: 15px;">For a username change, please reach out on discord or via email at lillabcornell@gmail.com<p>
+            <div id="leaderboard" style="width: 100%; height: 265px;"></div>
+            <h2>Panda Script Policy</h2>
+            <div id="panda-policy">
+                    <img src="images/panda.jpeg" alt="Panda Script Policy" style="margin-left: 15px; height: 300px; display: inline-block;">
+                    <p style="margin-left: 15px; vertical-align: top; display: inline-block; width:30%;">
+                        Please only reserve 1 HIT at a time. Don't use "Panda" scripts to reserve HITs in bulk!
+                    </p>
+            </div>
+    </body>
+    <script type="text/javascript">
+        $(function () {
+            $('#leaderboard').w2grid({
+                name: 'grid',
+                header: 'Leaderboard',
+                columns: [
+                { field: 'time', text: 'Date', size: '30%' },
+                { field: 'score', text: 'Score', size: '30%' },
+                { field: 'leader', text: 'Leader', size: '40%' },
+                { field: 'follower', text: 'Follower', size: '40%' },
+                ],
+                url: "/data/leaderboard?lobby_type=4&only_follower_bot_games=true",
+            });
+});
+    </script>
+</html>

@@ -1,0 +1,187 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Qualification Task</title>
+        <link rel='stylesheet' href='https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css'>
+        <style type="text/css" >
+            .col-form-label {
+                font-weight: bold;
+            }
+        </style>
+        <style type="text/css">
+            .square-img {
+                width: 200px;
+                height: 200px;
+                display: inline-block;
+            }
+
+            form {
+                margin-left: 30px;
+            }
+        </style>
+    </head>
+    <body>
+        <script type="text/javascript">
+            function validPreviewParams(params) {
+                if (!params.has('assignmentId')) {
+                    console.log('Missing assignmentId parameter.');
+                    return false;
+                }
+                if (params.get('assignmentId') != 'ASSIGNMENT_ID_NOT_AVAILABLE') {
+                    console.log('Not in preview mode.');
+                    return false;
+                }
+                return true;
+            }
+            function validWorkerParams(params) {
+                if (!params.has('workerId')) {
+                    console.log('Missing workerId parameter.');
+                    return false;
+                }
+                if (!params.has('assignmentId')) {
+                    console.log('Missing assignmentId parameter.');
+                    return false;
+                }
+                if (!params.has('turkSubmitTo'))
+                {
+                    console.log('Missing turkSubmitTo parameter.');
+                    return false;
+                }
+                return true;
+            }
+
+            function renderForm(params) {
+                var htmlForm = document.getElementById('qual-form');
+                htmlForm.action = (new URL('mturk/externalSubmit', params.get('turkSubmitTo'))).href
+
+                // Add the assignment ID to the form.
+                var assignmentIdInput = document.createElement("input");
+                assignmentIdInput.setAttribute("type", "hidden");
+                assignmentIdInput.setAttribute("name", "assignmentId");
+                assignmentIdInput.setAttribute("value", params.get('assignmentId'));
+                htmlForm.appendChild(assignmentIdInput);
+            }
+
+            window.onload = function() {
+                var params = new URLSearchParams(window.location.search);
+                var statusElement = document.getElementById('status');
+                if (validWorkerParams(params)) {
+                    statusElement.innerHTML = 'Valid Amazon MTurk parameters. Proceed to task.';
+                    statusElement.style.backgroundColor = '#7FFFD4';
+                    var form = document.getElementById('qual-form');
+                    renderForm(params);
+                } else if (validPreviewParams(params)) {
+                        statusElement.innerHTML = 'MTurk PREVIEW. You can preview the form, but you cannot submit it.';
+                        statusElement.style.backgroundColor = 'yellow';
+                } else {
+                    statusElement.innerHTML = 'Missing Amazon MTurk parameters. Did you access this page through mechanical turk?';
+                    statusElement.style.backgroundColor = 'red';
+                }
+            }
+        </script>
+        <div>
+            <h1>Qualification Task</h1>
+            <h2 id="status"></h2>
+            <h2 style="background:yellow;"> Please make sure you aren't reserving more than 1 HIT at a time with Panda. 1 HIT per worker only. </h2>
+            <h2>
+                Qualification Steps
+            </h2>
+            <p>Welcome back to Cerealbar 2! A few things have changed, so you'll need to complete this migration qual before jumping back into the game.</p>
+            <p style="background-color: rgb(255, 255, 170); font-size: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center; width: 60%;">
+                You are <b>strongly</b> encouraged to
+                <a href="https://discord.gg/YtFcCpKqfa" target="_blank">join the *new* discord</a> for
+                support, updates and <b>notifications of new assignments</b>.
+            </p>
+
+            <h2> Refresher on set completion rules </h2>
+            <p><a id="" href="/example_sets" target="_blank">Click here</a> to read the set-making rules (2m Estimated) as a refresher.</p>
+
+            <h2> New UI </h2>
+            <em style="color: grey; margin-left: 10px;">Take a moment to familiarize yourself with the new UI. You'll be able to consult this image during the (hopefully extremely easy) quiz below. </em>
+            <br>
+            <br>
+            <image id="leader-ui-image" src="/images/ui-graphics.png" style="display: block; margin: auto;" />
+            <br>
+            <h2> New Changes </h2>
+            <em style="color: grey; margin-left: 10px;">Take a moment to familiarize yourself with the new UI. You'll be able to consult this image during the (hopefully extremely easy) quiz below. </em>
+            <ol>
+                <li><b>Followers can no longer see card patterns</b>. They see each card with a '?' on the cover.</li>
+                <br>
+                <image id="leader-ui-image" src="/images/leader-cant-see-cards.png" style="display: block; margin: auto;" />
+                <br>
+                <li>Leaders now have an <b>interrupt button</b>. If the follower is doing the wrong thing, hold down the <b>"HOLD to Interrupt"</b> button to cancel all pending instructions, skip the rest of their turn, and takeover.</li>
+                <li>Followers cannot end their turn early. You must end your turn by (1) completing all tasks or (2) using all available moves. Do your best, and hit "done" if you're confused.</li>
+                <li>More diverse assets and a bigger map (25x25 sized grid!)</li>
+            </ol>
+            <br>
+            <h2>
+                Qualification Test
+            </h2>
+            <form id="qual-form" method="post">
+                <p><b>What does the follower see when they look at a card?</b></p>
+                  <label>
+                    <input type="radio" name="CanFollowerSeeCards" value="question-mark">
+                    <img class="square-img" src="images/question-mark.png"/>
+                  </label>
+                  <label>
+                    <input type="radio" name="CanFollowerSeeCards" value="card-pattern">
+                    <img class="square-img" src="images/question-1-option-a.png" />
+                  </label>
+                  <br>
+                  <label>
+                    <input type="radio" name="CanFollowerSeeCards" value="none">
+                    None of the above.
+                  </label>
+
+                  <br>
+
+                <p><b>What does the leader see when they look at a card?</b></p>
+                  <label>
+                    <input type="radio" name="CanLeaderSeeCards" value="question-mark">
+                    <img class="square-img" src="images/question-mark.png"/>
+                  </label>
+                  <label>
+                    <input type="radio" name="CanLeaderSeeCards" value="card-pattern">
+                    <img class="square-img" src="images/question-1-option-a.png" />
+                  </label>
+                  <br>
+                  <label>
+                    <input type="radio" name="CanLeaderSeeCards" value="none">
+                    None of the above.
+                  </label>
+
+                  <br>
+
+                <p><b>What does the interrupt button do? (make sure to read all options)</b></p>
+                  <label>
+                    <input type="radio" name="InterruptButtonQuestion" value="ends-turn">
+                    Immediately ends the follower's turn.<br>
+                  </label>
+                  <br>
+                  <label>
+                    <input type="radio" name="InterruptButtonQuestion" value="cancels-instructions">
+                    Cancels all pending instructions.
+                  </label>
+                  <br>
+                  <label>
+                    <input type="radio" name="InterruptButtonQuestion" value="leader-control">
+                    Gives control back to the leader.
+                  </label>
+                  <br>
+                  <label>
+                    <input type="radio" name="InterruptButtonQuestion" value="all">
+                    All of the above.
+                  </label>
+                  <br>
+                  <label>
+                    <input type="radio" name="InterruptButtonQuestion" value="none">
+                    None of the above.
+                  </label>
+                  <br>
+
+                  <input type="submit" value="Submit">
+
+            </form>
+    </body>
+</html>

@@ -1,0 +1,205 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Follower Qualification Task</title>
+        <link rel='stylesheet' href='https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css'>
+        <link rel='stylesheet' href='https://cdn.form.io/formiojs/formio.full.min.css'>
+        <style type="text/css" >
+            .col-form-label {
+                font-weight: bold;
+            }
+        </style>
+        <script src='https://cdn.form.io/formiojs/formio.full.min.js'></script>
+    </head>
+    <body>
+        <script type="text/javascript">
+            var form_data = {
+                "display": "form",
+                "settings": {
+                    "pdf": {
+                        "id": "1ec0f8ee-6685-5d98-a847-26f67b67d6f0",
+                        "src": "https://files.form.io/pdf/5692b91fd1028f01000407e3/file/1ec0f8ee-6685-5d98-a847-26f67b67d6f0"
+                    }
+                },
+                "components": [
+                    {
+                        "label": "Follower Survey, True/False (Answer these questions as the follower).",
+                        "description": "",
+                        "tableView": false,
+                        "questions": [
+                            {
+                                "label": "My priority is to follow the leader's instructions",
+                                "value": "myPriorityIsToFollowTheLeadersInstructions",
+                                "tooltip": ""
+                            },
+                            {
+                                "label": "If an instruction is unclear, I should do my best.",
+                                "value": "ifAnInstructionIsUnclearIShouldDoMyBestAndHopeForClarificationInTheNextInstruction",
+                                "tooltip": ""
+                            },
+                            {
+                                "label": "If the leader missed something, I should ignore the leader's instructions and act on my own because I know better",
+                                "value": "ifTheLeaderMissedSomethingObviousIShouldIgnoreTheLeadersInstructionsBecauseIKnowBetter",
+                                "tooltip": "Remember, you are the follower. Your role is to *do what the leader says*"
+                            },
+                            {
+                                "label": "The game ends when we run out of turns",
+                                "value": "theGameEndsWhenWeRunOutOfTurns",
+                                "tooltip": ""
+                            },
+                            {
+                                "label": "If I run out of moves, my turn ends instantly",
+                                "value": "ifIRunOutOfMovesMyTurnEndsInstantly",
+                                "tooltip": ""
+                            }
+                        ],
+                        "values": [
+                            {
+                                "label": "True",
+                                "value": "true",
+                                "tooltip": ""
+                            },
+                            {
+                                "label": "False",
+                                "value": "false",
+                                "tooltip": ""
+                            }
+                        ],
+                        "key": "followerSurveyTrueFalse",
+                        "type": "survey",
+                        "input": true
+                    },
+                    {
+                        "type": "button",
+                        "label": "Submit",
+                        "key": "submit",
+                        "disableOnInvalid": true,
+                        "input": true,
+                        "tableView": false
+                    }
+                ]
+            };
+        </script>
+        <script type="text/javascript">
+            function validPreviewParams(params) {
+                if (!params.has('assignmentId')) {
+                    console.log('Missing assignmentId parameter.');
+                    return false;
+                }
+                if (params.get('assignmentId') != 'ASSIGNMENT_ID_NOT_AVAILABLE') {
+                    console.log('Not in preview mode.');
+                    return false;
+                }
+                return true;
+            }
+            function validWorkerParams(params) {
+                if (!params.has('workerId')) {
+                    console.log('Missing workerId parameter.');
+                    return false;
+                }
+                if (!params.has('assignmentId')) {
+                    console.log('Missing assignmentId parameter.');
+                    return false;
+                }
+                if (!params.has('turkSubmitTo'))
+                {
+                    console.log('Missing turkSubmitTo parameter.');
+                    return false;
+                }
+                return true;
+            }
+
+            function renderForm(params) {
+                var htmlForm = document.getElementById('qual-form');
+                Formio.createForm(htmlForm, form_data).then(function(form) {
+                    form.nosubmit = true;
+                    form.options.noAlerts = true;
+
+                    form.on('submit', function(submission) {
+                        var htmlForm = document.createElement('form');
+                        htmlForm.action = (new URL('mturk/externalSubmit', params.get('turkSubmitTo'))).href
+                        console.log(htmlForm.action);
+                        htmlForm.method = 'post';
+
+                        // Add the assignment ID to the form.
+                        var assignmentIdInput = document.createElement("input");
+                        assignmentIdInput.setAttribute("type", "hidden");
+                        assignmentIdInput.setAttribute("name", "assignmentId");
+                        assignmentIdInput.setAttribute("value", params.get('assignmentId'));
+                        htmlForm.appendChild(assignmentIdInput);
+
+                        // Add the form data to the form.
+                        var formDataInput = document.createElement("input");
+                        formDataInput.setAttribute("type", "hidden");
+                        formDataInput.setAttribute("name", "formData");
+                        formDataInput.setAttribute("value", JSON.stringify(submission));
+                        htmlForm.appendChild(formDataInput);
+
+                        // Submit the form.
+                        document.body.appendChild(htmlForm);
+                        htmlForm.submit();
+
+                        form.emit('submitDone', submission)
+                    });
+                });
+            }
+
+            window.onload = function() {
+                var params = new URLSearchParams(window.location.search);
+                var statusElement = document.getElementById('status');
+                RewriteFollowerTutorialLink();
+                if (validWorkerParams(params)) {
+                    statusElement.innerHTML = 'Valid Amazon MTurk parameters. Proceed to task.';
+                    statusElement.style.backgroundColor = '#7FFFD4';
+                    var form = document.getElementById('qual-form');
+                    renderForm(params);
+                } else if (validPreviewParams(params)) {
+                        statusElement.innerHTML = 'MTurk PREVIEW. You can preview the form, but you cannot submit it.';
+                        statusElement.style.backgroundColor = 'yellow';
+                } else {
+                    statusElement.innerHTML = 'Missing Amazon MTurk parameters. Did you access this page through mechanical turk?';
+                    statusElement.style.backgroundColor = 'red';
+                }
+            }
+
+            function RewriteLinkWithForwardParams(link_id, url) {
+                var mturkParameters = new URLSearchParams(window.location.search);
+                var link = document.getElementById(link_id);
+                link.href = url + "&" + mturkParameters.toString();
+            }
+
+            function RewriteFollowerTutorialLink() {
+                RewriteLinkWithForwardParams("follower-link", "https://cb2.ai/?skipToTask=followerTutorial&lobby_name=follower-pilot-lobby");
+            }
+        </script>
+        <div>
+            <h1>Follower Qualification Task</h1>
+            <h2 id="status"></h2>
+            <h2 style="background:yellow;"> Please make sure you aren't reserving more than 1 HIT at a time with Panda. 1 HIT per worker only. </h2>
+            <h2>
+                Qualification Steps
+            </h2>
+            <ol>
+	      <li>Please perform this task only once!</li>
+                <li><a id="follower-link" href="#" target="_blank">Click here</a> to take the follower tutorial (4m Estimated).</li>
+                <li>Take the qualification test (below)</li>
+            </ol>
+            <p style="background-color: rgb(255, 255, 170); font-size: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center; width: 60%;">
+                You are <b>strongly</b> encouraged to
+                <a href="https://discord.gg/YtFcCpKqfa" target="_blank">join the discord</a> for
+                support, updates and <b>notifications of new assignments</b>.
+            </p>
+	    <h2>Consent form</h2>
+	    <p style="margin-left: 15px">
+	      This HIT is part of a larger research study. Please read our <a target="_blank" href="/consent-form">consent form</a> before starting the task.
+	      By accepting the task, you acknowledge that you understand our consent form, and agree to take part in this research.
+	    </p>
+            <h2>
+                Qualification Test
+            </h2>
+            <em style="color: grey; margin-left: 10px;">If you forget anything, feel free to consult <a target="_blank" href="/rules">the rules</a>
+                while you take this test. <b>If you pass the test, you will receive a bonus.</b></em>
+            <form id="qual-form" method="post"></form>
+    </body>
+</html>
