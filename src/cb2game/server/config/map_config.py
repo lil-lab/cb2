@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from mashumaro.mixins.json import DataClassJSONMixin
 
@@ -18,6 +18,9 @@ class MapConfig(DataClassJSONMixin):
 
     Assets are categorized by equivalence class. See the asset class enum in assets.py.
     """
+
+    # RNG seed. If unspecified, a random seed is chosen.
+    rng_seed: Optional[int] = None
 
     map_width: int = 25
     map_height: int = 25

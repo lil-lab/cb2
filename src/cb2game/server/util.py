@@ -27,6 +27,11 @@ HEARTBEAT_TIMEOUT_S = 20.0
 logger = logging.getLogger(__name__)
 
 
+def PackageRoot() -> pathlib.Path:
+    """Returns the root directory of the package."""
+    return pathlib.Path(__file__).parent.parent
+
+
 def JsonSerialize(x, pretty=True):
     options = orjson.OPT_NAIVE_UTC | orjson.OPT_PASSTHROUGH_DATETIME
     if pretty:

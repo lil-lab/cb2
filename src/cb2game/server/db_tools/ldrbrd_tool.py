@@ -16,6 +16,7 @@ from cb2game.server.schemas.game import Game
 from cb2game.server.schemas.google_user import GoogleUser
 from cb2game.server.schemas.leaderboard import Leaderboard, Username
 from cb2game.server.schemas.mturk import Worker, WorkerExperience, WorkerQualLevel
+from cb2game.server.util import PackageRoot
 
 COMMANDS = [
     "list",
@@ -460,7 +461,7 @@ def main(
     role="noop",
     nosparklines=False,
     threshold=3,
-    config_filepath="server/config/server-config.yaml",
+    config_filepath=(PackageRoot() / "server/config/server-config.yaml"),
 ):
     if command == "help":
         PrintUsage()

@@ -16,6 +16,7 @@ from cb2game.server.hex import Edges
 from cb2game.server.messages.bug_report import BugReport
 from cb2game.server.messages.prop import Prop, PropType
 from cb2game.server.messages.rooms import Role
+from cb2game.server.util import PackageRoot
 
 pygame.freetype.init()
 INSTRUCTION_FONT = pygame.freetype.SysFont("Times New Roman", 30)
@@ -175,45 +176,45 @@ def asset_id_to_icon(asset_id):
     if asset_id == AssetId.GROUND_TILE:
         return ""
     elif asset_id == AssetId.GROUND_TILE_ROCKY:
-        return "server/map_tools/asset_icons/rocks.png"
+        return PackageRoot() / "server/map_tools/asset_icons/rocks.png"
     elif asset_id == AssetId.GROUND_TILE_TREES:
-        return "server/map_tools/asset_icons/trees.png"
+        return PackageRoot() / "server/map_tools/asset_icons/trees.png"
     elif asset_id == AssetId.GROUND_TILE_TREES_2:
-        return "server/map_tools/asset_icons/trees.png"
+        return PackageRoot() / "server/map_tools/asset_icons/trees.png"
     elif asset_id == AssetId.GROUND_TILE_FOREST:
-        return "server/map_tools/asset_icons/trees.png"
+        return PackageRoot() / "server/map_tools/asset_icons/trees.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE:
-        return "server/map_tools/asset_icons/house.png"
+        return PackageRoot() / "server/map_tools/asset_icons/house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_RED:
-        return "server/map_tools/asset_icons/red_house.png"
+        return PackageRoot() / "server/map_tools/asset_icons/red_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_PINK:
-        return "server/map_tools/asset_icons/pink_house.png"
+        return PackageRoot() / "server/map_tools/asset_icons/pink_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_GREEN:
-        return "server/map_tools/asset_icons/green_house.png"
+        return PackageRoot() / "server/map_tools/asset_icons/green_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_ORANGE:
-        return "server/map_tools/asset_icons/orange_house.png"
+        return PackageRoot() / "server/map_tools/asset_icons/orange_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_YELLOW:
-        return "server/map_tools/asset_icons/yellow_house.png"
+        return PackageRoot() / "server/map_tools/asset_icons/yellow_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_BLUE:
-        return "server/map_tools/asset_icons/blue_house.png"
+        return PackageRoot() / "server/map_tools/asset_icons/blue_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_TRIPLE:
-        return "server/map_tools/asset_icons/triple_house.png"
+        return PackageRoot() / "server/map_tools/asset_icons/triple_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_TRIPLE_RED:
-        return "server/map_tools/asset_icons/red_triple_house.png"
+        return PackageRoot() / "server/map_tools/asset_icons/red_triple_house.png"
     elif asset_id == AssetId.GROUND_TILE_HOUSE_TRIPLE_BLUE:
-        return "server/map_tools/asset_icons/blue_triple_house.png"
+        return PackageRoot() / "server/map_tools/asset_icons/blue_triple_house.png"
     elif asset_id == AssetId.GROUND_TILE_STREETLIGHT:
-        return "server/map_tools/asset_icons/streetlight.png"
+        return PackageRoot() / "server/map_tools/asset_icons/streetlight.png"
     elif asset_id == AssetId.GROUND_TILE_STREETLIGHT_FOILAGE:
-        return "server/map_tools/asset_icons/streetlight_foilage.png"
+        return PackageRoot() / "server/map_tools/asset_icons/streetlight_foilage.png"
     elif asset_id == AssetId.STREETLIGHT_BIG:
-        return "server/map_tools/asset_icons/streetlight_big.png"
+        return PackageRoot() / "server/map_tools/asset_icons/streetlight_big.png"
     elif asset_id == AssetId.STREETLIGHT_BUSHES:
-        return "server/map_tools/asset_icons/streetlight_bushes.png"
+        return PackageRoot() / "server/map_tools/asset_icons/streetlight_bushes.png"
     elif asset_id == AssetId.STREETLIGHT_ROCKS:
-        return "server/map_tools/asset_icons/streetlight_rocks.png"
+        return PackageRoot() / "server/map_tools/asset_icons/streetlight_rocks.png"
     elif asset_id == AssetId.STREETLIGHT_WIDE:
-        return "server/map_tools/asset_icons/streetlight_wide.png"
+        return PackageRoot() / "server/map_tools/asset_icons/streetlight_wide.png"
     elif asset_id == AssetId.MOUNTAIN_TILE:
         return ""
     elif asset_id == AssetId.RAMP_TO_MOUNTAIN:
@@ -227,33 +228,33 @@ def asset_id_to_icon(asset_id):
     elif asset_id == AssetId.SNOWY_MOUNTAIN_TILE:
         return ""
     elif asset_id == AssetId.SNOWY_MOUNTAIN_TILE_TREE:
-        return "server/map_tools/asset_icons/snow_mountain_tree.png"
+        return PackageRoot() / "server/map_tools/asset_icons/snow_mountain_tree.png"
     elif asset_id == AssetId.SNOWY_RAMP_TO_MOUNTAIN:
         return ""
     elif asset_id == AssetId.MOUNTAIN_TILE_TREE:
-        return "server/map_tools/asset_icons/tree.png"
+        return PackageRoot() / "server/map_tools/asset_icons/tree.png"
     elif asset_id == AssetId.GROUND_TILE_TREE:
-        return "server/map_tools/asset_icons/tree.png"
+        return PackageRoot() / "server/map_tools/asset_icons/tree.png"
     elif asset_id == AssetId.GROUND_TILE_TREE_BROWN:
-        return "server/map_tools/asset_icons/withered_tree.png"
+        return PackageRoot() / "server/map_tools/asset_icons/withered_tree.png"
     elif asset_id == AssetId.GROUND_TILE_TREE_SOLIDBROWN:
-        return "server/map_tools/asset_icons/brown_tree.png"
+        return PackageRoot() / "server/map_tools/asset_icons/brown_tree.png"
     elif asset_id == AssetId.GROUND_TILE_TREE_DARKGREEN:
-        return "server/map_tools/asset_icons/dark_green_tree.png"
+        return PackageRoot() / "server/map_tools/asset_icons/dark_green_tree.png"
     elif asset_id == AssetId.GROUND_TILE_TREE_SNOW:
-        return "server/map_tools/asset_icons/snow_tree.png"
+        return PackageRoot() / "server/map_tools/asset_icons/snow_tree.png"
     elif asset_id == AssetId.GROUND_TILE_TREES_2:
-        return "server/map_tools/asset_icons/tree_2.png"
+        return PackageRoot() / "server/map_tools/asset_icons/tree_2.png"
     elif asset_id == AssetId.SNOWY_GROUND_TILE_TREES_2:
-        return "server/map_tools/asset_icons/snow_tree_2.png"
+        return PackageRoot() / "server/map_tools/asset_icons/snow_tree_2.png"
     elif asset_id == AssetId.GROUND_TILE_STONES:
-        return "server/map_tools/asset_icons/bush_stone.png"
+        return PackageRoot() / "server/map_tools/asset_icons/bush_stone.png"
     elif asset_id == AssetId.GROUND_TILE_STONES_GREENBUSH:
-        return "server/map_tools/asset_icons/green_bush_stone.png"
+        return PackageRoot() / "server/map_tools/asset_icons/green_bush_stone.png"
     elif asset_id == AssetId.GROUND_TILE_STONES_BROWNBUSH:
-        return "server/map_tools/asset_icons/brown_bush_stone.png"
+        return PackageRoot() / "server/map_tools/asset_icons/brown_bush_stone.png"
     elif asset_id == AssetId.GROUND_TILE_STONES_GREYBUSH:
-        return "server/map_tools/asset_icons/grey_bush_stone.png"
+        return PackageRoot() / "server/map_tools/asset_icons/grey_bush_stone.png"
     else:
         print("Unknown asset ID encountered (img): " + str(asset_id))
         return ""

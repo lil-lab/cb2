@@ -14,6 +14,7 @@ from cb2game.pyclient.local_game_coordinator import LocalGameCoordinator
 from cb2game.server.config.config import Config, ReadConfigOrDie
 from cb2game.server.lobbies.open_lobby import OpenLobby
 from cb2game.server.lobby import LobbyInfo, LobbyType
+from cb2game.server.util import PackageRoot
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +95,7 @@ def PlayNGames(
 
 
 def main(
-    config_filepath="server/config/local-covers-config.yaml",
+    config_filepath=(PackageRoot() / "server/config/local-covers-config.yaml"),
     event_uuid="",
     profile=False,
     num_games=10,

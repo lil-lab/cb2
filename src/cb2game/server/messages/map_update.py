@@ -77,6 +77,7 @@ class MapMetadata(DataClassJSONMixin):
     num_partitions: int = 0
     partition_locations: List[Tile] = field(default_factory=list)
     partition_sizes: List[int] = field(default_factory=list)
+    start_seed: int = 0
 
 
 @dataclass

@@ -6,6 +6,7 @@ import cb2game.server.leaderboard as leaderboard
 import cb2game.server.schemas.defaults as defaults_db
 from cb2game.server.schemas import base
 from cb2game.server.schemas.mturk import Worker
+from cb2game.server.util import PackageRoot
 
 
 def InitWorkerDefaultUsernameIfNotExists(worker):
@@ -19,7 +20,7 @@ def InitWorkerDefaultUsernameIfNotExists(worker):
         print(f"Username exists for {worker.hashed_id} ({username})")
 
 
-def main(config_filepath="server/config/server-config.yaml"):
+def main(config_filepath=(PackageRoot() / "server/config/server-config.yaml")):
     cfg = config.ReadConfigOrDie(config_filepath)
 
     print(f"Reading database from {cfg.database_path()}")

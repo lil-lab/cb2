@@ -5,6 +5,7 @@ import itertools
 import logging
 import math
 import random
+import sys
 from dataclasses import dataclass
 from enum import Enum
 from queue import Queue
@@ -580,6 +581,15 @@ def place_outpost(map, outpost, map_config: MapConfig):
 
 def RandomMap(map_config: MapConfig):
     """Random map of Tile objects, each with HECS coordinates and locations."""
+    # First, set the RNG seed if specified.
+    if map_config.rng_seed is not None:
+        start_seed = map_config.rng_seed
+    else:
+        start_seed = random.randint(0, sys.maxsize)
+
+    # Set the RNG seed.
+    random.seed(start_seed)
+
     map = []
     for r in range(0, map_config.map_height):
         row = []
@@ -588,7 +598,7 @@ def RandomMap(map_config: MapConfig):
             row.append(tile)
         map.append(row)
 
-    map_metadata = MapMetadata([], [], [], [], 0)
+    map_metadata = MapMetadata([], [], [], [], 0, start_seed)
 
     # Generate candidates for feature centers.
     rows = list(range(1, map_config.map_height - 2, 6))

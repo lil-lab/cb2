@@ -17,7 +17,7 @@ import warnings
 import zipfile
 from datetime import datetime, timedelta, timezone
 
-from cb2game.server.util import SafePasswordCompare
+from cb2game.server.util import PackageRoot, SafePasswordCompare
 
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = ""  # Hide pygame welcome message
 
@@ -105,7 +105,7 @@ async def transmit_bytes(ws, message):
 
 @routes.get("/")
 async def Index(request):
-    return web.FileResponse("server/www/index.html")
+    return web.FileResponse(PackageRoot() / "server/www/index.html")
 
 
 # Login form for password-protected backend URLs.
@@ -122,7 +122,7 @@ async def Login(request):
         if len(config.server_password_sha512) == 0:
             next_url = request.query.get("next", "/")
             return web.HTTPFound(next_url)
-    return web.FileResponse("server/www/login.html")
+    return web.FileResponse(PackageRoot() / "server/www/login.html")
 
 
 # Authentication endpoint for password-protected backend URLs.
@@ -163,99 +163,105 @@ async def Auth(request):
 
 @routes.get("/play")
 async def GamePage(request):
-    return web.FileResponse("server/www/WebGL/index.html")
+    return web.FileResponse(PackageRoot() / "server/www/WebGL/index.html")
 
 
 @routes.get("/consent-form")
 async def ConsentForm(request):
-    return web.FileResponse("server/www/pdfs/consent-form.pdf")
+    return web.FileResponse(PackageRoot() / "server/www/pdfs/consent-form.pdf")
 
 
 @routes.get("/rules")
 async def Rules(request):
-    return web.FileResponse("server/www/rules.html")
+    return web.FileResponse(PackageRoot() / "server/www/rules.html")
 
 
 @routes.get("/payout")
 async def Rules(request):
-    return web.FileResponse("server/www/payout.html")
+    return web.FileResponse(PackageRoot() / "server/www/payout.html")
 
 
 @routes.get("/example_sets")
 async def Rules(request):
-    return web.FileResponse("server/www/example_sets.html")
+    return web.FileResponse(PackageRoot() / "server/www/example_sets.html")
 
 
 @routes.get("/oneoff")
 async def OneoffComp(request):
-    return web.FileResponse("server/www/oneoff.html")
+    return web.FileResponse(PackageRoot() / "server/www/oneoff.html")
 
 
 @routes.get("/follower-model-study")
 async def TaskPage(request):
-    return web.FileResponse("server/www/follower-model-study.html")
+    return web.FileResponse(PackageRoot() / "server/www/follower-model-study.html")
 
 
 @routes.get("/leader-model-study")
 async def TaskPage(request):
-    return web.FileResponse("server/www/leader-model-study.html")
+    return web.FileResponse(PackageRoot() / "server/www/leader-model-study.html")
 
 
 @routes.get("/main-study")
 async def TaskPage(request):
-    return web.FileResponse("server/www/main-study.html")
+    return web.FileResponse(PackageRoot() / "server/www/main-study.html")
 
 
 @routes.get("/mturk-task")
 async def TaskPage(request):
-    return web.FileResponse("server/www/mturk-task.html")
+    return web.FileResponse(PackageRoot() / "server/www/mturk-task.html")
 
 
 @routes.get("/follower-qual")
 async def TaskPage(request):
-    return web.FileResponse("server/www/follower-qual.html")
+    return web.FileResponse(PackageRoot() / "server/www/follower-qual.html")
 
 
 @routes.get("/leader-qual")
 async def TaskPage(request):
-    return web.FileResponse("server/www/leader-qual.html")
+    return web.FileResponse(PackageRoot() / "server/www/leader-qual.html")
 
 
 @routes.get("/changelist")
 async def Changelist(request):
-    return web.FileResponse("server/www/changelist.html")
+    return web.FileResponse(PackageRoot() / "server/www/changelist.html")
 
 
 @routes.get("/privacy")
 async def Privacy(request):
-    return web.FileResponse("server/www/privacy-policy.html")
+    return web.FileResponse(PackageRoot() / "server/www/privacy-policy.html")
 
 
 @routes.get("/view/dashboard")
 @password_protected
 async def Dashboard(request):
-    return web.FileResponse("server/www/dashboard.html")
+    return web.FileResponse(PackageRoot() / "server/www/dashboard.html")
 
 
 @routes.get("/images/{filename}")
 async def Images(request):
     if not request.match_info.get("filename"):
         return web.HTTPNotFound()
-    return web.FileResponse(f"server/www/images/{request.match_info['filename']}")
+    return web.FileResponse(
+        PackageRoot() / f"server/www/images/{request.match_info['filename']}"
+    )
 
 
 @routes.get("/css/{filename}")
 async def css(request):
     if not request.match_info.get("filename"):
         return web.HTTPNotFound()
-    return web.FileResponse(f"server/www/css/{request.match_info['filename']}")
+    return web.FileResponse(
+        PackageRoot() / f"server/www/css/{request.match_info['filename']}"
+    )
 
 
 @routes.get("/js/{filename}")
 async def Js(request):
     if not request.match_info.get("filename"):
         return web.HTTPNotFound()
-    return web.FileResponse(f"server/www/js/{request.match_info['filename']}")
+    return web.FileResponse(
+        PackageRoot() / f"server/www/js/{request.match_info['filename']}"
+    )
 
 
 def JsonFromEvent(event: event_db.Event):
@@ -632,7 +638,7 @@ async def RetrieveData(request):
 async def DataDownloadStart(request):
     global download_requested
     download_requested = True
-    return web.FileResponse("server/www/download.html")
+    return web.FileResponse(PackageRoot() / "server/www/download.html")
 
 
 @routes.get("/data/game-list")
@@ -748,20 +754,20 @@ async def ClientExceptionList(request):
 @routes.get("/view/client-exceptions")
 @password_protected
 async def ClientExceptionViewer(request):
-    return web.FileResponse("server/www/exceptions_viewer.html")
+    return web.FileResponse(PackageRoot() / "server/www/exceptions_viewer.html")
 
 
 @routes.get("/view/games")
 @password_protected
 async def GamesViewer(request):
-    return web.FileResponse("server/www/games_viewer.html")
+    return web.FileResponse(PackageRoot() / "server/www/games_viewer.html")
 
 
 @routes.get("/view/game/{game_id}")
 @password_protected
 async def GameViewer(request):
     # Extract the game_id from the request.
-    return web.FileResponse("server/www/game_viewer.html")
+    return web.FileResponse(PackageRoot() / "server/www/game_viewer.html")
 
 
 @routes.get("/data/config")
@@ -775,7 +781,7 @@ async def GetConfig(request):
 @routes.get("/view/stats")
 @password_protected
 async def Stats(request):
-    return web.FileResponse("server/www/stats.html")
+    return web.FileResponse(PackageRoot() / "server/www/stats.html")
 
 
 @routes.get("/data/turns/{game_id}")
@@ -1352,14 +1358,14 @@ async def asset(request):
 
 async def serve(config):
     # Check if the server/www/WebGL directory exists.
-    if not os.path.isdir("server/www/WebGL"):
+    if not os.path.isdir(os.path.join(PackageRoot() / "server/www/WebGL")):
         logger.warning(
             "WebGL directory not found. This directory contains the compiled Unity front-end. You can download it by running `python3 -m cb2game.server.fetch_client` or manually here https://github.com/lil-lab/cb2/releases. You can also compile from source, but this requires installing Unity and getting a license. See game/ for client code and build_client.sh for instructions building the client from headless mode in Unity."
         )
         return
 
     # Add a route for serving web frontend files on /.
-    routes.static("/", "server/www/WebGL")
+    routes.static("/", os.path.join(PackageRoot() / "server/www/WebGL"))
 
     app = web.Application()
     fernet_key = cryptography.fernet.Fernet.generate_key()
@@ -1443,13 +1449,21 @@ def CreateExceptionDirectory(config):
     exception_dir.mkdir(parents=False, exist_ok=True)
 
 
-def main(config_filepath="server/config/server-config.yaml"):
+def main(config_filepath=""):
     global assets_map
     global lobby
 
     # On exit, deletes temporary download files.
     atexit.register(CleanupDownloadFiles)
     atexit.register(SaveClientExceptionsToDB)
+
+    # If the config filepath doesn't exist, log an error and tell the user to
+    # try running `python3 -m cb2game.server.generate_config`.
+    if not os.path.isfile(config_filepath):
+        logger.error(
+            f"Config file not found at {config_filepath}. Try running `python3 -m cb2game.server.generate_config`."
+        )
+        return
 
     InitPythonLogging()
     InitGlobalConfig(config_filepath)

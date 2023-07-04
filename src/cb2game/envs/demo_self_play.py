@@ -18,6 +18,7 @@ from cb2game.server.config.config import ReadConfigOrDie
 from cb2game.server.hex import HecsCoord
 from cb2game.server.messages.map_update import MapUpdate
 from cb2game.server.messages.prop import PropUpdate
+from cb2game.server.util import PackageRoot
 
 logger = logging.getLogger(__name__)
 
@@ -277,7 +278,10 @@ def PlayGame(coordinator, log_to_db: bool = True):
     return turn_state["score"], duration
 
 
-def main(config_filepath="server/config/local-covers-config.yaml", instruction_uuid=""):
+def main(
+    config_filepath=(PackageRoot() / "server/config/local-covers-config.yaml"),
+    instruction_uuid="",
+):
     nest_asyncio.apply()
     # Disabling most logs improves performance by about 50ms per game.
     logging.basicConfig(level=logging.INFO)

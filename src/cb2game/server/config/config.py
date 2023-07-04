@@ -66,8 +66,10 @@ def ValidateConfig(config):
 def ReadConfigOrDie(config_path):
     """Reads a config file and returns a Config object."""
     with open(config_path, "r") as cfg_file:
-        data = yaml.load(cfg_file, Loader=yaml.CLoader)
-        config = Config.from_dict(data)
+        config = yaml.load(cfg_file, Loader=yaml.CLoader)
+        # If the type of the resulting data isn't already a config, convert it.
+        if not isinstance(config, Config):
+            config = Config.from_dict(config)
         valid_config, reason = ValidateConfig(config)
         if not valid_config:
             raise ValueError(f"Config file is invalid: {reason}")
@@ -124,9 +126,6 @@ class Config(DataClassJSONMixin):
     analysis_game_id_ranges: List[List[int]] = field(default_factory=list)
 
     http_port: int = 8080
-
-    # Optional feature configurations.
-    gui: bool = False
 
     map_cache_size: int = 500
 
