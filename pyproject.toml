@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cb2game"
-version = "0.9.2"
+version = "0.9.5"
 authors = [
   { name="Jacob Sharf", email="jacobsharf@gmail.com" },
   { name="Mustafa Omer Gul", email="momergul@gmail.com" },
@@ -48,7 +48,6 @@ dependencies = [
   "appdirs==1.4.4",
   "cachecontrol==0.12.11",
   "openai==0.27.2",
-  "evals==0.1.1",
   "pdoc==13.1.1",
   "gitpython==3.1.31",
   "aiohttp_session==2.12.0",
