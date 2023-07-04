@@ -49,7 +49,12 @@ from cb2game.server.messages.tutorials import (
     TutorialResponseType,
 )
 from cb2game.server.room import Room, RoomType
-from cb2game.server.util import GetCommitHash, IdAssigner, LatencyMonitor
+from cb2game.server.util import (
+    GetCommitHash,
+    IdAssigner,
+    LatencyMonitor,
+    PackageVersion,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -311,7 +316,9 @@ class Lobby(ABC):
                         game_record.save()
                         game_id = game_record.id
                         game_record.log_directory = ""
-                        game_record.server_software_commit = GetCommitHash()
+                        game_record.server_software_commit = (
+                            GetCommitHash() or PackageVersion()
+                        )
                         game_record.save()
 
                         room = self.create_room(game_id, game_record, RoomType.SCENARIO)
@@ -403,7 +410,7 @@ class Lobby(ABC):
                 log_directory = pathlib.Path(self._base_log_directory, game_name)
                 log_directory.mkdir(parents=False, exist_ok=False)
                 game_record.log_directory = str(log_directory)
-                game_record.server_software_commit = GetCommitHash()
+                game_record.server_software_commit = GetCommitHash() or PackageVersion()
                 game_record.save()
 
                 # Create room.
@@ -615,7 +622,7 @@ class Lobby(ABC):
         log_directory = pathlib.Path(self._base_log_directory, game_name)
         log_directory.mkdir(parents=False, exist_ok=False)
         game_record.log_directory = str(log_directory)
-        game_record.server_software_commit = GetCommitHash()
+        game_record.server_software_commit = GetCommitHash() or PackageVersion()
         game_record.save()
 
         # Create room.

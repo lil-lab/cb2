@@ -77,8 +77,10 @@ def TupleIntsFromUserInput(prompt: str, default: Tuple[int, int]) -> Tuple[int, 
     """Prompts the user for a tuple of integers."""
     while True:
         try:
-            prompt_str = f"{prompt} ({default[0]}, {default[1]})"
-            user_input = input(prompt_str) or str(default)
+            prompt_str = f"{prompt} ({default[0]}, {default[1]}) "
+            user_input = input(prompt_str)
+            if user_input == "":
+                return default
             return tuple([int(i) for i in user_input.split(",")])
         except ValueError:
             slow_type("Invalid input. Try again, numbers only.")
@@ -136,7 +138,7 @@ class Section(Enum):
     CLIENT_SETTINGS = 5
     AUTH_SETTINGS = 6
     FINAL_SETTINGS = 7
-    MAX = 7
+    MAX = 8
 
     def to_str(self) -> str:
         return self.name.replace("_", " ").title()
@@ -160,6 +162,9 @@ def ConfigFromUserInput() -> Config:
     PrintSectionHeader(Section.DATABASE_SETTINGS)
     # Next, ask for the database location. Default to "" -- Looks up system default via appdirs.
     slow_type(f"Default database location: {config.data_directory()}")
+    slow_type(
+        f"If you forget, you can always see the DB location later via `python3 -m cb2game.server.db_location`"
+    )
     while True:
         db_path = input("Database location override: (default: '') ") or ""
         # If the db_path ends in "/", remove it.

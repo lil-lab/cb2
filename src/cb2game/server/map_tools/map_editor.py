@@ -13,7 +13,6 @@ if __name__ == "__main__":
 from typing import Tuple
 
 import pygame
-import pygame.font
 import pygame.freetype
 
 import cb2game.server.hex as hex

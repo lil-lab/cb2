@@ -23,7 +23,7 @@ from mashumaro.config import BaseConfig
 from mashumaro.mixins.json import DataClassJSONMixin
 
 from cb2game.server.messages.rooms import Role
-from cb2game.server.util import GetCommitHash
+from cb2game.server.util import GetCommitHash, PackageVersion
 
 
 class RunSource(IntEnum):
@@ -84,7 +84,7 @@ class Eval(DataClassJSONMixin):
 
     id: str = uuid.uuid4().hex
     run_source: RunSource = RunSource.NONE
-    commit_version: str = GetCommitHash()
+    commit_version: str = GetCommitHash() or PackageVersion()
     run_date: datetime.datetime = datetime.datetime.utcnow()
     agent_name: str = ""
     agent_type: str = "NONE"

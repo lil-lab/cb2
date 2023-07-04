@@ -29,7 +29,7 @@ from cb2game.server.state_utils import (
     FOLLOWER_MOVES_PER_TURN,
     FOLLOWER_SECONDS_PER_TURN,
 )
-from cb2game.server.util import GetCommitHash
+from cb2game.server.util import GetCommitHash, PackageVersion
 
 logger = logging.getLogger(__name__)
 
@@ -163,7 +163,7 @@ def RunEval(
     # Create an eval run entry in the database.
     eval_run = Eval(
         run_source=RunSource.LOCAL,
-        commit_version=GetCommitHash(),
+        commit_version=GetCommitHash() or PackageVersion(),
         agent_name=agent_name,
         agent_type=agent_type,
         agent_config=agent_config.to_json(),

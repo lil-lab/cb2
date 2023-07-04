@@ -6,7 +6,6 @@ import sys
 from typing import List, Tuple
 
 import pygame
-import pygame.font
 import pygame.freetype
 
 from cb2game.server.actor import Actor

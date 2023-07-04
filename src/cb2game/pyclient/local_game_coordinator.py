@@ -29,7 +29,7 @@ from cb2game.server.messages.tutorials import (
 from cb2game.server.state import State
 from cb2game.server.state_machine_driver import StateMachineDriver
 from cb2game.server.tutorial_state import TutorialGameState
-from cb2game.server.util import GetCommitHash
+from cb2game.server.util import GetCommitHash, PackageVersion
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +138,7 @@ class LocalGameCoordinator:
             game_id = game_record.id
             game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
             game_name = f"{game_time}_{game_id}_GAME"
-            game_record.server_software_commit = GetCommitHash()
+            game_record.server_software_commit = GetCommitHash() or PackageVersion()
             game_record.type = "local-simulated|0|simulated"
             game_record.save()
         else:
@@ -218,7 +218,7 @@ class LocalGameCoordinator:
         game_id = game_record.id
         game_time = datetime.now().strftime("%Y-%m-%dT%Hh.%Mm.%Ss%z")
         game_name = f"{game_time}_{game_id}_GAME"
-        game_record.server_software_commit = GetCommitHash()
+        game_record.server_software_commit = GetCommitHash() or PackageVersion()
         game_record.type = "local-simulated|0|tutorial"
         game_record.save()
         # The value

@@ -10,6 +10,7 @@ import time
 import traceback
 from asyncio import events
 from datetime import datetime, timedelta
+from importlib.metadata import PackageNotFoundError, version
 from typing import List
 
 import git
@@ -110,6 +111,14 @@ def password_protected(func):
     return wrapper
 
 
+def PackageVersion():
+    """Returns the version of the package."""
+    try:
+        return version("cb2game")
+    except PackageNotFoundError:
+        return None
+
+
 def GetCommitHash():
     """Returns the git commit hash of the system software.
     Use __file__ to get the path to the git repo.
@@ -126,6 +135,8 @@ def GetCommitHash():
         # This is the more cross platform way.
         repo = git.Repo(pathlib.Path(__file__).parent.parent)
         return repo.head.object.hexsha
+    except git.exc.InvalidGitRepositoryError:
+        return None
 
 
 class CountDownTimer(object):
