@@ -1288,8 +1288,9 @@ map_pool = []
 def CachedMapRetrieval():
     global map_pool
     if len(map_pool) == 0:
+        config = GlobalConfig()
         logger.debug(f"Map pool ran out of cached maps. Generating...")
-        return MapProvider(MapType.RANDOM)
+        return MapProvider(MapType.RANDOM, map_config=config.map_config)
     else:
         return map_pool.pop()
 
@@ -1313,7 +1314,8 @@ async def MapGenerationTask(lobbies, config):
             continue
 
         # Add a map to the map cache.
-        map_pool.append(MapProvider(MapType.RANDOM))
+        config = GlobalConfig()
+        map_pool.append(MapProvider(MapType.RANDOM, map_config=config.map_config))
         if len(map_pool) % 10 == 0:
             print(f"Map pool size: {len(map_pool)}")
         await asyncio.sleep(0.001)

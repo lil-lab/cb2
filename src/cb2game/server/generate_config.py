@@ -12,8 +12,31 @@ import yaml
 
 from cb2game.server.config.config import Config
 from cb2game.server.config.map_config import MapConfig
+from cb2game.server.lobby_consts import LobbyInfo, LobbyType
 
-typing_speed = 700  # cpm
+
+class Section(Enum):
+    HTTP_SETTINGS = 0
+    DATABASE_SETTINGS = 1
+    GAME_SETTINGS = 2
+    MAPGEN_SETTINGS = 3
+    CLIENT_SETTINGS = 4
+    AUTH_SETTINGS = 5
+    LOBBY_SETTINGS = 6
+    FINAL_SETTINGS = 7
+    MAX = 8
+
+    def to_str(self) -> str:
+        return self.name.replace("_", " ").title()
+
+
+def PrintSectionHeader(section: Section):
+    """Prints a section header to the console."""
+    slow_type(f"\n{section.to_str()} ({section.value + 1}/{Section.MAX.value})")
+    slow_type("=" * len(section.to_str()))
+
+
+typing_speed = 1000  # cpm
 
 
 def slow_type(t):
@@ -24,11 +47,40 @@ def slow_type(t):
     print("")
 
 
+def user_input(prompt: str) -> str:
+    """Better prompt than input() for user input.
+
+    - Supports backspace & left/right arrow navigation.
+    """
+    sys.stdout.write(prompt)
+    sys.stdout.flush()
+    return sys.stdin.readline().strip()
+
+
+def FindOrCreateDefaultLobby(config: Config) -> LobbyInfo:
+    """Finds or creates a default lobby. Lobbies are saved in a list."""
+    default_lobbies = [x for x in config.lobbies if x.name == "default"]
+    if len(default_lobbies) == 0:
+        default_lobby = LobbyInfo(
+            "default",
+            LobbyType.OPEN,
+            "Default lobby for testing.",
+            40,
+            1,
+            False,
+        )
+        config.lobbies.append(default_lobby)
+        return default_lobby
+    else:
+        return default_lobbies[0]
+
+
 def IntegerFromUserInput(prompt: str, default: int) -> int:
     """Prompts the user for an integer."""
     while True:
         try:
-            return int(input(prompt) or str(default))
+            prompt_string = f"{prompt} (default: {default}): "
+            return int(user_input(prompt_string) or str(default))
         except ValueError:
             slow_type("Invalid input. Try again, numbers only.")
 
@@ -58,10 +110,10 @@ def SelectionFromUserInput(
 
     while True:
         prompt_str = f"{prompt} ({options_string}) "
-        user_input = input(prompt_str)
-        if user_input.lower() in options:
-            return user_input
-        if default and user_input == "":
+        ans = user_input(prompt_str)
+        if ans.lower() in options:
+            return ans
+        if default and ans == "":
             return default
 
 
@@ -77,11 +129,14 @@ def TupleIntsFromUserInput(prompt: str, default: Tuple[int, int]) -> Tuple[int, 
     """Prompts the user for a tuple of integers."""
     while True:
         try:
-            prompt_str = f"{prompt} ({default[0]}, {default[1]}) "
-            user_input = input(prompt_str)
-            if user_input == "":
+            prompt_str = f"{prompt} ({', '.join([str(i) for i in default])}) "
+            ans = user_input(prompt_str)
+            if ans == "":
                 return default
-            return tuple([int(i) for i in user_input.split(",")])
+            result_tuple = tuple([int(i) for i in ans.split(",")])
+            if len(result_tuple) != len(default):
+                raise ValueError()
+            return result_tuple
         except ValueError:
             slow_type("Invalid input. Try again, numbers only.")
 
@@ -91,7 +146,7 @@ def MapConfigFromUserInput() -> MapConfig:
     slow_type(
         "Mapgen is the process of generating a map from a set of parameters and the random number generator."
     )
-    config = MapConfig()
+    default = MapConfig()
 
     # First, ask if the user just wants to use CB2 defaults. If so, return the default config.
     slow_type(
@@ -100,54 +155,41 @@ def MapConfigFromUserInput() -> MapConfig:
     slow_type("If you just want the defaults, you can skip all this.")
     use_defaults = BooleanFromUserInput("Use default mapgen settings?", default=True)
     if use_defaults:
-        return config
+        return default
 
     # Next, fill out the MapConfig dataclass.
-    config.map_width, config.map_height = TupleIntsFromUserInput(
-        "Map size (width, height): ", (config.map_width, config.map_height)
+    map_width, map_height = TupleIntsFromUserInput(
+        "Map size (width, height): ", (default.map_width, default.map_height)
     )
-    config.number_of_mountains_range = TupleIntsFromUserInput(
-        "Number of mountains (min, max): ", config.number_of_mountains_range
+    number_of_mountains_range = TupleIntsFromUserInput(
+        "Number of mountains (min, max): ", default.number_of_mountains_range
     )
-    config.number_of_cities_range = TupleIntsFromUserInput(
-        "Number of cities (min, max): ", config.number_of_cities_range
+    number_of_cities_range = TupleIntsFromUserInput(
+        "Number of cities (min, max): ", default.number_of_cities_range
     )
-    config.number_of_lakes_range = TupleIntsFromUserInput(
-        "Number of lakes (min, max): ", config.number_of_lakes_range
+    number_of_lakes_range = TupleIntsFromUserInput(
+        "Number of lakes (min, max): ", default.number_of_lakes_range
     )
-    config.number_of_outposts_range = TupleIntsFromUserInput(
-        "Number of outposts (min, max): ", config.number_of_outposts_range
+    number_of_outposts_range = TupleIntsFromUserInput(
+        "Number of outposts (min, max): ", default.number_of_outposts_range
     )
 
     slow_type(
         f"CB2 uses path routing to draw paths on the ground between features on the map. The path connection distance is the maximum distance that two objects can be and still have paths routed between them."
     )
-    config.path_connection_distance = IntegerFromUserInput(
-        "Path connection distance: ", config.path_connection_distance
+    path_connection_distance = IntegerFromUserInput(
+        "Path connection distance: ", default.path_connection_distance
     )
 
-    return config
-
-
-class Section(Enum):
-    HTTP_SETTINGS = 0
-    DATABASE_SETTINGS = 1
-    GAME_SETTINGS = 2
-    MAPGEN_SETTINGS = 3
-    LOBBY_SETTINGS = 4
-    CLIENT_SETTINGS = 5
-    AUTH_SETTINGS = 6
-    FINAL_SETTINGS = 7
-    MAX = 8
-
-    def to_str(self) -> str:
-        return self.name.replace("_", " ").title()
-
-
-def PrintSectionHeader(section: Section):
-    """Prints a section header to the console."""
-    slow_type(f"\n{section.to_str()} ({section.value + 1}/{Section.MAX.value})")
-    slow_type("=" * len(section.to_str()))
+    return MapConfig(
+        map_width=map_width,
+        map_height=map_height,
+        number_of_mountains_range=number_of_mountains_range,
+        number_of_cities_range=number_of_cities_range,
+        number_of_lakes_range=number_of_lakes_range,
+        number_of_outposts_range=number_of_outposts_range,
+        path_connection_distance=path_connection_distance,
+    )
 
 
 def ConfigFromUserInput() -> Config:
@@ -157,7 +199,7 @@ def ConfigFromUserInput() -> Config:
     PrintSectionHeader(Section.HTTP_SETTINGS)
 
     # First, ask for the server port. Default to 8080.
-    config.port = IntegerFromUserInput("Server port: (default: 8080) ", 8080)
+    config.port = IntegerFromUserInput("Server port", 8080)
 
     PrintSectionHeader(Section.DATABASE_SETTINGS)
     # Next, ask for the database location. Default to "" -- Looks up system default via appdirs.
@@ -166,7 +208,7 @@ def ConfigFromUserInput() -> Config:
         f"If you forget, you can always see the DB location later via `python3 -m cb2game.server.db_location`"
     )
     while True:
-        db_path = input("Database location override: (default: '') ") or ""
+        db_path = user_input("Database location override: (default: '') ") or ""
         # If the db_path ends in "/", remove it.
         if db_path.endswith("/"):
             db_path = db_path[:-1]
@@ -183,9 +225,11 @@ def ConfigFromUserInput() -> Config:
                 f"Database path {db_path} is a file. The DB location must be a directory."
             )
             usedir = BooleanFromUserInput(f"Use {parent_dir} instead?", default=True)
-            if usedir.lower() == "y":
+            if usedir:
                 config.data_prefix = parent_dir
                 break
+        # If the path doesn't exist, re-prompt.
+        slow_type(f"Database path {db_path} does not exist.")
 
     # Set the backup_db name to "game_backup.db.bk" by default.
     config.backup_db_path_suffix = "game_backup.db.bk"
@@ -200,28 +244,20 @@ def ConfigFromUserInput() -> Config:
         "On a local dev machine, you'll want this to be small since you won't be running many games at once. On a production server, you'll want to find the right balance between memory consumption and map generation time."
     )
     slow_type("Set to zero to disable pregeneration.")
-    config.map_cache_size = IntegerFromUserInput(
-        "Pregenerated map pool size: (default: 50) ", 50
-    )
+    config.map_cache_size = IntegerFromUserInput("Pregenerated map pool size", 50)
 
     # Fog has two parameters: fog_start and fog_end. Fog_start is how many cells away things begin to get foggy. Fog_thickness is how many cells thick the fog is, and fog_end is fog_start + fog_thickness.
     slow_type(
         "Fog is a visual effect that makes the map harder to see as you get further away from objects. Only the follower sees fog."
     )
     slow_type(
-        "Fog start is how many cells away things begin to get foggy. Fog end is how many cells away things are completely obscured."
+        "fog_start is how many cells away things begin to get foggy. fog_end is how many cells away things are completely obscured."
     )
-    config.fog_start = IntegerFromUserInput("Fog start: (default: 13) ", 13)
-    config.fog_end = IntegerFromUserInput("Fog end: (default: 20) ", 20)
+    config.fog_start = IntegerFromUserInput("Enter fog_start", 13)
+    config.fog_end = IntegerFromUserInput("Enter fog_end", 20)
 
     # Mapgen configuration.
-    MapConfigFromUserInput()
-
-    PrintSectionHeader(Section.LOBBY_SETTINGS)
-    slow_type(
-        "Populating lobbies with default lobby set. You can change this later by editing the config file."
-    )
-    time.sleep(1)
+    config.map_config = MapConfigFromUserInput()
 
     PrintSectionHeader(Section.CLIENT_SETTINGS)
     # Let's talk about uploading client exceptions.
@@ -235,15 +271,13 @@ def ConfigFromUserInput() -> Config:
         "Client exceptions are stored in memory until they are committed to DB once all existing games are over, or on server close."
     )
     config.max_client_exceptions = IntegerFromUserInput(
-        "Max client exceptions to store: (default: 100) ", 100
+        "Max client exceptions to store", 100
     )
 
     slow_type(
-        f"Best to leave FPS option default. Some low-end laptops may perform better if a low FPS limit is set instead of self-managing (say, 30)"
+        f"Best to leave FPS option default. Some low-end laptops may perform better if a low FPS limit is set instead of self-managing (say, 30). -1 means let the browser optimize for device settings."
     )
-    config.fps_limit = IntegerFromUserInput(
-        "Browser FPS limit: (-1 means let the browser optimize -- default).", -1
-    )
+    config.fps_limit = IntegerFromUserInput("Browser FPS limit", -1)
 
     PrintSectionHeader(Section.AUTH_SETTINGS)
     slow_type(
@@ -255,26 +289,45 @@ def ConfigFromUserInput() -> Config:
             "Go here and create an OAuth client ID for a Web Application (very fast): https://console.cloud.google.com/apis/credentials/oauthclient"
         )
         slow_type("Then paste the client ID here...")
-        config.google_oauth_client_id = input("Google OAuth Client ID: ") or ""
+        config.google_oauth_client_id = user_input("Google OAuth Client ID: ") or ""
 
     slow_type(
         "Some server URLs are password-protected. See here for more info: https://github.com/lil-lab/cb2/wiki/Cb2-Url-Endpoints"
     )
-    server_password = input("Server password (leave blank for no password): ") or ""
+    server_password = (
+        user_input("Server password (leave blank for no password): ") or ""
+    )
     if server_password != "":
         config.server_password_sha512 = hashlib.sha512(
             server_password.encode("utf-8")
         ).hexdigest()
 
+    PrintSectionHeader(Section.LOBBY_SETTINGS)
+    slow_type(
+        "Populating lobbies with default lobby set. You can change this later by editing the config file."
+    )
+    # The default lobby is usually google authenticated. If we didn't enable
+    # this in the previous step, we'll disable it here and make the default
+    # lobby unauthenticated.
+    if not google_auth:
+        lobby = FindOrCreateDefaultLobby(config)
+        lobby.type = LobbyType.OPEN
+        lobby.comment += " (Google Oauth disabled, default lobby is unauthenticated.)"
+        slow_type(
+            "Since Google Oauth wasn't enabled, changing default lobby to not require Google authentication."
+        )
+        time.sleep(2)
+    time.sleep(1)
+
     PrintSectionHeader(Section.FINAL_SETTINGS)
     slow_type(
         "Let's name your config. Full name will be <nameprefix>-<timestamp>-autoconf"
     )
-    name = input("Config name prefix: (default: 'noname') ") or "noname"
+    name = user_input("Config name prefix: (default: 'noname') ") or "noname"
     config.name = f"{name}-{int(time.time())}-autoconf"
 
     while True:
-        config.comment = input(
+        config.comment = user_input(
             "Write a comment for this config (explain in a few words what this config is for and where it will be deployed): "
         )
         if config.comment != "":
@@ -291,12 +344,27 @@ def main(all_defaults: bool = False):
         config = Config()
         config.name = "default"
         config.comment = "Default config"
+        lobby = FindOrCreateDefaultLobby(config)
+        lobby.type = LobbyType.OPEN
+        lobby.comment += " (Google Oauth disabled, default lobby is unauthenticated.)"
+        slow_type(
+            "Since Google Oauth wasn't enabled (default), changing default lobby to not require Google authentication."
+        )
+        time.sleep(0.5)
     else:
         config = ConfigFromUserInput()
     # Use yaml to save this to a file.
     config_name = config.name + ".yaml"
+    # If the file already exists, append a number to the end.
+    i = 1
+    while os.path.exists(config_name):
+        config_name = config.name + f"_{i}.yaml"
+        i += 1
     with open(config_name, "w") as f:
         yaml.dump(config, f)
+
+    slow_type(f"Config saved to {config_name}.")
+    time.sleep(0.5)
 
 
 if __name__ == "__main__":
