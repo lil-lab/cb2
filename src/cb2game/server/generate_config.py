@@ -2,6 +2,7 @@
 import hashlib
 import os
 import random
+import readline  # Wraps input() to support backspace & left/right arrow navigation.
 import sys
 import time
 from enum import Enum
@@ -36,10 +37,12 @@ def PrintSectionHeader(section: Section):
     slow_type("=" * len(section.to_str()))
 
 
-typing_speed = 1000  # cpm
-
-
-def slow_type(t):
+def slow_type(t, typing_speed=1000):
+    """Prints text slowly, as if someone is typing it.
+    Args:
+        t: Text to print.
+        typing_speed: Speed to type at. Characters per min.
+    """
     for l in t:
         sys.stdout.write(l)
         sys.stdout.flush()
@@ -355,13 +358,23 @@ def main(all_defaults: bool = False):
         config = ConfigFromUserInput()
     # Use yaml to save this to a file.
     config_name = config.name + ".yaml"
-    # If the file already exists, append a number to the end.
+    # If the file already exists, move it to a new name filename_1.yaml, etc.
+    first_name = config_name
     i = 1
     while os.path.exists(config_name):
         config_name = config.name + f"_{i}.yaml"
         i += 1
-    with open(config_name, "w") as f:
+    slow_type(f"Writing config to {first_name}")
+    if first_name != config_name:
+        slow_type(
+            f"Config with name {first_name} already exists. Renaming it to {config_name}."
+        )
+        slow_type(f"> mv {first_name} {config_name}")
+        time.sleep(2)
+        os.rename(first_name, config_name)
+    with open(first_name, "w") as f:
         yaml.dump(config, f)
+    slow_type(f"Config saved to {first_name}.")
 
     slow_type(f"Config saved to {config_name}.")
     time.sleep(0.5)

@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class GPTFollowerConfig(DataClassJSONMixin):
+class GptFollowerConfig(DataClassJSONMixin):
     """Configuration for initializing a GPTFollower agent.
 
     For help choosing a value for `model`, see:
@@ -38,8 +38,8 @@ class GPTFollowerConfig(DataClassJSONMixin):
     )
 
 
-class GPTFollower(Agent):
-    def __init__(self, config: GPTFollowerConfig):
+class GptFollower(Agent):
+    def __init__(self, config: GptFollowerConfig):
         self.queueing_enabled = config.queueing_enabled
         self.gpt_api_key = config.gpt_api_key
         self.max_tokens = config.maximum_tokens

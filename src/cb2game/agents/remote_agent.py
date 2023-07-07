@@ -6,11 +6,10 @@ from datetime import timedelta
 import fire
 
 from cb2game.agents.agent import Agent
-from cb2game.agents.config import CreateAgent, ReadAgentConfigOrDie
+from cb2game.agents.config import LoadAgentFromConfig
 from cb2game.pyclient.game_endpoint import Action
 from cb2game.pyclient.remote_client import RemoteClient
 from cb2game.server.messages.rooms import Role
-from cb2game.server.util import PackageRoot
 
 logger = logging.getLogger(__name__)
 
@@ -59,14 +58,14 @@ def PlayRemoteGame(
 
 def main(
     host,
+    agent_config_filepath: str,
     render=False,
     lobby="bot-sandbox",
     pause_per_turn=0,
-    agent_config_filepath: str = (PackageRoot() / "agents/simple_follower.yaml"),
 ):
     """Connects to a remote server from the command line and plays a game using the specified agent."""
-    agent_config = ReadAgentConfigOrDie(agent_config_filepath)
-    agent = CreateAgent(agent_config)
+    # Loads an agent based off of pyyaml configs.
+    agent = LoadAgentFromConfig(agent_config_filepath)
     PlayRemoteGame(
         host,
         agent,

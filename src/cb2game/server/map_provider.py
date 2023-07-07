@@ -1288,9 +1288,13 @@ map_pool = []
 def CachedMapRetrieval():
     global map_pool
     if len(map_pool) == 0:
-        config = GlobalConfig()
         logger.debug(f"Map pool ran out of cached maps. Generating...")
-        return MapProvider(MapType.RANDOM, map_config=config.map_config)
+        config = GlobalConfig()
+        if config:
+            return MapProvider(MapType.RANDOM, map_config=config.map_config)
+        else:
+            return MapProvider(MapType.RANDOM)
+
     else:
         return map_pool.pop()
 

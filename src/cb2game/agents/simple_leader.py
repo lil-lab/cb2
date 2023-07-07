@@ -4,19 +4,26 @@ This is only useful for testing purposes. Theoretically, you could have
 automated self-play with a simple_follower and simple_leader, but the data would
 not be very diverse.
 """
-
 import logging
 from collections import deque
+from dataclasses import dataclass
 
-from cb2game.agents.agent import Role
+from cb2game.agents.agent import Agent, Role
 from cb2game.pyclient.game_endpoint import Action, GameState
 from cb2game.server.routing_utils import get_instruction_to_location
 
 logger = logging.getLogger(__name__)
 
 
-class SimpleLeader(object):
-    def __init__(self):
+@dataclass
+class SimpleLeaderConfig(object):
+    """Configuration for a simple leader. Currently placeholder."""
+
+    ...
+
+
+class SimpleLeader(Agent):
+    def __init__(self, config: SimpleLeaderConfig = None):
         ...
 
     # OVERRIDES role

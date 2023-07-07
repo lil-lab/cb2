@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 from mashumaro.mixins.json import DataClassJSONMixin
 
-from cb2game.agents.agent import Role
+from cb2game.agents.agent import Agent, Role
 from cb2game.pyclient.game_endpoint import Action, GameState
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ class SimpleFollowerConfig(DataClassJSONMixin):
     """
 
 
-class SimpleFollower(object):
+class SimpleFollower(Agent):
     def __init__(self, config: SimpleFollowerConfig):
         self.instructions_processed = set()
         self.actions = []
