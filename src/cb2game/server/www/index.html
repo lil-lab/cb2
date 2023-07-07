@@ -11,6 +11,9 @@
 
     <title>CB2: a Collaborative Natural Language Instruction Game</title>
 
+    <!-- Font for a sane copy-button emoji -->
+    <link rel="stylesheet" href="https://pypi.org/static/css/fontawesome.ac611abc.css">
+
     <!-- General Open Graph tags -->
     <meta property="og:title" content="CB2: a Collaborative Natural Language Instruction Game" />
     <meta property="og:description" content="CB2 is a collaborative 3D game with natural language instruction, and a research platform. Play with others or with our bot! Develop your own machine learning bots to interact with human users!" />
@@ -27,6 +30,57 @@
 
 
     <style type="text/css">
+        .code-oneliner {
+            font-family: monospace;
+            /* Add a nice text shadow to simulate some depth. */
+            text-shadow: 0 1px 0 #fff;
+            background: #f9f9f9;
+            text-align:left;
+        }
+
+        .copy-btn {
+            /*font-family: monospace;*/
+            font-family: var(--fa-style-family,"Font Awesome 6 Free");
+            font-weight: var(--fa-style,900);
+            font-size: 0.8em;
+            padding: 0;
+            margin: 0;
+            margin-top: 3px;
+            /* Add a border on the left */
+            border: 0px solid #ddd;
+            vertical-align: middle;
+            color: #666;
+            background-color: #f0f0f0;
+            background: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            /* Make the text aligned to the right of the parent, so the other elements don't shift on resize. */
+            float: right;
+
+        }
+
+        .code-btn-wrapper {
+            font-size: 2em;
+            background-color: #f0f0f0;
+            padding: 10px 20px;
+            border-radius: 5px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            /* Add a drop shadow. */
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            /* Add an inset shadow on the top and bottom. */
+            border-top: 1px solid #fff;
+            border-bottom: 1px solid #ccc;
+            width: 200px;
+            min-width: 600px;
+            margin: auto;
+        }
+
         .banner-background {
             position: relative;
             top: 0; left: 0;
@@ -228,6 +282,15 @@
             window.addEventListener('resize', resize_banner);
             // Resize the banner on page load.
             resize_banner();
+
+            var copyCodeBtn = document.querySelector('.js-copy-code-btn');
+
+            copyCodeBtn.addEventListener('click', function(event) {
+                copyTextToClipboard(document.getElementById('install_command').textContent);
+                // Change the button text to be a unicode character... f00c.
+                copyCodeBtn.innerHTML = '&#xf00c;';
+                copyCodeBtn.style.marginRight = '3px';
+            });
         });
 
         var header = document.querySelector('header');
@@ -241,6 +304,42 @@
         if (header != null) {
             header.addEventListener('load', function() {
                 resize_banner();
+            });
+        }
+
+        // Register code copy-paste handler.
+        function fallbackCopyTextToClipboard(text) {
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+
+            // Avoid scrolling to bottom
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                var successful = document.execCommand('copy');
+                var msg = successful ? 'successful' : 'unsuccessful';
+                console.log('Fallback: Copying text command was ' + msg);
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+            }
+
+            document.body.removeChild(textArea);
+        }
+        function copyTextToClipboard(text) {
+            if (!navigator.clipboard) {
+                fallbackCopyTextToClipboard(text);
+                return;
+            }
+            navigator.clipboard.writeText(text).then(function() {
+                console.log('Async: Copying to clipboard was successful!');
+            }, function(err) {
+                console.error('Async: Could not copy text: ', err);
             });
         }
     </script>
@@ -290,6 +389,10 @@
         <a href="/play"><b>Play With Other Humans &rarr;</b></a>
         <a href="/play?lobby_name=google-leader-lobby"><b>Play With a Baseline Bot &rarr;</b></a>
         <p>You may have to wait a bit to play with the bot due to limited compute capacity. We recommend coordinating with a friend to play with another human, because low traffic periods are likely to entail very long waits for a partner.</p>
+        <div class="code-btn-wrapper">
+            <code class="code-oneliner" id="install_command">python3 -m pip install cb2game</code>
+            <button class="js-copy-code-btn copy-btn"></button>
+        </div>
     </header>
     <script type="text/javascript"> resize_banner(); </script>
     <main style="margin-top: 0; padding-top: 24px;">
