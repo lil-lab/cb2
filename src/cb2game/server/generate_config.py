@@ -297,6 +297,12 @@ def ConfigFromUserInput() -> Config:
     slow_type(
         "Some server URLs are password-protected. See here for more info: https://github.com/lil-lab/cb2/wiki/Cb2-Url-Endpoints"
     )
+    slow_type(
+        "NOTE: Save your password. Passwords are stored in the config as an SHA512 hash. We don't store the password itself, and it's impossible to recover the password from the hash."
+    )
+    slow_type(
+        "If you forget your password, you'll need to delete the hash in the config file and restart the server."
+    )
     server_password = (
         user_input("Server password (leave blank for no password): ") or ""
     )

@@ -3,14 +3,19 @@ Cereal Bar V2
 
 - [Cereal Bar V2](#cereal-bar-v2)
   - [Intro](#intro)
-  - [Setup](#setup)
+  - [Installation](#installation)
+  - [Getting Started](#getting-started)
+    - [Installing the Unity client.](#installing-the-unity-client)
+    - [Creating a config.](#creating-a-config)
+    - [Running the server.](#running-the-server)
+    - [Deploying the server to a new machine.](#deploying-the-server-to-a-new-machine)
+  - [Development](#development)
     - [Cloning the repository.](#cloning-the-repository)
     - [Download Submodules](#download-submodules)
-    - [Python Dependencies](#python-dependencies)
+    - [Installing Dev Package.](#installing-dev-package)
     - [Pre-commit hooks.](#pre-commit-hooks)
     - [Server](#server)
     - [Client](#client)
-    - [Deploying the server to a new machine.](#deploying-the-server-to-a-new-machine)
     - [Client API.](#client-api)
     - [Scenario Rooms](#scenario-rooms)
       - [Creating a scenario.](#creating-a-scenario)
@@ -34,8 +39,75 @@ code for the game, a webapp hosting the game, and various related tools.
 
 This is a remake of the original Cereal Bar, which can be found [here][0]
 
-Setup
------
+Installation
+------------
+
+The easiest way to install CB2 is via pip. You can install the game with:
+
+```
+python3 -m pip install cb2game
+```
+
+Getting Started
+---------------
+
+### Installing the Unity client.
+
+You'll need to get a version of the front-end unity client, as this doesn't come with the pip package. You can fetch the latest client released on Github via:
+
+```
+python3 -m cb2game.server.fetch_client
+```
+
+### Creating a config.
+
+The server requires a config file to run. We provide a config generator script
+that walks you through the step of setting up the configuration for your server.
+You can run it with:
+
+```
+python3 -m cb2game.server.generate_config
+```
+
+This will create a config file in the current directory. If you just want a
+default config, you can just run:
+
+```
+python3 -m cb2game.server.generate_config --all_defaults
+```
+
+Which will create `default.yaml` in the current directory.
+
+### Running the server.
+
+Once you have a config, you can run the server with:
+
+```
+python3 -m cb2game.server.main --config_filepath <path_to_config>
+```
+
+You can now access the game instance at `http://localhost:8080/`
+
+### Deploying the server to a new machine.
+
+If you're setting up a web server, you'll want to run CB2 as a daemon. This
+provides a few benefits:
+- The server will automatically restart if it crashes.
+- Logs will be automatically rotated.
+- You can start/stop the server with `systemctl`.
+- The server will run in the background, and you can log out of the machine without stopping the server.
+
+The script `deploy/deploy.sh` should take care of everything. This installs a
+SystemD Daemon which handles the CB2 server. See `deploy/systemd/README.md` for
+more.
+
+Development
+-----------
+
+Here's the instructions if you'd like to setup CB2 for development. This
+installs the `cb2game` package in editable mode, so you can make changes to the
+code and have them reflected in the server without having to reinstall the
+package.
 
 ### Cloning the repository.
 
@@ -55,33 +127,37 @@ git submodule init
 git submodule update
 ```
 
-### Python Dependencies
+### Installing Dev Package.
 
 CB2 requires `Python 3.9` or higher.
 
-We recommend you setup a virtual environment for the python dependencies. Here's a quick intro:
+We recommend you setup a virtual environment for the development of CB2. You can do this with:
 
 * Create the venv with: `python3 -m venv <env_name>` (run once).
 * Enter the venv with: `source <env_name>/bin/activate`
-* Now that you're in a virtual python environment, you can proceed below to install the server requirements & run the server.
+* Now that you're in a virtual python environment, you can proceed below to install the server in dev mode.
 
-Dependencies can be installed with:
+Install the server in editable mode with:
 
-```python3 -m pip install -r requirements.txt```
+```
+# Run from the root of the repo.
+python3 -m pip install -e .
+```
 
 ### Pre-commit hooks.
 
 Precommit hooks are only required if you plan to contribute code to the
-repository.  Otherwise, we recommend you skip this section.
+repository.  But they're highly recommended, as they'll run formatting tools on
+your code before you commit it, and block the commit if there are any failing
+unit tests.  If a unit test fails, it means you have broken something, and you
+shouldn't be committing it.
 
-Our precommit hooks require `python3.10` and `rustc` in order to run. Rust is
-only used the first time to build a local binary of the typos tool, which
-safeguards our repository from common typos developers make. You can download
+Some precommit hooks may require `python3.10` in order to run. You can download
 python3.10 from python.org. You don't need it to be the python version used in
-your venv or conda environment, it simply needs to be installed somewhere on
-your system, and downloading the binary from python.org shouldn't interfere with
-any existing installations. It will just make `python3.10` available as a binary
-on the path. You can install rust from `https://www.rust-lang.org/tools/install`
+your venv or conda environment, or even the system default. It simply needs to
+be installed somewhere on your system, and downloading the binary from
+python.org shouldn't interfere with any existing python environments. It will just
+make `python3.10` available as a binary on the path.
 
 Pre-commits take a long time (1-2m) to run the first time you commit, but they
 should be fast (3-4 seconds) after that.
@@ -92,18 +168,14 @@ Install pre-commit hooks with
 
 If you don't have pre-commit already, you can get it by refreshing dependencies.
 
-```python3 -m pip install -r requirements.txt```
-
 On every commit, your commit will be blocked if any of the hooks defined in `.pre-commit-config.yaml` fail.
-
-Hooks only run on files that you touch, so if you touch a new file with linter errors, you may inherit some legacy linter rrors. Don't have the time? Need to just commit? Try `git commit --no-verify`.
 
 ### Server
 
 Launch the server on your desktop with:
 
 ```
-python3 -m server.main --config_filepath="server/config/local-config.yaml"
+python3 -m cb2game.server.main --config_filepath <path-to-config>
 ```
 
 To launch the server on a deployment machine, you'll want to use the SystemD
@@ -114,7 +186,11 @@ When you're done, you can quit the python venv with `deactivate` on the command 
 
 ### Client
 
-The client is a Unity project developed using Unity `Version 2020.3.xx`. This is contained in the `game/` directory. Once unity is installed, the application should open successfully.
+CB2 is designed such that most game logic can be modified without having to
+recompile the Unity client. However, if you do need to recompile the client,
+you'll need to install Unity.
+
+The client is a Unity project developed using Unity `Version 2020.3.xx`. This is contained in the `unity_client/` directory. Once unity is installed, the application should open successfully.
 
 For development purposes, the server may be run locally and the client run directly in the Unity editor. This connects to the server using the default lobby. For deployment, the game is compiled to HTML + WebGL.
 
@@ -127,17 +203,17 @@ The WebGL client can either be compiled from within Unity or from the command li
 
 This launches a headless version of Unity which builds a WebGL client and moves it to the appropriate directory (`server/www/WebGL`) in the server. Any pre-existing contents of `server/www/WebGL` are moved to `server/www/OLD_WebGL`.
 
-Upon completion of this command, one may launch the server and access the client via ```localhost:8080/WebGL/index.html```.
+Upon completion of this command, one may launch the server and access the client via ```localhost:8080/play```.
 
-### Deploying the server to a new machine.
+If you built the client from unity and want to install it, you can run:
 
-The script `deploy/deploy.sh` should take care of everything. This installs a
-SystemD Daemon which handles the CB2 server. See `deploy/systemd/README.md` for
-more.
+```
+python3 -m cb2game.server.fetch_client ----local_client_path <path_to_WebGL_dir>
+```
 
 ### Client API.
 
-This repository contains a client API for writing agents which can interact with CB2. The client API is contained in directory `py_client/`, which contains a README with further information.
+This repository contains a client API for writing agents which can interact with CB2. The client API is contained in directory `pyclient/`, which contains a README with further information.
 
 ### Scenario Rooms
 CB2 contains a scenario room to allow for research that wants to investigate
@@ -154,7 +230,7 @@ Scenario State". You must be in the `open` lobby to do this.
 Access the open lobby via endpoint `/play?lobby_name=open`.
 
 The scenario file itself is a JSON file that you can download. The JSON follows
-the schema of the `Scenario` dataclass defined in `server/messages/scenario.py`.
+the schema of the `Scenario` dataclass defined in `src/cb2game/server/messages/scenario.py`.
 
 Scenarios are currently follower-only. If it wasn't the followers turn when you
 created the scenario, then the follower will be unable to move. Make sure to
@@ -202,13 +278,13 @@ Launch the map editor with the command:
 
 ```
 # Must be in python virtual env first!
-python3 -m server.map_tools.map_editor
+python3 -m cb2game.server.map_tools.map_editor
 ```
 
 No further command line parameters are needed. The editor will pop-up a GUI
 asking you for a scenario file. We recommend starting with the template map, a
 10x10 environment included in this repository at
-`server/map_tools/maps/template.json`.
+`src/cb2game/server/map_tools/maps/template.json`.
 
 Upon closing the editor, it pops up another GUI to save the
 modified scenario -- Make sure to do this, or your changes will be lost. Hitting
