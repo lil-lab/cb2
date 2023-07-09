@@ -87,10 +87,8 @@ def configure_agent(agent_module_name: str, all_defaults: bool = False):
 
     # Construct the agent configuration dictionary.
     agent_config = {
-        "my_agent": {
-            "type": f"{agent_module_name}.{agent_class.__name__}",
-            "config": field_values,
-        }
+        "type": f"{agent_module_name}.{agent_class.__name__}",
+        "config": field_values,
     }
 
     # First, we convert the class name to snake case.

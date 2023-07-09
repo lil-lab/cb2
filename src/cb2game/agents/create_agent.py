@@ -22,7 +22,7 @@ class {agent_name}Config(object):
 
     # Add configuration fields here.
     # Then generate the agent config yaml with:
-    # `python3 -m cb2game.agents.generate_config {agent_name}`
+    # `python3 -m cb2game.agents.generate_config {module_name}`
     pass
 
 

@@ -52,18 +52,28 @@ class AgentConfig(DataClassJSONMixin):
 
 @dataclasses.dataclass
 class AgentConfigData:
-    type: str
-    config_type: str
-    config: dict
+    type: str  # Agent type. Contains module and class names.
+    config: dict  # Configuration for initializing the agent.
 
 
 # Attempts to parse the config file. If there's any parsing or file errors,
 # doesn't handle the exceptions.
-def ReadAgentConfigOrDie(config_path) -> AgentConfig:
+def ReadAgentConfigOrDie(config_path) -> AgentConfigData:
     with open(config_path, "r") as cfg_file:
-        data = yaml.load(cfg_file, Loader=yaml.CLoader)
-        config = AgentConfig.from_dict(data)
-        return config
+        data = yaml.load(cfg_file, Loader=yaml.SafeLoader)
+    # If the resulting type is not AgentConfigData, then convert it to one, by
+    # initializing the AgentConfigData object with the dictionary.
+    if not isinstance(data, AgentConfigData):
+        try:
+            data = AgentConfigData(**data)
+        except TypeError as e:
+            logger.error("Error parsing agent config: %s", e)
+            raise
+    return data
+
+
+def SerializeAgentConfig(config: AgentConfigData) -> str:
+    return yaml.dump(config)
 
 
 @deprecated("Use AgentConfigData and LoadAgentFromConfig() instead.")
@@ -82,13 +92,9 @@ def CreateAgent(config: AgentConfig) -> Agent:
         return SimpleLeader()
 
 
-def LoadAgentFromConfig(config_file_path: str):
-    # Load the configuration file.
-    with open(config_file_path, "r") as file:
-        config_data = yaml.safe_load(file)
-
+def LoadAgentFromConfig(config_data: AgentConfigData) -> Agent:
     # Extract the module and class names.
-    class_path = config_data["my_agent"]["type"].split(".")
+    class_path = config_data.type.split(".")
     module_name, class_name = ".".join(class_path[:-1]), class_path[-1]
 
     if module_name:
@@ -112,7 +118,7 @@ def LoadAgentFromConfig(config_file_path: str):
         )
 
     # Create an instance of the config class using the configuration data.
-    config_instance = config_class(**config_data["my_agent"]["config"])
+    config_instance = config_class(**config_data.config)
 
     # Create an instance of the agent class using the configuration instance.
     instance = class_(config_instance)

@@ -6,7 +6,7 @@ from datetime import timedelta
 import fire
 
 from cb2game.agents.agent import Agent
-from cb2game.agents.config import LoadAgentFromConfig
+from cb2game.agents.config import LoadAgentFromConfig, ReadAgentConfigOrDie
 from cb2game.pyclient.game_endpoint import Action
 from cb2game.pyclient.remote_client import RemoteClient
 from cb2game.server.messages.rooms import Role
@@ -65,7 +65,8 @@ def main(
 ):
     """Connects to a remote server from the command line and plays a game using the specified agent."""
     # Loads an agent based off of pyyaml configs.
-    agent = LoadAgentFromConfig(agent_config_filepath)
+    agent_config_data = ReadAgentConfigOrDie(agent_config_filepath)
+    agent = LoadAgentFromConfig(agent_config_data)
     PlayRemoteGame(
         host,
         agent,

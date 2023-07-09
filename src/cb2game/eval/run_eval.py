@@ -7,7 +7,12 @@ import fire
 from tqdm import tqdm
 
 from cb2game.agents.agent import Agent, RateLimitException, Role
-from cb2game.agents.config import AgentConfig, CreateAgent, ReadAgentConfigOrDie
+from cb2game.agents.config import (
+    AgentConfigData,
+    LoadAgentFromConfig,
+    ReadAgentConfigOrDie,
+    SerializeAgentConfig,
+)
 from cb2game.eval.eval_schema import Eval, InstructionEvaluation, RunSource
 from cb2game.pyclient.endpoint_pair import EndpointPair
 from cb2game.pyclient.local_game_coordinator import LocalGameCoordinator
@@ -120,9 +125,7 @@ def RunEval(
     server_config_path: str = "",
     limit: int = -1,
     # Optional information about the agent that will be saved in the eval JSON output.
-    agent_config: AgentConfig = None,
-    agent_name: str = "",
-    agent_type: str = "",
+    agent_config: AgentConfigData = None,
 ):
     """Runs an eval against the given agent.
 
@@ -164,9 +167,7 @@ def RunEval(
     eval_run = Eval(
         run_source=RunSource.LOCAL,
         commit_version=GetCommitHash() or PackageVersion(),
-        agent_name=agent_name,
-        agent_type=agent_type,
-        agent_config=agent_config.to_json(),
+        agent_config=SerializeAgentConfig(agent_config),
         agent_role=agent.role(),
         server_config=config.to_json(),
     )
@@ -193,7 +194,7 @@ def RunEval(
         try:
             objective = ObjectiveMessage.from_json(instruction.data)
             logger.info(
-                f"Evaluating agent {agent_config.name} on instruction {instruction.id}"
+                f"Evaluating agent {agent_config.type} on instruction {instruction.id}"
             )
             logger.info(f"Instruction text: {objective.text}")
             if agent.role() == Role.LEADER:
@@ -340,16 +341,14 @@ def main(
     limit: int = -1,
 ):
     InitPythonLogging()
-    agent_config = ReadAgentConfigOrDie(agent_config)
-    agent = CreateAgent(agent_config)
+    agent_config_data = ReadAgentConfigOrDie(agent_config)
+    agent = LoadAgentFromConfig(agent_config_data)
     RunEval(
         agent,
         output_prefix,
         server_config,
         limit,
-        agent_config,
-        agent_name=agent_config.name,
-        agent_type=agent_config.agent_type,
+        agent_config_data,
     )
 
 

@@ -8,7 +8,7 @@ from viztracer import VizTracer
 
 import cb2game.server.db_tools.db_utils as db_utils
 from cb2game.agents.agent import Agent
-from cb2game.agents.config import LoadAgentFromConfig
+from cb2game.agents.config import LoadAgentFromConfig, ReadAgentConfigOrDie
 from cb2game.pyclient.endpoint_pair import EndpointPair
 from cb2game.pyclient.game_endpoint import Action, Role
 from cb2game.pyclient.local_game_coordinator import LocalGameCoordinator
@@ -137,11 +137,13 @@ def main(
     # If leader and follower config were provided, load them via LoadAgentFromConfig
     # Otherwise, use the default agents.
     if leader_config != "":
-        leader_agent = LoadAgentFromConfig(leader_config)
+        config_data = ReadAgentConfigOrDie(leader_config)
+        leader_agent = LoadAgentFromConfig(config_data)
     else:
         leader_agent = default_leader_agent
     if follower_config != "":
-        follower_agent = LoadAgentFromConfig(follower_config)
+        config_data = ReadAgentConfigOrDie(follower_config)
+        follower_agent = LoadAgentFromConfig(config_data)
     else:
         follower_agent = default_follower_agent
     # If profile=True, play only 1 game, but import viztracer and save the trace to cb2-local.prof.
