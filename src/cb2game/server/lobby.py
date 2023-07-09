@@ -566,14 +566,14 @@ class Lobby(ABC):
                             )
                         )
                 self.delete_room(room.id())
-            if room.game_time() > timedelta(hours=2):
+            if room.game_time() > timedelta(hours=3):
                 logger.info(
-                    f"Room {room.name()} expired after 2 hours. Terminating game!"
+                    f"Room {room.name()} expired after 3 hours. Terminating game!"
                 )
                 for socket in room.player_endpoints():
                     if not socket.closed:
                         leave_notice = LeaveRoomNotice(
-                            "Game ended by server after 2 hours."
+                            "Game ended by server after 3 hours."
                         )
                         self._pending_room_management_responses[socket].put(
                             RoomManagementResponse(
@@ -659,6 +659,21 @@ class Lobby(ABC):
         if room is None:
             return None
         print("Creating new replay room " + room.name())
+        player_id = room.add_player(player, Role.LEADER)
+        self._remotes[player] = SocketInfo(room.id(), player_id, Role.LEADER)
+        return room
+
+    def create_demo(self, player: web.WebSocketResponse):
+        """Creates a replay room to view a replay of the provided game ID."""
+        logger.info(f"Creating replay room for {player}.")
+
+        # Setup room log directory.
+        game_id = 1
+        game_record = None
+        room = self.create_room(game_id, game_record, RoomType.DEMO)
+        if room is None:
+            return None
+        print("Creating new DEMO room " + room.name())
         player_id = room.add_player(player, Role.LEADER)
         self._remotes[player] = SocketInfo(room.id(), player_id, Role.LEADER)
         return room

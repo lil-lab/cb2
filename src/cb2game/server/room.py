@@ -12,6 +12,7 @@ import peewee
 import cb2game.server.schemas.clients as clients_db
 import cb2game.server.schemas.mturk as mturk_db
 from cb2game.server.config.config import GlobalConfig
+from cb2game.server.demo_state import DemoState
 from cb2game.server.lobby_consts import IsGoogleLobby, IsMturkLobby
 from cb2game.server.messages.logs import (
     LogEntryFromIncomingMessage,
@@ -39,6 +40,7 @@ class RoomType(Enum):
     PRESET_GAME = 3  # Resuming from historical record.
     REPLAY = 4  # Serve game events live to the client for replay.
     SCENARIO = 5  # Game type for scenario rooms
+    DEMO = 6  # Used for conferences.
 
 
 class Room(object):
@@ -99,6 +101,8 @@ class Room(object):
                 return
         elif self._room_type == RoomType.REPLAY:
             game_state = ReplayState(self._id, self._game_record)
+        elif self._room_type == RoomType.DEMO:
+            game_state = DemoState(self._id)
         elif self._room_type == RoomType.SCENARIO:
             self._game_record.type = f"{game_type_prefix}scenario"
             game_state = ScenarioState(
@@ -111,18 +115,22 @@ class Room(object):
         self._state_machine_driver = StateMachineDriver(
             game_state, self._id, self._lobby
         )
-        if self._room_type not in [RoomType.PRESET_GAME, RoomType.REPLAY]:
+        if self._room_type not in [
+            RoomType.PRESET_GAME,
+            RoomType.REPLAY,
+            RoomType.DEMO,
+        ]:
             self._game_record.save()
         self._update_loop = None
         if self._room_type == RoomType.PRESET_GAME:
             # Create a dummy log directory for the game that ignores all writes.
-            self._log_directory = pathlib.Path("/dev/null")
+            self._log_directory = pathlib.Path(os.devnull)
             # Create a dummy file object that ignores all bytes.
             self._messages_from_server_log = open(os.devnull, "w")
             self._messages_to_server_log = open(os.devnull, "w")
-        elif self._room_type == RoomType.REPLAY:
+        elif self._room_type in [RoomType.REPLAY, RoomType.DEMO]:
             # Create a dummy log directory for the game that ignores all writes.
-            self._log_directory = pathlib.Path("/dev/null")
+            self._log_directory = pathlib.Path(os.devnull)
             # Create a dummy file object that ignores all bytes.
             self._messages_from_server_log = open(os.devnull, "w")
             self._messages_to_server_log = open(os.devnull, "w")
@@ -144,7 +152,11 @@ class Room(object):
             self._messages_to_server_log = messages_to_server_path.open("w")
 
         # Write the current server config to the log_directory as config.json.
-        if self._room_type not in [RoomType.PRESET_GAME, RoomType.REPLAY]:
+        if self._room_type not in [
+            RoomType.PRESET_GAME,
+            RoomType.REPLAY,
+            RoomType.DEMO,
+        ]:
             with open(pathlib.Path(self._log_directory, "config.json"), "w") as f:
                 server_config = GlobalConfig()
                 if server_config is not None:
@@ -168,7 +180,10 @@ class Room(object):
         remote = GetRemote(ws)
 
         # Fetch the leader and follower user information.
-        if remote != None and self._room_type != RoomType.PRESET_GAME:
+        if remote != None and self._room_type not in [
+            RoomType.PRESET_GAME,
+            RoomType.DEMO,
+        ]:
             # If mturk..
             is_mturk = IsMturkLobby(self._lobby.lobby_type())
             is_google = IsGoogleLobby(self._lobby.lobby_type())

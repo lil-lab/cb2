@@ -57,6 +57,14 @@ class ReplayLobby(lobby.Lobby):
             self._pending_replay_messages[ws] = Queue()
 
         if request.type == ReplayRequestType.START_REPLAY:
+            if self.lobby_info().is_demo_lobby:
+                self.create_demo(ws)
+                self._pending_replay_messages[ws].put(
+                    ReplayResponse(
+                        ReplayResponseType.REPLAY_STARTED,
+                    )
+                )
+                return
             self.create_replay(ws, request.game_id)
             self._pending_replay_messages[ws].put(
                 ReplayResponse(

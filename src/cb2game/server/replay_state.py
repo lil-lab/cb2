@@ -39,6 +39,8 @@ FOLLOWER_SECONDS_PER_TURN = 15
 
 FOLLOWER_TURN_END_DELAY_SECONDS = 1
 
+LONG_EVENT_TIME_SECONDS = 0.5
+
 logger = logging.getLogger(__name__)
 
 
@@ -62,6 +64,7 @@ class ReplayState(object):
         self,
         room_id,
         game_record,
+        clip_long_events=False,
     ):
         self._start_time = datetime.utcnow()
         self._room_id = room_id
@@ -91,6 +94,7 @@ class ReplayState(object):
         self._num_turns = 0
 
         self._speed = 1.0
+        self._clip_long_events = clip_long_events
 
         initial_state_event = (
             Event.select()
@@ -226,6 +230,11 @@ class ReplayState(object):
     def done(self):
         return self._done
 
+    def out_of_events(self):
+        if self._initialized:
+            return self._event_index == len(self._events)
+        return False
+
     def player_ids(self):
         return self._player_ids
 
@@ -302,7 +311,12 @@ class ReplayState(object):
             self._events[self._event_index].server_time
             - self._events[self._event_index - 1].server_time
         )
-        return time_difference / float(self._speed)
+        time_to_event = time_difference / float(self._speed)
+        if self._clip_long_events and time_to_event > timedelta(
+            seconds=LONG_EVENT_TIME_SECONDS
+        ):
+            return timedelta(seconds=LONG_EVENT_TIME_SECONDS)
+        return time_to_event
 
     def rewind_event(self):
         """Replays all events up to the previous event, integrating state on the server and then sends state to the client."""
@@ -433,38 +447,42 @@ class ReplayState(object):
         self._command_queue = deque()
         self._num_turns = 0
 
+    def Initialize(self):
+        """Starts the replay. Happens once a player joins, or if triggered by demo."""
+        self._initialized = True
+        logger.info("Replay initialized.")
+        self._events = list(
+            Event.select()
+            .where(Event.game_id == self._game_record.id)
+            .order_by(Event.server_time)
+        )
+        self.reset()
+        logger.info(f"Found {len(self._events)} events.")
+        turn_states = [
+            x
+            for x in self._events
+            if x.type in [EventType.START_OF_TURN, EventType.TURN_STATE]
+        ]
+        self._num_turns = max(
+            [
+                x.turn_number
+                for x in filter(
+                    lambda event: event.type
+                    in [EventType.START_OF_TURN, EventType.TURN_STATE],
+                    self._events,
+                )
+            ],
+            default=0,
+        )
+        self.prime_replay()
+
     def update(self):
         send_replay_state = False
 
         # Wait for someone to join in order to init.
         if not self._initialized and len(self._message_queue.keys()) > 0:
-            self._initialized = True
             send_replay_state = True
-            logger.info("Replay initialized.")
-            self._events = list(
-                Event.select()
-                .where(Event.game_id == self._game_record.id)
-                .order_by(Event.server_time)
-            )
-            self.reset()
-            logger.info(f"Found {len(self._events)} events.")
-            turn_states = [
-                x
-                for x in self._events
-                if x.type in [EventType.START_OF_TURN, EventType.TURN_STATE]
-            ]
-            self._num_turns = max(
-                [
-                    x.turn_number
-                    for x in filter(
-                        lambda event: event.type
-                        in [EventType.START_OF_TURN, EventType.TURN_STATE],
-                        self._events,
-                    )
-                ],
-                default=0,
-            )
-            self.prime_replay()
+            self.Initialize()
 
         if self._event_timer.expired() and self._event_index < len(self._events):
             send_replay_state = True

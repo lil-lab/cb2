@@ -60,3 +60,5 @@ class LobbyInfo(DataClassJSONMixin):
     ranked_matchmaking_randomness: float = 0.0
     live_feedback_enabled: bool = True
     delayed_feedback_enabled: bool = True
+    # Replay lobbies only. Useful for demoing at conferences and such.
+    is_demo_lobby: bool = False

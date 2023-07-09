@@ -36,6 +36,10 @@ class UserInfoFetcher:
             # md5sum for mturkers.
             hashed_id = hashlib.md5(remote.mturk_id.encode("utf-8")).hexdigest()
             user_name = LookupUsernameFromMd5sum(hashed_id)
+        elif user_type == UserType.OPEN:
+            user_name = ""
+        elif user_type == UserType.BOT:
+            user_name = ""
         else:
             user_name = ""
             logger.warning(f"Unknown user type {user_type}")

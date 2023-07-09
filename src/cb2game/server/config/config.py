@@ -208,6 +208,9 @@ class Config(DataClassJSONMixin):
                 "replay-lobby", LobbyType.REPLAY, "Lobby for displaying replays.", 40
             ),
             LobbyInfo(
+                "acl", LobbyType.REPLAY, "ACL demo lobby", 40, is_demo_lobby=True
+            ),
+            LobbyInfo(
                 "scenario-lobby",
                 LobbyType.SCENARIO,
                 "Lobby for scenario experiments.",
