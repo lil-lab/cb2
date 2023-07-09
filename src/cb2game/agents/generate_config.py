@@ -85,17 +85,12 @@ def configure_agent(agent_module_name: str, all_defaults: bool = False):
                 f"Enter {field.name}", default_value
             )
 
-    # Construct a dictionary which uses yaml object notation to call the
-    # constructor with the config passed in as an object.
-    config_classname = f"{agent_module_name}.{config_class.__name__}"
-    constructor_call = {
-        "python/object": f"{agent_module_name}.{agent_class.__name__}",
-        "python/object/apply": [
-            {
-                "python/object": config_classname,
-                "python/object/apply": [{"python/tuple": list(field_values.values())}],
-            }
-        ],
+    # Construct the agent configuration dictionary.
+    agent_config = {
+        "my_agent": {
+            "type": f"{agent_module_name}.{agent_class.__name__}",
+            "config": field_values,
+        }
     }
 
     # First, we convert the class name to snake case.
@@ -122,7 +117,7 @@ def configure_agent(agent_module_name: str, all_defaults: bool = False):
         time.sleep(2)
         os.rename(first_filename, filename)
     with open(first_filename, "w") as f:
-        yaml.dump(constructor_call, f)
+        yaml.dump(agent_config, f, sort_keys=False)
     slow_type(f"Saved config to {first_filename}...")
 
 

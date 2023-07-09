@@ -1,7 +1,8 @@
 """ Defines config for configuring CB2 agents. """
+import dataclasses
 import importlib
+import inspect
 import logging
-from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
@@ -12,10 +13,12 @@ from cb2game.agents.agent import Agent
 from cb2game.agents.gpt_follower import GptFollower, GptFollowerConfig
 from cb2game.agents.simple_follower import SimpleFollower, SimpleFollowerConfig
 from cb2game.agents.simple_leader import SimpleLeader
+from cb2game.util.deprecated import deprecated
 
 logger = logging.getLogger(__name__)
 
 
+@deprecated("Use AgentConfigData and LoadAgentFromConfig() instead.")
 class AgentType(Enum):
     NONE = 0
     # Follower used for CB2 pilot study.
@@ -34,7 +37,7 @@ class AgentType(Enum):
         return AgentType[s]
 
 
-@dataclass
+@deprecated("Use AgentConfigData and LoadAgentFromConfig() instead.")
 class AgentConfig(DataClassJSONMixin):
     name: str
     comment: str
@@ -47,6 +50,13 @@ class AgentConfig(DataClassJSONMixin):
     """Configuration for initializing a SimpleFollower agent."""
 
 
+@dataclasses.dataclass
+class AgentConfigData:
+    type: str
+    config_type: str
+    config: dict
+
+
 # Attempts to parse the config file. If there's any parsing or file errors,
 # doesn't handle the exceptions.
 def ReadAgentConfigOrDie(config_path) -> AgentConfig:
@@ -56,6 +66,7 @@ def ReadAgentConfigOrDie(config_path) -> AgentConfig:
         return config
 
 
+@deprecated("Use AgentConfigData and LoadAgentFromConfig() instead.")
 def CreateAgent(config: AgentConfig) -> Agent:
     agent_type = AgentType.from_str(config.agent_type)
     if agent_type == AgentType.NONE:
@@ -77,32 +88,33 @@ def LoadAgentFromConfig(config_file_path: str):
         config_data = yaml.safe_load(file)
 
     # Extract the module and class names.
-    class_path = config_data["python/object"].split(".")
+    class_path = config_data["my_agent"]["type"].split(".")
     module_name, class_name = ".".join(class_path[:-1]), class_path[-1]
 
-    # Import the module and get the class.
-    module = importlib.import_module(module_name)
-    class_ = getattr(module, class_name)
+    if module_name:
+        # If module_name is not empty, import the module and get the class.
+        module = importlib.import_module(module_name)
+        class_ = getattr(module, class_name)
+    else:
+        # If module_name is empty, assume the class is in the current namespace.
+        globals_, locals_ = globals(), locals()
+        class_ = locals_.get(class_name, globals_.get(class_name))
 
-    # Get the config object.
-    config_data = config_data["python/object/apply"][0]
-    config_class_path = config_data["python/object"].split(".")
-    config_module_name, config_class_name = (
-        ".".join(config_class_path[:-1]),
-        config_class_path[-1],
-    )
+    # Extract the config class from the first argument type hint of the Agent's constructor
+    signature = inspect.signature(class_.__init__)
+    if "config" not in signature.parameters:
+        raise ValueError("Agent's constructor doesn't have a 'config' parameter")
 
-    # Import the config module and get the class.
-    config_module = importlib.import_module(config_module_name)
-    config_class = getattr(config_module, config_class_name)
+    config_class = signature.parameters["config"].annotation
+    if config_class == inspect._empty:
+        raise ValueError(
+            "Agent's constructor doesn't have a type hint for the 'config' parameter"
+        )
 
-    # Get the list of values to pass to the constructor of config class.
-    values = config_data["python/object/apply"][0]["python/tuple"]
+    # Create an instance of the config class using the configuration data.
+    config_instance = config_class(**config_data["my_agent"]["config"])
 
-    # Create an instance of the config class using the constructor.
-    config_instance = config_class(*values)
-
-    # Create an instance of the agent class using the config_instance.
+    # Create an instance of the agent class using the configuration instance.
     instance = class_(config_instance)
 
     return instance
