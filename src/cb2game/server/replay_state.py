@@ -198,10 +198,16 @@ class ReplayState(object):
             return message_from_server.ObjectivesFromServer(instructions)
         elif event.type == EventType.ACTION:
             action_obj = Action.from_json(event.data)
+            action_duration_s = action_obj.duration_s / self._speed
+            if self._clip_long_events and action_duration_s > LONG_EVENT_TIME_SECONDS:
+                action_duration_s = LONG_EVENT_TIME_SECONDS
+            action_expiration = datetime.now() + timedelta(
+                seconds=action_duration_s + 0.1
+            )
             action_obj = dataclasses.replace(
                 action_obj,
-                expiration=datetime.utcnow() + timedelta(seconds=10),
-                duration_s=(action_obj.duration_s / self._speed),
+                expiration=action_expiration,
+                duration_s=action_duration_s,
             )
             if noduration:
                 action_obj = dataclasses.replace(

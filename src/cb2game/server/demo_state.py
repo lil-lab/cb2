@@ -189,7 +189,13 @@ class DemoState(object):
         replay_id = self._replay_ids.get(player_id, None)
         if replay_id is None:
             return False
-        return self._replay_state.fill_messages(replay_id, out_messages)
+        result = self._replay_state.fill_messages(replay_id, out_messages)
+        if result:
+            # Override any TurnState messages to indicate that the game is not over.
+            for message in out_messages:
+                if message.type == message_from_server.MessageType.GAME_STATE:
+                    message.turn_state.game_over = False
+        return result
 
     # Returns the current state of the game for monitoring.
     def state(self, player_id=-1):
