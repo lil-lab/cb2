@@ -480,6 +480,11 @@ class ReplayState(object):
             ],
             default=0,
         )
+        # Send a zero objectives message.
+        for actor_id in self._message_queue:
+            self._message_queue[actor_id].append(
+                message_from_server.ObjectivesFromServer([])
+            )
         self.prime_replay()
 
     def update(self):

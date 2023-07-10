@@ -60,6 +60,10 @@ class DemoState(object):
     def StartNextGame(self):
         if len(self._games) == 0:
             return False
+        # Preserve replay speed.
+        old_speed = 1
+        if self._replay_state is not None:
+            old_speed = self._replay_state._speed  # pylint: disable=protected-access
         game_id = self._games[self._games_index]
         game_record = Game.select().where(Game.id == game_id).get()
         self._replay_state = ReplayState(
@@ -77,6 +81,7 @@ class DemoState(object):
         self._replay_state._command_queue.append(
             ReplayRequest(ReplayRequestType.REPLAY_COMMAND, command=Command.PLAY)
         )  # pylint: disable=protected-access
+        self._replay_state._speed = old_speed  # pylint: disable=protected-access
         self._games_index = (self._games_index + 1) % len(self._games)
 
     @staticmethod
