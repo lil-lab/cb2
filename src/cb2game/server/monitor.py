@@ -65,8 +65,21 @@ class ExceptionViewer:
         if column not in self.data[0].keys():
             print("Invalid column")
             return
+        # Handle sorting by date
+        if column == "date":
+            self.data = sorted(
+                self.data,
+                key=lambda k: time.mktime(
+                    time.strptime(k[column], "%a %b %d %H:%M:%S %Y")
+                ),
+            )
+            return
         # Sort data by column
         self.data = sorted(self.data, key=lambda k: k[column])
+
+    def reverse_data(self):
+        if self.data:
+            self.data.reverse()
 
     def filter_data(self, string):
         # Filter data by string
@@ -120,7 +133,10 @@ class ExceptionViewer:
                     )
             if len(self.data) > self.current_selection + 5:
                 print("...")
-            print(self.term.normal + "\nPress q to quit, s to sort, f to filter")
+            print(
+                self.term.normal
+                + "\nPress q to quit, s to sort, f to filter, r to reverse sort, enter to view exception"
+            )
 
     def print_exception(self, filename):
         # Print the full exception to the right of the data grid in a fixed-size box.
@@ -200,9 +216,13 @@ def main(config_filepath=""):
                             print("Invalid selection")
                             # Reset column_key to default.
                             column_key = ""
+                            column = ""
                         continue
                     if column_key:
                         viewer.sort_data(column)
+                    viewer.print_data()
+                elif key == "r":
+                    viewer.reverse_data()
                     viewer.print_data()
                 elif key == "f":
                     string = ""
