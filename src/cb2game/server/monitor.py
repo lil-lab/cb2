@@ -129,11 +129,12 @@ class ExceptionViewer:
         # For each line in exception, if it's longer than the width of the box, split it into multiple lines.
         # This is to prevent the exception from overflowing the box.
         exception_lines = []
+        max_line_length = int(self.term.width)
         for line in exception.split("\n"):
-            if len(line) > self.term.width // 2:
+            if len(line) > max_line_length:
                 for segment in [
-                    line[i : i + self.term.width // 2]
-                    for i in range(0, len(line), self.term.width // 2)
+                    line[i : i + max_line_length]
+                    for i in range(0, len(line), max_line_length)
                 ]:
                     exception_lines.append(segment)
             else:
@@ -146,9 +147,7 @@ class ExceptionViewer:
         # Print the exception box. If the exception is longer than the height of the box, truncate it.
         with self.term.location(0, len(self.data) + 2):
             print(self.term.clear_eos)
-            print(
-                self.term.center("\n".join(exception_lines), width=self.term.width // 2)
-            )
+            print("\n".join(exception_lines))
 
     def run(self):
         # Run the application
