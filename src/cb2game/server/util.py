@@ -133,8 +133,11 @@ def GetCommitHash():
         )
     except subprocess.CalledProcessError:
         # This is the more cross platform way.
-        repo = git.Repo(pathlib.Path(__file__).parent.parent)
-        return repo.head.object.hexsha
+        try:
+            repo = git.Repo(pathlib.Path(__file__).parent.parent)
+            return repo.head.object.hexsha
+        except git.exc.InvalidGitRepositoryError:
+            return None
     except git.exc.InvalidGitRepositoryError:
         return None
 
