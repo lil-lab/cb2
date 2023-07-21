@@ -2,9 +2,9 @@ import logging
 import math
 import pathlib
 import random
-import sys
 from typing import List, Tuple
 
+import fire
 import pygame
 import pygame.freetype
 
@@ -12,9 +12,9 @@ from cb2game.server.actor import Actor
 from cb2game.server.assets import AssetId
 from cb2game.server.card import Card, Color, Shape
 from cb2game.server.hex import Edges
-from cb2game.server.messages.bug_report import BugReport
 from cb2game.server.messages.prop import Prop, PropType
 from cb2game.server.messages.rooms import Role
+from cb2game.server.messages.scenario import Scenario
 from cb2game.server.util import PackageRoot
 
 pygame.freetype.init()
@@ -40,6 +40,24 @@ UNITY_COORDINATES_SCALE = 3.46
 
 pygame.font.init()
 GAME_FONT = pygame.font.SysFont("Helvetica", 30)
+
+
+def make_pygame_headless():
+    # The below imports are used to import pygame in a headless setup, to render map
+    # updates as images for game recordings.
+    import os
+
+    # set SDL to use the dummy NULL video driver,
+    #   so it doesn't need a windowing system.
+    os.environ["SDL_VIDEODRIVER"] = "dummy"
+    import pygame.transform
+
+    if 1:
+        # some platforms might need to init the display for some parts of pygame.
+        import pygame.display
+
+        pygame.display.init()
+        pygame.display.set_mode((1, 1))
 
 
 def wait_for_key():
@@ -458,14 +476,38 @@ def draw_tile(
     screen.blit(icon, (center_x - icon_width / 2, center_y - icon_height / 2))
 
 
-def draw_map_and_wait(map_update):
+def draw_scenario_and_wait(scenario: Scenario):
     display = GameDisplay(SCREEN_SIZE)
-
-    display.set_map(map_update)
-    display.draw()
-
+    draw_scenario(display, scenario)
     pygame.display.flip()
     wait_for_key()
+
+
+def save_scenario_to_file(scenario: Scenario, file_path: str):
+    display = GameDisplay(SCREEN_SIZE)
+    draw_scenario(display, scenario)
+    pygame.image.save(display.screen(), file_path)
+
+
+def draw_scenario(display: "GameDisplay", scenario: Scenario):
+    display.set_map(scenario.map)
+
+    # For each card, if its ID is in target_card_ids, give it a blue outline.
+    cards = [Card.FromProp(prop) for prop in scenario.prop_update.props]
+    if scenario.target_card_ids:
+        for card in cards:
+            if card.id in scenario.target_card_ids:
+                card.selected = True
+                card.border_color
+            else:
+                card.selected = False
+    props = [card.prop() for card in cards]
+
+    display.set_props(props)
+    display.set_instructions(scenario.objectives)
+    display.set_state_sync(scenario.actor_state)
+
+    display.draw()
 
 
 class GameDisplay(object):
@@ -793,10 +835,10 @@ class GameDisplay(object):
         if not self._instructions or len(self._instructions) == 0:
             return
         text = ""
-        for instruction in self._instructions:
-            if instruction.cancelled or instruction.completed:
-                continue
-            text += instruction.text + "|"
+        in_process = [
+            ins for ins in self._instructions if not (ins.cancelled or ins.completed)
+        ]
+        text = "|".join([ins.text for ins in in_process])
         draw_wrapped(self, text)
 
     def visualize_selected_tile(self):
@@ -848,18 +890,17 @@ class GameDisplay(object):
         self.visualize_selected_tile()
 
 
-def main():
-    """Reads a JSON bug report from a file provided on the command line and displays the map to the user."""
-    # Check that the correct number of arguments were provided.
-    if len(sys.argv) != 2:
-        print("Usage: python visualize.py <bug_report.json>")
-        quit()
-
+def main(scenario_file: str, output_file: str = None):
+    """Reads a JSON scenario from a file provided on the command line and displays the map to the user."""
     # Read file contents and parse them into a JSON MapUpdate.
-    with open(sys.argv[1], "r") as file:
-        bug_report = BugReport.from_json(file.read())
-        draw_map_and_wait(bug_report.map_update)
+    with open(scenario_file, "r") as file:
+        scenario = Scenario.from_json(file.read())
+        if output_file:
+            make_pygame_headless()
+            save_scenario_to_file(scenario, output_file)
+        else:
+            draw_scenario_and_wait(scenario)
 
 
 if __name__ == "__main__":
-    main()
+    fire.Fire(main)

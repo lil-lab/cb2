@@ -1,12 +1,9 @@
 """Command line utility to create a default server config file."""
 import hashlib
 import os
-import random
 import readline  # Wraps input() to support backspace & left/right arrow navigation.
-import sys
 import time
 from enum import Enum
-from typing import List, Tuple
 
 import fire
 import yaml
@@ -14,6 +11,12 @@ import yaml
 from cb2game.server.config.config import Config
 from cb2game.server.config.map_config import MapConfig
 from cb2game.server.lobby_consts import LobbyInfo, LobbyType
+from cb2game.util.confgen import (
+    BooleanFromUserInput,
+    IntegerFromUserInput,
+    TupleIntsFromUserInput,
+    slow_type,
+)
 
 
 class Section(Enum):
@@ -37,29 +40,6 @@ def PrintSectionHeader(section: Section):
     slow_type("=" * len(section.to_str()))
 
 
-def slow_type(t, typing_speed=1000):
-    """Prints text slowly, as if someone is typing it.
-    Args:
-        t: Text to print.
-        typing_speed: Speed to type at. Characters per min.
-    """
-    for l in t:
-        sys.stdout.write(l)
-        sys.stdout.flush()
-        time.sleep(random.random() * 10 / (typing_speed))
-    print("")
-
-
-def user_input(prompt: str) -> str:
-    """Better prompt than input() for user input.
-
-    - Supports backspace & left/right arrow navigation.
-    """
-    sys.stdout.write(prompt)
-    sys.stdout.flush()
-    return sys.stdin.readline().strip()
-
-
 def FindOrCreateDefaultLobby(config: Config) -> LobbyInfo:
     """Finds or creates a default lobby. Lobbies are saved in a list."""
     default_lobbies = [x for x in config.lobbies if x.name == "default"]
@@ -76,72 +56,6 @@ def FindOrCreateDefaultLobby(config: Config) -> LobbyInfo:
         return default_lobby
     else:
         return default_lobbies[0]
-
-
-def IntegerFromUserInput(prompt: str, default: int) -> int:
-    """Prompts the user for an integer."""
-    while True:
-        try:
-            prompt_string = f"{prompt} (default: {default}): "
-            return int(user_input(prompt_string) or str(default))
-        except ValueError:
-            slow_type("Invalid input. Try again, numbers only.")
-
-
-def SelectionFromUserInput(
-    prompt: str, options: List[str], default: str = None
-) -> bool:
-    """Prompts the user for a boolean. Accepts "y" or "n".
-
-    Options are case insensitive. Preferably short or single-letter chars since the user needs to type them.
-
-    If default is not None, accepts the empty string as a valid input. Default
-    option will be capitalized when presented to the user.
-    """
-    # Make options all lowercase.
-    options = [o.lower() for o in options]
-    default = default.lower()
-
-    if default is not None:
-        assert (
-            default in options
-        ), "User input script error: default not in options. Please report this bug: https://github.com/lil-lab/cb2/issues"
-    default_capitalized = [
-        opt.upper() if opt == default else opt.lower() for opt in options
-    ]
-    options_string = "/".join(default_capitalized)
-
-    while True:
-        prompt_str = f"{prompt} ({options_string}) "
-        ans = user_input(prompt_str)
-        if ans.lower() in options:
-            return ans
-        if default and ans == "":
-            return default
-
-
-def BooleanFromUserInput(prompt: str, default: bool = None) -> bool:
-    """Prompts the user for a boolean. Accepts "y" or "n".
-
-    If default is not None, accepts the empty string as a valid input.
-    """
-    return SelectionFromUserInput(prompt, ["y", "n"], "y" if default else "n") == "y"
-
-
-def TupleIntsFromUserInput(prompt: str, default: Tuple[int, int]) -> Tuple[int, int]:
-    """Prompts the user for a tuple of integers."""
-    while True:
-        try:
-            prompt_str = f"{prompt} ({', '.join([str(i) for i in default])}) "
-            ans = user_input(prompt_str)
-            if ans == "":
-                return default
-            result_tuple = tuple([int(i) for i in ans.split(",")])
-            if len(result_tuple) != len(default):
-                raise ValueError()
-            return result_tuple
-        except ValueError:
-            slow_type("Invalid input. Try again, numbers only.")
 
 
 def MapConfigFromUserInput() -> MapConfig:
@@ -211,7 +125,7 @@ def ConfigFromUserInput() -> Config:
         f"If you forget, you can always see the DB location later via `python3 -m cb2game.server.db_location`"
     )
     while True:
-        db_path = user_input("Database location override: (default: '') ") or ""
+        db_path = input("Database location override: (default: '') ") or ""
         # If the db_path ends in "/", remove it.
         if db_path.endswith("/"):
             db_path = db_path[:-1]
@@ -292,7 +206,7 @@ def ConfigFromUserInput() -> Config:
             "Go here and create an OAuth client ID for a Web Application (very fast): https://console.cloud.google.com/apis/credentials/oauthclient"
         )
         slow_type("Then paste the client ID here...")
-        config.google_oauth_client_id = user_input("Google OAuth Client ID: ") or ""
+        config.google_oauth_client_id = input("Google OAuth Client ID: ") or ""
 
     slow_type(
         "Some server URLs are password-protected. See here for more info: https://github.com/lil-lab/cb2/wiki/Cb2-Url-Endpoints"
@@ -303,9 +217,7 @@ def ConfigFromUserInput() -> Config:
     slow_type(
         "If you forget your password, you'll need to delete the hash in the config file and restart the server."
     )
-    server_password = (
-        user_input("Server password (leave blank for no password): ") or ""
-    )
+    server_password = input("Server password (leave blank for no password): ") or ""
     if server_password != "":
         config.server_password_sha512 = hashlib.sha512(
             server_password.encode("utf-8")
@@ -332,11 +244,11 @@ def ConfigFromUserInput() -> Config:
     slow_type(
         "Let's name your config. Full name will be <nameprefix>-<timestamp>-autoconf"
     )
-    name = user_input("Config name prefix: (default: 'noname') ") or "noname"
+    name = input("Config name prefix: (default: 'noname') ") or "noname"
     config.name = f"{name}-{int(time.time())}-autoconf"
 
     while True:
-        config.comment = user_input(
+        config.comment = input(
             "Write a comment for this config (explain in a few words what this config is for and where it will be deployed): "
         )
         if config.comment != "":
@@ -379,10 +291,8 @@ def main(all_defaults: bool = False):
         time.sleep(2)
         os.rename(first_name, config_name)
     with open(first_name, "w") as f:
-        yaml.dump(config, f)
+        yaml.dump(config, f, sort_keys=False)
     slow_type(f"Config saved to {first_name}.")
-
-    slow_type(f"Config saved to {config_name}.")
     time.sleep(0.5)
 
 

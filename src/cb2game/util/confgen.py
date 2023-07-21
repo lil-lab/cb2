@@ -72,7 +72,10 @@ def BooleanFromUserInput(prompt: str, default: bool = None) -> bool:
 
     If default is not None, accepts the empty string as a valid input.
     """
-    return SelectionFromUserInput(prompt, ["y", "n"], "y" if default else "n") == "y"
+    default_value = None
+    if default is not None:
+        default_value = "y" if default else "n"
+    return SelectionFromUserInput(prompt, ["y", "n"], default_value) == "y"
 
 
 def TupleIntsFromUserInput(prompt: str, default: Tuple[int, int]) -> Tuple[int, int]:

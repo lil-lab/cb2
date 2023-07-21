@@ -9,6 +9,7 @@ from mashumaro import pass_through
 from mashumaro.mixins.json import DataClassJSONMixin
 
 from cb2game.server.messages.action import Action
+from cb2game.server.messages.buttons import ButtonPress
 from cb2game.server.messages.client_exception import ClientException
 from cb2game.server.messages.google_auth import GoogleAuth
 from cb2game.server.messages.live_feedback import LiveFeedback
@@ -41,6 +42,7 @@ class MessageType(Enum):
     SCENARIO_DOWNLOAD = 14
     FEEDBACK_RESPONSE = 15
     CLIENT_EXCEPTION = 16
+    BUTTON_PRESS = 17
 
 
 @dataclass(frozen=True)
@@ -61,3 +63,4 @@ class MessageToServer(DataClassJSONMixin):
     replay_request: Optional[ReplayRequest] = None
     scenario_request: Optional[ScenarioRequest] = None
     client_exception: Optional[ClientException] = None
+    button_press: Optional[ButtonPress] = None

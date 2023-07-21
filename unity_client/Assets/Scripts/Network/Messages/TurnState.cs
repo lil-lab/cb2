@@ -32,8 +32,17 @@ namespace Network
             int movesRemaining = (role == turn) ? moves_remaining : 0;
             string color = movesRemaining == 0 ? "red" : "#00ff00ff";
             string coloredMovesRemaining = "<color=" + color + ">" + movesRemaining + "</color>";
+
+            string movesRemainingComponent = "\nMoves this turn: " + coloredMovesRemaining;
+            LobbyInfo info = NetworkManager.TaggedInstance().ServerLobbyInfo();
+            // Moves remaining can be hidden via config in the lobby info.
+            if ((info != null) && info.hide_moves_remaining)
+            {
+                movesRemainingComponent = "";
+            }
+
             int turnsLeft = Math.Max(turns_left, 0);  // if -1 then game is over, display zero to be more tidy.
-            return "Score: " + score + "\tTime Left in turn: " + timeLeftInTurn.ToString(@"mm\:ss") + "\nMoves this turn: " + coloredMovesRemaining + "\tTurns Left: " + turns_left;
+            return "Score: " + score + "\tTime Left in turn: " + timeLeftInTurn.ToString(@"mm\:ss") + movesRemainingComponent + "\tTurns Left: " + turns_left;
         }
     }
 

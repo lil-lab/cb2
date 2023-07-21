@@ -32,6 +32,7 @@ namespace Network
             SCENARIO_DOWNLOAD,
             FEEDBACK_RESPONSE,
             CLIENT_EXCEPTION,
+            BUTTON_PRESS,
         }
 
         // These fields are populated for every packet.
@@ -53,6 +54,7 @@ namespace Network
         public ScenarioRequest scenario_request;
         public FeedbackResponse feedback_response;
         public ClientException client_exception;
+        public ButtonPress button_press;
     }
 
 }  // namespace Network

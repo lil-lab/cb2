@@ -62,3 +62,9 @@ class LobbyInfo(DataClassJSONMixin):
     delayed_feedback_enabled: bool = True
     # Replay lobbies only. Useful for demoing at conferences and such.
     is_demo_lobby: bool = False
+    # The bottom-left UI element won't show the number of moves remaining.
+    hide_moves_remaining: bool = False
+    # If this is enabled, then the game will require a button press (P) to
+    # select cards. Otherwise, cards will not be selected when a player walks
+    # over them.
+    select_requires_button_press: bool = False

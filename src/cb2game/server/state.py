@@ -29,6 +29,7 @@ from cb2game.server.messages import (
     state_sync,
 )
 from cb2game.server.messages.action import ActionType, Color
+from cb2game.server.messages.buttons import ButtonPress, KeyCode
 from cb2game.server.messages.feedback_questions import FeedbackResponse
 from cb2game.server.messages.prop import PropUpdate
 from cb2game.server.messages.rooms import Role
@@ -184,6 +185,9 @@ class State(object):
 
         self._turn_state = None
 
+        # Map from ID -> list of button presses.
+        self._buttons_queue = {}
+
         # We need to add a delay to the end of the follower's turn. So instead of ending the
         # turn immediately, we start the follower turn delay timer. When the timer readers
         self._follower_turn_end_timer = CountDownTimer(
@@ -229,7 +233,7 @@ class State(object):
 
         self._current_set_invalid = self._map_provider.selected_cards_collide()
         # Adds card covers.
-        self._prop_update = map_utils.CensorCards(self._prop_update, None)
+        self._prop_update = map_utils.AddCardCovers(self._prop_update, None)
 
         # Maps from player_id -> list of feedback questions (for transmission).
         self._feedback_questions = {}
@@ -405,6 +409,25 @@ class State(object):
                     self._update_turn()
                     logger.debug(f"Action occurred tick.")
                     send_tick = True
+            # Check button presses.
+            if actor_id in self._buttons_queue:
+                while len(self._buttons_queue[actor_id]) > 0:
+                    press = self._buttons_queue[actor_id].popleft()
+                    if self._turn_state.turn != actor.role():
+                        continue
+                    if press.role != actor.role():
+                        continue
+                    if press.button_code == KeyCode.S:
+                        if not self._lobby.lobby_info() or (
+                            not self._lobby.lobby_info().select_requires_button_press
+                        ):
+                            continue
+                        color = (
+                            Color(0, 0, 1, 1)
+                            if not self._current_set_invalid
+                            else Color(1, 0, 0, 1)
+                        )
+                        self._select_if_on_card(actor_id, color)
 
         if (
             self._turn_state.turn == Role.FOLLOWER
@@ -531,7 +554,6 @@ class State(object):
 
         if self._map_provider.selected_valid_set():
             self._current_set_invalid = False
-            added_turns = 0
             cards_changed = True
 
             sound_clip_type = SoundClipType.VALID_SET
@@ -548,6 +570,9 @@ class State(object):
             self.queue_follower_sound(sound_clip_type)
 
             added_turns = turn_reward(self._turn_state.sets_collected)
+            if len(self._map_provider.custom_targets()) > 0:
+                # Using custom targets in scenario. Don't add turns.
+                added_turns = 0
             new_turn_state = TurnUpdate(
                 self._turn_state.turn,
                 self._turn_state.moves_remaining,
@@ -584,7 +609,7 @@ class State(object):
         if cards_changed:
             # We've changed cards, so we need to mark the map as stale for all players.
             self._prop_update = self._map_provider.prop_update()
-            self._prop_update = map_utils.CensorCards(self._prop_update, None)
+            self._prop_update = map_utils.AddCardCovers(self._prop_update, None)
             self._send_state_machine_info = True
             for actor_id in self._actors:
                 self._prop_stale[actor_id] = True
@@ -719,7 +744,7 @@ class State(object):
             self._prop_update = self._map_provider.prop_update()
             for actor_id in self._actors:
                 self._prop_stale[actor_id] = True
-            self._prop_update = map_utils.CensorCards(self._prop_update, None)
+            self._prop_update = map_utils.AddCardCovers(self._prop_update, None)
             end_of_turn = next_role == Role.LEADER
             moves_remaining = self._moves_per_turn(next_role)
             turn_end = datetime.utcnow() + State.turn_duration(next_role)
@@ -763,30 +788,44 @@ class State(object):
     def selected_cards(self):
         return list(self._map_provider.selected_cards())
 
-    def _check_for_stepped_on_cards(self, actor_id, action, color):
+    def _select_if_on_card(self, actor_id, color: Color):
         actor = self._actors[actor_id]
         stepped_on_card = self._map_provider.card_by_location(actor.location())
-        # If the actor just moved and stepped on a card, mark it as selected.
-        if (action.action_type == ActionType.TRANSLATE) and (
-            stepped_on_card is not None
+        if stepped_on_card is None:
+            logger.info("Stepped on card is None.")
+            return
+        logger.debug(
+            f"Player {actor.actor_id()} stepped on card {str(stepped_on_card)}."
+        )
+        selected = not stepped_on_card.selected
+        self._map_provider.set_selected(stepped_on_card.id, selected)
+        self._map_provider.set_color(stepped_on_card.id, color)
+        logger.info(
+            f"Selected card {stepped_on_card.id} with color: {color}, selected: {selected}"
+        )
+        card_select_action = CardSelectAction(stepped_on_card.id, selected, color)
+        self._announce_action(card_select_action)
+        self._game_recorder.record_card_selection(actor, stepped_on_card)
+        self._last_card_step_actor = actor
+        clip_type = (
+            SoundClipType.CARD_SELECT if selected else SoundClipType.CARD_DESELECT
+        )
+        self.queue_sound_clip(actor_id, clip_type)
+        # If the follower selected a card, send the sound to the leader too.
+        if actor.role() == Role.FOLLOWER:
+            self.queue_leader_sound(clip_type)
+
+    def _check_for_stepped_on_cards(self, actor_id, action, color):
+        # Check if this is a lobby with select_requires_button_press == False.
+        if self._lobby.lobby_info() and (
+            self._lobby.lobby_info().select_requires_button_press
         ):
-            logger.debug(
-                f"Player {actor.actor_id()} stepped on card {str(stepped_on_card)}."
-            )
-            selected = not stepped_on_card.selected
-            self._map_provider.set_selected(stepped_on_card.id, selected)
-            self._map_provider.set_color(stepped_on_card.id, color)
-            card_select_action = CardSelectAction(stepped_on_card.id, selected, color)
-            self._announce_action(card_select_action)
-            self._game_recorder.record_card_selection(actor, stepped_on_card)
-            self._last_card_step_actor = actor
-            clip_type = (
-                SoundClipType.CARD_SELECT if selected else SoundClipType.CARD_DESELECT
-            )
-            self.queue_sound_clip(actor_id, clip_type)
-            # If the follower selected a card, send the sound to the leader too.
-            if actor.role() == Role.FOLLOWER:
-                self.queue_leader_sound(clip_type)
+            # If so, we don't want to select cards when the actor steps on them.
+            return
+        self._actors[actor_id]
+        # If the actor just moved and stepped on a card, mark it as selected.
+        if action.action_type == ActionType.TRANSLATE:
+            self._select_if_on_card(actor_id, color)
 
     def drain_messages(self, id, messages):
         for message in messages:
@@ -829,8 +868,22 @@ class State(object):
             self._drain_scenario_download(id)
         elif message.type == message_to_server.MessageType.FEEDBACK_RESPONSE:
             self._drain_feedback_response(id, message.feedback_response)
+        elif message.type == message_to_server.MessageType.BUTTON_PRESS:
+            logger.info(f"Received button press: {message.button_press.button_code}")
+            self._drain_button_press(id, message.button_press)
         else:
             logger.warning(f"Received unknown packet type: {message.type}")
+
+    def _drain_button_press(self, id, button_press: ButtonPress):
+        if id not in self._actors:
+            logger.warning(
+                "Warning, button press received from non-actor ID: {str(id)}"
+            )
+            return
+        # Queue the button press.
+        if id not in self._buttons_queue:
+            self._buttons_queue[id] = deque()
+        self._buttons_queue[id].append(button_press)
 
     def _drain_feedback_response(self, id, feedback_response: FeedbackResponse):
         if id in self._unanswered_feedback_question:
@@ -1433,12 +1486,16 @@ class State(object):
         # Load in map & props.
         props = scenario.prop_update.props
         cards = [Card.FromProp(prop) for prop in props]
+        # Make sure there are no duplicate card IDs.
+        card_ids = [card.id for card in cards]
+        if len(card_ids) != len(set(card_ids)):
+            raise ValueError("Duplicate card IDs found in scenario.")
         self._map_provider = MapProvider(
             MapType.PRESET, scenario.map, cards, custom_targets=scenario.target_card_ids
         )
         self._map_update = self._map_provider.map()
         self._prop_update = self._map_provider.prop_update()
-        self._prop_update = map_utils.CensorCards(self._prop_update, None)
+        self._prop_update = map_utils.AddCardCovers(self._prop_update, None)
         # Load in instructions.
         self._instructions = deque(scenario.objectives)
         # Load in actor states.

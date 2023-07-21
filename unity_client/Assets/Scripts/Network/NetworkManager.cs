@@ -21,6 +21,9 @@ namespace Network
 
         public readonly static string URL = "localhost:8080/";
 
+        // When launching from unity, this is the lobby chosen.
+        public string UnityClientLobbyName = "open";
+
         private readonly static double TICK_WAIT_TIMEOUT_S = 5.0;
 
         private ClientConnection _client;
@@ -118,9 +121,14 @@ namespace Network
             // We can figure out the server's address based on Unity's API.
             if (Application.absoluteURL == "")
             {
-                // Include the default parameter "lobby_name=open" so that the
-                // unity client knows to use the open lobby.
-                return new Dictionary<string, string>() {{"lobby_name", "open"}};
+                string default_lobby = "open";
+                NetworkManager net = NetworkManager.TaggedInstance();
+                if (net != null)
+                {
+                    default_lobby = net.UnityClientLobbyName;
+                }
+                // Include the default parameter so the unity client knows to use the correct lobby.
+                return new Dictionary<string, string>() {{"lobby_name", default_lobby}};
             }
             Uri servedUrl = new Uri(Application.absoluteURL);
             string query = servedUrl.Query;
@@ -284,6 +292,27 @@ namespace Network
             toServer.type = MessageToServer.MessageType.OBJECTIVE;
             toServer.objective = objective;
             toServer.objective.sender = _role;
+            _client.TransmitMessage(toServer);
+        }
+
+        public void TransmitKeyDown(Network.KeyCode code) {
+            TransmitKey(code, ButtonPressEvent.KEY_DOWN);
+        }
+
+        public void TransmitKey(Network.KeyCode code, Network.ButtonPressEvent press_event = Network.ButtonPressEvent.KEY_DOWN) {
+            ButtonPress buttonPress = new ButtonPress();
+            buttonPress.role = Role();
+            buttonPress.button_code = code;
+            buttonPress.is_down = true;
+            buttonPress.press_event = press_event;
+            TransmitButtonPress(buttonPress);
+        }
+
+        public void TransmitButtonPress(ButtonPress press) {
+            MessageToServer toServer = new MessageToServer();
+            toServer.transmit_time = DateTime.UtcNow.ToString("s");
+            toServer.type = MessageToServer.MessageType.BUTTON_PRESS;
+            toServer.button_press = press;
             _client.TransmitMessage(toServer);
         }
 
@@ -551,7 +580,7 @@ namespace Network
 
             string url = "";
             if (Application.absoluteURL == "") {
-                url = "ws://" + URL + "player_endpoint?lobby_name=open";
+                url = "ws://" + URL + "player_endpoint?lobby_name=" + UnityClientLobbyName;
             } else {
                 // We can figure out the server's address based on Unity's API.
                 Uri servedUrl = new Uri(Application.absoluteURL);

@@ -23,6 +23,7 @@ public class UIObjectiveInfo : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.D))
         {
             OnCompleteObjective();
+            network.TransmitKeyDown(Network.KeyCode.D);
         }
     }
 }

@@ -27,6 +27,9 @@ namespace Network
         public bool cards_face_follower;
         public bool live_feedback_enabled;
         public bool delayed_feedback_enabled;
+        public bool is_demo_lobby;
+        public bool hide_moves_remaining;
+        public bool select_requires_button_press;
     }
 
     // Server configuration, settings & options. Retrieve the latest config from NetworkManager.

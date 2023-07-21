@@ -976,19 +976,19 @@ public class MenuTransitionHandler : MonoBehaviour
             }
         }
 
-        if (Input.GetKeyDown(KeyCode.Return))
+        if (Input.GetKeyDown(UnityEngine.KeyCode.Return))
         {
             SendObjective();
         }
 
-        if (Input.GetKeyDown(KeyCode.T) && !UserTypingInput())
+        if (Input.GetKeyDown(UnityEngine.KeyCode.T) && !UserTypingInput())
         {
             GameObject textObj = GameObject.FindWithTag(INPUT_FIELD_TAG);
             TMPro.TMP_InputField textMeshPro = textObj.GetComponent<TMPro.TMP_InputField>();
             textMeshPro.Select();
         }
 
-        if (Input.GetKeyDown(KeyCode.N) && !UserTypingInput())
+        if (Input.GetKeyDown(UnityEngine.KeyCode.N) && !UserTypingInput())
         {
             TurnComplete();
         }
@@ -1000,7 +1000,7 @@ public class MenuTransitionHandler : MonoBehaviour
             return;
         }
 
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if (Input.GetKeyDown(UnityEngine.KeyCode.Escape))
         {
             if (_currentMenuState == MenuState.NONE)
             {

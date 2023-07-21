@@ -625,7 +625,7 @@ def CensorMapForFollower(map_update, follower):
     return map_update_clone
 
 
-def CensorCards(prop_update, follower=None):
+def AddCardCovers(prop_update, follower=None):
     """Censors card information from a map that the follower isn't supposed to have.
 
     Can optionally supply the follower to get more specific censorship, like only hiding nearby cards.

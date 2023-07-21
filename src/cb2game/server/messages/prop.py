@@ -8,6 +8,7 @@ import cb2game.server.card_enums as card_enums
 from cb2game.server.card_enums import Color, Shape
 from cb2game.server.hex import HecsCoord
 from cb2game.server.messages import action
+from cb2game.server.messages.util import Role
 
 # TODO(sharf): This file is unnecessarily and prematurely abstracted. Props -> Cards, and simplify everything.
 
@@ -34,7 +35,9 @@ class CardConfig(DataClassJSONMixin):
     shape: Shape
     count: int
     selected: bool
+    # DEPRECATED. Recommend using hidden_to instead.
     hidden: Optional[bool] = False  # Whether the client should cover the card.
+    hidden_to: List[Role] = None  # The roles that cannot see this card.
 
 
 @dataclass(frozen=True)

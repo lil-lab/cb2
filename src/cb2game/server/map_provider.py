@@ -1134,6 +1134,11 @@ class MapProvider(object):
     def cards(self):
         return self._cards
 
+    def custom_targets(self):
+        if self._custom_targets is None:
+            return []
+        return self._custom_targets
+
     def set_selected(self, card_id, selected):
         for idx, card in enumerate(self._cards):
             if card.id == card_id:

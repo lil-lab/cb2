@@ -1,6 +1,6 @@
 import dataclasses
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 
 from cb2game.server.hex import HecsCoord
@@ -147,9 +147,10 @@ class ScenarioState(object):
             parsed_scenario = Scenario.from_json(scenario_request.scenario_data)
             logger.info(f"Received color_tint: {parsed_scenario.map.color_tint}")
             self._scenario_id = parsed_scenario.scenario_id
-            # Modify turn_state turn_end time to be never...
+            # Modify turn_state turn_end time to match the scenario duration.
+            duration = timedelta(seconds=parsed_scenario.duration_s)
             updated_turn_state = dataclasses.replace(
-                parsed_scenario.turn_state, turn_end=datetime.max
+                parsed_scenario.turn_state, turn_end=(datetime.utcnow() + duration)
             )
             parsed_scenario = dataclasses.replace(
                 parsed_scenario, turn_state=updated_turn_state

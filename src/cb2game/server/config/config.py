@@ -134,6 +134,9 @@ class Config(DataClassJSONMixin):
     # If true, then cards are rendered with covers. Covers block the follower
     # from seeing what's on the card, but are invisible/transparent to the
     # leader.
+    # DEPRECATED: This is now ignored. Instead, card covers are per-card.
+    # Lobbies can choose whether to add covers by default, and scenarios can
+    # specify covers in the map.
     card_covers: bool = False
 
     # Everything is 100% visible if it's closer than fog_start units away.
@@ -217,6 +220,26 @@ class Config(DataClassJSONMixin):
                 40,
                 1,
                 False,
+                False,
+                0,
+                False,
+                False,
+                False,
+                True,
+            ),
+            LobbyInfo(
+                "scenario-lobby-button",
+                LobbyType.SCENARIO,
+                "Lobby for scenario experiments with buttons.",
+                40,
+                1,
+                False,
+                False,
+                0,
+                False,
+                False,
+                False,
+                True,
                 True,
             ),
             LobbyInfo(

@@ -27,6 +27,8 @@ class Scenario(DataClassJSONMixin):
     # A list of card IDs that must be selected to complete the scenario. If empty, normal game
     # play is allowed.
     target_card_ids: Optional[List[int]] = None
+    # Duration of the scenario, by default.
+    duration_s: float = 3600.0
 
 
 class ScenarioRequestType(Enum):

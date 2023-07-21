@@ -214,6 +214,8 @@ public class Player : MonoBehaviour
                 || (OverheadCamera == null)
                 || ((DateTime.UtcNow - _lastCameraToggle).TotalMilliseconds <= 500))
                 return;
+            if (_network != null)
+                _network.TransmitKeyDown(Network.KeyCode.C);
             if (OverheadCamera.GetComponent<Camera>().enabled)
             {
                 OverheadCamera.GetComponent<Camera>().enabled = false;
@@ -288,6 +290,7 @@ public class Player : MonoBehaviour
                                                    1 / MoveSpeed);
             if (_network.TransmitAction(action)) {
                 _actor.AddAction(action);
+                _network.TransmitKeyDown(Network.KeyCode.UP);
             }
             return;
         }
@@ -299,6 +302,7 @@ public class Player : MonoBehaviour
                     _actor.HeadingDegrees() + 180), 1 / MoveSpeed);
             if (_network.TransmitAction(action)) {
                 _actor.AddAction(action);
+                _network.TransmitKeyDown(Network.KeyCode.DOWN);
             }
             return;
         }
@@ -308,6 +312,7 @@ public class Player : MonoBehaviour
             Rotate action = Rotate.Turn(-60.0f, 1 / TurnSpeed);
             if (_network.TransmitAction(action)) {
                 _actor.AddAction(action);
+                _network.TransmitKeyDown(Network.KeyCode.LEFT);
             }
             return;
         }
@@ -316,6 +321,7 @@ public class Player : MonoBehaviour
             Rotate action = Rotate.Turn(60.0f, 1 / TurnSpeed);
             if (_network.TransmitAction(action)) {
                 _actor.AddAction(action);
+                _network.TransmitKeyDown(Network.KeyCode.RIGHT);
             }
             return;
         }

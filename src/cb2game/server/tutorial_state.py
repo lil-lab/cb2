@@ -148,7 +148,7 @@ class TutorialGameState(object):
         elif self._player_role == Role.FOLLOWER:
             dummy_character_id = self.create_actor(Role.LEADER, self._realtime)
             self._dummy_character = self._actors[dummy_character_id]
-        self._prop_update = map_utils.CensorCards(
+        self._prop_update = map_utils.AddCardCovers(
             self._prop_update, self._dummy_character
         )
 
@@ -477,7 +477,7 @@ class TutorialGameState(object):
         if cards_changed:
             # We've changed cards, so we need to mark the map as stale for all players.
             self._prop_update = self._map_provider.prop_update()
-            self._prop_update = map_utils.CensorCards(
+            self._prop_update = map_utils.AddCardCovers(
                 self._prop_update, self._actors[actor_id]
             )
             for actor_id in self._actors:
@@ -998,9 +998,7 @@ class TutorialGameState(object):
         map_update = self._map_update
 
         if self._actors[actor_id].role() == Role.FOLLOWER:
-            map_update = map_utils.CensorMapForFollower(
-                map_update, self._actors[actor_id]
-            )
+            map_update = map_utils.AddCardCovers(map_update, self._actors[actor_id])
 
         self._map_update_count += 1
 

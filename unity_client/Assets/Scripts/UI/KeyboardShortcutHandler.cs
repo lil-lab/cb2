@@ -39,6 +39,12 @@ public class KeyboardShortcutHandler : MonoBehaviour
             return;
         }
 
+        // This one is a bit special. Most key events are forwarded directly,
+        // however this one is only forwarded if a message was sent. So we need
+        // to put it in this function where we decide if we're sending a
+        // message.
+        Network.NetworkManager.TaggedInstance().TransmitKeyDown(Network.KeyCode.ENTER);
+
         Network.NetworkManager networkManager = Network.NetworkManager.TaggedInstance();
 
         objective.text = textMeshPro.text;
@@ -71,19 +77,23 @@ public class KeyboardShortcutHandler : MonoBehaviour
             GameObject textObj = GameObject.FindWithTag(INPUT_FIELD_TAG);
             TMPro.TMP_InputField textMeshPro = textObj.GetComponent<TMPro.TMP_InputField>();
             textMeshPro.Select();
+            Network.NetworkManager.TaggedInstance().TransmitKeyDown(Network.KeyCode.T);
         }
 
         if (Input.GetKeyDown(KeyCode.N) && !UserTypingInput())
         {
             Network.NetworkManager.TaggedInstance().TransmitTurnComplete();
+            Network.NetworkManager.TaggedInstance().TransmitKeyDown(Network.KeyCode.N);
         }
 
         // Live feedback keyboard combos.
         if (Input.GetKeyDown(KeyCode.G) || Input.GetKeyDown(KeyCode.Alpha9)) {
             SendPositiveFeedback();
+            Network.NetworkManager.TaggedInstance().TransmitKeyDown(Network.KeyCode.G);
         }
         if (Input.GetKeyDown(KeyCode.B) || Input.GetKeyDown(KeyCode.Alpha0)) {
             SendNegativeFeedback();
+            Network.NetworkManager.TaggedInstance().TransmitKeyDown(Network.KeyCode.B);
         }
 
         if (Input.GetKeyDown(KeyCode.P))
@@ -92,7 +102,13 @@ public class KeyboardShortcutHandler : MonoBehaviour
             if (instance != null)
             {
                 instance.ToggleDisplay();
+                Network.NetworkManager.TaggedInstance().TransmitKeyDown(Network.KeyCode.P);
             }
+        }
+
+        // Button for selecting cards, if enabled.
+        if (Input.GetKeyDown(KeyCode.S) && !UserTypingInput()) {
+            Network.NetworkManager.TaggedInstance().TransmitKeyDown(Network.KeyCode.S);
         }
     }
 }

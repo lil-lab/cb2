@@ -230,10 +230,20 @@ public class OverheadCamera : MonoBehaviour
         if (Input.GetKey(KeyCode.A))
         {
             _phi += Time.deltaTime;
+            if (Input.GetKeyDown(KeyCode.A)) {
+                Network.NetworkManager net = Network.NetworkManager.TaggedInstance();
+                if (net != null)
+                    net.TransmitKeyDown(Network.KeyCode.A);
+            }
         }
         if (Input.GetKey(KeyCode.D))
         {
             _phi -= Time.deltaTime;
+            if (Input.GetKeyDown(KeyCode.D)) {
+                Network.NetworkManager net = Network.NetworkManager.TaggedInstance();
+                if (net != null)
+                    net.TransmitKeyDown(Network.KeyCode.D);
+            }
         }
         if (MousePanning)
         {
