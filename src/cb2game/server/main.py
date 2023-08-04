@@ -1226,7 +1226,7 @@ async def receive_agent_updates(request, ws, lobby):
 
         if message.type == message_to_server.MessageType.CLIENT_EXCEPTION:
             logger.info(
-                f"========== @@@@@@@@@ ############ $$$$$$$$$$$ Client exception: {message.client_exception}"
+                f"========== @@@@@@@@@ ############ $$$$$$$$$$$ Client exception: {message.client_exception.condition}"
             )
             client_exception_logger.queue_exception(message.client_exception)
             continue

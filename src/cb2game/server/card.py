@@ -133,8 +133,7 @@ class Card:
                 False,
                 OUTLINE_RADIUS,
                 self.border_color,
-                # Always set follower POV border colors to blue.
-                action.Color(0, 0, 1, 1),
+                self.border_color,
             ),
             prop.CardConfig(
                 self.color, self.shape, self.count, self.selected, self.hidden

@@ -17,6 +17,7 @@ from cb2game.server.assets import (
 )
 from cb2game.server.config.map_config import MapConfig
 from cb2game.server.hex import HecsCoord, HexBoundary, HexCell
+from cb2game.server.messages.action import Color
 from cb2game.server.messages.map_update import Tile
 
 logger = logging.getLogger()
@@ -641,7 +642,11 @@ def AddCardCovers(prop_update, follower=None):
         if prop_item.prop_type == prop_item.prop_type.CARD:
             if not prop_item.card_init.selected:
                 hidden = True
-
+            # Make the follower border blue.
+            new_prop_info = dataclasses.replace(
+                prop_item.prop_info, border_color_follower=Color(0, 0, 1, 1)
+            )
+            prop_item = dataclasses.replace(prop_item, prop_info=new_prop_info)
         new_card_init = dataclasses.replace(prop_item.card_init, hidden=hidden)
         props.append(dataclasses.replace(prop_item, card_init=new_card_init))
     return dataclasses.replace(prop_update, props=props)

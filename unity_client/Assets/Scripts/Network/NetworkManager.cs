@@ -17,6 +17,8 @@ namespace Network
     {
         public static string TAG = "NetworkManager";
 
+        public static int EXCEPTION_UPLOAD_PERIOD_S = 5;
+
         public static NetworkManager Instance;
 
         public readonly static string URL = "localhost:8080/";
@@ -59,6 +61,7 @@ namespace Network
         private UserInfo _user_info = null;
         private bool _user_info_requested = false;
         private bool _handlingException = false;
+        private DateTime _lastExceptionUpload = DateTime.MinValue;
 
         private Logger _logger;
 
@@ -660,7 +663,13 @@ namespace Network
             {
                 return;
             }
+            // Only handle exceptions once every EXCEPTION_UPLOAD_PERIOD_S seconds.
+            if (DateTime.UtcNow.Subtract(_lastExceptionUpload).TotalSeconds < EXCEPTION_UPLOAD_PERIOD_S)
+            {
+                return;
+            }
             _handlingException = true;
+            _lastExceptionUpload = DateTime.UtcNow;
             // Send ClientException message.
             MessageToServer message = new MessageToServer();
             message.type = MessageToServer.MessageType.CLIENT_EXCEPTION;

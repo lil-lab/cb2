@@ -68,3 +68,4 @@ class LobbyInfo(DataClassJSONMixin):
     # select cards. Otherwise, cards will not be selected when a player walks
     # over them.
     select_requires_button_press: bool = False
+    card_covers: bool = False

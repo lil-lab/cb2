@@ -134,10 +134,14 @@ class Config(DataClassJSONMixin):
     # If true, then cards are rendered with covers. Covers block the follower
     # from seeing what's on the card, but are invisible/transparent to the
     # leader.
-    # DEPRECATED: This is now ignored. Instead, card covers are per-card.
-    # Lobbies can choose whether to add covers by default, and scenarios can
-    # specify covers in the map.
-    card_covers: bool = False
+    # DEPRECATED: This should just always be True as it enables card covers in
+    # the client. Card covers are now per-card.  Lobbies can choose whether to
+    # add covers by default, using lobby-specific card_covers boolean parameter.
+    # In order for card covers to show, they need to be enabled here and in the
+    # MapUpdate struct sent from the server (see game state machine
+    # implementation). Use this as a hammer to globally disable card covers, but
+    # in most cases you'd be better served by disabling it in the lobbies.
+    card_covers: bool = True
 
     # Everything is 100% visible if it's closer than fog_start units away.
     fog_start: int = 13
@@ -169,9 +173,22 @@ class Config(DataClassJSONMixin):
     # Names of lobbies and lobby types.
     lobbies: List[LobbyInfo] = field(
         default_factory=lambda: [
-            LobbyInfo("default", LobbyType.GOOGLE, "The default lobby.", 40),
             LobbyInfo(
-                "open", LobbyType.OPEN, "Lobby open to anyone. -- No user info.", 40
+                "default", LobbyType.GOOGLE, "The default lobby.", 40, card_covers=True
+            ),
+            LobbyInfo(
+                "open",
+                LobbyType.OPEN,
+                "Lobby open to anyone. -- No user info.",
+                40,
+                card_covers=True,
+            ),
+            LobbyInfo(
+                "open-coverless",
+                LobbyType.OPEN,
+                "Lobby open to anyone. -- Card covers disabled.",
+                40,
+                card_covers=False,
             ),
             LobbyInfo(
                 "delayed-feedback",
@@ -182,6 +199,10 @@ class Config(DataClassJSONMixin):
                 False,
                 False,
                 0,
+                False,
+                True,
+                False,
+                False,
                 False,
                 True,
             ),
@@ -196,9 +217,26 @@ class Config(DataClassJSONMixin):
                 0,
                 True,
                 True,
+                False,
+                False,
+                False,
+                True,
             ),
             LobbyInfo(
-                "bot-sandbox", LobbyType.OPEN, "Open lobby intended for bots.", 40
+                "bot-sandbox",
+                LobbyType.OPEN,
+                "Open lobby intended for bots.",
+                40,
+                0,
+                False,
+                False,
+                0,
+                True,
+                False,
+                False,
+                False,
+                False,
+                True,
             ),
             LobbyInfo("mturk-lobby", LobbyType.MTURK, "Lobby for MTurk workers.", 40),
             LobbyInfo(
@@ -206,6 +244,16 @@ class Config(DataClassJSONMixin):
                 LobbyType.FOLLOWER_PILOT,
                 "Lobby for MTurk follower pilot workers.",
                 40,
+                1,
+                False,
+                False,
+                0,
+                True,
+                True,
+                False,
+                False,
+                False,
+                True,
             ),
             LobbyInfo(
                 "replay-lobby", LobbyType.REPLAY, "Lobby for displaying replays.", 40
@@ -226,6 +274,8 @@ class Config(DataClassJSONMixin):
                 False,
                 False,
                 True,
+                False,
+                False,
             ),
             LobbyInfo(
                 "scenario-lobby-button",
@@ -241,6 +291,7 @@ class Config(DataClassJSONMixin):
                 False,
                 True,
                 True,
+                False,
             ),
             LobbyInfo(
                 "eval-lobby",

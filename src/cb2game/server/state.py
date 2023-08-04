@@ -233,7 +233,16 @@ class State(object):
 
         self._current_set_invalid = self._map_provider.selected_cards_collide()
         # Adds card covers.
-        self._prop_update = map_utils.AddCardCovers(self._prop_update, None)
+        card_covers = (
+            False
+            if not self._lobby.lobby_info()
+            else self._lobby.lobby_info().card_covers
+        )
+        if card_covers:
+            self._prop_update = map_utils.AddCardCovers(self._prop_update, None)
+            logger.info(f"<<<INIT: CARD COVERS SET>>>")
+        else:
+            logger.info(f"<<<INIT: DID NOT SET CARD COVERS DUE TO COVERS DISABLED>>>")
 
         # Maps from player_id -> list of feedback questions (for transmission).
         self._feedback_questions = {}
@@ -522,9 +531,22 @@ class State(object):
             self._current_set_invalid = True
             cards_changed = True
             # Indicate invalid set.
+            card_covers = (
+                False
+                if not self._lobby.lobby_info()
+                else self._lobby.lobby_info().card_covers
+            )
             for card in selected_cards:
                 # Outline the cards in red.
-                card_select_action = CardSelectAction(card.id, True, Color(1, 0, 0, 1))
+                # If cards are covered, then the follower shouldn't be able to get information from the border color (keep it blue).
+                color = Color(1, 0, 0, 1)
+                follower_border_color = Color(0, 0, 1, 1) if card_covers else color
+                card_select_action = CardSelectAction(
+                    card.id,
+                    True,
+                    Color(1, 0, 0, 1),
+                    follower_border_color=follower_border_color,
+                )
                 self._map_provider.set_color(card.id, Color(1, 0, 0, 1))
                 self._announce_action(card_select_action)
                 # Find the actor that selected this card.
@@ -535,7 +557,8 @@ class State(object):
                         break
                 self._game_recorder.record_card_selection(stepping_actor, card)
             self.queue_leader_sound(SoundClipType.INVALID_SET)
-            self.queue_follower_sound(SoundClipType.INVALID_SET)
+            if not card_covers:
+                self.queue_follower_sound(SoundClipType.INVALID_SET)
 
         if (
             not self._map_provider.selected_cards_collide()
@@ -609,7 +632,13 @@ class State(object):
         if cards_changed:
             # We've changed cards, so we need to mark the map as stale for all players.
             self._prop_update = self._map_provider.prop_update()
-            self._prop_update = map_utils.AddCardCovers(self._prop_update, None)
+            card_covers = (
+                False
+                if not self._lobby.lobby_info()
+                else self._lobby.lobby_info().card_covers
+            )
+            if card_covers:
+                self._prop_update = map_utils.AddCardCovers(self._prop_update, None)
             self._send_state_machine_info = True
             for actor_id in self._actors:
                 self._prop_stale[actor_id] = True
@@ -744,7 +773,13 @@ class State(object):
             self._prop_update = self._map_provider.prop_update()
             for actor_id in self._actors:
                 self._prop_stale[actor_id] = True
-            self._prop_update = map_utils.AddCardCovers(self._prop_update, None)
+            card_covers = (
+                False
+                if not self._lobby.lobby_info()
+                else self._lobby.lobby_info().card_covers
+            )
+            if card_covers:
+                self._prop_update = map_utils.AddCardCovers(self._prop_update, None)
             end_of_turn = next_role == Role.LEADER
             moves_remaining = self._moves_per_turn(next_role)
             turn_end = datetime.utcnow() + State.turn_duration(next_role)
@@ -803,7 +838,19 @@ class State(object):
         logger.info(
             f"Selected card {stepped_on_card.id} with color: {color}, selected: {selected}"
         )
-        card_select_action = CardSelectAction(stepped_on_card.id, selected, color)
+        # If cards are covered, then the follower shouldn't be able to get information from the border color (keep it blue).
+        card_covers = (
+            False
+            if not self._lobby.lobby_info()
+            else self._lobby.lobby_info().card_covers
+        )
+        follower_border_color = Color(0, 0, 1, 1) if card_covers else color
+        card_select_action = CardSelectAction(
+            stepped_on_card.id,
+            selected,
+            color,
+            follower_border_color=follower_border_color,
+        )
         self._announce_action(card_select_action)
         self._game_recorder.record_card_selection(actor, stepped_on_card)
         self._last_card_step_actor = actor
@@ -1329,7 +1376,6 @@ class State(object):
             return None
 
         prop_update = self._prop_update
-
         self._prop_stale[actor_id] = False
         return prop_update
 
@@ -1495,7 +1541,13 @@ class State(object):
         )
         self._map_update = self._map_provider.map()
         self._prop_update = self._map_provider.prop_update()
-        self._prop_update = map_utils.AddCardCovers(self._prop_update, None)
+        card_covers = (
+            False
+            if not self._lobby.lobby_info()
+            else self._lobby.lobby_info().card_covers
+        )
+        if card_covers:
+            self._prop_update = map_utils.AddCardCovers(self._prop_update, None)
         # Load in instructions.
         self._instructions = deque(scenario.objectives)
         # Load in actor states.

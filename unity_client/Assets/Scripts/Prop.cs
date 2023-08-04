@@ -196,9 +196,6 @@ public class Prop
                 _followerPovOutline.transform.localScale = new Vector3(x_scale, _followerPovOutline.transform.localScale.y, z_scale);
                 Color borderColor = (_lastState.BorderColor != null) ? _lastState.BorderColor.ToUnity() : Color.magenta;
                 Color followerBorderColor = (_lastState.BorderColorFollowerPov != null) ? _lastState.BorderColorFollowerPov.ToUnity() : Color.magenta;
-                if ((followerBorderColor.r > 0) && (followerBorderColor.b < 1)) {
-                    _logger.Error("Follower border color is not blue: " + _lastState.BorderColorFollowerPov);
-                }
                 renderer.material.SetColor("_Color", borderColor);
                 renderer.material.SetColor("_EmissionColor", borderColor);
                 followerRenderer.material.SetColor("_Color", followerBorderColor);

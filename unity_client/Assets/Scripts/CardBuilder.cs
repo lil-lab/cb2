@@ -151,6 +151,7 @@ public class CardBuilder
             cover.SetActive(false);
             prop.SetCover(null);
         }
+
         return prop;
     }
     private IAssetSource.AssetId BaseAssetId(int count)
