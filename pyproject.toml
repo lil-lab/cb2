@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cb2game"
-version = "0.9.18"
+version = "0.9.19"
 authors = [
   { name="Jacob Sharf", email="jacobsharf@gmail.com" },
   { name="Mustafa Omer Gul", email="momergul@gmail.com" },
