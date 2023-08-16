@@ -97,9 +97,51 @@ provides a few benefits:
 - You can start/stop the server with `systemctl`.
 - The server will run in the background, and you can log out of the machine without stopping the server.
 
-The script `deploy/deploy.sh` should take care of everything. This installs a
-SystemD Daemon which handles the CB2 server. See `deploy/systemd/README.md` for
-more.
+We provide a script for deploying CB2 as a systemd service on Ubuntu 22.04 LTS:
+
+```
+# Install cb2game service.
+python3 -m cb2game.deploy install <path-to-config.yaml>
+
+# Fetch cb2game front-end client and install it. Uses latest release on Github
+# if no locally built client is specified. Unless you're interested in
+# customizing CB2's Unity client, you should leave this blank.
+python3 -m cb2game.deploy fetch-client <optional-path-to-local-client>
+
+# Start the service (check localhost:8080 or python -m cb2game.deploy logs to
+# verify)
+python3 -m cb2game.deploy start
+
+# Check localhost:8080/ in your browser. The server should now be started!
+```
+
+Here's some other useful commands:
+```
+# Update the current cb2game version. Latest if no version specified.
+python3 -m cb2game.deploy update-to-version <optional-version>
+
+# See where all files are installed, current cb2game version installed on system.
+python3 -m cb2game.deploy info
+
+# Update the config used by the service.
+python3 -m cg2game.deploy update_config <path-to-config.yaml>
+
+# Possibly diagnose system issues causing install to fail.
+python3 -m cb2game.deploy diagnose
+
+# Restart
+python3 -m cb2game.deploy restart
+
+# Stop the service
+python3 -m cb2game.deploy stop
+
+# Access service logs.
+python3 -m cb2game.deploy logs
+
+# Uninstall.
+python3 -m cb2game.deploy uninstall
+```
+
 
 Development
 -----------
