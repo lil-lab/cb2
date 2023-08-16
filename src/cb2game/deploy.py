@@ -108,7 +108,7 @@ def install(user_config_path):
     sudo_run(["systemctl", "daemon-reload"])
 
     slow_type(
-        "Installation complete. Run python3 -m cb2game.deploy fetch-client <optional-path> to fetch the front-end client. Then start the service with python3 -m cb2game.deploy start"
+        "Installation complete. Run python3 -m cb2game.deploy fetch-client to fetch the front-end client. Then start the service with python3 -m cb2game.deploy start"
     )
 
 
