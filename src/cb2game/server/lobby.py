@@ -966,10 +966,10 @@ class Lobby(ABC):
                 management_response = self._pending_room_management_responses[ws].get(
                     False
                 )
-                logger.info(
+                logger.debug(
                     f"Drained Room Management message type {management_response.type} for {ws}."
                 )
-                logger.info(
+                logger.debug(
                     f"Remaining messages in queue: {self._pending_room_management_responses[ws].qsize()}"
                 )
                 return message_from_server.RoomResponseFromServer(management_response)
@@ -981,7 +981,7 @@ class Lobby(ABC):
         if not self._pending_tutorial_messages[ws].empty():
             try:
                 tutorial_response = self._pending_tutorial_messages[ws].get(False)
-                logger.info(
+                logger.debug(
                     f"Drained tutorial response type {tutorial_response.type} for {ws}."
                 )
                 return message_from_server.TutorialResponseFromServer(tutorial_response)
@@ -992,7 +992,7 @@ class Lobby(ABC):
         if not self._pending_replay_messages[ws].empty():
             try:
                 replay_response = self._pending_replay_messages[ws].get(False)
-                logger.info(
+                logger.debug(
                     f"Drained replay response type {replay_response.type} for {ws}."
                 )
                 return message_from_server.ReplayResponseFromServer(replay_response)

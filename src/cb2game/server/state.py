@@ -240,9 +240,6 @@ class State(object):
         )
         if card_covers:
             self._prop_update = map_utils.AddCardCovers(self._prop_update, None)
-            logger.info(f"<<<INIT: CARD COVERS SET>>>")
-        else:
-            logger.info(f"<<<INIT: DID NOT SET CARD COVERS DUE TO COVERS DISABLED>>>")
 
         # Maps from player_id -> list of feedback questions (for transmission).
         self._feedback_questions = {}
@@ -1530,77 +1527,93 @@ class State(object):
         self._live_feedback_queue = deque()
         self._preloaded_actors = {}
         # Load in map & props.
-        props = scenario.prop_update.props
-        cards = [Card.FromProp(prop) for prop in props]
-        # Make sure there are no duplicate card IDs.
-        card_ids = [card.id for card in cards]
-        if len(card_ids) != len(set(card_ids)):
-            raise ValueError("Duplicate card IDs found in scenario.")
-        self._map_provider = MapProvider(
-            MapType.PRESET, scenario.map, cards, custom_targets=scenario.target_card_ids
-        )
-        self._map_update = self._map_provider.map()
-        self._prop_update = self._map_provider.prop_update()
-        card_covers = (
-            False
-            if not self._lobby.lobby_info()
-            else self._lobby.lobby_info().card_covers
-        )
-        if card_covers:
-            self._prop_update = map_utils.AddCardCovers(self._prop_update, None)
+        next_map = self._map_provider.map()
+        if scenario.map is not None:
+            next_map = scenario.map
+        next_cards = self._map_provider.cards()
+        if scenario.prop_update is not None:
+            props = scenario.prop_update.props
+            cards = [Card.FromProp(prop) for prop in props]
+            # Make sure there are no duplicate card IDs.
+            card_ids = [card.id for card in cards]
+            if len(card_ids) != len(set(card_ids)):
+                raise ValueError("Duplicate card IDs found in scenario.")
+            next_cards = cards
+        # If either sceneario.map or scenario.prop_update are specified, then we need to
+        # create a new map provider.
+        if scenario.map is not None or scenario.prop_update is not None:
+            self._map_provider = MapProvider(
+                MapType.PRESET,
+                next_map,
+                next_cards,
+                custom_targets=scenario.target_card_ids,
+            )
+            self._map_update = self._map_provider.map()
+            self._prop_update = self._map_provider.prop_update()
+            card_covers = (
+                False
+                if not self._lobby.lobby_info()
+                else self._lobby.lobby_info().card_covers
+            )
+            if card_covers:
+                self._prop_update = map_utils.AddCardCovers(self._prop_update, None)
+        if scenario.map is not None:
+            self._mark_map_stale()
+        if scenario.prop_update is not None:
+            self._mark_prop_stale()
         # Load in instructions.
-        self._instructions = deque(scenario.objectives)
+        if scenario.objectives is not None:
+            self._instructions = deque(scenario.objectives)
+            self._mark_instructions_stale()
         # Load in actor states.
-        leader_id = None
-        follower_id = None
-        for actor_id, actor in self._actors.items():
-            if actor.role() == Role.LEADER:
-                leader_id = actor_id
-            elif actor.role() == Role.FOLLOWER:
-                follower_id = actor_id
-        # If leader and follower are still None, then we need to create them.
-        if leader_id is None:
-            if delayed_actor_load:
-                leader_id = self._map_provider.id_assigner().alloc()
-            else:
-                leader_id = self.create_actor(Role.LEADER)
-        if follower_id is None:
-            if delayed_actor_load:
-                follower_id = self._map_provider.id_assigner().alloc()
-            else:
-                follower_id = self.create_actor(Role.FOLLOWER)
-        for actor_state in scenario.actor_state.actors:
-            if actor_state.actor_role == Role.LEADER:
-                actor_state = dataclasses.replace(actor_state, actor_id=leader_id)
-                actor = Actor.from_state(actor_state, realtime_actions)
-                if not delayed_actor_load:
-                    self._actors[leader_id] = actor
-                    self._leader = actor
+        if scenario.actor_state is not None:
+            leader_id = None
+            follower_id = None
+            for actor_id, actor in self._actors.items():
+                if actor.role() == Role.LEADER:
+                    leader_id = actor_id
+                elif actor.role() == Role.FOLLOWER:
+                    follower_id = actor_id
+            # If leader and follower are still None, then we need to create them.
+            if leader_id is None:
+                if delayed_actor_load:
+                    leader_id = self._map_provider.id_assigner().alloc()
                 else:
-                    self._preloaded_actors[Role.LEADER] = actor
-            elif actor_state.actor_role == Role.FOLLOWER:
-                actor_state = dataclasses.replace(actor_state, actor_id=follower_id)
-                actor = Actor.from_state(actor_state, realtime_actions)
-                if not delayed_actor_load:
-                    self._actors[follower_id] = actor
-                    self._follower = self._actors[follower_id]
+                    leader_id = self.create_actor(Role.LEADER)
+            if follower_id is None:
+                if delayed_actor_load:
+                    follower_id = self._map_provider.id_assigner().alloc()
                 else:
-                    self._preloaded_actors[Role.FOLLOWER] = actor
-        if (self._leader is None and not delayed_actor_load) or (
-            Role.LEADER not in self._preloaded_actors and delayed_actor_load
-        ):
-            logger.warning("Warning, scenario did not contain leader")
-        if (self._follower is None and not delayed_actor_load) or (
-            Role.FOLLOWER not in self._preloaded_actors and delayed_actor_load
-        ):
-            logger.warning("Warning, scenario did not contain follower")
-        # Mark everything as stale.
-        self._mark_map_stale()
-        self._mark_prop_stale()
-        self._mark_instructions_stale()
+                    follower_id = self.create_actor(Role.FOLLOWER)
+            for actor_state in scenario.actor_state.actors:
+                if actor_state.actor_role == Role.LEADER:
+                    actor_state = dataclasses.replace(actor_state, actor_id=leader_id)
+                    actor = Actor.from_state(actor_state, realtime_actions)
+                    if not delayed_actor_load:
+                        self._actors[leader_id] = actor
+                        self._leader = actor
+                    else:
+                        self._preloaded_actors[Role.LEADER] = actor
+                elif actor_state.actor_role == Role.FOLLOWER:
+                    actor_state = dataclasses.replace(actor_state, actor_id=follower_id)
+                    actor = Actor.from_state(actor_state, realtime_actions)
+                    if not delayed_actor_load:
+                        self._actors[follower_id] = actor
+                        self._follower = self._actors[follower_id]
+                    else:
+                        self._preloaded_actors[Role.FOLLOWER] = actor
+            if (self._leader is None and not delayed_actor_load) or (
+                Role.LEADER not in self._preloaded_actors and delayed_actor_load
+            ):
+                logger.warning("Warning, scenario did not contain leader")
+            if (self._follower is None and not delayed_actor_load) or (
+                Role.FOLLOWER not in self._preloaded_actors and delayed_actor_load
+            ):
+                logger.warning("Warning, scenario did not contain follower")
+        if scenario.turn_state is not None:
+            self._send_turn_state(scenario.turn_state)
         # Mark clients as desynced.
         self.desync_all()
-        self._send_turn_state(scenario.turn_state)
         self._self_initialize()
 
     def _get_scenario(self, player_id: int, scenario_id: str) -> Scenario:

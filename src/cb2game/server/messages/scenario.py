@@ -17,11 +17,11 @@ from cb2game.server.messages.turn_state import TurnState
 @dataclass(frozen=True)
 class Scenario(DataClassJSONMixin):
     scenario_id: str  # Unique identifier for the scenario. Used to attach to a scenario.
-    map: MapUpdate
-    prop_update: PropUpdate
-    turn_state: TurnState
-    objectives: List[ObjectiveMessage]
-    actor_state: StateSync
+    map: Optional[MapUpdate] = field(default=None)
+    prop_update: Optional[PropUpdate] = field(default=None)
+    turn_state: Optional[TurnState] = field(default=None)
+    objectives: Optional[List[ObjectiveMessage]] = field(default=None)
+    actor_state: Optional[StateSync] = field(default=None)
     kvals: Dict[str, str] = field(default_factory=dict)
     live_feedback: List[LiveFeedback] = field(default_factory=list)
     # A list of card IDs that must be selected to complete the scenario. If empty, normal game
