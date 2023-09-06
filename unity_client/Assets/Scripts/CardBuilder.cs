@@ -187,6 +187,12 @@ public class CardBuilder
             if (!loc.name.StartsWith("location"))
                 continue;
 
+            GameObject shapePrefab = LoadShape(shape);
+            if (shapePrefab == null)
+            {
+                _logger.Warn("Could not load shape prefab: " + shape);
+                continue;
+            }
             GameObject symbol = GameObject.Instantiate(LoadShape(shape), loc);
 
             // Rotate the triangle by 90 degrees.
@@ -194,6 +200,12 @@ public class CardBuilder
             if (shape == Shape.TRIANGLE)
             {
                 symbol.transform.Rotate(new Vector3(180f, 0f, 0f));
+            }
+            // Make the heart and star shapes 10% smaller.
+            if ((shape == Shape.HEART) || (shape == Shape.STAR))
+            {
+                Vector3 scale = symbol.transform.localScale;
+                symbol.transform.localScale = new Vector3(0.9f * scale.x, scale.y, 0.9f * scale.z);
             }
             if ((count == 2) || (count == 3)) {
                 Vector3 scale = symbol.transform.localScale;
@@ -211,7 +223,7 @@ public class CardBuilder
             symbol.transform.SetParent(card.transform);
         }
         if (card == null)
-            Debug.LogWarning("Null card instantiated????");
+            _logger.Warn("Null card instantiated????");
         return card;
     }
 
@@ -235,7 +247,7 @@ public class CardBuilder
             case Shape.DIAMOND:
                 return source.Load(IAssetSource.AssetId.DIAMOND);
             default:
-                Debug.LogWarning("Encountered unknown Shape.");
+                _logger.Warn("Encountered unknown Shape." + shape);
                 return null;
         }
     }
@@ -260,7 +272,7 @@ public class CardBuilder
             case Color.YELLOW:
                 return source.LoadMat(IAssetSource.MaterialId.COLOR_YELLOW);
             default:
-                Debug.LogWarning("Encountered unknown Color.");
+                _logger.Warn("Encountered unknown Color.");
                 return null;
         }
     }
@@ -281,7 +293,7 @@ public class CardBuilder
             {
                 return actors[0].GetProp();
             } else {
-                Debug.LogWarning("Could not find follower.");
+                _logger.Warn("Could not find follower.");
                 return null;
             }
         }

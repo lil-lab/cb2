@@ -71,6 +71,7 @@ class ScenarioState(object):
             log_to_db=log_to_db,
             realtime_actions=realtime_actions,
             lobby=lobby,
+            spawn_cards_on_set=False,
         )
 
         # Set the default map to the default map. This gives the player a place

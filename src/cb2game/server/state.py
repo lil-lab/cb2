@@ -106,6 +106,7 @@ class State(object):
         log_to_db: bool = True,
         realtime_actions: bool = False,
         lobby: "server.Lobby" = None,
+        spawn_cards_on_set: bool = True,
     ):
         """Initialize the game state.
 
@@ -123,6 +124,10 @@ class State(object):
         self._start_time = datetime.utcnow()
         self._room_id = room_id
         self._lobby = lobby
+
+        # If true, then a random new set is spawned when the current set is completed.
+        # This should always be true, except for scenario games and possibly testing.
+        self._spawn_cards_on_set = spawn_cards_on_set
 
         # Rolling count of iteration loop. Used to indicate when an iteration of
         # the logic loop has occurred. Sent out in StateMachineTick messages
@@ -608,14 +613,14 @@ class State(object):
                 self._last_card_step_actor, selected_cards, self._turn_state.score
             )
             self._game_recorder.record_turn_state(new_turn_state, "ScoredSet")
-            # Add 3 new cards before clearing selected cards. This prevents
-            # us from accidentally spawning cards in the same location as
-            # the previous 3, which is confusing to the user.
-            new_cards = self._map_provider.add_random_unique_set()
-            for card in new_cards:
-                self._game_recorder.record_card_spawn(card)
+            if self._spawn_cards_on_set:
+                # Add 3 new cards before clearing selected cards. This prevents
+                # us from accidentally spawning cards in the same location as
+                # the previous 3, which is confusing to the user.
+                new_cards = self._map_provider.add_random_unique_set()
+                for card in new_cards:
+                    self._game_recorder.record_card_spawn(card)
             # Clear card state and remove the cards in the winning set.
-            logger.debug("Clearing selected cards")
             for card in selected_cards:
                 self._map_provider.set_selected(card.id, False)
                 actions = SetCompletionActions(card.id)
