@@ -201,8 +201,8 @@ public class CardBuilder
             {
                 symbol.transform.Rotate(new Vector3(180f, 0f, 0f));
             }
-            // Make the heart and star shapes 10% smaller.
-            if ((shape == Shape.HEART) || (shape == Shape.STAR))
+            // Make the heart, circle, and star shapes 10% smaller.
+            if ((shape == Shape.HEART) || (shape == Shape.STAR) || (shape == Shape.TORUS))
             {
                 Vector3 scale = symbol.transform.localScale;
                 symbol.transform.localScale = new Vector3(0.9f * scale.x, scale.y, 0.9f * scale.z);
@@ -247,7 +247,7 @@ public class CardBuilder
             case Shape.DIAMOND:
                 return source.Load(IAssetSource.AssetId.DIAMOND);
             default:
-                _logger.Warn("Encountered unknown Shape." + shape);
+                _logger.Warn("Encountered unknown Shape: " + shape);
                 return null;
         }
     }
