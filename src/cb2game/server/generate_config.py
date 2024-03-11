@@ -116,7 +116,7 @@ def ConfigFromUserInput() -> Config:
     PrintSectionHeader(Section.HTTP_SETTINGS)
 
     # First, ask for the server port. Default to 8080.
-    config.port = IntegerFromUserInput("Server port", 8080)
+    config.http_port = IntegerFromUserInput("Server port", 8080)
 
     PrintSectionHeader(Section.DATABASE_SETTINGS)
     # Next, ask for the database location. Default to "" -- Looks up system default via appdirs.
