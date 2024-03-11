@@ -136,20 +136,25 @@ class Room(object):
             self._messages_to_server_log = open(os.devnull, "w")
         else:
             log_directory = pathlib.Path(game_record.log_directory)
-            if not os.path.exists(log_directory):
+            if not os.path.exists(log_directory) or not os.path.isdir(log_directory):
                 logger.warning(
                     "Provided log directory does not exist. Game will not be recorded."
                 )
-                return
-            self._log_directory = log_directory
-            messages_from_server_path = pathlib.Path(
-                self._log_directory, "messages_from_server.jsonl.log"
-            )
-            self._messages_from_server_log = messages_from_server_path.open("w")
-            messages_to_server_path = pathlib.Path(
-                self._log_directory, "messages_to_server.jsonl.log"
-            )
-            self._messages_to_server_log = messages_to_server_path.open("w")
+                # Create a dummy log directory for the game that ignores all writes.
+                self._log_directory = pathlib.Path(os.devnull)
+                # Create a dummy file object that ignores all bytes.
+                self._messages_from_server_log = open(os.devnull, "w")
+                self._messages_to_server_log = open(os.devnull, "w")
+            else:
+                self._log_directory = log_directory
+                messages_from_server_path = pathlib.Path(
+                    self._log_directory, "messages_from_server.jsonl.log"
+                )
+                self._messages_from_server_log = messages_from_server_path.open("w")
+                messages_to_server_path = pathlib.Path(
+                    self._log_directory, "messages_to_server.jsonl.log"
+                )
+                self._messages_to_server_log = messages_to_server_path.open("w")
 
         # Write the current server config to the log_directory as config.json.
         if self._room_type not in [
