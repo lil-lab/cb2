@@ -1569,6 +1569,13 @@ class State(object):
         # Load in instructions.
         if scenario.objectives is not None:
             self._instructions = deque(scenario.objectives)
+            # Record instructions arriving.
+            if len(scenario.objectives) > 0:
+                self._game_recorder.record_instruction_sent(scenario.objectives[0])
+                # The first instruction activates immediately.
+                self._game_recorder.record_instruction_activated(scenario.objectives[0])
+            for objective in scenario.objectives[1:]:
+                self._game_recorder.record_instruction_sent(objective)
             self._mark_instructions_stale()
         # Load in actor states.
         if scenario.actor_state is not None:
