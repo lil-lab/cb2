@@ -210,6 +210,16 @@ def RunEval(
                     )
                     continue
 
+                # The baseline final state carries the real game's accumulated
+                # score. Seed the eval with the baseline's starting score so
+                # the score comparison below measures the gain during this
+                # instruction. Otherwise any instruction from a point in the
+                # game where the humans had already scored can never pass.
+                start_scenario, _ = ReconstructScenarioFromEvent(eval_start_event.id)
+                baseline_start_score = GameStateFromScenario(
+                    start_scenario
+                ).turn_state.score
+
             # Create a local game to run the eval.
             game_name = coordinator.CreateGameFromDatabase(
                 eval_start_event.id.hex, log_to_db=False, lobby=eval_lobby
@@ -227,8 +237,8 @@ def RunEval(
                     1,  # As long as next turn isn't game over.
                     datetime.utcnow() + timedelta(seconds=FOLLOWER_SECONDS_PER_TURN),
                     datetime.utcnow(),
-                    0,  # Let's start each eval with a score of zero.
-                    0,
+                    baseline_start_score,  # Match the baseline's starting score.
+                    baseline_start_score,
                     False,
                     0,
                 )
